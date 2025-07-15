@@ -1,4 +1,4 @@
-# OpenScribe
+# OpenWispr
 
 A desktop dictation application using OpenAI Whisper for speech-to-text transcription.
 
