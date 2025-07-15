@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Tooltip } from "./ui/tooltip";
+import { Copy, Trash2, RefreshCw, Download, Check, X, Settings, Keyboard, FileText, Info, Mic } from "lucide-react";
 
 // Type declaration for electronAPI
 declare global {
@@ -23,8 +25,10 @@ declare global {
       installWhisper: () => Promise<{ success: boolean; message: string; output: string }>;
       onWhisperInstallProgress: (callback: (event: any, data: { type: string; message: string; output?: string }) => void) => void;
       downloadWhisperModel: (modelName: string) => Promise<{ success: boolean; model: string; downloaded: boolean; size_mb?: number; error?: string }>;
+      onWhisperDownloadProgress: (callback: (event: any, data: { type: string; model: string; percentage?: number; downloaded_bytes?: number; total_bytes?: number; error?: string; result?: any }) => void) => void;
       checkModelStatus: (modelName: string) => Promise<{ success: boolean; model: string; downloaded: boolean; size_mb?: number; error?: string }>;
       listWhisperModels: () => Promise<{ success: boolean; models: Array<{ model: string; downloaded: boolean; size_mb?: number }>; cache_dir: string }>;
+      deleteWhisperModel: (modelName: string) => Promise<{ success: boolean; model: string; deleted: boolean; freed_mb?: number; error?: string }>;
     };
   }
 }
@@ -47,6 +51,7 @@ export default function ControlPanel() {
   const [checkingWhisper, setCheckingWhisper] = useState(false);
   const [modelList, setModelList] = useState<Array<{ model: string; downloaded: boolean; size_mb?: number }>>([]);
   const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const [loadingModels, setLoadingModels] = useState(false);
   const [installingWhisper, setInstallingWhisper] = useState(false);
   const [installProgress, setInstallProgress] = useState<string>('');
@@ -90,6 +95,23 @@ export default function ControlPanel() {
     // Set up progress listener for Whisper installation
     window.electronAPI.onWhisperInstallProgress((event, data) => {
       setInstallProgress(data.message);
+    });
+    
+    // Set up progress listener for model downloads
+    window.electronAPI.onWhisperDownloadProgress((event, data) => {
+      if (data.type === 'progress') {
+        // Force re-render by setting both state values
+        setDownloadProgress(data.percentage || 0);
+      } else if (data.type === 'complete') {
+        setDownloadingModel(null);
+        setDownloadProgress(0);
+        // Refresh model list after successful download
+        loadModelList();
+      } else if (data.type === 'error') {
+        setDownloadingModel(null);
+        setDownloadProgress(0);
+        console.error('Download error:', data.error);
+      }
     });
   }, []);
 
@@ -167,7 +189,6 @@ export default function ControlPanel() {
   const downloadModel = async (modelName: string) => {
     try {
       setDownloadingModel(modelName);
-      console.log(`📥 Downloading model: ${modelName}`);
       
       const result = await window.electronAPI.downloadWhisperModel(modelName);
       
@@ -183,6 +204,25 @@ export default function ControlPanel() {
       alert(`❌ Failed to download model "${modelName}": ${error}`);
     } finally {
       setDownloadingModel(null);
+    }
+  };
+
+  const deleteModel = async (modelName: string) => {
+    if (confirm(`Are you sure you want to delete the "${modelName}" model? This will free up disk space but you'll need to re-download it if you want to use it again.`)) {
+      try {
+        const result = await window.electronAPI.deleteWhisperModel(modelName);
+        
+        if (result.success) {
+          alert(`✅ Model "${modelName}" deleted successfully! Freed ${result.freed_mb}MB of disk space.`);
+          // Refresh model list
+          loadModelList();
+        } else {
+          alert(`❌ Failed to delete model "${modelName}": ${result.error}`);
+        }
+      } catch (error) {
+        console.error('❌ Model delete error:', error);
+        alert(`❌ Failed to delete model "${modelName}": ${error}`);
+      }
     }
   };
 
@@ -368,270 +408,294 @@ Click OK when you're ready to open System Settings.`;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F5F0E6] via-[#F9F6F1] to-[#EDE7DC] p-8">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-indigo-50/30 p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="brand-heading text-5xl font-bold text-[#2B1F14] mb-3">
-            OpenScribe
+        <div className="text-center mb-10">
+          <div className="flex items-center justify-center mb-6">
+            <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+              <span className="text-white text-xl font-medium">W</span>
+            </div>
+          </div>
+          <h1 className="text-3xl font-semibold text-neutral-900 mb-2">
+            OpenWhisper
           </h1>
-          <p className="brand-script text-xl text-[#6B5D52] italic">
-            "Your words, inscribed with care"
+          <p className="text-neutral-600">
+            Your voice, your data, your AI
           </p>
-          <div className="w-24 h-px bg-gradient-to-r from-transparent via-[#C0A77D] to-transparent mx-auto mt-4"></div>
         </div>
 
-        {/* API Configuration Card */}
-        <Card className="card">
-          <CardHeader className="border-b border-[#DDD4C7] bg-gradient-to-r from-[#FFFFFF] to-[#F9F6F1]">
-            <CardTitle className="brand-heading text-2xl text-[#2B1F14] flex items-center gap-3">
-              <span className="text-[#C0A77D]">🔑</span>
-              OpenAI API Configuration
+        {/* Transcription Setup Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings size={18} className="text-indigo-600" />
+              Transcription Setup
             </CardTitle>
-            <p className="text-sm text-[#6B5D52] mt-2">
-              Configure your transcription credentials to enable voice-to-text inscription.
+            <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
+              Choose how you want to convert speech to text. You can always change this later.
             </p>
           </CardHeader>
-          <CardContent className="space-y-6 p-8">
+          <CardContent className="space-y-6">
             <div className="space-y-4">
+              {/* Processing Choice */}
               <div>
-                <label className="block text-sm font-semibold text-[#2B1F14] mb-3 brand-body">
-                  OpenAI API Key
+                <label className="block text-sm font-medium text-neutral-700 mb-4">
+                  Processing Method
                 </label>
-                <div className="flex gap-3">
-                  <Input
-                    type="password"
-                    placeholder="sk-..."
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    className="flex-1 text-base"
-                    onPaste={(e) => {
-                      e.stopPropagation();
-                      console.log('Paste event triggered');
-                    }}
-                    onKeyDown={handleApiKeyKeyDown}
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  <Button 
-                    variant="outline" 
-                    onClick={async () => {
-                      try {
-                        const text = await window.electronAPI.readClipboard();
-                        if (text && text.trim()) {
-                          setApiKey(text.trim());
-                          console.log('Manual paste successful via Electron');
-                        } else {
-                          const webText = await navigator.clipboard.readText();
-                          setApiKey(webText.trim());
-                          console.log('Manual paste successful via Web API');
-                        }
-                      } catch (err) {
-                        console.error('Manual paste failed:', err);
-                        alert('Could not paste from clipboard. Please try typing or using Cmd+V/Ctrl+V.');
-                      }
-                    }}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setUseLocalWhisper(false)}
+                    className={`p-4 border-2 rounded-xl text-left transition-all ${
+                      !useLocalWhisper 
+                        ? 'border-indigo-500 bg-indigo-50' 
+                        : 'border-neutral-200 bg-white hover:border-neutral-300'
+                    }`}
                   >
-                    Inscribe
-                  </Button>
-                </div>
-                <p className="text-xs text-[#6B5D52] mt-2 italic">
-                  Your API key will be securely stored and used only for transcription services.
-                </p>
-              </div>
-              <Button 
-                onClick={saveApiKey} 
-                disabled={!apiKey.trim()}
-                className="w-full bg-[#4B2E2B] hover:bg-[#C0A77D] text-[#F5F0E6] hover:text-[#2B1F14] font-semibold py-3"
-              >
-                Save API Credentials
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Whisper Engine Settings Card */}
-        <Card className="card">
-          <CardHeader className="border-b border-[#DDD4C7] bg-gradient-to-r from-[#FFFFFF] to-[#F9F6F1]">
-            <CardTitle className="brand-heading text-2xl text-[#2B1F14] flex items-center gap-3">
-              <span className="text-[#C0A77D]">🤖</span>
-              Whisper Engine Settings
-            </CardTitle>
-            <p className="text-sm text-[#6B5D52] mt-2">
-              Configure your speech recognition engine: local processing or cloud API.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-6 p-8">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border border-[#DDD4C7] rounded-lg bg-gradient-to-r from-[#FFFFFF] to-[#F9F6F1]">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="useLocalWhisper"
-                    checked={useLocalWhisper}
-                    onChange={(e) => setUseLocalWhisper(e.target.checked)}
-                    className="w-5 h-5"
-                  />
-                  <label htmlFor="useLocalWhisper" className="text-base font-semibold text-[#2B1F14] brand-body">
-                    Use Local Whisper (Privacy Mode)
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {checkingWhisper ? (
-                    <span className="text-[#C0A77D] text-sm">Checking...</span>
-                  ) : whisperInstalled ? (
-                    <span className="text-green-600 text-sm">✅ Installed</span>
-                  ) : (
-                    <span className="text-red-600 text-sm">❌ Not Found</span>
-                  )}
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-neutral-900">Cloud Processing</h4>
+                      <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">Fastest</span>
+                    </div>
+                    <p className="text-sm text-neutral-600">
+                      Audio sent to OpenAI servers. Faster processing, requires API key.
+                    </p>
+                  </button>
+                  
+                  <button
+                    onClick={() => setUseLocalWhisper(true)}
+                    className={`p-4 border-2 rounded-xl text-left transition-all ${
+                      useLocalWhisper 
+                        ? 'border-indigo-500 bg-indigo-50' 
+                        : 'border-neutral-200 bg-white hover:border-neutral-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-neutral-900">Local Processing</h4>
+                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">Private</span>
+                    </div>
+                    <p className="text-sm text-neutral-600">
+                      Audio stays on your device. Complete privacy, works offline.
+                    </p>
+                  </button>
                 </div>
               </div>
 
-              {useLocalWhisper && (
-                <div className="pl-8 space-y-4">
+              {/* Cloud Configuration */}
+              {!useLocalWhisper && (
+                <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <h4 className="font-medium text-blue-900">OpenAI API Setup</h4>
                   <div>
-                    <label className="block text-sm font-semibold text-[#2B1F14] mb-3 brand-body">
-                      Whisper Model
+                    <label className="block text-sm font-medium text-blue-800 mb-2">
+                      API Key
                     </label>
-                    <select
-                      value={whisperModel}
-                      onChange={(e) => setWhisperModel(e.target.value)}
-                      className="w-full p-3 border border-[#DDD4C7] rounded-lg bg-white text-[#2B1F14] focus:outline-none focus:ring-2 focus:ring-[#C0A77D]"
-                    >
-                      <option value="tiny">Tiny (39M params - Fastest)</option>
-                      <option value="base">Base (74M params - Balanced)</option>
-                      <option value="small">Small (244M params - Better quality)</option>
-                      <option value="medium">Medium (769M params - High quality)</option>
-                      <option value="large">Large (1550M params - Best quality)</option>
-                      <option value="turbo">Turbo (809M params - Fast + quality)</option>
-                    </select>
-                    <p className="text-xs text-[#6B5D52] mt-2 italic">
-                      Larger models provide better accuracy but use more memory and are slower.
+                    <div className="flex gap-3">
+                      <Input
+                        type="password"
+                        placeholder="sk-..."
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            const text = await window.electronAPI.readClipboard();
+                            if (text && text.trim()) {
+                              setApiKey(text.trim());
+                              console.log('Manual paste successful via Electron');
+                            } else {
+                              const webText = await navigator.clipboard.readText();
+                              setApiKey(webText.trim());
+                              console.log('Manual paste successful via Web API');
+                            }
+                          } catch (err) {
+                            console.error('Manual paste failed:', err);
+                            alert('Could not paste from clipboard. Please try typing or using Cmd+V/Ctrl+V.');
+                          }
+                        }}
+                      >
+                        Paste
+                      </Button>
+                    </div>
+                    <p className="text-xs text-blue-700 mt-2">
+                      Get your API key from platform.openai.com
                     </p>
                   </div>
+                </div>
+              )}
 
-                  {/* Model Management Section */}
-                  {whisperInstalled && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-semibold text-green-800">Model Management</h4>
-                        <Button 
-                          onClick={loadModelList}
-                          variant="outline"
-                          size="sm"
-                          disabled={loadingModels}
+              {/* Local Configuration */}
+              {useLocalWhisper && (
+                <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-purple-900">Local Whisper Setup</h4>
+                    <div className="flex items-center space-x-2">
+                      {checkingWhisper ? (
+                        <span className="text-purple-600 text-sm">Checking...</span>
+                      ) : whisperInstalled ? (
+                        <span className="text-emerald-600 text-sm font-medium">✓ Ready</span>
+                      ) : (
+                        <span className="text-amber-600 text-sm font-medium">⚠ Not installed</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {whisperInstalled ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-purple-800 mb-2">
+                          Model Quality
+                        </label>
+                        <select
+                          value={whisperModel}
+                          onChange={(e) => setWhisperModel(e.target.value)}
+                          className="w-full p-3 border border-purple-300 rounded-lg bg-white text-purple-900 focus:outline-none focus:ring-1 focus:ring-purple-500/20 focus:border-purple-500"
                         >
-                          {loadingModels ? "Loading..." : "Refresh Models"}
-                        </Button>
+                          <option value="tiny">Tiny - Fastest, lower quality</option>
+                          <option value="base">Base - Good balance (recommended)</option>
+                          <option value="small">Small - Better quality, slower</option>
+                          <option value="medium">Medium - High quality</option>
+                          <option value="large">Large - Best quality, slowest</option>
+                        </select>
+                        <p className="text-xs text-purple-700 mt-2">
+                          Larger models need more memory but give better results.
+                        </p>
                       </div>
-                      
-                      <div className="space-y-3">
-                        {modelList.length > 0 ? (
-                          modelList.map((model) => (
-                            <div key={model.model} className="flex items-center justify-between p-3 bg-white rounded border">
-                              <div className="flex items-center space-x-3">
-                                <span className="font-medium text-green-900 capitalize">
-                                  {model.model}
-                                </span>
-                                {model.downloaded ? (
-                                  <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
-                                    ✅ Downloaded ({model.size_mb}MB)
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                    Not downloaded
-                                  </span>
-                                )}
-                              </div>
-                              
-                              {!model.downloaded && (
-                                <Button
-                                  onClick={() => downloadModel(model.model)}
-                                  disabled={downloadingModel === model.model}
-                                  size="sm"
-                                  className="bg-green-600 hover:bg-green-700 text-white"
-                                >
-                                  {downloadingModel === model.model ? (
-                                    <>📥 Downloading...</>
-                                  ) : (
-                                    <>📥 Download</>
-                                  )}
-                                </Button>
-                              )}
+
+                      <div className="bg-white border border-purple-200 rounded-lg overflow-hidden">
+                        {/* Download Progress Bar */}
+                        {downloadingModel && (
+                          <div className="bg-purple-50 border-b border-purple-200 p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-purple-900">
+                                Downloading {downloadingModel} model...
+                              </span>
+                              <span className="text-xs text-purple-700">
+                                {Math.round(downloadProgress)}%
+                              </span>
                             </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-4">
-                            <p className="text-sm text-green-700">
-                              {loadingModels ? "Loading model information..." : "Click 'Refresh Models' to check available models"}
-                            </p>
+                            <div className="w-full bg-purple-200 rounded-full h-2">
+                              <div 
+                                className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full transition-all duration-300 ease-out"
+                                style={{ width: `${Math.min(downloadProgress, 100)}%` }}
+                              ></div>
+                            </div>
                           </div>
                         )}
-                      </div>
-                      
-                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
-                        <p><strong>💡 Tip:</strong> Download models you plan to use for faster transcription. The first time you use a model, it will be downloaded automatically, but pre-downloading prevents delays during dictation.</p>
+                        
+                        <div className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="font-medium text-purple-900">Available Models</h5>
+                            <Button 
+                              onClick={() => setLoadingModels(!loadingModels)}
+                              variant="outline"
+                              size="sm"
+                              disabled={loadingModels}
+                              className="border-purple-300 text-purple-700 hover:bg-purple-50 hover:border-purple-600"
+                            >
+                              <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
+                              <span className="ml-1">{loadingModels ? "Checking..." : "Refresh"}</span>
+                            </Button>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            {modelList.map((model) => (
+                              <div key={model.model} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                <div className="flex items-center space-x-3">
+                                  <span className="font-medium text-purple-900 capitalize">
+                                    {model.model}
+                                  </span>
+                                  {model.downloaded ? (
+                                    <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-1 rounded-md">
+                                      ✓ Downloaded ({model.size_mb}MB)
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded-md">
+                                      Not downloaded
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                <div className="flex gap-2">
+                                  {model.downloaded && (
+                                    <Button
+                                      onClick={() => deleteModel(model.model)}
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-600"
+                                    >
+                                      <Trash2 size={14} />
+                                      <span className="ml-1">Delete</span>
+                                    </Button>
+                                  )}
+                                  {!model.downloaded && (
+                                    <Button
+                                      onClick={() => downloadModel(model.model)}
+                                      disabled={downloadingModel === model.model}
+                                      size="sm"
+                                      className="bg-purple-600 hover:bg-purple-700"
+                                    >
+                                      <Download size={14} />
+                                      <span className="ml-1">
+                                        {downloadingModel === model.model ? "Downloading..." : "Download"}
+                                      </span>
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  )}
-
-                  {!whisperInstalled && (
-                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
+                  ) : (
+                    <div className="bg-white border border-purple-200 rounded-lg p-6">
                       <div className="text-center">
-                        <div className="text-4xl mb-4">🚀</div>
-                        <h4 className="font-bold text-blue-900 text-lg mb-2">
-                          Ready to Enable Local Processing?
-                        </h4>
-                        <p className="text-sm text-blue-700 mb-4 max-w-md mx-auto">
-                          We'll automatically install Whisper for you! No terminal commands needed - just click the button below.
+                        <div className="text-3xl mb-4">📦 </div>
+                        <h5 className="font-medium text-purple-900 text-lg mb-2">
+                          Install Local Processing
+                        </h5>
+                        <p className="text-sm text-purple-700 mb-4 max-w-sm mx-auto">
+                          We'll install Whisper automatically. No technical setup required.
                         </p>
                         
                         {installingWhisper ? (
                           <div className="space-y-4">
-                            <div className="bg-white rounded-lg p-4 border">
-                              <div className="flex items-center justify-center space-x-3 mb-3">
-                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                                <span className="font-semibold text-blue-900">Installing Whisper...</span>
+                            <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                              <div className="flex items-center justify-center space-x-3 mb-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                                <span className="font-medium text-purple-900">Installing...</span>
                               </div>
                               {installProgress && (
-                                <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded font-mono">
+                                <div className="text-xs text-purple-600 bg-white p-2 rounded font-mono">
                                   {installProgress}
                                 </div>
                               )}
                             </div>
-                            <p className="text-xs text-blue-600 italic">
-                              This may take a few minutes. Please don't close the app.
+                            <p className="text-xs text-purple-600">
+                              This takes a few minutes. Keep the app open.
                             </p>
                           </div>
                         ) : (
                           <div className="space-y-4">
                             <Button 
                               onClick={installWhisper}
-                              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform hover:scale-105 transition-all"
-                              size="lg"
+                              className="bg-purple-600 hover:bg-purple-700"
                             >
-                              🔧 Install Whisper Automatically
+                              Install Whisper
                             </Button>
                             
-                            <div className="flex items-center justify-center space-x-4 text-xs text-blue-600">
+                            <div className="flex items-center justify-center">
                               <Button 
-                                onClick={checkWhisperInstallation}
+                                onClick={() => setCheckingWhisper(!checkingWhisper)}
                                 variant="outline"
                                 size="sm"
-                                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                                className="text-purple-600 border-purple-300 hover:bg-purple-50"
                               >
-                                🔄 Check Again
+                                Check if already installed
                               </Button>
-                            </div>
-                            
-                            <div className="bg-white rounded-lg p-3 text-xs text-blue-700 border border-blue-200">
-                              <p className="font-semibold mb-1">✨ What we'll install:</p>
-                              <ul className="space-y-1 text-left">
-                                <li>• OpenAI Whisper package (speech recognition)</li>
-                                <li>• Required dependencies (torch, numpy, etc.)</li>
-                                <li>• Everything needed for local AI transcription</li>
-                              </ul>
                             </div>
                           </div>
                         )}
@@ -641,166 +705,200 @@ Click OK when you're ready to open System Settings.`;
                 </div>
               )}
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">Privacy Information</h4>
-                <div className="text-sm text-blue-700 space-y-2">
-                  <p><strong>Local Whisper:</strong> Audio processed on your device, complete privacy, no internet required (after initial model download).</p>
-                  <p><strong>OpenAI API:</strong> Audio sent to OpenAI servers, requires API key and internet connection.</p>
-                </div>
-              </div>
-
               <Button 
-                onClick={saveWhisperSettings} 
-                className="w-full bg-[#4B2E2B] hover:bg-[#C0A77D] text-[#F5F0E6] hover:text-[#2B1F14] font-semibold py-3"
+                onClick={useLocalWhisper ? saveWhisperSettings : saveApiKey}
+                className="w-full"
+                disabled={!useLocalWhisper && !apiKey.trim()}
               >
-                Save Whisper Settings
+                {useLocalWhisper ? 'Save Whisper Settings' : 'Save API Key'}
               </Button>
             </div>
           </CardContent>
         </Card>
 
         {/* Dictation Settings Card */}
-        <Card className="card">
-          <CardHeader className="border-b border-[#DDD4C7] bg-gradient-to-r from-[#FFFFFF] to-[#F9F6F1]">
-            <CardTitle className="brand-heading text-2xl text-[#2B1F14] flex items-center gap-3">
-              <span className="text-[#C0A77D]">⌨️</span>
-              Dictation Preferences
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Keyboard size={18} className="text-indigo-600" />
+              Dictation Setup
             </CardTitle>
-            <p className="text-sm text-[#6B5D52] mt-2">
-              Configure your voice inscription settings and system permissions.
+            <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
+              Configure how you want to activate voice transcription.
             </p>
           </CardHeader>
-          <CardContent className="space-y-6 p-8">
-            <div className="space-y-4">
+          <CardContent className="space-y-5">
+            <div className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-[#2B1F14] mb-3 brand-body">
-                  Dictation Activation Key
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Activation Key
                 </label>
                 <Input
-                  placeholder="Currently: ` (backtick)"
+                  placeholder="Current: ` (backtick)"
                   value={key}
                   onChange={(e) => setKey(e.target.value)}
-                  className="mb-3 text-base"
-                  onPaste={(e) => {
-                    e.stopPropagation();
-                    console.log('Hotkey paste event triggered');
-                  }}
-                  onKeyDown={(e) => {
-                    if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
-                      console.log('Hotkey paste shortcut detected');
-                    }
-                  }}
-                  autoComplete="off"
-                  spellCheck={false}
+                  className="mb-3"
                 />
-                <Button onClick={saveKey} disabled={!key.trim()} variant="outline" className="mb-6">
-                  Save Activation Key
+                <Button 
+                  onClick={saveKey} 
+                  disabled={!key.trim()} 
+                  variant="outline" 
+                  size="sm"
+                >
+                  Save Key
                 </Button>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button onClick={requestPermissions} variant="outline" className="py-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Button 
+                  onClick={requestPermissions} 
+                  variant="outline"
+                >
                   <span className="mr-2">🎤</span>
-                  Request Microphone Access
+                  Enable Microphone
                 </Button>
-                <Button onClick={requestAccessibilityPermissions} variant="outline" className="py-3">
+                <Button 
+                  onClick={requestAccessibilityPermissions} 
+                  variant="outline"
+                >
                   <span className="mr-2">🔓</span>
-                  Verify Accessibility
+                  Check Permissions
                 </Button>
               </div>
               
-              <Button onClick={resetAccessibilityPermissions} variant="secondary" className="w-full py-3">
-                <span className="mr-2">🔄</span>
-                Reset Accessibility Permissions
+              <Button 
+                onClick={resetAccessibilityPermissions} 
+                variant="secondary" 
+                className="w-full"
+              >
+                <span className="mr-2">⚙️</span>
+                Fix Permission Issues
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Transcription History Card */}
-        <Card className="card">
-          <CardHeader className="border-b border-[#DDD4C7] bg-gradient-to-r from-[#FFFFFF] to-[#F9F6F1]">
+        {/* Recent Transcriptions Card */}
+        <Card>
+          <CardHeader>
             <div className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="brand-heading text-2xl text-[#2B1F14] flex items-center gap-3">
-                  <span className="text-[#C0A77D]">📜</span>
-                  Inscription Chronicles
+                <CardTitle className="flex items-center gap-2">
+                  <FileText size={18} className="text-indigo-600" />
+                  Recent Transcriptions
                 </CardTitle>
-                <p className="text-sm text-[#6B5D52] mt-2">
-                  Your recorded voice transcriptions, preserved for posterity.
+                <p className="text-sm text-neutral-600 mt-2">
+                  Your voice recordings, converted to text.
                 </p>
               </div>
-              <div className="flex gap-3">
-                <Button onClick={refreshHistory} variant="outline" size="sm">
-                  <span className="mr-1">🔄</span>
-                  Refresh
-                </Button>
-                <Button onClick={clearHistory} variant="destructive" size="sm">
-                  <span className="mr-1">🗑️</span>
-                  Clear All
-                </Button>
+              <div className="flex gap-2">
+                <Tooltip content="Refresh history">
+                  <Button 
+                    onClick={refreshHistory} 
+                    variant="ghost" 
+                    size="icon"
+                  >
+                    <RefreshCw size={16} />
+                  </Button>
+                </Tooltip>
+                <Tooltip content="Clear all transcriptions">
+                  <Button 
+                    onClick={clearHistory} 
+                    variant="ghost" 
+                    size="icon"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </Tooltip>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-8">
+          <CardContent>
             {isLoading ? (
-              <div className="text-center py-12">
-                <div className="text-[#C0A77D] text-2xl mb-3">📖</div>
-                <p className="text-[#6B5D52] brand-body">
-                  Loading your inscription chronicles...
-                </p>
-              </div>
-            ) : history.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-[#C0A77D] text-4xl mb-4">✒️</div>
-                <p className="text-[#6B5D52] brand-body text-lg mb-2">
-                  No inscriptions yet recorded
-                </p>
-                <p className="text-[#6B5D52] text-sm italic">
-                  Begin dictating to see your chronicles appear here
+              <div className="text-center py-8">
+                <div className="w-8 h-8 mx-auto mb-3 bg-indigo-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm">📝</span>
+                </div>
+                <p className="text-neutral-600">
+                  Loading transcriptions...
                 </p>
               </div>
             ) : (
-              <div className="space-y-4 max-h-96 overflow-y-auto">
+              <div className="space-y-3 max-h-80 overflow-y-auto">
                 {history.map((item, index) => (
-                  <div key={item.id} className="border border-[#DDD4C7] rounded-lg p-6 bg-gradient-to-r from-[#FFFFFF] to-[#F9F6F1] hover:shadow-md transition-all duration-200">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 mr-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-[#C0A77D] text-sm">#{history.length - index}</span>
-                          <div className="w-px h-4 bg-[#DDD4C7]"></div>
-                          <span className="text-xs text-[#6B5D52] brand-body">
-                            {new Date(item.timestamp).toLocaleString('en-US', {
-                              weekday: 'short',
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
+                  <div 
+                    key={item.id} 
+                    className="relative bg-gradient-to-b from-blue-50/30 to-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                    style={{
+                      backgroundImage: `repeating-linear-gradient(
+                        transparent,
+                        transparent 24px,
+                        #d1d5db 24px,
+                        #d1d5db 25px
+                      )`
+                    }}
+                  >
+                    {/* Left margin line */}
+                    <div className="absolute left-12 top-0 bottom-0 w-px bg-red-300"></div>
+                    
+                    {/* Content */}
+                    <div className="p-6 pl-16" style={{ paddingTop: '8px' }}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 mr-3">
+                          <div 
+                            className="flex items-center gap-2 mb-1" 
+                            style={{ 
+                              marginTop: '2px',
+                              lineHeight: '24px'
+                            }}
+                          >
+                            <span className="text-indigo-600 text-xs font-medium">#{history.length - index}</span>
+                            <div className="w-px h-3 bg-neutral-300"></div>
+                            <span className="text-xs text-neutral-500">
+                              {new Date(item.timestamp).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <p 
+                            className="text-neutral-800 text-sm"
+                            style={{
+                              fontFamily: 'Noto Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                              lineHeight: '24px', 
+                              textAlign: 'left',
+                              marginTop: '2px',
+                              paddingBottom: '2px'
+                            }}
+                          >
+                            {item.text}
+                          </p>
                         </div>
-                        <p className="text-[#2B1F14] brand-body leading-relaxed text-base">
-                          "{item.text}"
-                        </p>
-                      </div>
-                      <div className="flex gap-2 flex-shrink-0">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => copyToClipboard(item.text)}
-                          className="text-xs"
-                        >
-                          Copy
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="destructive" 
-                          onClick={() => deleteTranscription(item.id)}
-                          className="text-xs"
-                        >
-                          Remove
-                        </Button>
+                        <div className="flex gap-1 flex-shrink-0" style={{ marginTop: '2px' }}>
+                          <Tooltip content="Copy to clipboard">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              onClick={() => copyToClipboard(item.text)}
+                              className="h-7 w-7"
+                            >
+                              <Copy size={12} />
+                            </Button>
+                          </Tooltip>
+                          <Tooltip content="Delete transcription">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              onClick={() => deleteTranscription(item.id)}
+                              className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 size={12} />
+                            </Button>
+                          </Tooltip>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -811,45 +909,50 @@ Click OK when you're ready to open System Settings.`;
         </Card>
 
         {/* About Card */}
-        <Card className="card">
-          <CardHeader className="border-b border-[#DDD4C7] bg-gradient-to-r from-[#FFFFFF] to-[#F9F6F1]">
-            <CardTitle className="brand-heading text-2xl text-[#2B1F14] flex items-center gap-3">
-              <span className="text-[#C0A77D]">ℹ️</span>
-              About OpenScribe
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Info size={18} className="text-indigo-600" />
+              About
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
-            <p className="text-[#6B5D52] brand-body text-base leading-relaxed mb-6">
-              OpenScribe is an elegant dictation companion that transforms your spoken words into written text using advanced AI transcription. 
-              Like a skilled scribe of old, it captures your thoughts with precision and care.
+          <CardContent>
+            <p className="text-neutral-600 text-sm leading-relaxed mb-6">
+              OpenWhisper converts your speech to text using AI. Press your hotkey, speak, and we'll type what you said wherever your cursor is.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-              <div className="text-center p-4 border border-[#DDD4C7] rounded-lg bg-gradient-to-b from-[#FFFFFF] to-[#F9F6F1]">
-                <div className="text-[#C0A77D] text-xl mb-2">⌨️</div>
-                <p className="font-semibold text-[#2B1F14] mb-1">Default Hotkey</p>
-                <p className="text-[#6B5D52]">` (backtick)</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="text-center p-4 border border-neutral-200 rounded-xl bg-neutral-50/30">
+                <div className="w-8 h-8 mx-auto mb-2 bg-indigo-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm">⌨️</span>
+                </div>
+                <p className="font-medium text-neutral-800 mb-1">Default Hotkey</p>
+                <p className="text-neutral-600 font-mono text-xs">` (backtick)</p>
               </div>
-              <div className="text-center p-4 border border-[#DDD4C7] rounded-lg bg-gradient-to-b from-[#FFFFFF] to-[#F9F6F1]">
-                <div className="text-[#C0A77D] text-xl mb-2">🏷️</div>
-                <p className="font-semibold text-[#2B1F14] mb-1">Version</p>
-                <p className="text-[#6B5D52]">0.1.0</p>
+              <div className="text-center p-4 border border-neutral-200 rounded-xl bg-neutral-50/30">
+                <div className="w-8 h-8 mx-auto mb-2 bg-emerald-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm">🏷️</span>
+                </div>
+                <p className="font-medium text-neutral-800 mb-1">Version</p>
+                <p className="text-neutral-600 text-xs">0.1.0</p>
               </div>
-              <div className="text-center p-4 border border-[#DDD4C7] rounded-lg bg-gradient-to-b from-[#FFFFFF] to-[#F9F6F1]">
-                <div className="text-[#C0A77D] text-xl mb-2">✅</div>
-                <p className="font-semibold text-[#2B1F14] mb-1">Status</p>
-                <p className="status-active">Active</p>
+              <div className="text-center p-4 border border-neutral-200 rounded-xl bg-neutral-50/30">
+                <div className="w-8 h-8 mx-auto mb-2 bg-green-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm">✓</span>
+                </div>
+                <p className="font-medium text-neutral-800 mb-1">Status</p>
+                <p className="text-green-600 text-xs font-medium">Active</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Footer */}
-        <div className="text-center py-8">
-          <p className="text-[#6B5D52] text-sm brand-script italic">
-            "In every word lies a story waiting to be inscribed"
+        <div className="text-center py-6">
+          <p className="text-neutral-500 text-sm">
+            Built for thinkers who move at the speed of thought
           </p>
         </div>
       </div>
     </div>
   );
-} 
+}

@@ -1088,8 +1088,29 @@ ipcMain.handle('download-whisper-model', async (event, modelName) => {
       });
       
       downloadProcess.stderr.on('data', (data) => {
-        stderr += data.toString();
-        console.log('Model download log:', data.toString());
+        const output = data.toString();
+        stderr += output;
+        console.log('Model download log:', output);
+        
+        // Parse progress messages
+        const lines = output.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('PROGRESS:')) {
+            try {
+              const progressData = JSON.parse(line.substring(9)); // Remove 'PROGRESS:' prefix
+              console.log('📊 Download progress:', progressData);
+              
+              // Forward progress to renderer
+              event.sender.send('whisper-download-progress', {
+                type: 'progress',
+                model: modelName,
+                ...progressData
+              });
+            } catch (parseError) {
+              console.error('Failed to parse progress data:', parseError);
+            }
+          }
+        }
       });
       
       downloadProcess.on('close', (code) => {
@@ -1097,6 +1118,14 @@ ipcMain.handle('download-whisper-model', async (event, modelName) => {
           try {
             const result = JSON.parse(stdout);
             console.log(`✅ Model ${modelName} download completed:`, result);
+            
+            // Send final completion event
+            event.sender.send('whisper-download-progress', {
+              type: 'complete',
+              model: modelName,
+              result: result
+            });
+            
             resolve(result);
           } catch (parseError) {
             console.error('❌ Failed to parse download result:', parseError);
@@ -1105,12 +1134,28 @@ ipcMain.handle('download-whisper-model', async (event, modelName) => {
         } else {
           console.error('❌ Model download failed with code:', code);
           console.error('Stderr:', stderr);
+          
+          // Send error event
+          event.sender.send('whisper-download-progress', {
+            type: 'error',
+            model: modelName,
+            error: `Model download failed (code ${code}): ${stderr}`
+          });
+          
           reject(new Error(`Model download failed (code ${code}): ${stderr}`));
         }
       });
       
       downloadProcess.on('error', (error) => {
         console.error('❌ Model download process error:', error);
+        
+        // Send error event
+        event.sender.send('whisper-download-progress', {
+          type: 'error',
+          model: modelName,
+          error: `Model download process error: ${error.message}`
+        });
+        
         reject(new Error(`Model download process error: ${error.message}`));
       });
       
@@ -1227,6 +1272,58 @@ ipcMain.handle('list-whisper-models', async (event) => {
     
   } catch (error) {
     console.error('❌ Model list error:', error);
+    throw error;
+  }
+});
+
+// Delete Whisper model
+ipcMain.handle('delete-whisper-model', async (event, modelName) => {
+  try {
+    console.log(`🗑️ Deleting Whisper model: ${modelName}`);
+    
+    const pythonCmd = await findPythonExecutable();
+    const whisperScriptPath = path.join(__dirname, 'whisper_bridge.py');
+    
+    const args = [whisperScriptPath, '--mode', 'delete', '--model', modelName];
+    
+    return new Promise((resolve, reject) => {
+      const deleteProcess = spawn(pythonCmd, args);
+      
+      let stdout = '';
+      let stderr = '';
+      
+      deleteProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      deleteProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      deleteProcess.on('close', (code) => {
+        if (code === 0) {
+          try {
+            const result = JSON.parse(stdout);
+            console.log(`🗑️ Model ${modelName} delete result:`, result);
+            resolve(result);
+          } catch (parseError) {
+            console.error('❌ Failed to parse delete result:', parseError);
+            reject(new Error(`Failed to parse delete result: ${parseError.message}`));
+          }
+        } else {
+          console.error('❌ Model delete failed with code:', code);
+          reject(new Error(`Model delete failed (code ${code}): ${stderr}`));
+        }
+      });
+      
+      deleteProcess.on('error', (error) => {
+        console.error('❌ Model delete error:', error);
+        reject(new Error(`Model delete error: ${error.message}`));
+      });
+    });
+    
+  } catch (error) {
+    console.error('❌ Model delete error:', error);
     throw error;
   }
 });

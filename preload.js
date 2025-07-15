@@ -25,6 +25,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   installWhisper: () => ipcRenderer.invoke('install-whisper'),
   onWhisperInstallProgress: (callback) => ipcRenderer.on('whisper-install-progress', callback),
   downloadWhisperModel: (modelName) => ipcRenderer.invoke('download-whisper-model', modelName),
+  onWhisperDownloadProgress: (callback) => ipcRenderer.on('whisper-download-progress', callback),
   checkModelStatus: (modelName) => ipcRenderer.invoke('check-model-status', modelName),
   listWhisperModels: () => ipcRenderer.invoke('list-whisper-models'),
+  deleteWhisperModel: (modelName) => ipcRenderer.invoke('delete-whisper-model', modelName),
 }); 
