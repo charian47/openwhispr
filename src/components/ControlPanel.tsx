@@ -419,7 +419,7 @@ Click OK when you're ready to open System Settings.`;
             </div>
           </div>
           <h1 className="text-3xl font-semibold text-neutral-900 mb-2">
-            OpenWhisper
+            OpenWispr
           </h1>
           <p className="text-neutral-600">
             Your voice, your data, your AI
@@ -918,7 +918,7 @@ Click OK when you're ready to open System Settings.`;
           </CardHeader>
           <CardContent>
             <p className="text-neutral-600 text-sm leading-relaxed mb-6">
-              OpenWhisper converts your speech to text using AI. Press your hotkey, speak, and we'll type what you said wherever your cursor is.
+              OpenWispr converts your speech to text using AI. Press your hotkey, speak, and we'll type what you said wherever your cursor is.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div className="text-center p-4 border border-neutral-200 rounded-xl bg-neutral-50/30">

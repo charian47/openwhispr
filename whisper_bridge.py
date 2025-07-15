@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Whisper Bridge Script for OpenScribe
+Whisper Bridge Script for OpenWispr
 Handles local speech-to-text processing using OpenAI's Whisper model
 """
 

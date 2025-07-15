@@ -1,6 +1,6 @@
 {
-  "appId": "com.openscribe.app",
-  "productName": "OpenScribe",
+  "appId": "com.openwispr.app",
+  "productName": "OpenWispr",
   "directories": {
     "output": "dist"
   },
@@ -54,7 +54,7 @@
     "createStartMenuShortcut": true
   },
   "dmg": {
-    "title": "OpenScribe",
+    "title": "OpenWispr",
     "icon": "assets/icon.icns",
     "background": "assets/dmg-background.png",
     "window": {

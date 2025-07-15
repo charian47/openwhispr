@@ -1,6 +1,6 @@
 # Assets Directory
 
-This directory contains app icons and other assets for OpenScribe.
+This directory contains app icons and other assets for OpenWispr.
 
 ## Required Icons
 

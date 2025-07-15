@@ -1,7 +1,7 @@
 const fs = require("fs")
 const path = require("path")
 
-console.log("Setting up OpenScribe...")
+console.log("Setting up OpenWispr...")
 
 const envTemplate = `# OpenAI API Configuration
 # Get your API key from: https://platform.openai.com/api-keys

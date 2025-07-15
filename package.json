@@ -1,5 +1,5 @@
 {
-  "name": "open-scribe",
+  "name": "open-wispr",
   "version": "0.1.0",
   "description": "A desktop dictation application using OpenAI Whisper for speech-to-text transcription",
   "main": "main.js",
@@ -28,7 +28,7 @@
     "electron",
     "desktop-app"
   ],
-  "author": "OpenScribe Team",
+  "author": "OpenWispr Team",
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^9.25.0",

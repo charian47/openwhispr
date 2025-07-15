@@ -199,11 +199,11 @@ async function createWindow() {
   if (process.platform === 'darwin') {
     const template = [
       {
-        label: 'OpenScribe',
+        label: 'OpenWispr',
         submenu: [
           { role: 'about' },
           { type: 'separator' },
-          { role: 'quit', label: 'Quit OpenScribe' }
+          { role: 'quit', label: 'Quit OpenWispr' }
         ]
       }
     ];
@@ -228,7 +228,7 @@ async function createControlPanelWindow() {
       sandbox: false, // Disable sandbox for control panel to allow clipboard access
       webSecurity: false, // Disable web security for clipboard access
     },
-    title: 'OpenScribe Control Panel',
+    title: 'OpenWispr Control Panel',
     resizable: true,
     show: true,
   });
@@ -374,7 +374,7 @@ app.whenReady().then(async () => {
         { label: 'Open Control Panel', click: () => { createControlPanelWindow(); } },
         { label: 'Quit', click: () => { app.quit(); } }
       ]);
-      tray.setToolTip('OpenScribe');
+      tray.setToolTip('OpenWispr');
       tray.setContextMenu(contextMenu);
       tray.on('click', () => {
         // Always ensure the dictation panel is visible and focused
@@ -452,17 +452,17 @@ async function checkAccessibilityPermissions() {
         
         let dialogMessage;
         if (isStuckPermission) {
-          dialogMessage = `🔒 OpenScribe needs Accessibility permissions, but it looks like you may have OLD PERMISSIONS from a previous version.
+          dialogMessage = `🔒 OpenWispr needs Accessibility permissions, but it looks like you may have OLD PERMISSIONS from a previous version.
 
-❗ COMMON ISSUE: If you've rebuilt/reinstalled OpenScribe, the old permissions may be "stuck" and preventing new ones.
+❗ COMMON ISSUE: If you've rebuilt/reinstalled OpenWispr, the old permissions may be "stuck" and preventing new ones.
 
 🔧 To fix this:
-1. Open System Settings → Privacy & Security → Accessibility
-2. Look for ANY old "OpenScribe" entries and REMOVE them (click the - button)
+1. Open System Settings → Privacy  Security → Accessibility
+2. Look for ANY old "OpenWispr" entries and REMOVE them (click the - button)
 3. Also remove any entries that say "Electron" or have unclear names
-4. Click the + button and manually add the NEW OpenScribe app
+4. Click the + button and manually add the NEW OpenWispr app
 5. Make sure the checkbox is enabled
-6. Restart OpenScribe
+6. Restart OpenWispr
 
 ⚠️ This is especially common during development when rebuilding the app.
 
@@ -470,16 +470,16 @@ async function checkAccessibilityPermissions() {
 
 Would you like to open System Settings now?`;
         } else {
-          dialogMessage = `🔒 OpenScribe needs Accessibility permissions to paste text into other applications.
+          dialogMessage = `🔒 OpenWispr needs Accessibility permissions to paste text into other applications.
 
 📋 Current status: Clipboard copy works, but pasting (Cmd+V simulation) fails.
 
 🔧 To fix this:
 1. Open System Settings (or System Preferences on older macOS)
-2. Go to Privacy & Security → Accessibility
+2. Go to Privacy  Security → Accessibility
 3. Click the lock icon and enter your password
-4. Add OpenScribe to the list and check the box
-5. Restart OpenScribe
+4. Add OpenWispr to the list and check the box
+5. Restart OpenWispr
 
 ⚠️ Without this permission, dictated text will only be copied to clipboard but won't paste automatically.
 
@@ -542,7 +542,7 @@ Would you like to open System Settings now?`;
         permissionDialog.on('error', (error) => {
           console.error('Error showing permission dialog:', error);
           console.log('Fallback: User needs to manually grant accessibility permissions');
-          console.log('💡 TIP: If this is a rebuilt app, remove old OpenScribe entries from Accessibility settings first');
+          console.log('💡 TIP: If this is a rebuilt app, remove old OpenWispr entries from Accessibility settings first');
           resolve(false);
         });
       }
@@ -785,7 +785,7 @@ ipcMain.handle('create-production-env-file', async (event, apiKey) => {
     const fs = require('fs');
     const envPath = path.join(app.getPath('userData'), '.env');
     
-    const envContent = `# OpenScribe Environment Variables
+    const envContent = `# OpenWispr Environment Variables
 # This file was created automatically for production use
 OPENAI_API_KEY=${apiKey}
 `;
