@@ -23,31 +23,15 @@ function loadEnvironmentVariables() {
     try {
       const fs = require('fs');
       if (fs.existsSync(envPath)) {
-        console.log(`📁 Trying to load .env from: ${envPath}`);
         const result = require('dotenv').config({ path: envPath });
         if (!result.error) {
-          console.log(`✅ .env file loaded successfully from: ${envPath}`);
           envLoaded = true;
           break;
-        } else {
-          console.log(`⚠️ .env file found but failed to parse: ${envPath}`, result.error);
         }
       }
     } catch (error) {
-      console.log(`❌ Could not load .env from ${envPath}:`, error.message);
+      // Continue to next path
     }
-  }
-
-  if (!envLoaded) {
-    console.log('⚠️ No .env file found in any expected location');
-    console.log('💡 You can still set the API key via the Control Panel');
-    console.log('📁 Expected locations:', possibleEnvPaths);
-  }
-
-  console.log('🔑 Environment:', process.env.NODE_ENV || 'production');
-  console.log('🔑 OpenAI API Key present:', process.env.OPENAI_API_KEY ? 'Yes' : 'No');
-  if (process.env.OPENAI_API_KEY) {
-    console.log('🔑 OpenAI API Key preview:', process.env.OPENAI_API_KEY.substring(0, 10) + '...');
   }
 }
 
@@ -87,9 +71,7 @@ function getAppUrl(isControlPanel = false) {
     // __dirname in packaged app points to the root of app.asar
     const htmlPath = path.join(__dirname, 'src', 'dist', 'index.html');
     
-    console.log('Loading HTML from:', htmlPath);
-    console.log('__dirname:', __dirname);
-    console.log('process.resourcesPath:', process.resourcesPath);
+    // Production build paths
     
     return isControlPanel
       ? `file://${htmlPath}?panel=true`
@@ -105,11 +87,7 @@ async function createWindow() {
   const x = display.bounds.x + Math.round((display.workArea.width - width) / 2);
   const y = Math.max(0, display.workArea.height); // Position above the dock/menu bar with padding
   
-  console.log('Display info:', {
-    bounds: display.bounds,
-    workArea: display.workArea,
-    windowPosition: { x, y, width, height }
-  });
+  // Window positioning calculated
 
   mainWindow = new BrowserWindow({
     width,
@@ -134,10 +112,7 @@ async function createWindow() {
   // Load URL with retry logic for development
   const loadMainWindow = async () => {
     const appUrl = getAppUrl(false);
-    console.log('Loading main window URL:', appUrl);
-    
     if (process.env.NODE_ENV === 'development') {
-      console.log('Development mode: waiting for dev server...');
       const isReady = await waitForDevServer('http://localhost:5174/');
       if (!isReady) {
         console.error('Dev server not ready, loading anyway...');
@@ -236,7 +211,7 @@ async function createControlPanelWindow() {
   // Load control panel with same retry logic
   const loadControlPanel = async () => {
     const appUrl = getAppUrl(true);
-    console.log('Loading control panel URL:', appUrl);
+    // Loading control panel
     
     if (process.env.NODE_ENV === 'development') {
       const isReady = await waitForDevServer('http://localhost:5174/');
@@ -265,8 +240,7 @@ function initDatabase() {
     : 'transcriptions.db';
   
   const dbPath = path.join(app.getPath('userData'), dbFileName);
-  console.log(`🗄️ Database environment: ${process.env.NODE_ENV || 'production'}`);
-  console.log('📁 Database path:', dbPath);
+  // Database initialization
   
   db = new Database(dbPath);
   
@@ -288,10 +262,6 @@ function initDatabase() {
 }
 
 app.whenReady().then(async () => {
-  console.log('Electron app ready, creating window...');
-  console.log('__dirname:', __dirname);
-  console.log('process.resourcesPath:', process.resourcesPath);
-  console.log('NODE_ENV:', process.env.NODE_ENV);
   
   // Initialize database
   try {
@@ -302,13 +272,11 @@ app.whenReady().then(async () => {
   
   // In development, add a small delay to let Vite start properly
   if (process.env.NODE_ENV === 'development') {
-    console.log('Development mode: waiting 2 seconds for Vite to stabilize...');
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
   
   try {
     await createWindow();
-    console.log('Main window created successfully');
   } catch (error) {
     console.error('Error creating main window:', error);
   }
@@ -323,7 +291,6 @@ app.whenReady().then(async () => {
       if (process.env.NODE_ENV === 'development') {
         // Development mode - load from assets folder
         const iconPath = path.join(__dirname, 'assets', 'iconTemplate.png');
-        console.log('Development: Loading tray icon from:', iconPath);
         trayIcon = nativeImage.createFromPath(iconPath);
              } else {
          // Production mode - try different locations for the icon
@@ -351,7 +318,6 @@ app.whenReady().then(async () => {
         }
         
         if (iconPath) {
-          console.log('Production: Loading tray icon from:', iconPath);
           trayIcon = nativeImage.createFromPath(iconPath);
         } else {
           console.error('Could not find tray icon in any expected location');
@@ -383,10 +349,8 @@ app.whenReady().then(async () => {
         }
         mainWindow.focus();
       });
-      console.log('Tray icon created successfully');
     } catch (error) {
       console.error('Error creating tray icon:', error);
-      console.log('Tray will not be available');
     }
   }
 })

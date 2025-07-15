@@ -16,21 +16,17 @@ export default function App() {
 
   const startRecording = async () => {
     try {
-      console.log("Starting recording...")
       setError('');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      console.log("Microphone access granted")
       
       mediaRecorderRef.current = new window.MediaRecorder(stream);
       audioChunksRef.current = [];
       
       mediaRecorderRef.current.ondataavailable = (event) => {
-        console.log("Audio data chunk received, size:", event.data.size)
         audioChunksRef.current.push(event.data);
       };
       
       mediaRecorderRef.current.onstop = async () => {
-        console.log("Recording stopped, processing audio...")
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
         await processAudio(audioBlob);
         stream.getTracks().forEach(track => track.stop());
@@ -38,7 +34,6 @@ export default function App() {
       
       mediaRecorderRef.current.start();
       setIsRecording(true);
-      console.log("Recording started successfully")
     } catch (err) {
       console.error("Recording error:", err)
       setError('Failed to access microphone: ' + err.message);
@@ -63,17 +58,13 @@ export default function App() {
 
   const processAudio = async (audioBlob) => {
     try {
-      console.log("Processing audio blob, size:", audioBlob.size)
-      
       // Check if local Whisper is available and user preference
       const useLocalWhisper = localStorage.getItem('useLocalWhisper') === 'true';
       const whisperModel = localStorage.getItem('whisperModel') || 'base';
       
       if (useLocalWhisper) {
-        console.log("Using local Whisper model:", whisperModel);
         await processWithLocalWhisper(audioBlob, whisperModel);
       } else {
-        console.log("Using OpenAI Whisper API");
         await processWithOpenAIAPI(audioBlob);
       }
       
@@ -87,8 +78,6 @@ export default function App() {
 
   const processWithLocalWhisper = async (audioBlob, model = 'base') => {
     try {
-      console.log("Starting local Whisper transcription...");
-      
       // Check Whisper installation first
       const installCheck = await window.electronAPI.checkWhisperInstallation();
       if (!installCheck.installed || !installCheck.working) {
@@ -100,7 +89,6 @@ export default function App() {
       
       if (result.success && result.text) {
         const text = result.text.trim();
-        console.log("Local Whisper transcription result:", text)
         
         if (text) {
           setTranscript(text);
@@ -108,7 +96,6 @@ export default function App() {
           // Save transcription to database
           try {
             await window.electronAPI.saveTranscription(text);
-            console.log("✅ Transcription saved to database");
           } catch (err) {
             console.error("Failed to save transcription:", err);
           }
@@ -125,7 +112,6 @@ export default function App() {
     } catch (err) {
       console.error("Local Whisper error:", err);
       // Fallback to OpenAI API if local fails
-      console.log("Falling back to OpenAI API...");
       setError('Local Whisper failed, trying OpenAI API...');
       await processWithOpenAIAPI(audioBlob);
     }
@@ -150,7 +136,6 @@ export default function App() {
         return;
       }
 
-      console.log("Sending request to OpenAI Whisper API...")
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
         headers: {
@@ -159,7 +144,6 @@ export default function App() {
         body: formData
       });
 
-      console.log("Response status:", response.status)
       if (!response.ok) {
         const errorText = await response.text()
         console.error("API Error:", errorText)
@@ -168,17 +152,14 @@ export default function App() {
       }
 
       const result = await response.json();
-      console.log("Transcription result:", result)
       const text = result.text.trim();
       
       if (text) {
         setTranscript(text);
-        console.log("Transcribed text:", text)
         
         // Save transcription to database
         try {
           await window.electronAPI.saveTranscription(text);
-          console.log("✅ Transcription saved to database");
         } catch (err) {
           console.error("Failed to save transcription:", err);
         }
@@ -187,7 +168,6 @@ export default function App() {
         await safePaste(text);
       } else {
         setError('No text transcribed. Try again.');
-        console.log("No text transcribed")
       }
     } catch (err) {
       console.error("OpenAI API error:", err)

@@ -3,7 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Tooltip } from "./ui/tooltip";
-import { Copy, Trash2, RefreshCw, Download, Check, X, Settings, Keyboard, FileText, Info, Mic } from "lucide-react";
+import {
+  Copy,
+  Trash2,
+  RefreshCw,
+  Download,
+  Check,
+  X,
+  Settings,
+  Keyboard,
+  FileText,
+  Info,
+  Mic,
+} from "lucide-react";
 
 // Type declaration for electronAPI
 declare global {
@@ -12,7 +24,9 @@ declare global {
       pasteText: (text: string) => Promise<void>;
       hideWindow: () => Promise<void>;
       onToggleDictation: (callback: () => void) => void;
-      saveTranscription: (text: string) => Promise<{ id: number; success: boolean }>;
+      saveTranscription: (
+        text: string
+      ) => Promise<{ id: number; success: boolean }>;
       getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
       clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
       deleteTranscription: (id: number) => Promise<{ success: boolean }>;
@@ -21,14 +35,68 @@ declare global {
       readClipboard: () => Promise<string>;
       createProductionEnvFile: (key: string) => Promise<void>;
       transcribeLocalWhisper: (audioBlob: Blob, options?: any) => Promise<any>;
-      checkWhisperInstallation: () => Promise<{ installed: boolean; working: boolean; error?: string }>;
-      installWhisper: () => Promise<{ success: boolean; message: string; output: string }>;
-      onWhisperInstallProgress: (callback: (event: any, data: { type: string; message: string; output?: string }) => void) => void;
-      downloadWhisperModel: (modelName: string) => Promise<{ success: boolean; model: string; downloaded: boolean; size_mb?: number; error?: string }>;
-      onWhisperDownloadProgress: (callback: (event: any, data: { type: string; model: string; percentage?: number; downloaded_bytes?: number; total_bytes?: number; error?: string; result?: any }) => void) => void;
-      checkModelStatus: (modelName: string) => Promise<{ success: boolean; model: string; downloaded: boolean; size_mb?: number; error?: string }>;
-      listWhisperModels: () => Promise<{ success: boolean; models: Array<{ model: string; downloaded: boolean; size_mb?: number }>; cache_dir: string }>;
-      deleteWhisperModel: (modelName: string) => Promise<{ success: boolean; model: string; deleted: boolean; freed_mb?: number; error?: string }>;
+      checkWhisperInstallation: () => Promise<{
+        installed: boolean;
+        working: boolean;
+        error?: string;
+      }>;
+      installWhisper: () => Promise<{
+        success: boolean;
+        message: string;
+        output: string;
+      }>;
+      onWhisperInstallProgress: (
+        callback: (
+          event: any,
+          data: { type: string; message: string; output?: string }
+        ) => void
+      ) => void;
+      downloadWhisperModel: (
+        modelName: string
+      ) => Promise<{
+        success: boolean;
+        model: string;
+        downloaded: boolean;
+        size_mb?: number;
+        error?: string;
+      }>;
+      onWhisperDownloadProgress: (
+        callback: (
+          event: any,
+          data: {
+            type: string;
+            model: string;
+            percentage?: number;
+            downloaded_bytes?: number;
+            total_bytes?: number;
+            error?: string;
+            result?: any;
+          }
+        ) => void
+      ) => void;
+      checkModelStatus: (
+        modelName: string
+      ) => Promise<{
+        success: boolean;
+        model: string;
+        downloaded: boolean;
+        size_mb?: number;
+        error?: string;
+      }>;
+      listWhisperModels: () => Promise<{
+        success: boolean;
+        models: Array<{ model: string; downloaded: boolean; size_mb?: number }>;
+        cache_dir: string;
+      }>;
+      deleteWhisperModel: (
+        modelName: string
+      ) => Promise<{
+        success: boolean;
+        model: string;
+        deleted: boolean;
+        freed_mb?: number;
+        error?: string;
+      }>;
     };
   }
 }
@@ -49,68 +117,68 @@ export default function ControlPanel() {
   const [whisperModel, setWhisperModel] = useState("base");
   const [whisperInstalled, setWhisperInstalled] = useState(false);
   const [checkingWhisper, setCheckingWhisper] = useState(false);
-  const [modelList, setModelList] = useState<Array<{ model: string; downloaded: boolean; size_mb?: number }>>([]);
+  const [modelList, setModelList] = useState<
+    Array<{ model: string; downloaded: boolean; size_mb?: number }>
+  >([]);
   const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [loadingModels, setLoadingModels] = useState(false);
   const [installingWhisper, setInstallingWhisper] = useState(false);
-  const [installProgress, setInstallProgress] = useState<string>('');
+  const [installProgress, setInstallProgress] = useState<string>("");
 
   useEffect(() => {
     // Load saved settings
-    const savedKey = localStorage.getItem('dictationKey');
+    const savedKey = localStorage.getItem("dictationKey");
     if (savedKey) setKey(savedKey);
-    
+
     // Load Whisper settings
-    const savedUseLocal = localStorage.getItem('useLocalWhisper') === 'true';
-    const savedModel = localStorage.getItem('whisperModel') || 'base';
+    const savedUseLocal = localStorage.getItem("useLocalWhisper") === "true";
+    const savedModel = localStorage.getItem("whisperModel") || "base";
     setUseLocalWhisper(savedUseLocal);
     setWhisperModel(savedModel);
-    
+
     // Load API key from main process first, then fallback to localStorage
     const loadApiKey = async () => {
       try {
         const envApiKey = await window.electronAPI.getOpenAIKey();
-        if (envApiKey && envApiKey !== 'your_openai_api_key_here') {
+        if (envApiKey && envApiKey !== "your_openai_api_key_here") {
           setApiKey(envApiKey);
         } else {
-          const savedApiKey = localStorage.getItem('openaiApiKey');
+          const savedApiKey = localStorage.getItem("openaiApiKey");
           if (savedApiKey) setApiKey(savedApiKey);
         }
       } catch (error) {
-        console.error('Failed to load API key:', error);
-        const savedApiKey = localStorage.getItem('openaiApiKey');
+        const savedApiKey = localStorage.getItem("openaiApiKey");
         if (savedApiKey) setApiKey(savedApiKey);
       }
     };
-    
+
     loadApiKey();
-    
+
     // Load transcription history from database
     loadTranscriptions();
-    
+
     // Check Whisper installation
     checkWhisperInstallation();
-    
+
     // Set up progress listener for Whisper installation
     window.electronAPI.onWhisperInstallProgress((event, data) => {
       setInstallProgress(data.message);
     });
-    
+
     // Set up progress listener for model downloads
     window.electronAPI.onWhisperDownloadProgress((event, data) => {
-      if (data.type === 'progress') {
+      if (data.type === "progress") {
         // Force re-render by setting both state values
         setDownloadProgress(data.percentage || 0);
-      } else if (data.type === 'complete') {
+      } else if (data.type === "complete") {
         setDownloadingModel(null);
         setDownloadProgress(0);
         // Refresh model list after successful download
         loadModelList();
-      } else if (data.type === 'error') {
+      } else if (data.type === "error") {
         setDownloadingModel(null);
         setDownloadProgress(0);
-        console.error('Download error:', data.error);
       }
     });
   }, []);
@@ -120,9 +188,7 @@ export default function ControlPanel() {
       setIsLoading(true);
       const transcriptions = await window.electronAPI.getTranscriptions(50);
       setHistory(transcriptions);
-      console.log('📚 Loaded', transcriptions.length, 'transcriptions');
     } catch (error) {
-      console.error('❌ Failed to load transcriptions:', error);
     } finally {
       setIsLoading(false);
     }
@@ -133,14 +199,12 @@ export default function ControlPanel() {
       setCheckingWhisper(true);
       const result = await window.electronAPI.checkWhisperInstallation();
       setWhisperInstalled(result.installed && result.working);
-      console.log('🔍 Whisper installation check:', result);
-      
+
       // If Whisper is installed, also load model list
       if (result.installed && result.working) {
         loadModelList();
       }
     } catch (error) {
-      console.error('❌ Failed to check Whisper installation:', error);
       setWhisperInstalled(false);
     } finally {
       setCheckingWhisper(false);
@@ -153,10 +217,8 @@ export default function ControlPanel() {
       const result = await window.electronAPI.listWhisperModels();
       if (result.success) {
         setModelList(result.models);
-        console.log('📋 Model list loaded:', result.models);
       }
     } catch (error) {
-      console.error('❌ Failed to load model list:', error);
     } finally {
       setLoadingModels(false);
     }
@@ -165,42 +227,43 @@ export default function ControlPanel() {
   const installWhisper = async () => {
     try {
       setInstallingWhisper(true);
-      setInstallProgress('Starting Whisper installation...');
-      console.log('🔧 Installing Whisper automatically...');
-      
+      setInstallProgress("Starting Whisper installation...");
+
       const result = await window.electronAPI.installWhisper();
-      
+
       if (result.success) {
-        alert('✅ Whisper installed successfully! You can now download and use local models.');
+        alert(
+          "✅ Whisper installed successfully! You can now download and use local models."
+        );
         // Recheck installation status
         checkWhisperInstallation();
       } else {
         alert(`❌ Failed to install Whisper: ${result.message}`);
       }
     } catch (error) {
-      console.error('❌ Whisper installation error:', error);
       alert(`❌ Failed to install Whisper: ${error}`);
     } finally {
       setInstallingWhisper(false);
-      setInstallProgress('');
+      setInstallProgress("");
     }
   };
 
   const downloadModel = async (modelName: string) => {
     try {
       setDownloadingModel(modelName);
-      
+
       const result = await window.electronAPI.downloadWhisperModel(modelName);
-      
+
       if (result.success) {
-        alert(`✅ Model "${modelName}" downloaded successfully! (${result.size_mb}MB)`);
+        alert(
+          `✅ Model "${modelName}" downloaded successfully! (${result.size_mb}MB)`
+        );
         // Refresh model list
         loadModelList();
       } else {
         alert(`❌ Failed to download model "${modelName}": ${result.error}`);
       }
     } catch (error) {
-      console.error('❌ Model download error:', error);
       alert(`❌ Failed to download model "${modelName}": ${error}`);
     } finally {
       setDownloadingModel(null);
@@ -208,26 +271,31 @@ export default function ControlPanel() {
   };
 
   const deleteModel = async (modelName: string) => {
-    if (confirm(`Are you sure you want to delete the "${modelName}" model? This will free up disk space but you'll need to re-download it if you want to use it again.`)) {
+    if (
+      confirm(
+        `Are you sure you want to delete the "${modelName}" model? This will free up disk space but you'll need to re-download it if you want to use it again.`
+      )
+    ) {
       try {
         const result = await window.electronAPI.deleteWhisperModel(modelName);
-        
+
         if (result.success) {
-          alert(`✅ Model "${modelName}" deleted successfully! Freed ${result.freed_mb}MB of disk space.`);
+          alert(
+            `✅ Model "${modelName}" deleted successfully! Freed ${result.freed_mb}MB of disk space.`
+          );
           // Refresh model list
           loadModelList();
         } else {
           alert(`❌ Failed to delete model "${modelName}": ${result.error}`);
         }
       } catch (error) {
-        console.error('❌ Model delete error:', error);
         alert(`❌ Failed to delete model "${modelName}": ${error}`);
       }
     }
   };
 
   const saveKey = () => {
-    localStorage.setItem('dictationKey', key);
+    localStorage.setItem("dictationKey", key);
     alert(`Dictation key inscribed: ${key}`);
   };
 
@@ -236,49 +304,61 @@ export default function ControlPanel() {
       // Save to main process (updates environment variable)
       await window.electronAPI.saveOpenAIKey(apiKey);
       // Also save to localStorage as backup
-      localStorage.setItem('openaiApiKey', apiKey);
-      
+      localStorage.setItem("openaiApiKey", apiKey);
+
       // In production, try to create a .env file in user data directory
       try {
         await window.electronAPI.createProductionEnvFile(apiKey);
-        alert('OpenAI API key inscribed successfully! Your credentials have been securely recorded for transcription services.');
+        alert(
+          "OpenAI API key inscribed successfully! Your credentials have been securely recorded for transcription services."
+        );
       } catch (envError) {
-        console.log('Could not create production .env file:', envError);
-        alert('OpenAI API key saved successfully and will be available for transcription');
+        console.log("Could not create production .env file:", envError);
+        alert(
+          "OpenAI API key saved successfully and will be available for transcription"
+        );
       }
     } catch (error) {
-      console.error('Failed to save API key:', error);
+      console.error("Failed to save API key:", error);
       // Fallback to localStorage only
-      localStorage.setItem('openaiApiKey', apiKey);
-      alert('OpenAI API key saved to localStorage (fallback mode)');
+      localStorage.setItem("openaiApiKey", apiKey);
+      alert("OpenAI API key saved to localStorage (fallback mode)");
     }
   };
 
   const saveWhisperSettings = () => {
-    localStorage.setItem('useLocalWhisper', useLocalWhisper.toString());
-    localStorage.setItem('whisperModel', whisperModel);
-    alert(`Whisper settings saved! ${useLocalWhisper ? `Using local model: ${whisperModel}` : 'Using OpenAI API'}`);
+    localStorage.setItem("useLocalWhisper", useLocalWhisper.toString());
+    localStorage.setItem("whisperModel", whisperModel);
+    alert(
+      `Whisper settings saved! ${
+        useLocalWhisper
+          ? `Using local model: ${whisperModel}`
+          : "Using OpenAI API"
+      }`
+    );
   };
 
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      alert('Text copied to your scribal collection!');
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
+      alert("Text copied to your scribal collection!");
+    } catch (err) {}
   };
 
   const clearHistory = async () => {
-    if (confirm('Are you certain you wish to clear all inscribed records? This action cannot be undone.')) {
+    if (
+      confirm(
+        "Are you certain you wish to clear all inscribed records? This action cannot be undone."
+      )
+    ) {
       try {
         const result = await window.electronAPI.clearTranscriptions();
-        console.log(`🗑️ Cleared ${result.cleared} transcriptions`);
         setHistory([]);
-        alert(`Successfully cleared ${result.cleared} transcriptions from your chronicles.`);
+        alert(
+          `Successfully cleared ${result.cleared} transcriptions from your chronicles.`
+        );
       } catch (error) {
-        console.error('❌ Failed to clear transcriptions:', error);
-        alert('Failed to clear history. Please try again.');
+        alert("Failed to clear history. Please try again.");
       }
     }
   };
@@ -286,19 +366,25 @@ export default function ControlPanel() {
   const requestPermissions = async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
-      alert('Microphone access granted! Your voice may now be inscribed.');
+      alert("Microphone access granted! Your voice may now be inscribed.");
     } catch (err) {
-      alert('Please grant microphone permissions to enable voice inscription.');
+      alert("Please grant microphone permissions to enable voice inscription.");
     }
   };
 
   const requestAccessibilityPermissions = async () => {
     try {
       // Test if pasting works
-      await window.electronAPI.pasteText('Test inscription - please verify this appears in another application');
-      alert('Accessibility permissions appear to be working! Check if the test inscription appeared in another app.');
+      await window.electronAPI.pasteText(
+        "Test inscription - please verify this appears in another application"
+      );
+      alert(
+        "Accessibility permissions appear to be working! Check if the test inscription appeared in another app."
+      );
     } catch (err) {
-      alert('Accessibility permissions required! The app will guide you through granting the necessary privileges for automatic text inscription.');
+      alert(
+        "Accessibility permissions required! The app will guide you through granting the necessary privileges for automatic text inscription."
+      );
     }
   };
 
@@ -341,48 +427,58 @@ Click OK when you're ready to open System Settings.`;
       // Try to open the accessibility settings directly
       const commands = [
         'open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"',
-        'open -b com.apple.systempreferences',
-        'open "/System/Library/PreferencePanes/Security.prefPane"'
+        "open -b com.apple.systempreferences",
+        'open "/System/Library/PreferencePanes/Security.prefPane"',
       ];
-      
+
       // We can't directly execute these from the renderer, but we can guide the user
-      alert('Opening System Settings... Look for the Accessibility section under Privacy & Security.');
-      
+      alert(
+        "Opening System Settings... Look for the Accessibility section under Privacy & Security."
+      );
+
       // Try the URL scheme approach
-      window.open('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility', '_blank');
+      window.open(
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        "_blank"
+      );
     }
   };
 
   const deleteTranscription = async (id: number) => {
-    if (confirm('Are you certain you wish to remove this inscription from your records?')) {
+    if (
+      confirm(
+        "Are you certain you wish to remove this inscription from your records?"
+      )
+    ) {
       try {
         const result = await window.electronAPI.deleteTranscription(id);
         if (result.success) {
           // Remove from local state
-          setHistory(prev => prev.filter(item => item.id !== id));
+          setHistory((prev) => prev.filter((item) => item.id !== id));
           console.log(`🗑️ Deleted transcription ${id}`);
         } else {
-          alert('Failed to delete transcription. It may have already been removed.');
+          alert(
+            "Failed to delete transcription. It may have already been removed."
+          );
         }
       } catch (error) {
-        console.error('❌ Failed to delete transcription:', error);
-        alert('Failed to delete transcription. Please try again.');
+        console.error("❌ Failed to delete transcription:", error);
+        alert("Failed to delete transcription. Please try again.");
       }
     }
   };
 
   const refreshHistory = async () => {
-    console.log('🔄 Refreshing transcription history...');
+    console.log("🔄 Refreshing transcription history...");
     await loadTranscriptions();
   };
 
   // Enhanced keyboard paste handler for API key input
   const handleApiKeyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Handle Cmd+V on Mac or Ctrl+V on Windows/Linux
-    if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+    if ((e.metaKey || e.ctrlKey) && e.key === "v") {
       e.preventDefault(); // Prevent default to handle manually
-      console.log('Paste shortcut detected, attempting manual paste...');
-      
+
       // Try to paste from clipboard
       setTimeout(async () => {
         try {
@@ -390,19 +486,14 @@ Click OK when you're ready to open System Settings.`;
           const text = await window.electronAPI.readClipboard();
           if (text && text.trim()) {
             setApiKey(text.trim());
-            console.log('✅ Keyboard paste successful via Electron clipboard');
           } else {
             // Fallback to web clipboard API
             const webText = await navigator.clipboard.readText();
             if (webText && webText.trim()) {
               setApiKey(webText.trim());
-              console.log('✅ Keyboard paste successful via Web API');
             }
           }
-        } catch (err) {
-          console.error('❌ Keyboard paste failed:', err);
-          // Don't show alert for keyboard shortcuts, just log the error
-        }
+        } catch (err) {}
       }, 0);
     }
   };
@@ -410,7 +501,6 @@ Click OK when you're ready to open System Settings.`;
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-indigo-50/30 p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-        
         {/* Header */}
         <div className="text-center mb-10">
           <div className="flex items-center justify-center mb-6">
@@ -421,9 +511,7 @@ Click OK when you're ready to open System Settings.`;
           <h1 className="text-3xl font-semibold text-neutral-900 mb-2">
             OpenWispr
           </h1>
-          <p className="text-neutral-600">
-            Your voice, your data, your AI
-          </p>
+          <p className="text-neutral-600">Your voice, your data, your AI</p>
         </div>
 
         {/* Transcription Setup Card */}
@@ -434,7 +522,8 @@ Click OK when you're ready to open System Settings.`;
               Transcription Setup
             </CardTitle>
             <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
-              Choose how you want to convert speech to text. You can always change this later.
+              Choose how you want to convert speech to text. You can always
+              change this later.
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -448,34 +537,44 @@ Click OK when you're ready to open System Settings.`;
                   <button
                     onClick={() => setUseLocalWhisper(false)}
                     className={`p-4 border-2 rounded-xl text-left transition-all ${
-                      !useLocalWhisper 
-                        ? 'border-indigo-500 bg-indigo-50' 
-                        : 'border-neutral-200 bg-white hover:border-neutral-300'
+                      !useLocalWhisper
+                        ? "border-indigo-500 bg-indigo-50"
+                        : "border-neutral-200 bg-white hover:border-neutral-300"
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-neutral-900">Cloud Processing</h4>
-                      <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">Fastest</span>
+                      <h4 className="font-medium text-neutral-900">
+                        Cloud Processing
+                      </h4>
+                      <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                        Fastest
+                      </span>
                     </div>
                     <p className="text-sm text-neutral-600">
-                      Audio sent to OpenAI servers. Faster processing, requires API key.
+                      Audio sent to OpenAI servers. Faster processing, requires
+                      API key.
                     </p>
                   </button>
-                  
+
                   <button
                     onClick={() => setUseLocalWhisper(true)}
                     className={`p-4 border-2 rounded-xl text-left transition-all ${
-                      useLocalWhisper 
-                        ? 'border-indigo-500 bg-indigo-50' 
-                        : 'border-neutral-200 bg-white hover:border-neutral-300'
+                      useLocalWhisper
+                        ? "border-indigo-500 bg-indigo-50"
+                        : "border-neutral-200 bg-white hover:border-neutral-300"
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-neutral-900">Local Processing</h4>
-                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">Private</span>
+                      <h4 className="font-medium text-neutral-900">
+                        Local Processing
+                      </h4>
+                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                        Private
+                      </span>
                     </div>
                     <p className="text-sm text-neutral-600">
-                      Audio stays on your device. Complete privacy, works offline.
+                      Audio stays on your device. Complete privacy, works
+                      offline.
                     </p>
                   </button>
                 </div>
@@ -484,7 +583,9 @@ Click OK when you're ready to open System Settings.`;
               {/* Cloud Configuration */}
               {!useLocalWhisper && (
                 <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                  <h4 className="font-medium text-blue-900">OpenAI API Setup</h4>
+                  <h4 className="font-medium text-blue-900">
+                    OpenAI API Setup
+                  </h4>
                   <div>
                     <label className="block text-sm font-medium text-blue-800 mb-2">
                       API Key
@@ -497,22 +598,30 @@ Click OK when you're ready to open System Settings.`;
                         onChange={(e) => setApiKey(e.target.value)}
                         className="flex-1"
                       />
-                      <Button 
+                      <Button
                         variant="outline"
                         onClick={async () => {
                           try {
-                            const text = await window.electronAPI.readClipboard();
+                            const text =
+                              await window.electronAPI.readClipboard();
                             if (text && text.trim()) {
                               setApiKey(text.trim());
-                              console.log('Manual paste successful via Electron');
+                              console.log(
+                                "Manual paste successful via Electron"
+                              );
                             } else {
-                              const webText = await navigator.clipboard.readText();
+                              const webText =
+                                await navigator.clipboard.readText();
                               setApiKey(webText.trim());
-                              console.log('Manual paste successful via Web API');
+                              console.log(
+                                "Manual paste successful via Web API"
+                              );
                             }
                           } catch (err) {
-                            console.error('Manual paste failed:', err);
-                            alert('Could not paste from clipboard. Please try typing or using Cmd+V/Ctrl+V.');
+                            console.error("Manual paste failed:", err);
+                            alert(
+                              "Could not paste from clipboard. Please try typing or using Cmd+V/Ctrl+V."
+                            );
                           }
                         }}
                       >
@@ -530,14 +639,22 @@ Click OK when you're ready to open System Settings.`;
               {useLocalWhisper && (
                 <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-purple-900">Local Whisper Setup</h4>
+                    <h4 className="font-medium text-purple-900">
+                      Local Whisper Setup
+                    </h4>
                     <div className="flex items-center space-x-2">
                       {checkingWhisper ? (
-                        <span className="text-purple-600 text-sm">Checking...</span>
+                        <span className="text-purple-600 text-sm">
+                          Checking...
+                        </span>
                       ) : whisperInstalled ? (
-                        <span className="text-emerald-600 text-sm font-medium">✓ Ready</span>
+                        <span className="text-emerald-600 text-sm font-medium">
+                          ✓ Ready
+                        </span>
                       ) : (
-                        <span className="text-amber-600 text-sm font-medium">⚠ Not installed</span>
+                        <span className="text-amber-600 text-sm font-medium">
+                          ⚠ Not installed
+                        </span>
                       )}
                     </div>
                   </div>
@@ -553,14 +670,23 @@ Click OK when you're ready to open System Settings.`;
                           onChange={(e) => setWhisperModel(e.target.value)}
                           className="w-full p-3 border border-purple-300 rounded-lg bg-white text-purple-900 focus:outline-none focus:ring-1 focus:ring-purple-500/20 focus:border-purple-500"
                         >
-                          <option value="tiny">Tiny - Fastest, lower quality</option>
-                          <option value="base">Base - Good balance (recommended)</option>
-                          <option value="small">Small - Better quality, slower</option>
+                          <option value="tiny">
+                            Tiny - Fastest, lower quality
+                          </option>
+                          <option value="base">
+                            Base - Good balance (recommended)
+                          </option>
+                          <option value="small">
+                            Small - Better quality, slower
+                          </option>
                           <option value="medium">Medium - High quality</option>
-                          <option value="large">Large - Best quality, slowest</option>
+                          <option value="large">
+                            Large - Best quality, slowest
+                          </option>
                         </select>
                         <p className="text-xs text-purple-700 mt-2">
-                          Larger models need more memory but give better results.
+                          Larger models need more memory but give better
+                          results.
                         </p>
                       </div>
 
@@ -577,32 +703,44 @@ Click OK when you're ready to open System Settings.`;
                               </span>
                             </div>
                             <div className="w-full bg-purple-200 rounded-full h-2">
-                              <div 
+                              <div
                                 className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full transition-all duration-300 ease-out"
-                                style={{ width: `${Math.min(downloadProgress, 100)}%` }}
+                                style={{
+                                  width: `${Math.min(downloadProgress, 100)}%`,
+                                }}
                               ></div>
                             </div>
                           </div>
                         )}
-                        
+
                         <div className="p-4">
                           <div className="flex items-center justify-between mb-3">
-                            <h5 className="font-medium text-purple-900">Available Models</h5>
-                            <Button 
+                            <h5 className="font-medium text-purple-900">
+                              Available Models
+                            </h5>
+                            <Button
                               onClick={() => setLoadingModels(!loadingModels)}
                               variant="outline"
                               size="sm"
                               disabled={loadingModels}
                               className="border-purple-300 text-purple-700 hover:bg-purple-50 hover:border-purple-600"
                             >
-                              <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
-                              <span className="ml-1">{loadingModels ? "Checking..." : "Refresh"}</span>
+                              <RefreshCw
+                                size={14}
+                                className={loadingModels ? "animate-spin" : ""}
+                              />
+                              <span className="ml-1">
+                                {loadingModels ? "Checking..." : "Refresh"}
+                              </span>
                             </Button>
                           </div>
-                          
+
                           <div className="space-y-2">
                             {modelList.map((model) => (
-                              <div key={model.model} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
+                              <div
+                                key={model.model}
+                                className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200"
+                              >
                                 <div className="flex items-center space-x-3">
                                   <span className="font-medium text-purple-900 capitalize">
                                     {model.model}
@@ -617,7 +755,7 @@ Click OK when you're ready to open System Settings.`;
                                     </span>
                                   )}
                                 </div>
-                                
+
                                 <div className="flex gap-2">
                                   {model.downloaded && (
                                     <Button
@@ -633,13 +771,17 @@ Click OK when you're ready to open System Settings.`;
                                   {!model.downloaded && (
                                     <Button
                                       onClick={() => downloadModel(model.model)}
-                                      disabled={downloadingModel === model.model}
+                                      disabled={
+                                        downloadingModel === model.model
+                                      }
                                       size="sm"
                                       className="bg-purple-600 hover:bg-purple-700"
                                     >
                                       <Download size={14} />
                                       <span className="ml-1">
-                                        {downloadingModel === model.model ? "Downloading..." : "Download"}
+                                        {downloadingModel === model.model
+                                          ? "Downloading..."
+                                          : "Download"}
                                       </span>
                                     </Button>
                                   )}
@@ -658,15 +800,18 @@ Click OK when you're ready to open System Settings.`;
                           Install Local Processing
                         </h5>
                         <p className="text-sm text-purple-700 mb-4 max-w-sm mx-auto">
-                          We'll install Whisper automatically. No technical setup required.
+                          We'll install Whisper automatically. No technical
+                          setup required.
                         </p>
-                        
+
                         {installingWhisper ? (
                           <div className="space-y-4">
                             <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
                               <div className="flex items-center justify-center space-x-3 mb-2">
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                                <span className="font-medium text-purple-900">Installing...</span>
+                                <span className="font-medium text-purple-900">
+                                  Installing...
+                                </span>
                               </div>
                               {installProgress && (
                                 <div className="text-xs text-purple-600 bg-white p-2 rounded font-mono">
@@ -680,16 +825,18 @@ Click OK when you're ready to open System Settings.`;
                           </div>
                         ) : (
                           <div className="space-y-4">
-                            <Button 
+                            <Button
                               onClick={installWhisper}
                               className="bg-purple-600 hover:bg-purple-700"
                             >
                               Install Whisper
                             </Button>
-                            
+
                             <div className="flex items-center justify-center">
-                              <Button 
-                                onClick={() => setCheckingWhisper(!checkingWhisper)}
+                              <Button
+                                onClick={() =>
+                                  setCheckingWhisper(!checkingWhisper)
+                                }
                                 variant="outline"
                                 size="sm"
                                 className="text-purple-600 border-purple-300 hover:bg-purple-50"
@@ -705,12 +852,12 @@ Click OK when you're ready to open System Settings.`;
                 </div>
               )}
 
-              <Button 
+              <Button
                 onClick={useLocalWhisper ? saveWhisperSettings : saveApiKey}
                 className="w-full"
                 disabled={!useLocalWhisper && !apiKey.trim()}
               >
-                {useLocalWhisper ? 'Save Whisper Settings' : 'Save API Key'}
+                {useLocalWhisper ? "Save Whisper Settings" : "Save API Key"}
               </Button>
             </div>
           </CardContent>
@@ -739,36 +886,33 @@ Click OK when you're ready to open System Settings.`;
                   onChange={(e) => setKey(e.target.value)}
                   className="mb-3"
                 />
-                <Button 
-                  onClick={saveKey} 
-                  disabled={!key.trim()} 
-                  variant="outline" 
+                <Button
+                  onClick={saveKey}
+                  disabled={!key.trim()}
+                  variant="outline"
                   size="sm"
                 >
                   Save Key
                 </Button>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Button 
-                  onClick={requestPermissions} 
-                  variant="outline"
-                >
+                <Button onClick={requestPermissions} variant="outline">
                   <span className="mr-2">🎤</span>
                   Enable Microphone
                 </Button>
-                <Button 
-                  onClick={requestAccessibilityPermissions} 
+                <Button
+                  onClick={requestAccessibilityPermissions}
                   variant="outline"
                 >
                   <span className="mr-2">🔓</span>
                   Check Permissions
                 </Button>
               </div>
-              
-              <Button 
-                onClick={resetAccessibilityPermissions} 
-                variant="secondary" 
+
+              <Button
+                onClick={resetAccessibilityPermissions}
+                variant="secondary"
                 className="w-full"
               >
                 <span className="mr-2">⚙️</span>
@@ -793,18 +937,14 @@ Click OK when you're ready to open System Settings.`;
               </div>
               <div className="flex gap-2">
                 <Tooltip content="Refresh history">
-                  <Button 
-                    onClick={refreshHistory} 
-                    variant="ghost" 
-                    size="icon"
-                  >
+                  <Button onClick={refreshHistory} variant="ghost" size="icon">
                     <RefreshCw size={16} />
                   </Button>
                 </Tooltip>
                 <Tooltip content="Clear all transcriptions">
-                  <Button 
-                    onClick={clearHistory} 
-                    variant="ghost" 
+                  <Button
+                    onClick={clearHistory}
+                    variant="ghost"
                     size="icon"
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
@@ -820,15 +960,13 @@ Click OK when you're ready to open System Settings.`;
                 <div className="w-8 h-8 mx-auto mb-3 bg-indigo-600 rounded-lg flex items-center justify-center">
                   <span className="text-white text-sm">📝</span>
                 </div>
-                <p className="text-neutral-600">
-                  Loading transcriptions...
-                </p>
+                <p className="text-neutral-600">Loading transcriptions...</p>
               </div>
             ) : (
               <div className="space-y-3 max-h-80 overflow-y-auto">
                 {history.map((item, index) => (
-                  <div 
-                    key={item.id} 
+                  <div
+                    key={item.id}
                     className="relative bg-gradient-to-b from-blue-50/30 to-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                     style={{
                       backgroundImage: `repeating-linear-gradient(
@@ -836,52 +974,61 @@ Click OK when you're ready to open System Settings.`;
                         transparent 24px,
                         #d1d5db 24px,
                         #d1d5db 25px
-                      )`
+                      )`,
                     }}
                   >
                     {/* Left margin line */}
                     <div className="absolute left-12 top-0 bottom-0 w-px bg-red-300"></div>
-                    
+
                     {/* Content */}
-                    <div className="p-6 pl-16" style={{ paddingTop: '8px' }}>
+                    <div className="p-6 pl-16" style={{ paddingTop: "8px" }}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1 mr-3">
-                          <div 
-                            className="flex items-center gap-2 mb-1" 
-                            style={{ 
-                              marginTop: '2px',
-                              lineHeight: '24px'
+                          <div
+                            className="flex items-center gap-2 mb-1"
+                            style={{
+                              marginTop: "2px",
+                              lineHeight: "24px",
                             }}
                           >
-                            <span className="text-indigo-600 text-xs font-medium">#{history.length - index}</span>
+                            <span className="text-indigo-600 text-xs font-medium">
+                              #{history.length - index}
+                            </span>
                             <div className="w-px h-3 bg-neutral-300"></div>
                             <span className="text-xs text-neutral-500">
-                              {new Date(item.timestamp).toLocaleString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
+                              {new Date(item.timestamp).toLocaleString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
                             </span>
                           </div>
-                          <p 
+                          <p
                             className="text-neutral-800 text-sm"
                             style={{
-                              fontFamily: 'Noto Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                              lineHeight: '24px', 
-                              textAlign: 'left',
-                              marginTop: '2px',
-                              paddingBottom: '2px'
+                              fontFamily:
+                                'Noto Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                              lineHeight: "24px",
+                              textAlign: "left",
+                              marginTop: "2px",
+                              paddingBottom: "2px",
                             }}
                           >
                             {item.text}
                           </p>
                         </div>
-                        <div className="flex gap-1 flex-shrink-0" style={{ marginTop: '2px' }}>
+                        <div
+                          className="flex gap-1 flex-shrink-0"
+                          style={{ marginTop: "2px" }}
+                        >
                           <Tooltip content="Copy to clipboard">
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
+                            <Button
+                              size="icon"
+                              variant="ghost"
                               onClick={() => copyToClipboard(item.text)}
                               className="h-7 w-7"
                             >
@@ -889,9 +1036,9 @@ Click OK when you're ready to open System Settings.`;
                             </Button>
                           </Tooltip>
                           <Tooltip content="Delete transcription">
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
+                            <Button
+                              size="icon"
+                              variant="ghost"
                               onClick={() => deleteTranscription(item.id)}
                               className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
@@ -918,15 +1065,21 @@ Click OK when you're ready to open System Settings.`;
           </CardHeader>
           <CardContent>
             <p className="text-neutral-600 text-sm leading-relaxed mb-6">
-              OpenWispr converts your speech to text using AI. Press your hotkey, speak, and we'll type what you said wherever your cursor is.
+              OpenWispr converts your speech to text using AI. Press your
+              hotkey, speak, and we'll type what you said wherever your cursor
+              is.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div className="text-center p-4 border border-neutral-200 rounded-xl bg-neutral-50/30">
                 <div className="w-8 h-8 mx-auto mb-2 bg-indigo-600 rounded-lg flex items-center justify-center">
                   <span className="text-white text-sm">⌨️</span>
                 </div>
-                <p className="font-medium text-neutral-800 mb-1">Default Hotkey</p>
-                <p className="text-neutral-600 font-mono text-xs">` (backtick)</p>
+                <p className="font-medium text-neutral-800 mb-1">
+                  Default Hotkey
+                </p>
+                <p className="text-neutral-600 font-mono text-xs">
+                  ` (backtick)
+                </p>
               </div>
               <div className="text-center p-4 border border-neutral-200 rounded-xl bg-neutral-50/30">
                 <div className="w-8 h-8 mx-auto mb-2 bg-emerald-600 rounded-lg flex items-center justify-center">
