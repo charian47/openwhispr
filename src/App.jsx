@@ -4,7 +4,7 @@ import { Button } from "./components/ui/button";
 import { Card, CardContent } from "./components/ui/card";
 import { Toast } from "./components/ui/Toast";
 import { LoadingDots } from "./components/ui/LoadingDots";
-import { Mic } from "lucide-react";
+import { Mic, Settings } from "lucide-react";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -287,7 +287,7 @@ export default function App() {
   
   // Get microphone button properties based on state
   const getMicButtonProps = () => {
-    const baseClasses = 'rounded-full w-10 h-10 flex items-center justify-center relative overflow-hidden';
+    const baseClasses = 'rounded-full w-10 h-10 flex items-center justify-center relative overflow-hidden cursor-pointer';
     
     switch (micState) {
       case 'idle':
@@ -323,6 +323,15 @@ export default function App() {
   
   return (
     <>
+      {/* Fixed top-right settings button */}
+      <div className="fixed top-6 right-6 z-50">
+        <Tooltip content="Settings">
+          <button className="rounded-full w-10 h-10 flex items-center justify-center bg-black/40 backdrop-blur-md border border-white/20 cursor-pointer hover:bg-black/50 transition-colors duration-150">
+            <Settings size={18} className="text-white" />
+          </button>
+        </Tooltip>
+      </div>
+      
       {/* Fixed bottom-right voice button */}
       <div className="fixed bottom-6 right-6 z-50">
         <Tooltip 
