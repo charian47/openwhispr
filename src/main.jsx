@@ -18,15 +18,21 @@ function AppRouter() {
   
   useEffect(() => {
     // Check if onboarding has been completed
-    const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+    const onboardingCompleted = localStorage.getItem('onboardingCompleted') === 'true';
+    const currentStep = parseInt(localStorage.getItem('onboardingCurrentStep') || '0');
     
     if (isControlPanel && !onboardingCompleted) {
       // Show onboarding for control panel if not completed
       setShowOnboarding(true);
     }
     
+    // Hide dictation panel window unless onboarding is complete or we're on the test step (step 5)
+    if (isDictationPanel && !onboardingCompleted && currentStep !== 5) {
+      window.electronAPI?.hideWindow?.();
+    }
+    
     setIsLoading(false);
-  }, [isControlPanel]);
+  }, [isControlPanel, isDictationPanel]);
   
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
@@ -39,27 +45,6 @@ function AppRouter() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading OpenWispr...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  // Hide dictation panel during onboarding
-  if (isDictationPanel && localStorage.getItem('onboardingCompleted') !== 'true') {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="w-16 h-16 mx-auto bg-indigo-600 rounded-full flex items-center justify-center mb-4">
-            <span className="text-white font-bold text-lg">OW</span>
-          </div>
-          <h2 className="text-xl font-semibold mb-2">Setup in Progress</h2>
-          <p className="text-gray-300 mb-4">Please complete setup in the Control Panel first.</p>
-          <button 
-            onClick={() => window.electronAPI?.hideWindow?.()}
-            className="text-sm text-indigo-400 hover:text-indigo-300"
-          >
-            Hide Window
-          </button>
         </div>
       </div>
     );
