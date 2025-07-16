@@ -1359,11 +1359,26 @@ ipcMain.handle('download-whisper-model', async (event, modelName) => {
         reject(new Error(`Model download process error: ${error.message}`));
       });
       
-      // Add longer timeout for model downloads (10 minutes)
-      setTimeout(() => {
+      // Add longer timeout for model downloads (20 minutes for large models)
+      const timeout = setTimeout(() => {
+        console.warn('⚠️ Model download timed out, attempting graceful shutdown...');
         downloadProcess.kill('SIGTERM');
-        reject(new Error('Model download timed out (10 minutes)'));
-      }, 600000);
+        
+        // Give it 5 seconds to cleanup gracefully, then force kill
+        setTimeout(() => {
+          if (!downloadProcess.killed) {
+            console.warn('⚠️ Force killing download process...');
+            downloadProcess.kill('SIGKILL');
+          }
+        }, 5000);
+        
+        reject(new Error('Model download timed out (20 minutes)'));
+      }, 1200000); // 20 minutes
+      
+      // Clear timeout on successful completion
+      downloadProcess.on('close', () => {
+        clearTimeout(timeout);
+      });
     });
     
   } catch (error) {

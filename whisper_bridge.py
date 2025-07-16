@@ -116,6 +116,7 @@ def monitor_download_progress(model_name, expected_size):
 
 def download_model(model_name="base"):
     """Download Whisper model with real-time progress monitoring"""
+    progress_thread = None
     try:
         print(f"Starting download of Whisper model: {model_name}", file=sys.stderr)
         
@@ -182,6 +183,14 @@ def download_model(model_name="base"):
             "success": True
         }
         
+    except KeyboardInterrupt:
+        print(f"Download interrupted by user", file=sys.stderr)
+        return {
+            "model": model_name,
+            "downloaded": False,
+            "error": "Download interrupted by user",
+            "success": False
+        }
     except Exception as e:
         print(f"Error downloading model: {e}", file=sys.stderr)
         return {
@@ -190,6 +199,11 @@ def download_model(model_name="base"):
             "error": str(e),
             "success": False
         }
+    finally:
+        # Cleanup: let the progress thread finish naturally
+        if progress_thread and progress_thread.is_alive():
+            # Give the progress thread a moment to finish
+            time.sleep(0.5)
 
 def check_model_status(model_name="base"):
     """Check if a model is already downloaded"""

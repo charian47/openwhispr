@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
+import WhisperModelPicker from "./WhisperModelPicker";
 
 // Type declaration for electronAPI
 declare global {
@@ -118,9 +119,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [whisperInstalled, setWhisperInstalled] = useState(false);
   const [installingWhisper, setInstallingWhisper] = useState(false);
   const [installProgress, setInstallProgress] = useState("");
-  const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [modelList, setModelList] = useState<Array<{ model: string; downloaded: boolean; size_mb?: number }>>([]);
   const [micPermissionGranted, setMicPermissionGranted] = useState(false);
   const [accessibilityPermissionGranted, setAccessibilityPermissionGranted] = useState(false);
   const [practiceText, setPracticeText] = useState("");
@@ -146,23 +144,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       setInstallProgress(data.message);
     });
 
-    window.electronAPI.onWhisperDownloadProgress((event, data) => {
-      if (data.type === "progress") {
-        setDownloadProgress(data.percentage || 0);
-      } else if (data.type === "complete") {
-        setDownloadingModel(null);
-        setDownloadProgress(0);
-        loadModelList();
-      } else if (data.type === "error") {
-        setDownloadingModel(null);
-        setDownloadProgress(0);
-      }
-    });
-
-    // Load initial model list if going local
-    if (useLocalWhisper) {
-      loadModelList();
-    }
+// No longer needed - WhisperModelPicker handles its own progress
   }, [useLocalWhisper]);
 
   // Add hotkey listener for practice step and manage dictation panel visibility
@@ -195,24 +177,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   }, [currentStep, hotkey, isRecording, isProcessing]);
 
-  const loadModelList = async () => {
-    try {
-      const result = await window.electronAPI.listWhisperModels();
-      if (result.success) {
-        setModelList(result.models);
-      }
-    } catch (error) {
-      console.error("Failed to load model list:", error);
-    }
-  };
-
   const checkWhisperInstallation = async () => {
     try {
       const result = await window.electronAPI.checkWhisperInstallation();
       setWhisperInstalled(result.installed && result.working);
-      if (result.installed && result.working) {
-        loadModelList();
-      }
     } catch (error) {
       setWhisperInstalled(false);
     }
@@ -228,7 +196,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       if (result.success) {
         setWhisperInstalled(true);
         setInstallProgress("Installation complete!");
-        await loadModelList();
       } else {
         alert(`❌ Failed to install Whisper: ${result.message}`);
       }
@@ -237,26 +204,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     } finally {
       setInstallingWhisper(false);
       setInstallProgress("");
-    }
-  };
-
-  const downloadModel = async (modelName: string) => {
-    try {
-      setDownloadingModel(modelName);
-      setDownloadProgress(0);
-      
-      const result = await window.electronAPI.downloadWhisperModel(modelName);
-      
-      if (result.success) {
-        await loadModelList();
-      } else {
-        alert(`❌ Failed to download model "${modelName}": ${result.error}`);
-      }
-    } catch (error) {
-      alert(`❌ Failed to download model "${modelName}": ${error}`);
-    } finally {
-      setDownloadingModel(null);
-      setDownloadProgress(0);
     }
   };
 
@@ -554,54 +501,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Model Quality
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Choose your model quality below
                       </label>
-                      <select
-                        value={whisperModel}
-                        onChange={(e) => setWhisperModel(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="tiny">Tiny - Fastest, lower quality</option>
-                        <option value="base">Base - Good balance (recommended)</option>
-                        <option value="small">Small - Better quality, slower</option>
-                        <option value="medium">Medium - High quality</option>
-                        <option value="large">Large - Best quality, slowest</option>
-                      </select>
-                      <p className="text-xs text-gray-500 mt-2">
-                        You can download the model on the next step.
+                      <p className="text-xs text-gray-500">
+                        Download and select the model that best fits your needs.
                       </p>
                     </div>
 
-                    {modelList.length > 0 && (
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900 mb-3">Available Models</h4>
-                        <div className="space-y-2">
-                          {modelList.map((model) => (
-                            <div key={model.model} className="flex items-center justify-between p-2 bg-white rounded border">
-                              <span className="capitalize font-medium">{model.model}</span>
-                              <div className="flex items-center gap-2">
-                                {model.downloaded ? (
-                                  <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
-                                    ✓ Downloaded
-                                  </span>
-                                ) : (
-                                  <Button
-                                    onClick={() => downloadModel(model.model)}
-                                    size="sm"
-                                    disabled={downloadingModel === model.model}
-                                  >
-                                    {downloadingModel === model.model 
-                                      ? `${Math.round(downloadProgress)}%` 
-                                      : "Download"}
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <WhisperModelPicker
+                      selectedModel={whisperModel}
+                      onModelSelect={setWhisperModel}
+                      variant="onboarding"
+                    />
                   </div>
                 )}
               </div>

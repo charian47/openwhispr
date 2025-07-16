@@ -12,6 +12,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
+import WhisperModelPicker from "./WhisperModelPicker";
 
 // Type declaration for electronAPI
 declare global {
@@ -142,12 +143,6 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
   const [allowOpenAIFallback, setAllowOpenAIFallback] = useState(false);
   const [whisperInstalled, setWhisperInstalled] = useState(false);
   const [checkingWhisper, setCheckingWhisper] = useState(false);
-  const [modelList, setModelList] = useState<
-    Array<{ model: string; downloaded: boolean; size_mb?: number }>
-  >([]);
-  const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [loadingModels, setLoadingModels] = useState(false);
   const [installingWhisper, setInstallingWhisper] = useState(false);
   const [installProgress, setInstallProgress] = useState<string>("");
 
@@ -207,19 +202,6 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
       setInstallProgress(data.message);
     });
 
-    // Set up progress listener for model downloads
-    window.electronAPI.onWhisperDownloadProgress((event, data) => {
-      if (data.type === "progress") {
-        setDownloadProgress(data.percentage || 0);
-      } else if (data.type === "complete") {
-        setDownloadingModel(null);
-        setDownloadProgress(0);
-        loadModelList();
-      } else if (data.type === "error") {
-        setDownloadingModel(null);
-        setDownloadProgress(0);
-      }
-    });
 
     // Initialize update functionality
     const initializeUpdateData = async () => {
@@ -270,26 +252,10 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
       const result = await window.electronAPI.checkWhisperInstallation();
       setWhisperInstalled(result.installed && result.working);
 
-      if (result.installed && result.working) {
-        loadModelList();
-      }
     } catch (error) {
       setWhisperInstalled(false);
     } finally {
       setCheckingWhisper(false);
-    }
-  };
-
-  const loadModelList = async () => {
-    try {
-      setLoadingModels(true);
-      const result = await window.electronAPI.listWhisperModels();
-      if (result.success) {
-        setModelList(result.models);
-      }
-    } catch (error) {
-    } finally {
-      setLoadingModels(false);
     }
   };
 
@@ -313,50 +279,6 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     } finally {
       setInstallingWhisper(false);
       setInstallProgress("");
-    }
-  };
-
-  const downloadModel = async (modelName: string) => {
-    try {
-      setDownloadingModel(modelName);
-
-      const result = await window.electronAPI.downloadWhisperModel(modelName);
-
-      if (result.success) {
-        alert(
-          `✅ Model "${modelName}" downloaded successfully! (${result.size_mb}MB)`
-        );
-        loadModelList();
-      } else {
-        alert(`❌ Failed to download model "${modelName}": ${result.error}`);
-      }
-    } catch (error) {
-      alert(`❌ Failed to download model "${modelName}": ${error}`);
-    } finally {
-      setDownloadingModel(null);
-    }
-  };
-
-  const deleteModel = async (modelName: string) => {
-    if (
-      confirm(
-        `Are you sure you want to delete the "${modelName}" model? This will free up disk space but you'll need to re-download it if you want to use it again.`
-      )
-    ) {
-      try {
-        const result = await window.electronAPI.deleteWhisperModel(modelName);
-
-        if (result.success) {
-          alert(
-            `✅ Model "${modelName}" deleted successfully! Freed ${result.freed_mb}MB of disk space.`
-          );
-          loadModelList();
-        } else {
-          alert(`❌ Failed to delete model "${modelName}": ${result.error}`);
-        }
-      } catch (error) {
-        alert(`❌ Failed to delete model "${modelName}": ${error}`);
-      }
     }
   };
 
@@ -649,33 +571,11 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                     {whisperInstalled ? (
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-purple-800 mb-2">
-                            Model Quality
+                          <label className="block text-sm font-medium text-purple-800 mb-3">
+                            Choose your model quality from the list below
                           </label>
-                          <select
-                            value={whisperModel}
-                            onChange={(e) => setWhisperModel(e.target.value)}
-                            className="w-full p-3 border border-purple-300 rounded-lg bg-white text-purple-900 focus:outline-none focus:ring-1 focus:ring-purple-500/20 focus:border-purple-500"
-                          >
-                            <option value="tiny">
-                              Tiny - Fastest, lower quality
-                            </option>
-                            <option value="base">
-                              Base - Good balance (recommended)
-                            </option>
-                            <option value="small">
-                              Small - Better quality, slower
-                            </option>
-                            <option value="medium">
-                              Medium - High quality
-                            </option>
-                            <option value="large">
-                              Large - Best quality, slowest
-                            </option>
-                          </select>
-                          <p className="text-xs text-purple-700 mt-2">
-                            Larger models need more memory but give better
-                            results.
+                          <p className="text-xs text-purple-700">
+                            Select the model that best fits your needs.
                           </p>
                         </div>
 
@@ -759,114 +659,11 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                           )}
                         </div>
 
-                        <div className="bg-white border border-purple-200 rounded-lg overflow-hidden">
-                          {/* Download Progress Bar */}
-                          {downloadingModel && (
-                            <div className="bg-purple-50 border-b border-purple-200 p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium text-purple-900">
-                                  Downloading {downloadingModel} model...
-                                </span>
-                                <span className="text-xs text-purple-700">
-                                  {Math.round(downloadProgress)}%
-                                </span>
-                              </div>
-                              <div className="w-full bg-purple-200 rounded-full h-2">
-                                <div
-                                  className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full transition-all duration-300 ease-out"
-                                  style={{
-                                    width: `${Math.min(
-                                      downloadProgress,
-                                      100
-                                    )}%`,
-                                  }}
-                                ></div>
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h5 className="font-medium text-purple-900">
-                                Available Models
-                              </h5>
-                              <Button
-                                onClick={() => setLoadingModels(!loadingModels)}
-                                variant="outline"
-                                size="sm"
-                                disabled={loadingModels}
-                                className="border-purple-300 text-purple-700 hover:bg-purple-50 hover:border-purple-600"
-                              >
-                                <RefreshCw
-                                  size={14}
-                                  className={
-                                    loadingModels ? "animate-spin" : ""
-                                  }
-                                />
-                                <span className="ml-1">
-                                  {loadingModels ? "Checking..." : "Refresh"}
-                                </span>
-                              </Button>
-                            </div>
-
-                            <div className="space-y-2">
-                              {modelList.map((model) => (
-                                <div
-                                  key={model.model}
-                                  className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200"
-                                >
-                                  <div className="flex items-center space-x-3">
-                                    <span className="font-medium text-purple-900 capitalize">
-                                      {model.model}
-                                    </span>
-                                    {model.downloaded ? (
-                                      <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-1 rounded-md">
-                                        ✓ Downloaded ({model.size_mb}MB)
-                                      </span>
-                                    ) : (
-                                      <span className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded-md">
-                                        Not downloaded
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <div className="flex gap-2">
-                                    {model.downloaded && (
-                                      <Button
-                                        onClick={() => deleteModel(model.model)}
-                                        size="sm"
-                                        variant="outline"
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-600"
-                                      >
-                                        <Trash2 size={14} />
-                                        <span className="ml-1">Delete</span>
-                                      </Button>
-                                    )}
-                                    {!model.downloaded && (
-                                      <Button
-                                        onClick={() =>
-                                          downloadModel(model.model)
-                                        }
-                                        disabled={
-                                          downloadingModel === model.model
-                                        }
-                                        size="sm"
-                                        className="bg-purple-600 hover:bg-purple-700"
-                                      >
-                                        <Download size={14} />
-                                        <span className="ml-1">
-                                          {downloadingModel === model.model
-                                            ? "Downloading..."
-                                            : "Download"}
-                                        </span>
-                                      </Button>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
+                        <WhisperModelPicker
+                          selectedModel={whisperModel}
+                          onModelSelect={setWhisperModel}
+                          variant="settings"
+                        />
                       </div>
                     ) : (
                       <div className="bg-white border border-purple-200 rounded-lg p-6">
