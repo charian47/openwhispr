@@ -53,7 +53,7 @@ const Tooltip = ({ children, content, emoji }) => {
         {children}
       </div>
       {isVisible && (
-        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-xs text-white bg-gradient-to-r from-neutral-800 to-neutral-700 rounded-lg whitespace-nowrap z-10 transition-opacity duration-150">
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-1 py-1 text-white bg-gradient-to-r from-neutral-800 to-neutral-700 rounded-md whitespace-nowrap z-10 transition-opacity duration-150" style={{ fontSize: '9.7px' }}>
           {emoji && <span className="mr-1">{emoji}</span>}
           {content}
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-neutral-800"></div>
@@ -286,17 +286,17 @@ export default function App() {
   
   // Get microphone button properties based on state
   const getMicButtonProps = () => {
-    const baseClasses = 'rounded-full transition-all duration-300 flex items-center justify-center relative overflow-hidden';
+    const baseClasses = 'rounded-full transition-all duration-200 ease-in-out flex items-center justify-center relative overflow-hidden';
     
     switch (micState) {
       case 'idle':
         return {
-          className: `${baseClasses} w-8 h-8 bg-stone-500 hover:bg-stone-600 hover:scale-110 cursor-pointer`,
+          className: `${baseClasses} w-8 h-8 bg-black/40 backdrop-blur-md border border-white/20 cursor-pointer`,
           tooltip: "Click to speak"
         };
       case 'hover':
         return {
-          className: `${baseClasses} w-8 h-8 bg-stone-600 scale-110 cursor-pointer`,
+          className: `${baseClasses} w-8 h-8 bg-black/50 backdrop-blur-md border border-white/20 scale-110 cursor-pointer`,
           tooltip: "Click to speak"
         };
       case 'recording':
@@ -311,7 +311,7 @@ export default function App() {
         };
       default:
         return {
-          className: `${baseClasses} w-8 h-8 bg-stone-500 cursor-pointer`,
+          className: `${baseClasses} w-8 h-8 bg-black/40 backdrop-blur-md border border-white/20 cursor-pointer`,
           tooltip: "Click to speak"
         };
     }
@@ -325,17 +325,20 @@ export default function App() {
       <div className="fixed bottom-6 right-6 z-50">
         <Tooltip 
           content={micProps.tooltip}
-          emoji={isListening ? "🎤" : "🗣️"}
         >
           <button
             onClick={toggleListening}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            onFocus={() => setIsHovered(true)}
+            onBlur={() => setIsHovered(false)}
             className={micProps.className}
             disabled={micState === 'processing'}
+            style={{ cursor: micState === 'processing' ? 'not-allowed !important' : 'pointer !important' }}
           >
-            {/* Background gradient on hover */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200"></div>
+            {/* Background effects */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent transition-opacity duration-150" style={{ opacity: micState === 'hover' ? 0.8 : 0 }}></div>
+            <div className="absolute inset-0 transition-colors duration-150" style={{ backgroundColor: micState === 'hover' ? 'rgba(0,0,0,0.1)' : 'transparent' }}></div>
             
             {/* Dynamic content based on state */}
             {micState === 'idle' || micState === 'hover' ? (

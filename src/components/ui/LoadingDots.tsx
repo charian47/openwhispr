@@ -9,12 +9,12 @@ export const LoadingDots = () => {
   }, []);
   
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', height: 10, gap: 3 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', height: 10, gap: 1 }}>
       {[0, 1, 2].map(i => (
         <div
           key={i}
           style={{
-            width: 6,
+            width: 4,
             height: 6 + 6 * (tick % 3 === i ? 1 : 0),
             background: '#fff',
             borderRadius: 3,
