@@ -296,12 +296,12 @@ export default function App() {
     switch (micState) {
       case 'idle':
         return {
-          className: `${baseClasses} bg-black/40 backdrop-blur-md border border-white/20 cursor-pointer`,
+          className: `${baseClasses} bg-black/50 cursor-pointer border-2 border-white/70`,
           tooltip: "Click to speak"
         };
       case 'hover':
         return {
-          className: `${baseClasses} bg-black/50 backdrop-blur-md border border-white/20 cursor-pointer`,
+          className: `${baseClasses} bg-black/50 cursor-pointer`,
           tooltip: "Click to speak"
         };
       case 'recording':
@@ -316,7 +316,7 @@ export default function App() {
         };
       default:
         return {
-          className: `${baseClasses} bg-black/40 backdrop-blur-md border border-white/20 cursor-pointer`,
+          className: `${baseClasses} bg-black/50 cursor-pointer`,
           style: { transform: 'scale(0.8)' },
           tooltip: "Click to speak"
         };
@@ -327,14 +327,6 @@ export default function App() {
   
   return (
     <>
-      {/* Fixed top-right settings button */}
-      <div className="fixed top-6 right-6 z-50">
-        <Tooltip content="Settings">
-          <button className="rounded-full w-10 h-10 flex items-center justify-center bg-black/40 backdrop-blur-md border border-white/20 cursor-pointer hover:bg-black/50 transition-colors duration-150">
-            <Settings size={18} className="text-white" />
-          </button>
-        </Tooltip>
-      </div>
       
       {/* Fixed bottom-right voice button */}
       <div className="fixed bottom-6 right-6 z-50">

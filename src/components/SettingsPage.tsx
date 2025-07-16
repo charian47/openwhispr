@@ -1066,6 +1066,26 @@ export default function SettingsPage({ onClose }) {
                   <p className="text-green-600 text-xs font-medium">Active</p>
                 </div>
               </div>
+              {/* Reset Onboarding */}
+              <div className="border-t border-neutral-200 pt-4">
+                <Button
+                  onClick={() => {
+                    if (
+                      confirm(
+                        "Are you sure you want to reset the onboarding process? This will clear your setup and show the welcome flow again."
+                      )
+                    ) {
+                      localStorage.removeItem("onboardingCompleted");
+                      window.location.reload();
+                    }
+                  }}
+                  variant="outline"
+                  className="w-full text-amber-600 border-amber-300 hover:bg-amber-50 hover:border-amber-400"
+                >
+                  <span className="mr-2">🔄</span>
+                  Reset Onboarding
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -1080,4 +1100,3 @@ export default function SettingsPage({ onClose }) {
     </div>
   );
 }
-
