@@ -30,7 +30,12 @@
     "hardenedRuntime": true,
     "gatekeeperAssess": false,
     "entitlements": "build/entitlements.mac.plist",
-    "entitlementsInherit": "build/entitlements.mac.plist"
+    "entitlementsInherit": "build/entitlements.mac.plist",
+    "extendInfo": {
+      "LSUIElement": false,
+      "NSMicrophoneUsageDescription": "OpenWispr needs microphone access for speech-to-text transcription.",
+      "NSAccessibilityUsageDescription": "OpenWispr needs accessibility permissions to paste transcribed text into other applications."
+    }
   },
   "win": {
     "target": [

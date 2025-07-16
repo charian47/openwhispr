@@ -306,19 +306,19 @@ app.whenReady().then(async () => {
       
       if (process.env.NODE_ENV === 'development') {
         // Development mode - load from assets folder
-        const iconPath = path.join(__dirname, 'assets', 'iconTemplate.png');
+        const iconPath = path.join(__dirname, 'assets', 'iconTemplate@3x.png');
         trayIcon = nativeImage.createFromPath(iconPath);
              } else {
          // Production mode - try different locations for the icon
          const possiblePaths = [
            // First try extraResources (most likely for packaged app)
-           path.join(process.resourcesPath, 'assets', 'iconTemplate.png'),
+           path.join(process.resourcesPath, 'assets', 'iconTemplate@3x.png'),
            // Then try asar.unpacked
-           path.join(process.resourcesPath, 'app.asar.unpacked', 'assets', 'iconTemplate.png'),
+           path.join(process.resourcesPath, 'app.asar.unpacked', 'assets', 'iconTemplate@3x.png'),
            // Then try within app bundle
-           path.join(__dirname, 'assets', 'iconTemplate.png'),
+           path.join(__dirname, 'assets', 'iconTemplate@3x.png'),
            // Legacy path
-           path.join(process.resourcesPath, 'app', 'assets', 'iconTemplate.png')
+           path.join(process.resourcesPath, 'app', 'assets', 'iconTemplate@3x.png')
          ];
         
         let iconPath = null;
