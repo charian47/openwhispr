@@ -2,6 +2,8 @@ const { app, BrowserWindow, globalShortcut, ipcMain, clipboard, shell, screen, M
 const path = require("path")
 const { spawn } = require("child_process")
 const Database = require('better-sqlite3')
+const fs = require('fs')
+const os = require('os')
 
 // Load .env file with better error handling and production support
 function loadEnvironmentVariables() {
@@ -241,6 +243,54 @@ async function createControlPanelWindow() {
 
 // Database setup
 let db = null;
+
+function cleanup() {
+  console.log('Starting cleanup process...');
+  // Database file deletion
+  try {
+    const dbPath = path.join(app.getPath('userData'), process.env.NODE_ENV === 'development' ? 'transcriptions-dev.db' : 'transcriptions.db');
+    if (fs.existsSync(dbPath)) {
+      fs.unlinkSync(dbPath);
+      console.log('✅ Database file deleted:', dbPath);
+    }
+  } catch (error) {
+    console.error('❌ Error deleting database file:', error);
+  }
+
+  // Local storage clearing
+  mainWindow.webContents.executeJavaScript('localStorage.clear()').then(() => {
+    console.log('✅ Local storage cleared');
+  }).catch(error => {
+    console.error('❌ Error clearing local storage:', error);
+  });
+
+  // Local Whisper model deletion
+  try {
+    const modelCacheDir = path.join(os.homedir(), '.cache', 'whisper');
+    if (fs.existsSync(modelCacheDir)) {
+      fs.rmSync(modelCacheDir, { recursive: true, force: true });
+      console.log('✅ Local Whisper models deleted:', modelCacheDir);
+    }
+  } catch (error) {
+    console.error('❌ Error deleting Whisper models:', error);
+  }
+
+  // Permissions instruction
+  console.log('ℹ️ Please manually remove accessibility and microphone permissions via System Preferences if needed.');
+
+  // Env file deletion
+  try {
+    const envPath = path.join(app.getPath('userData'), '.env');
+    if (fs.existsSync(envPath)) {
+      fs.unlinkSync(envPath);
+      console.log('✅ .env file deleted:', envPath);
+    }
+  } catch (error) {
+    console.error('❌ Error deleting .env file:', error);
+  }
+
+  console.log('Cleanup process completed.');
+}
 
 function initDatabase() {
   try {
@@ -1466,6 +1516,17 @@ ipcMain.handle('delete-whisper-model', async (event, modelName) => {
     
   } catch (error) {
     console.error('❌ Model delete error:', error);
+    throw error;
+  }
+});
+
+// Cleanup handler
+ipcMain.handle('cleanup-app', async (event) => {
+  try {
+    cleanup();
+    return { success: true, message: 'Cleanup completed successfully' };
+  } catch (error) {
+    console.error('❌ Cleanup error:', error);
     throw error;
   }
 });

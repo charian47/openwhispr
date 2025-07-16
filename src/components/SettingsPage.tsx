@@ -4,21 +4,12 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Tooltip } from "./ui/tooltip";
 import {
-  Copy,
-  Trash2,
   RefreshCw,
   Download,
-  Check,
-  X,
   Settings,
   Keyboard,
-  FileText,
   Info,
-  Mic,
-  Minus,
-  Square,
-  ChevronLeft,
-  ChevronRight,
+  Trash2,
 } from "lucide-react";
 
 // Type declaration for electronAPI
@@ -100,6 +91,8 @@ declare global {
       windowMaximize: () => Promise<void>;
       windowClose: () => Promise<void>;
       windowIsMaximized: () => Promise<boolean>;
+      // Cleanup functions
+      cleanupApp: () => Promise<void>;
     };
   }
 }
@@ -117,8 +110,6 @@ export default function SettingsPage({ onClose }) {
   const [useLocalWhisper, setUseLocalWhisper] = useState(false);
   const [whisperModel, setWhisperModel] = useState("base");
   const [allowOpenAIFallback, setAllowOpenAIFallback] = useState(false);
-  const [history, setHistory] = useState<TranscriptionItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [whisperInstalled, setWhisperInstalled] = useState(false);
   const [checkingWhisper, setCheckingWhisper] = useState(false);
   const [modelList, setModelList] = useState<
@@ -161,8 +152,6 @@ export default function SettingsPage({ onClose }) {
 
     loadApiKey();
 
-    // Load transcription history from database
-    loadTranscriptions();
 
     // Check Whisper installation
     checkWhisperInstallation();
@@ -187,16 +176,6 @@ export default function SettingsPage({ onClose }) {
     });
   }, []);
 
-  const loadTranscriptions = async () => {
-    try {
-      setIsLoading(true);
-      const transcriptions = await window.electronAPI.getTranscriptions(50);
-      setHistory(transcriptions);
-    } catch (error) {
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const checkWhisperInstallation = async () => {
     try {
@@ -341,30 +320,7 @@ export default function SettingsPage({ onClose }) {
     );
   };
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      alert("Text copied to your scribal collection!");
-    } catch (err) {}
-  };
 
-  const clearHistory = async () => {
-    if (
-      confirm(
-        "Are you certain you wish to clear all inscribed records? This action cannot be undone."
-      )
-    ) {
-      try {
-        const result = await window.electronAPI.clearTranscriptions();
-        setHistory([]);
-        alert(
-          `Successfully cleared ${result.cleared} transcriptions from your chronicles.`
-        );
-      } catch (error) {
-        alert("Failed to clear history. Please try again.");
-      }
-    }
-  };
 
   const requestPermissions = async () => {
     try {
@@ -405,33 +361,7 @@ export default function SettingsPage({ onClose }) {
     }
   };
 
-  const deleteTranscription = async (id: number) => {
-    if (
-      confirm(
-        "Are you certain you wish to remove this inscription from your records?"
-      )
-    ) {
-      try {
-        const result = await window.electronAPI.deleteTranscription(id);
-        if (result.success) {
-          setHistory((prev) => prev.filter((item) => item.id !== id));
-          console.log(`🗑️ Deleted transcription ${id}`);
-        } else {
-          alert(
-            "Failed to delete transcription. It may have already been removed."
-          );
-        }
-      } catch (error) {
-        console.error("❌ Failed to delete transcription:", error);
-        alert("Failed to delete transcription. Please try again.");
-      }
-    }
-  };
 
-  const refreshHistory = async () => {
-    console.log("🔄 Refreshing transcription history...");
-    await loadTranscriptions();
-  };
 
   // Enhanced keyboard paste handler for API key input
   const handleApiKeyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -973,132 +903,6 @@ export default function SettingsPage({ onClose }) {
             </CardContent>
           </Card>
 
-          {/* Recent Transcriptions Card */}
-          <Card className="bg-white relative z-10">
-            <CardHeader>
-              <div className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText size={18} className="text-indigo-600" />
-                    Recent Transcriptions
-                  </CardTitle>
-                  <p className="text-sm text-neutral-600 mt-2">
-                    Your voice recordings, converted to text.
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Tooltip content="Refresh history">
-                    <Button
-                      onClick={refreshHistory}
-                      variant="ghost"
-                      size="icon"
-                    >
-                      <RefreshCw size={16} />
-                    </Button>
-                  </Tooltip>
-                  <Tooltip content="Clear all transcriptions">
-                    <Button
-                      onClick={clearHistory}
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 size={16} />
-                    </Button>
-                  </Tooltip>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="w-8 h-8 mx-auto mb-3 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">📝</span>
-                  </div>
-                  <p className="text-neutral-600">Loading transcriptions...</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {history.map((item, index) => (
-                    <div
-                      key={item.id}
-                      className="relative bg-gradient-to-b from-blue-50/30 to-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      {/* Content */}
-                      <div className="p-6 pl-16" style={{ paddingTop: "8px" }}>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 mr-3">
-                            <div
-                              className="flex items-center gap-2 mb-1"
-                              style={{
-                                marginTop: "2px",
-                                lineHeight: "24px",
-                              }}
-                            >
-                              <span className="text-indigo-600 text-xs font-medium">
-                                #{history.length - index}
-                              </span>
-                              <div className="w-px h-3 bg-neutral-300"></div>
-                              <span className="text-xs text-neutral-500">
-                                {new Date(item.timestamp).toLocaleString(
-                                  "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )}
-                              </span>
-                            </div>
-                            <p
-                              className="text-neutral-800 text-sm"
-                              style={{
-                                fontFamily:
-                                  'Noto Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                                lineHeight: "24px",
-                                textAlign: "left",
-                                marginTop: "2px",
-                                paddingBottom: "2px",
-                              }}
-                            >
-                              {item.text}
-                            </p>
-                          </div>
-                          <div
-                            className="flex gap-1 flex-shrink-0"
-                            style={{ marginTop: "2px" }}
-                          >
-                            <Tooltip content="Copy to clipboard">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => copyToClipboard(item.text)}
-                                className="h-7 w-7"
-                              >
-                                <Copy size={12} />
-                              </Button>
-                            </Tooltip>
-                            <Tooltip content="Delete transcription">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => deleteTranscription(item.id)}
-                                className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 size={12} />
-                              </Button>
-                            </Tooltip>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           {/* About Card */}
           <Card className="bg-white relative z-10">
             <CardHeader>
@@ -1141,7 +945,7 @@ export default function SettingsPage({ onClose }) {
                 </div>
               </div>
               {/* Reset Onboarding */}
-              <div className="border-t border-neutral-200 pt-4">
+              <div className="border-t border-neutral-200 pt-4 space-y-3">
                 <Button
                   onClick={() => {
                     if (
@@ -1158,6 +962,31 @@ export default function SettingsPage({ onClose }) {
                 >
                   <span className="mr-2">🔄</span>
                   Reset Onboarding
+                </Button>
+                
+                {/* Cleanup App Data */}
+                <Button
+                  onClick={() => {
+                    if (
+                      confirm(
+                        "⚠️ DANGER: This will permanently delete ALL OpenWispr data including:\n\n• Database and transcriptions\n• Local storage settings\n• Downloaded Whisper models\n• Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone. Are you sure?"
+                      )
+                    ) {
+                      window.electronAPI.cleanupApp().then(() => {
+                        alert("✅ Cleanup completed! All app data has been removed.");
+                        setTimeout(() => {
+                          window.location.reload();
+                        }, 1000);
+                      }).catch((error) => {
+                        alert(`❌ Cleanup failed: ${error.message}`);
+                      });
+                    }
+                  }}
+                  variant="outline"
+                  className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+                >
+                  <span className="mr-2">🗑️</span>
+                  Clean Up All App Data
                 </Button>
               </div>
             </CardContent>
