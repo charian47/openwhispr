@@ -82,13 +82,12 @@ function getAppUrl(isControlPanel = false) {
 async function createWindow() {
   // Always show window by default
   const display = screen.getPrimaryDisplay();
-  const width = 90;
-  const height = 40;
-  const x = display.bounds.x + Math.round((display.workArea.width - width) / 2);
-  const y = Math.max(0, display.workArea.height); // Position above the dock/menu bar with padding
+  const width = 100;  // Increased width to accommodate tooltips and scaling
+  const height = 100; // Increased height to accommodate tooltips and scaling
+  const x = display.bounds.x + display.workArea.width - width;
+  const y = display.bounds.y + display.workArea.height;
   
-  // Window positioning calculated
-
+  // Window positioning calculated for bottom-right corner
   mainWindow = new BrowserWindow({
     width,
     height,

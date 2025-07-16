@@ -2,15 +2,73 @@ import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
 import { Button } from "./components/ui/button";
 import { Card, CardContent } from "./components/ui/card";
-import { LoadingDots } from "./components/ui/LoadingDots";
-import { DotFlashing } from "./components/ui/DotFlashing";
 import { Toast } from "./components/ui/Toast";
+import { LoadingDots } from "./components/ui/LoadingDots";
+import { Mic } from "lucide-react";
+
+// Sound Wave Icon Component (for idle/hover states)
+const SoundWaveIcon = ({ size = 16 }) => {
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <div className={`bg-white rounded-full`} style={{ width: size * 0.25, height: size * 0.6 }}></div>
+      <div className={`bg-white rounded-full`} style={{ width: size * 0.25, height: size }}></div>
+      <div className={`bg-white rounded-full`} style={{ width: size * 0.25, height: size * 0.6 }}></div>
+    </div>
+  );
+};
+
+
+// Voice Wave Animation Component (for processing state)
+const VoiceWaveIndicator = ({ isListening }) => {
+  return (
+    <div className="flex items-center justify-center gap-0.5">
+      {[...Array(4)].map((_, i) => (
+        <div
+          key={i}
+          className={`w-0.5 bg-white rounded-full transition-all duration-150 ${
+            isListening 
+              ? 'animate-pulse h-4' 
+              : 'h-2'
+          }`}
+          style={{
+            animationDelay: isListening ? `${i * 0.1}s` : '0s',
+            animationDuration: isListening ? `${0.6 + i * 0.1}s` : '0s'
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Enhanced Tooltip Component
+const Tooltip = ({ children, content, emoji }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  
+  return (
+    <div className="relative inline-block">
+      <div
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+      >
+        {children}
+      </div>
+      {isVisible && (
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-xs text-white bg-gradient-to-r from-neutral-800 to-neutral-700 rounded-lg whitespace-nowrap z-10 transition-opacity duration-150">
+          {emoji && <span className="mr-1">{emoji}</span>}
+          {content}
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-neutral-800"></div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState('');
+  const [isHovered, setIsHovered] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
@@ -196,6 +254,14 @@ export default function App() {
     };
   }, [isRecording, isProcessing]);
 
+  const toggleListening = () => {
+    if (!isRecording && !isProcessing) {
+      startRecording();
+    } else if (isRecording) {
+      stopRecording();
+    }
+  };
+
   const handleKeyPress = (e) => {
     if (e.key === 'Escape') {
       handleClose();
@@ -207,51 +273,92 @@ export default function App() {
     return () => document.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  let tabWidth = 40, tabHeight = 8, content = null;
-  if (isRecording) {
-    tabWidth = 70; tabHeight = 32;
-    content = <LoadingDots />;
-  } else if (isProcessing) {
-    tabWidth = 90; tabHeight = 24;
-    content = <DotFlashing />;
-  }
-  const transition = 'all 0.25s cubic-bezier(0.4,0.2,0.2,1)';
-
+  // Determine current mic state
+  const getMicState = () => {
+    if (isRecording) return 'recording';
+    if (isProcessing) return 'processing';
+    if (isHovered && !isRecording && !isProcessing) return 'hover';
+    return 'idle';
+  };
+  
+  const micState = getMicState();
+  const isListening = isRecording || isProcessing;
+  
+  // Get microphone button properties based on state
+  const getMicButtonProps = () => {
+    const baseClasses = 'rounded-full transition-all duration-300 flex items-center justify-center relative overflow-hidden';
+    
+    switch (micState) {
+      case 'idle':
+        return {
+          className: `${baseClasses} w-8 h-8 bg-stone-500 hover:bg-stone-600 hover:scale-110 cursor-pointer`,
+          tooltip: "Click to speak"
+        };
+      case 'hover':
+        return {
+          className: `${baseClasses} w-8 h-8 bg-stone-600 scale-110 cursor-pointer`,
+          tooltip: "Click to speak"
+        };
+      case 'recording':
+        return {
+          className: `${baseClasses} w-10 h-10 bg-blue-600 scale-110 cursor-pointer`,
+          tooltip: "Recording..."
+        };
+      case 'processing':
+        return {
+          className: `${baseClasses} w-10 h-10 bg-purple-600 scale-105 cursor-not-allowed`,
+          tooltip: "Processing..."
+        };
+      default:
+        return {
+          className: `${baseClasses} w-8 h-8 bg-stone-500 cursor-pointer`,
+          tooltip: "Click to speak"
+        };
+    }
+  };
+  
+  const micProps = getMicButtonProps();
+  
   return (
     <>
-      <div style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
-      }}>
-        <div
-          className="glass-effect"
-          style={{
-            position: 'absolute',
-            left: '50%',
-            bottom: 8,
-            transform: 'translateX(-50%)',
-            width: tabWidth,
-            height: tabHeight,
-            background: 'rgba(30,30,30,0.85)',
-            border: '1px solid #ccc',
-            borderRadius: 20,
-            boxShadow: '0 1px 6px rgba(0,0,0,0.10)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 0,
-            pointerEvents: 'auto',
-            transition,
-          }}
+      {/* Fixed bottom-right voice button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Tooltip 
+          content={micProps.tooltip}
+          emoji={isListening ? "🎤" : "🗣️"}
         >
-          {content}
-        </div>
+          <button
+            onClick={toggleListening}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className={micProps.className}
+            disabled={micState === 'processing'}
+          >
+            {/* Background gradient on hover */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200"></div>
+            
+            {/* Dynamic content based on state */}
+            {micState === 'idle' || micState === 'hover' ? (
+              <SoundWaveIcon size={micState === 'idle' ? 12 : 14} />
+            ) : micState === 'recording' ? (
+              <LoadingDots />
+            ) : micState === 'processing' ? (
+              <VoiceWaveIndicator isListening={true} />
+            ) : null}
+            
+            {/* State indicator ring for recording */}
+            {micState === 'recording' && (
+              <div className="absolute inset-0 rounded-full border-2 border-blue-300 animate-pulse"></div>
+            )}
+            
+            {/* State indicator ring for processing */}
+            {micState === 'processing' && (
+              <div className="absolute inset-0 rounded-full border-2 border-purple-300 opacity-50"></div>
+            )}
+          </button>
+        </Tooltip>
       </div>
+      
       <Toast message={error} onClose={() => setError('')} />
     </>
   );
