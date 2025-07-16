@@ -85,6 +85,7 @@ export default function App() {
       };
       
       mediaRecorderRef.current.onstop = async () => {
+        setIsProcessing(true);
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
         await processAudio(audioBlob);
         stream.getTracks().forEach(track => track.stop());
@@ -102,7 +103,7 @@ export default function App() {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      setIsProcessing(true);
+      // Don't set processing immediately - let the onstop handler do it
     }
   };
 
@@ -286,32 +287,33 @@ export default function App() {
   
   // Get microphone button properties based on state
   const getMicButtonProps = () => {
-    const baseClasses = 'rounded-full transition-all duration-200 ease-in-out flex items-center justify-center relative overflow-hidden';
+    const baseClasses = 'rounded-full w-10 h-10 flex items-center justify-center relative overflow-hidden';
     
     switch (micState) {
       case 'idle':
         return {
-          className: `${baseClasses} w-8 h-8 bg-black/40 backdrop-blur-md border border-white/20 cursor-pointer`,
+          className: `${baseClasses} bg-black/40 backdrop-blur-md border border-white/20 cursor-pointer`,
           tooltip: "Click to speak"
         };
       case 'hover':
         return {
-          className: `${baseClasses} w-8 h-8 bg-black/50 backdrop-blur-md border border-white/20 scale-110 cursor-pointer`,
+          className: `${baseClasses} bg-black/50 backdrop-blur-md border border-white/20 cursor-pointer`,
           tooltip: "Click to speak"
         };
       case 'recording':
         return {
-          className: `${baseClasses} w-10 h-10 bg-blue-600 scale-110 cursor-pointer`,
+          className: `${baseClasses} bg-blue-600 cursor-pointer`,
           tooltip: "Recording..."
         };
       case 'processing':
         return {
-          className: `${baseClasses} w-10 h-10 bg-purple-600 scale-105 cursor-not-allowed`,
+          className: `${baseClasses} bg-purple-600 cursor-not-allowed`,
           tooltip: "Processing..."
         };
       default:
         return {
-          className: `${baseClasses} w-8 h-8 bg-black/40 backdrop-blur-md border border-white/20 cursor-pointer`,
+          className: `${baseClasses} bg-black/40 backdrop-blur-md border border-white/20 cursor-pointer`,
+          style: { transform: 'scale(0.8)' },
           tooltip: "Click to speak"
         };
     }
@@ -334,7 +336,11 @@ export default function App() {
             onBlur={() => setIsHovered(false)}
             className={micProps.className}
             disabled={micState === 'processing'}
-            style={{ cursor: micState === 'processing' ? 'not-allowed !important' : 'pointer !important' }}
+            style={{
+              ...micProps.style,
+              cursor: micState === 'processing' ? 'not-allowed !important' : 'pointer !important',
+              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease-out'
+            }}
           >
             {/* Background effects */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent transition-opacity duration-150" style={{ opacity: micState === 'hover' ? 0.8 : 0 }}></div>

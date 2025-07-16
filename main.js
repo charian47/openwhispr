@@ -289,6 +289,13 @@ app.whenReady().then(async () => {
   } catch (error) {
     console.error('Error creating main window:', error);
   }
+  
+  // Auto-open control panel when app starts
+  try {
+    await createControlPanelWindow();
+  } catch (error) {
+    console.error('Error creating control panel window:', error);
+  }
 
   // Create tray icon on macOS
   if (process.platform === 'darwin') {
@@ -330,7 +337,29 @@ app.whenReady().then(async () => {
           trayIcon = nativeImage.createFromPath(iconPath);
         } else {
           console.error('Could not find tray icon in any expected location');
-          return; // Exit early if no icon found
+          console.log('Tried paths:', possiblePaths);
+          
+          // Create a fallback tray icon if the file isn't found
+          try {
+            // Create a simple fallback icon programmatically
+            const { nativeImage } = require('electron');
+            const canvas = require('canvas');
+            const canvasInstance = canvas.createCanvas(16, 16);
+            const ctx = canvasInstance.getContext('2d');
+            
+            // Draw a simple circle as fallback
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(8, 8, 6, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            const buffer = canvasInstance.toBuffer('image/png');
+            trayIcon = nativeImage.createFromBuffer(buffer);
+            console.log('✅ Created fallback tray icon');
+          } catch (fallbackError) {
+            console.error('Failed to create fallback tray icon:', fallbackError);
+            return; // Exit early if fallback also fails
+          }
         }
       }
       
@@ -344,13 +373,28 @@ app.whenReady().then(async () => {
       trayIcon.setTemplateImage(true);
       
       tray = new Tray(trayIcon);
+      
+      // Prevent tray from being garbage collected
+      tray.setIgnoreDoubleClickEvents(true);
+      
       const contextMenu = Menu.buildFromTemplate([
-        { label: 'Show', click: () => { mainWindow.show(); } },
+        { label: 'Show Dictation Panel', click: () => { 
+          if (!mainWindow.isVisible()) {
+            mainWindow.show();
+          }
+          mainWindow.focus();
+        }},
         { label: 'Open Control Panel', click: () => { createControlPanelWindow(); } },
-        { label: 'Quit', click: () => { app.quit(); } }
+        { type: 'separator' },
+        { label: 'Quit OpenWispr', click: () => { 
+          console.log('Quitting app via tray menu');
+          app.quit(); 
+        }}
       ]);
-      tray.setToolTip('OpenWispr');
+      
+      tray.setToolTip('OpenWispr - Voice Dictation');
       tray.setContextMenu(contextMenu);
+      
       tray.on('click', () => {
         // Always ensure the dictation panel is visible and focused
         if (!mainWindow.isVisible()) {
@@ -358,6 +402,14 @@ app.whenReady().then(async () => {
         }
         mainWindow.focus();
       });
+      
+      // Handle tray destruction to prevent crashes
+      tray.on('destroyed', () => {
+        console.log('Tray icon destroyed');
+        tray = null;
+      });
+      
+      console.log('✅ Tray icon created successfully');
     } catch (error) {
       console.error('Error creating tray icon:', error);
     }
