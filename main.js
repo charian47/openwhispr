@@ -4,6 +4,7 @@ const { spawn } = require("child_process")
 const Database = require('better-sqlite3')
 const fs = require('fs')
 const os = require('os')
+const UpdateManager = require('./src/updater')
 
 // Load .env file with better error handling and production support
 function loadEnvironmentVariables() {
@@ -39,6 +40,9 @@ function loadEnvironmentVariables() {
 
 // Load environment variables
 loadEnvironmentVariables();
+
+// Initialize update manager
+const updateManager = new UpdateManager();
 
 let mainWindow
 let tray = null
@@ -371,6 +375,10 @@ await new Promise((resolve, reject) => {
   } catch (error) {
     console.error('Error creating control panel window:', error);
   }
+  
+  // Set windows for update manager and check for updates
+  updateManager.setWindows(mainWindow, controlPanelWindow);
+  updateManager.checkForUpdatesOnStartup();
 
   // Create tray icon on macOS
   if (process.platform === 'darwin') {
@@ -1530,3 +1538,4 @@ ipcMain.handle('cleanup-app', async (event) => {
     throw error;
   }
 });
+

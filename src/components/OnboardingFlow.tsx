@@ -24,6 +24,7 @@ import {
   ArrowRight,
   X,
 } from "lucide-react";
+import TitleBar from "./TitleBar";
 
 // Type declaration for electronAPI
 declare global {
@@ -932,20 +933,15 @@ case 2:
       {/* Left margin line for entire page */}
       <div className="fixed left-6 md:left-12 top-0 bottom-0 w-px bg-red-300/40 z-0"></div>
       
-      {/* Header */}
-      <div className="bg-white backdrop-blur-xl border-b border-stone-200/60 px-6 md:pl-16 md:pr-6 py-4 relative z-10 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm" style={{ fontFamily: 'Noto Sans, sans-serif' }}>OW</span>
-            </div> */}
-            <h1 className="text-sm font-semibold text-stone-900" style={{ fontFamily: 'Noto Sans, sans-serif' }}>OpenWispr Setup</h1>
-          </div>
-          <div className="text-sm text-stone-500" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
-            Step {currentStep + 1} of {steps.length}
-          </div>
+      <TitleBar
+        title="OpenWispr Setup"
+        showTitle={true}
+        className="bg-white backdrop-blur-xl border-b border-stone-200/60 relative z-10 flex-shrink-0"
+      >
+        <div className="text-sm text-stone-500" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+          Step {currentStep + 1} of {steps.length}
         </div>
-      </div>
+      </TitleBar>
 
       {/* Progress Bar */}
       <div className="bg-white backdrop-blur-xl border-b border-stone-200/60 px-6 md:pl-16 md:pr-6 py-2 relative z-10 flex-shrink-0">

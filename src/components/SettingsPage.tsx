@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Tooltip } from "./ui/tooltip";
 import {
   RefreshCw,
   Download,
@@ -10,7 +9,9 @@ import {
   Keyboard,
   Info,
   Trash2,
+  ArrowLeft,
 } from "lucide-react";
+import TitleBar from "./TitleBar";
 
 // Type declaration for electronAPI
 declare global {
@@ -93,6 +94,31 @@ declare global {
       windowIsMaximized: () => Promise<boolean>;
       // Cleanup functions
       cleanupApp: () => Promise<void>;
+      // Update functions
+      checkForUpdates: () => Promise<{
+        updateAvailable: boolean;
+        version?: string;
+        releaseDate?: string;
+        files?: any[];
+        releaseNotes?: string;
+        message?: string;
+      }>;
+      downloadUpdate: () => Promise<{ success: boolean; message: string }>;
+      installUpdate: () => Promise<{ success: boolean; message: string }>;
+      getAppVersion: () => Promise<{ version: string }>;
+      getUpdateStatus: () => Promise<{
+        updateAvailable: boolean;
+        updateDownloaded: boolean;
+        isDevelopment: boolean;
+      }>;
+      // Update event listeners
+      onUpdateAvailable: (callback: (event: any, info: any) => void) => void;
+      onUpdateNotAvailable: (callback: (event: any, info: any) => void) => void;
+      onUpdateDownloaded: (callback: (event: any, info: any) => void) => void;
+      onUpdateDownloadProgress: (
+        callback: (event: any, progressObj: any) => void
+      ) => void;
+      onUpdateError: (callback: (event: any, error: any) => void) => void;
     };
   }
 }
@@ -104,7 +130,11 @@ interface TranscriptionItem {
   created_at: string;
 }
 
-export default function SettingsPage({ onClose }) {
+interface SettingsPageProps {
+  onBack: () => void;
+}
+
+export default function SettingsPage({ onBack }: SettingsPageProps) {
   const [key, setKey] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [useLocalWhisper, setUseLocalWhisper] = useState(false);
@@ -121,6 +151,22 @@ export default function SettingsPage({ onClose }) {
   const [installingWhisper, setInstallingWhisper] = useState(false);
   const [installProgress, setInstallProgress] = useState<string>("");
 
+  // Update state
+  const [currentVersion, setCurrentVersion] = useState<string>("");
+  const [updateStatus, setUpdateStatus] = useState<{
+    updateAvailable: boolean;
+    updateDownloaded: boolean;
+    isDevelopment: boolean;
+  }>({ updateAvailable: false, updateDownloaded: false, isDevelopment: false });
+  const [checkingForUpdates, setCheckingForUpdates] = useState(false);
+  const [downloadingUpdate, setDownloadingUpdate] = useState(false);
+  const [updateDownloadProgress, setUpdateDownloadProgress] = useState(0);
+  const [updateInfo, setUpdateInfo] = useState<{
+    version?: string;
+    releaseDate?: string;
+    releaseNotes?: string;
+  }>({});
+
   useEffect(() => {
     // Load saved settings
     const savedKey = localStorage.getItem("dictationKey");
@@ -129,7 +175,8 @@ export default function SettingsPage({ onClose }) {
     // Load Whisper settings
     const savedUseLocal = localStorage.getItem("useLocalWhisper") === "true";
     const savedModel = localStorage.getItem("whisperModel") || "base";
-    const savedAllowFallback = localStorage.getItem("allowOpenAIFallback") === "true";
+    const savedAllowFallback =
+      localStorage.getItem("allowOpenAIFallback") === "true";
     setUseLocalWhisper(savedUseLocal);
     setWhisperModel(savedModel);
     setAllowOpenAIFallback(savedAllowFallback);
@@ -152,7 +199,6 @@ export default function SettingsPage({ onClose }) {
 
     loadApiKey();
 
-
     // Check Whisper installation
     checkWhisperInstallation();
 
@@ -174,8 +220,49 @@ export default function SettingsPage({ onClose }) {
         setDownloadProgress(0);
       }
     });
-  }, []);
 
+    // Initialize update functionality
+    const initializeUpdateData = async () => {
+      try {
+        // Get current app version
+        const versionResult = await window.electronAPI.getAppVersion();
+        setCurrentVersion(versionResult.version);
+
+        // Get update status
+        const statusResult = await window.electronAPI.getUpdateStatus();
+        setUpdateStatus(statusResult);
+      } catch (error) {
+        console.error("Error initializing update data:", error);
+      }
+    };
+
+    initializeUpdateData();
+
+    // Set up update event listeners
+    window.electronAPI.onUpdateAvailable((event, info) => {
+      setUpdateStatus((prev) => ({ ...prev, updateAvailable: true }));
+      setUpdateInfo({
+        version: info.version,
+        releaseDate: info.releaseDate,
+        releaseNotes: info.releaseNotes,
+      });
+    });
+
+    window.electronAPI.onUpdateDownloaded((event, info) => {
+      setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
+      setDownloadingUpdate(false);
+    });
+
+    window.electronAPI.onUpdateDownloadProgress((event, progressObj) => {
+      setUpdateDownloadProgress(progressObj.percent || 0);
+    });
+
+    window.electronAPI.onUpdateError((event, error) => {
+      setCheckingForUpdates(false);
+      setDownloadingUpdate(false);
+      console.error("Update error:", error);
+    });
+  }, []);
 
   const checkWhisperInstallation = async () => {
     try {
@@ -305,22 +392,22 @@ export default function SettingsPage({ onClose }) {
     localStorage.setItem("useLocalWhisper", useLocalWhisper.toString());
     localStorage.setItem("whisperModel", whisperModel);
     localStorage.setItem("allowOpenAIFallback", allowOpenAIFallback.toString());
-    
+
     // Also save API key if fallback is enabled and key is provided
     if (allowOpenAIFallback && apiKey.trim()) {
       localStorage.setItem("openaiApiKey", apiKey);
     }
-    
+
     alert(
       `Whisper settings saved! ${
         useLocalWhisper
-          ? `Using local model: ${whisperModel}${allowOpenAIFallback ? ' with OpenAI fallback' : ''}`
+          ? `Using local model: ${whisperModel}${
+              allowOpenAIFallback ? " with OpenAI fallback" : ""
+            }`
           : "Using OpenAI API"
       }`
     );
   };
-
-
 
   const requestPermissions = async () => {
     try {
@@ -361,8 +448,6 @@ export default function SettingsPage({ onClose }) {
     }
   };
 
-
-
   // Enhanced keyboard paste handler for API key input
   const handleApiKeyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Handle Cmd+V on Mac or Ctrl+V on Windows/Linux
@@ -390,21 +475,15 @@ export default function SettingsPage({ onClose }) {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Custom Title Bar - matching Wispr Flow style */}
-      <div className="bg-white border-b border-gray-100 select-none">
-        <div
-          className="flex items-center justify-between h-12 px-4"
-          style={{ WebkitAppRegion: "drag" }}
-        >
-          {/* Right section - minimal controls */}
-          <div
-            className="flex items-center gap-2"
-            style={{ WebkitAppRegion: "no-drag" }}
-          >
-            {/* Could add settings or other controls here if needed */}
-          </div>
-        </div>
-      </div>
+      <TitleBar
+        title="Settings"
+        showTitle={true}
+        actions={
+          <Button variant="ghost" size="icon" onClick={onBack}>
+            <ArrowLeft size={16} />
+          </Button>
+        }
+      />
 
       {/* Main content */}
       <div
@@ -611,17 +690,31 @@ export default function SettingsPage({ onClose }) {
                                 type="checkbox"
                                 className="sr-only"
                                 checked={allowOpenAIFallback}
-                                onChange={(e) => setAllowOpenAIFallback(e.target.checked)}
+                                onChange={(e) =>
+                                  setAllowOpenAIFallback(e.target.checked)
+                                }
                               />
-                              <div className={`w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-purple-300 ${allowOpenAIFallback ? 'bg-purple-600' : 'bg-gray-300'} transition-colors duration-200`}>
-                                <div className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${allowOpenAIFallback ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                              <div
+                                className={`w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-purple-300 ${
+                                  allowOpenAIFallback
+                                    ? "bg-purple-600"
+                                    : "bg-gray-300"
+                                } transition-colors duration-200`}
+                              >
+                                <div
+                                  className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${
+                                    allowOpenAIFallback
+                                      ? "translate-x-5"
+                                      : "translate-x-0"
+                                  }`}
+                                ></div>
                               </div>
                             </label>
                           </div>
                           <p className="text-xs text-purple-700">
                             If local processing fails, try OpenAI API as backup
                           </p>
-                          
+
                           {/* API Key field - only show if fallback is enabled */}
                           {allowOpenAIFallback && (
                             <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
@@ -641,11 +734,13 @@ export default function SettingsPage({ onClose }) {
                                   size="sm"
                                   onClick={async () => {
                                     try {
-                                      const text = await window.electronAPI.readClipboard();
+                                      const text =
+                                        await window.electronAPI.readClipboard();
                                       if (text && text.trim()) {
                                         setApiKey(text.trim());
                                       } else {
-                                        const webText = await navigator.clipboard.readText();
+                                        const webText =
+                                          await navigator.clipboard.readText();
                                         setApiKey(webText.trim());
                                       }
                                     } catch (err) {
@@ -903,6 +998,171 @@ export default function SettingsPage({ onClose }) {
             </CardContent>
           </Card>
 
+          {/* Updates Card */}
+          <Card className="bg-white relative z-10">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <RefreshCw size={18} className="text-indigo-600" />
+                App Updates
+              </CardTitle>
+              <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
+                Keep OpenWispr up to date with the latest features and
+                improvements.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-neutral-800">
+                    Current Version
+                  </p>
+                  <p className="text-xs text-neutral-600">
+                    {currentVersion || "Loading..."}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {updateStatus.isDevelopment ? (
+                    <span className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-full">
+                      Development Mode
+                    </span>
+                  ) : updateStatus.updateAvailable ? (
+                    <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                      Update Available
+                    </span>
+                  ) : (
+                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded-full">
+                      Up to Date
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Button
+                  onClick={async () => {
+                    setCheckingForUpdates(true);
+                    try {
+                      const result = await window.electronAPI.checkForUpdates();
+                      if (result.updateAvailable) {
+                        setUpdateInfo({
+                          version: result.version,
+                          releaseDate: result.releaseDate,
+                          releaseNotes: result.releaseNotes,
+                        });
+                        setUpdateStatus((prev) => ({
+                          ...prev,
+                          updateAvailable: true,
+                        }));
+                        alert(`Update available: v${result.version}`);
+                      } else {
+                        alert(result.message || "No updates available");
+                      }
+                    } catch (error) {
+                      alert(`Error checking for updates: ${error.message}`);
+                    } finally {
+                      setCheckingForUpdates(false);
+                    }
+                  }}
+                  disabled={checkingForUpdates || updateStatus.isDevelopment}
+                  className="w-full"
+                >
+                  {checkingForUpdates ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin mr-2" />
+                      Checking for Updates...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={16} className="mr-2" />
+                      Check for Updates
+                    </>
+                  )}
+                </Button>
+
+                {updateStatus.updateAvailable &&
+                  !updateStatus.updateDownloaded && (
+                    <Button
+                      onClick={async () => {
+                        setDownloadingUpdate(true);
+                        try {
+                          await window.electronAPI.downloadUpdate();
+                          setUpdateStatus((prev) => ({
+                            ...prev,
+                            updateDownloaded: true,
+                          }));
+                          alert(
+                            "Update downloaded successfully! You can now install it."
+                          );
+                        } catch (error) {
+                          alert(`Error downloading update: ${error.message}`);
+                        } finally {
+                          setDownloadingUpdate(false);
+                        }
+                      }}
+                      disabled={downloadingUpdate || updateStatus.isDevelopment}
+                      className="w-full"
+                    >
+                      {downloadingUpdate ? (
+                        <>
+                          <Download size={16} className="animate-bounce mr-2" />
+                          Downloading Update...
+                        </>
+                      ) : (
+                        <>
+                          <Download size={16} className="mr-2" />
+                          Download Update
+                        </>
+                      )}
+                    </Button>
+                  )}
+
+                {updateStatus.updateDownloaded && (
+                  <Button
+                    onClick={async () => {
+                      try {
+                        await window.electronAPI.installUpdate();
+                      } catch (error) {
+                        alert(`Error installing update: ${error.message}`);
+                      }
+                    }}
+                    disabled={updateStatus.isDevelopment}
+                    className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                    <span className="mr-2">🔄</span>
+                    Install Update & Restart
+                  </Button>
+                )}
+
+                {updateInfo.version && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-1">
+                      Update Details
+                    </h4>
+                    <p className="text-sm text-blue-800 mb-1">
+                      Version: {updateInfo.version}
+                    </p>
+                    {updateInfo.releaseDate && (
+                      <p className="text-sm text-blue-700 mb-2">
+                        Released:{" "}
+                        {new Date(updateInfo.releaseDate).toLocaleDateString()}
+                      </p>
+                    )}
+                    {updateInfo.releaseNotes && (
+                      <details className="text-sm text-blue-700">
+                        <summary className="cursor-pointer font-medium">
+                          Release Notes
+                        </summary>
+                        <div className="mt-2 whitespace-pre-wrap">
+                          {updateInfo.releaseNotes}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* About Card */}
           <Card className="bg-white relative z-10">
             <CardHeader>
@@ -963,7 +1223,7 @@ export default function SettingsPage({ onClose }) {
                   <span className="mr-2">🔄</span>
                   Reset Onboarding
                 </Button>
-                
+
                 {/* Cleanup App Data */}
                 <Button
                   onClick={() => {
@@ -972,14 +1232,19 @@ export default function SettingsPage({ onClose }) {
                         "⚠️ DANGER: This will permanently delete ALL OpenWispr data including:\n\n• Database and transcriptions\n• Local storage settings\n• Downloaded Whisper models\n• Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone. Are you sure?"
                       )
                     ) {
-                      window.electronAPI.cleanupApp().then(() => {
-                        alert("✅ Cleanup completed! All app data has been removed.");
-                        setTimeout(() => {
-                          window.location.reload();
-                        }, 1000);
-                      }).catch((error) => {
-                        alert(`❌ Cleanup failed: ${error.message}`);
-                      });
+                      window.electronAPI
+                        .cleanupApp()
+                        .then(() => {
+                          alert(
+                            "✅ Cleanup completed! All app data has been removed."
+                          );
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 1000);
+                        })
+                        .catch((error) => {
+                          alert(`❌ Cleanup failed: ${error.message}`);
+                        });
                     }
                   }}
                   variant="outline"

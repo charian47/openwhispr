@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import SettingsPage from "./SettingsPage";
+import TitleBar from "./TitleBar";
 
 // Type declaration for electronAPI
 declare global {
@@ -101,6 +102,29 @@ declare global {
       windowMaximize: () => Promise<void>;
       windowClose: () => Promise<void>;
       windowIsMaximized: () => Promise<boolean>;
+      // Update functions
+      checkForUpdates: () => Promise<{
+        updateAvailable: boolean;
+        version?: string;
+        releaseDate?: string;
+        files?: any[];
+        releaseNotes?: string;
+        message?: string;
+      }>;
+      downloadUpdate: () => Promise<{ success: boolean; message: string }>;
+      installUpdate: () => Promise<{ success: boolean; message: string }>;
+      getAppVersion: () => Promise<{ version: string }>;
+      getUpdateStatus: () => Promise<{
+        updateAvailable: boolean;
+        updateDownloaded: boolean;
+        isDevelopment: boolean;
+      }>;
+      // Update event listeners
+      onUpdateAvailable: (callback: (event: any, info: any) => void) => void;
+      onUpdateNotAvailable: (callback: (event: any, info: any) => void) => void;
+      onUpdateDownloaded: (callback: (event: any, info: any) => void) => void;
+      onUpdateDownloadProgress: (callback: (event: any, progressObj: any) => void) => void;
+      onUpdateError: (callback: (event: any, error: any) => void) => void;
     };
   }
 }
@@ -116,10 +140,40 @@ export default function ControlPanel() {
   const [history, setHistory] = useState<TranscriptionItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [updateDownloaded, setUpdateDownloaded] = useState(false);
+  const [isDevelopment, setIsDevelopment] = useState(false);
 
   useEffect(() => {
     // Load transcription history from database
     loadTranscriptions();
+
+    // Initialize update status
+    const initializeUpdateStatus = async () => {
+      try {
+        const status = await window.electronAPI.getUpdateStatus();
+        setUpdateAvailable(status.updateAvailable);
+        setUpdateDownloaded(status.updateDownloaded);
+        setIsDevelopment(status.isDevelopment);
+      } catch (error) {
+        console.error('Error initializing update status:', error);
+      }
+    };
+
+    initializeUpdateStatus();
+
+    // Set up update event listeners
+    window.electronAPI.onUpdateAvailable((event, info) => {
+      setUpdateAvailable(true);
+    });
+
+    window.electronAPI.onUpdateDownloaded((event, info) => {
+      setUpdateDownloaded(true);
+    });
+
+    window.electronAPI.onUpdateError((event, error) => {
+      console.error('Update error:', error);
+    });
   }, []);
 
   const loadTranscriptions = async () => {
@@ -189,20 +243,15 @@ export default function ControlPanel() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Custom Title Bar */}
-      <div className="bg-white border-b border-gray-100 select-none">
-        <div
-          className="flex items-center justify-between h-12 px-4"
-          style={{ WebkitAppRegion: "drag" }}
-        >
-          {/* Left section - empty for drag area */}
-          <div></div>
-
-          {/* Right section - settings control */}
-          <div
-            className="flex items-center gap-2"
-            style={{ WebkitAppRegion: "no-drag" }}
-          >
+      <TitleBar
+        actions={
+          <>
+            {/* Update notification badge */}
+            {!isDevelopment && (updateAvailable || updateDownloaded) && (
+              <div className="relative">
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+              </div>
+            )}
             <Tooltip content="Open settings">
               <Button
                 variant="ghost"
@@ -212,9 +261,9 @@ export default function ControlPanel() {
                 <Settings size={16} />
               </Button>
             </Tooltip>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Main content */}
       <div className="p-6">
