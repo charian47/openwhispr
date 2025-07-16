@@ -639,6 +639,10 @@ ipcMain.handle('window-is-maximized', () => {
 // IPC handlers
 ipcMain.handle("paste-text", async (event, text) => {
   try {
+    // Save original clipboard content first
+    const originalClipboard = clipboard.readText();
+    console.log('💾 Saved original clipboard content:', originalClipboard.substring(0, 50) + '...');
+    
     // Copy text to clipboard first - this always works
     clipboard.writeText(text);
     console.log('📋 Text copied to clipboard:', text.substring(0, 50) + '...');
@@ -678,6 +682,11 @@ ipcMain.handle("paste-text", async (event, text) => {
             
             if (code === 0) {
               console.log('✅ Text pasted successfully via Cmd+V simulation');
+              // Restore original clipboard content
+              setTimeout(() => {
+                clipboard.writeText(originalClipboard);
+                console.log('🔄 Original clipboard content restored');
+              }, 100); // Small delay to ensure paste is complete
               resolve();
             } else {
               console.error('❌ Failed to paste text, code:', code);
@@ -723,6 +732,11 @@ ipcMain.handle("paste-text", async (event, text) => {
         pasteProcess.on('close', (code) => {
           if (code === 0) {
             console.log('✅ Text pasted successfully on Windows');
+            // Restore original clipboard content
+            setTimeout(() => {
+              clipboard.writeText(originalClipboard);
+              console.log('🔄 Original clipboard content restored');
+            }, 100);
             resolve();
           } else {
             console.error('❌ Failed to paste on Windows, code:', code);
@@ -744,6 +758,11 @@ ipcMain.handle("paste-text", async (event, text) => {
         pasteProcess.on('close', (code) => {
           if (code === 0) {
             console.log('✅ Text pasted successfully on Linux');
+            // Restore original clipboard content
+            setTimeout(() => {
+              clipboard.writeText(originalClipboard);
+              console.log('🔄 Original clipboard content restored');
+            }, 100);
             resolve();
           } else {
             console.error('❌ Failed to paste on Linux, code:', code);

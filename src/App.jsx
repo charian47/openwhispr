@@ -141,8 +141,10 @@ export default function App() {
         throw new Error(`Local Whisper not available: ${installCheck.error || 'Installation check failed'}`);
       }
 
+      // Convert Blob to ArrayBuffer for IPC transfer
+      const arrayBuffer = await audioBlob.arrayBuffer();
       const options = { model };
-      const result = await window.electronAPI.transcribeLocalWhisper(audioBlob, options);
+      const result = await window.electronAPI.transcribeLocalWhisper(arrayBuffer, options);
       
       if (result.success && result.text) {
         const text = result.text.trim();
@@ -291,12 +293,12 @@ export default function App() {
   
   // Get microphone button properties based on state
   const getMicButtonProps = () => {
-    const baseClasses = 'rounded-full w-10 h-10 flex items-center justify-center relative overflow-hidden cursor-pointer';
+    const baseClasses = 'rounded-full w-10 h-10 flex items-center justify-center relative overflow-hidden border-2 border-white/70 cursor-pointer';
     
     switch (micState) {
       case 'idle':
         return {
-          className: `${baseClasses} bg-black/50 cursor-pointer border-2 border-white/70`,
+          className: `${baseClasses} bg-black/50 cursor-pointer`,
           tooltip: "Click to speak"
         };
       case 'hover':
