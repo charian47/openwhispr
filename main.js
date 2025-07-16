@@ -206,6 +206,16 @@ async function createControlPanelWindow() {
     title: 'OpenWispr Control Panel',
     resizable: true,
     show: true,
+    // Native macOS traffic lights with custom title bar
+    titleBarStyle: 'hiddenInset',
+    frame: false,
+    transparent: false,
+    backgroundColor: '#ffffff',
+    // Window behavior
+    minimizable: true,
+    maximizable: true,
+    closable: true,
+    fullscreenable: true,
   });
   
   // Load control panel with same retry logic
@@ -519,6 +529,36 @@ Would you like to open System Settings now?`;
     });
   });
 }
+
+// Window control IPC handlers
+ipcMain.handle('window-minimize', () => {
+  if (controlPanelWindow) {
+    controlPanelWindow.minimize();
+  }
+});
+
+ipcMain.handle('window-maximize', () => {
+  if (controlPanelWindow) {
+    if (controlPanelWindow.isMaximized()) {
+      controlPanelWindow.unmaximize();
+    } else {
+      controlPanelWindow.maximize();
+    }
+  }
+});
+
+ipcMain.handle('window-close', () => {
+  if (controlPanelWindow) {
+    controlPanelWindow.close();
+  }
+});
+
+ipcMain.handle('window-is-maximized', () => {
+  if (controlPanelWindow) {
+    return controlPanelWindow.isMaximized();
+  }
+  return false;
+});
 
 // IPC handlers
 ipcMain.handle("paste-text", async (event, text) => {

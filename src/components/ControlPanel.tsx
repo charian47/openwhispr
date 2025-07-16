@@ -15,6 +15,10 @@ import {
   FileText,
   Info,
   Mic,
+  Minus,
+  Square,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 // Type declaration for electronAPI
@@ -51,9 +55,7 @@ declare global {
           data: { type: string; message: string; output?: string }
         ) => void
       ) => void;
-      downloadWhisperModel: (
-        modelName: string
-      ) => Promise<{
+      downloadWhisperModel: (modelName: string) => Promise<{
         success: boolean;
         model: string;
         downloaded: boolean;
@@ -74,9 +76,7 @@ declare global {
           }
         ) => void
       ) => void;
-      checkModelStatus: (
-        modelName: string
-      ) => Promise<{
+      checkModelStatus: (modelName: string) => Promise<{
         success: boolean;
         model: string;
         downloaded: boolean;
@@ -88,15 +88,18 @@ declare global {
         models: Array<{ model: string; downloaded: boolean; size_mb?: number }>;
         cache_dir: string;
       }>;
-      deleteWhisperModel: (
-        modelName: string
-      ) => Promise<{
+      deleteWhisperModel: (modelName: string) => Promise<{
         success: boolean;
         model: string;
         deleted: boolean;
         freed_mb?: number;
         error?: string;
       }>;
+      // Window control functions
+      windowMinimize: () => Promise<void>;
+      windowMaximize: () => Promise<void>;
+      windowClose: () => Promise<void>;
+      windowIsMaximized: () => Promise<boolean>;
     };
   }
 }
@@ -498,22 +501,22 @@ Click OK when you're ready to open System Settings.`;
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-indigo-50/30 p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <div className="flex items-center justify-center mb-6">
-            <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
-              <span className="text-white text-xl font-medium">W</span>
-            </div>
+return (
+    <div className="min-h-screen bg-white">
+      {/* Custom Title Bar - matching Wispr Flow style */}
+      <div className="bg-white border-b border-gray-100 select-none">
+        <div className="flex items-center justify-between h-12 px-4" style={{ WebkitAppRegion: 'drag' }}>
+          
+          {/* Right section - minimal controls */}
+          <div className="flex items-center gap-2" style={{ WebkitAppRegion: 'no-drag' }}>
+            {/* Could add settings or other controls here if needed */}
           </div>
-          <h1 className="text-3xl font-semibold text-neutral-900 mb-2">
-            OpenWispr
-          </h1>
-          <p className="text-neutral-600">Your voice, your data, your AI</p>
         </div>
-
+      </div>
+      
+      {/* Main content */}
+      <div className="bg-gradient-to-br from-neutral-50 via-white to-indigo-50/30 p-6">
+        <div className="max-w-4xl mx-auto space-y-6">
         {/* Transcription Setup Card */}
         <Card>
           <CardHeader>
@@ -1104,6 +1107,7 @@ Click OK when you're ready to open System Settings.`;
           <p className="text-neutral-500 text-sm">
             Built for thinkers who move at the speed of thought
           </p>
+        </div>
         </div>
       </div>
     </div>

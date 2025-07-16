@@ -29,4 +29,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkModelStatus: (modelName) => ipcRenderer.invoke('check-model-status', modelName),
   listWhisperModels: () => ipcRenderer.invoke('list-whisper-models'),
   deleteWhisperModel: (modelName) => ipcRenderer.invoke('delete-whisper-model', modelName),
-}); 
+  
+  // Window control functions
+  windowMinimize: () => ipcRenderer.invoke('window-minimize'),
+  windowMaximize: () => ipcRenderer.invoke('window-maximize'),
+  windowClose: () => ipcRenderer.invoke('window-close'),
+  windowIsMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+});
