@@ -994,6 +994,15 @@ ipcMain.handle('transcribe-local-whisper', async (event, audioBlob, options = {}
         if (code === 0) {
           try {
             const result = JSON.parse(stdout);
+            
+            // Check if the transcription is empty or just whitespace
+            if (!result.text || result.text.trim().length === 0) {
+              console.log('🛑 No meaningful audio content detected (empty transcription)');
+              event.sender.send('no-audio-detected');
+              resolve({ success: false, message: 'No audio detected' });
+              return;
+            }
+            
             console.log('✅ Whisper transcription successful:', result.text?.substring(0, 50) + '...');
             resolve(result);
           } catch (parseError) {
@@ -1001,9 +1010,15 @@ ipcMain.handle('transcribe-local-whisper', async (event, audioBlob, options = {}
             reject(new Error(`Failed to parse Whisper output: ${parseError.message}`));
           }
         } else {
-          console.error('❌ Whisper process failed with code:', code);
-          console.error('Stderr:', stderr);
-          reject(new Error(`Whisper transcription failed (code ${code}): ${stderr}`));
+          if (stderr.includes('no audio') || stderr.includes('empty')) {
+            console.log('🛑 No audio content detected');
+            event.sender.send('no-audio-detected'); // Could trigger a tooltip in the UI
+            resolve({ success: false, message: 'No audio detected' });
+          } else {
+            console.error('❌ Whisper process failed with code:', code);
+            console.error('Stderr:', stderr);
+            reject(new Error(`Whisper transcription failed (code ${code}): ${stderr}`));
+          }
         }
       });
       

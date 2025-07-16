@@ -164,6 +164,10 @@ export default function App() {
         } else {
           setError('No text transcribed. Try again.');
         }
+      } else if (result.success === false && result.message === 'No audio detected') {
+        // Handle no audio detected case - don't show as error, just a brief message
+        setError('No audio detected');
+        return; // Don't attempt fallback for no audio
       } else {
         throw new Error(result.error || 'Local Whisper transcription failed');
       }
@@ -171,7 +175,7 @@ export default function App() {
     } catch (err) {
       console.error("Local Whisper error:", err);
       // Check if we should attempt fallback to OpenAI API
-      const allowFallback = localStorage.getItem('allowOpenAIFallback') !== 'false';
+      const allowFallback = localStorage.getItem('allowOpenAIFallback') === 'true';
       
       if (allowFallback) {
         setError('Local Whisper failed. Retrying with OpenAI API...');

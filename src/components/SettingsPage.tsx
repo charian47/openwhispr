@@ -116,6 +116,7 @@ export default function SettingsPage({ onClose }) {
   const [apiKey, setApiKey] = useState("");
   const [useLocalWhisper, setUseLocalWhisper] = useState(false);
   const [whisperModel, setWhisperModel] = useState("base");
+  const [allowOpenAIFallback, setAllowOpenAIFallback] = useState(false);
   const [history, setHistory] = useState<TranscriptionItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [whisperInstalled, setWhisperInstalled] = useState(false);
@@ -137,8 +138,10 @@ export default function SettingsPage({ onClose }) {
     // Load Whisper settings
     const savedUseLocal = localStorage.getItem("useLocalWhisper") === "true";
     const savedModel = localStorage.getItem("whisperModel") || "base";
+    const savedAllowFallback = localStorage.getItem("allowOpenAIFallback") === "true";
     setUseLocalWhisper(savedUseLocal);
     setWhisperModel(savedModel);
+    setAllowOpenAIFallback(savedAllowFallback);
 
     // Load API key from main process first, then fallback to localStorage
     const loadApiKey = async () => {
@@ -322,10 +325,17 @@ export default function SettingsPage({ onClose }) {
   const saveWhisperSettings = () => {
     localStorage.setItem("useLocalWhisper", useLocalWhisper.toString());
     localStorage.setItem("whisperModel", whisperModel);
+    localStorage.setItem("allowOpenAIFallback", allowOpenAIFallback.toString());
+    
+    // Also save API key if fallback is enabled and key is provided
+    if (allowOpenAIFallback && apiKey.trim()) {
+      localStorage.setItem("openaiApiKey", apiKey);
+    }
+    
     alert(
       `Whisper settings saved! ${
         useLocalWhisper
-          ? `Using local model: ${whisperModel}`
+          ? `Using local model: ${whisperModel}${allowOpenAIFallback ? ' with OpenAI fallback' : ''}`
           : "Using OpenAI API"
       }`
     );
@@ -658,6 +668,70 @@ export default function SettingsPage({ onClose }) {
                             Larger models need more memory but give better
                             results.
                           </p>
+                        </div>
+
+                        {/* OpenAI Fallback Toggle */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium text-purple-800">
+                              Fall back to OpenAI API
+                            </label>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={allowOpenAIFallback}
+                                onChange={(e) => setAllowOpenAIFallback(e.target.checked)}
+                              />
+                              <div className={`w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-purple-300 ${allowOpenAIFallback ? 'bg-purple-600' : 'bg-gray-300'} transition-colors duration-200`}>
+                                <div className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${allowOpenAIFallback ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                              </div>
+                            </label>
+                          </div>
+                          <p className="text-xs text-purple-700">
+                            If local processing fails, try OpenAI API as backup
+                          </p>
+                          
+                          {/* API Key field - only show if fallback is enabled */}
+                          {allowOpenAIFallback && (
+                            <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                              <label className="block text-sm font-medium text-purple-800 mb-2">
+                                OpenAI API Key (for fallback)
+                              </label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="password"
+                                  placeholder="sk-..."
+                                  value={apiKey}
+                                  onChange={(e) => setApiKey(e.target.value)}
+                                  className="flex-1 text-sm border-purple-300 focus:border-purple-500"
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      const text = await window.electronAPI.readClipboard();
+                                      if (text && text.trim()) {
+                                        setApiKey(text.trim());
+                                      } else {
+                                        const webText = await navigator.clipboard.readText();
+                                        setApiKey(webText.trim());
+                                      }
+                                    } catch (err) {
+                                      alert("Could not paste from clipboard.");
+                                    }
+                                  }}
+                                  className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                                >
+                                  Paste
+                                </Button>
+                              </div>
+                              <p className="text-xs text-purple-600 mt-1">
+                                Only used if local processing fails
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         <div className="bg-white border border-purple-200 rounded-lg overflow-hidden">
