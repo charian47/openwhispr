@@ -240,41 +240,66 @@ async function createControlPanelWindow() {
 }
 
 // Database setup
-let db;
+let db = null;
 
 function initDatabase() {
-  // Use different database files for development vs production
-  const dbFileName = process.env.NODE_ENV === 'development' 
-    ? 'transcriptions-dev.db' 
-    : 'transcriptions.db';
-  
-  const dbPath = path.join(app.getPath('userData'), dbFileName);
-  // Database initialization
-  
-  db = new Database(dbPath);
-  
-  // Create transcriptions table if it doesn't exist
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS transcriptions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      text TEXT NOT NULL,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  
-  // Get count of existing transcriptions
-  const countStmt = db.prepare('SELECT COUNT(*) as count FROM transcriptions');
-  const { count } = countStmt.get();
-  
-  console.log(`✅ Database initialized successfully (${count} existing transcriptions)`);
+  try {
+    console.log('🔄 Starting database initialization...');
+    
+    // Use different database files for development vs production
+    const dbFileName = process.env.NODE_ENV === 'development' 
+      ? 'transcriptions-dev.db' 
+      : 'transcriptions.db';
+    
+    const dbPath = path.join(app.getPath('userData'), dbFileName);
+    console.log('📁 Database path:', dbPath);
+    
+    // Database initialization
+    console.log('🔧 Creating database connection...');
+    db = new Database(dbPath);
+    console.log('✅ Database connection created');
+    
+    // Create transcriptions table if it doesn't exist
+    console.log('📋 Creating transcriptions table...');
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS transcriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        text TEXT NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Transcriptions table created/verified');
+    
+    // Get count of existing transcriptions
+    console.log('📊 Counting existing transcriptions...');
+    const countStmt = db.prepare('SELECT COUNT(*) as count FROM transcriptions');
+    const { count } = countStmt.get();
+    
+    console.log(`✅ Database initialized successfully (${count} existing transcriptions)`);
+    return true;
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack
+    });
+    throw error;
+  }
 }
 
 app.whenReady().then(async () => {
   
   // Initialize database
   try {
-    initDatabase();
+await new Promise((resolve, reject) => {
+      try {
+        initDatabase();
+        resolve();
+      } catch (error) {
+        reject('Failed to initialize database: ' + error);
+      }
+    });
   } catch (error) {
     console.error('Failed to initialize database:', error);
   }
@@ -750,6 +775,9 @@ ipcMain.handle("hide-window", () => {
 // Database IPC handlers
 ipcMain.handle('db-save-transcription', async (event, text) => {
   try {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
     const stmt = db.prepare('INSERT INTO transcriptions (text) VALUES (?)');
     const result = stmt.run(text);
     
@@ -769,6 +797,9 @@ ipcMain.handle('db-save-transcription', async (event, text) => {
 
 ipcMain.handle('db-get-transcriptions', async (event, limit = 50) => {
   try {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
     const stmt = db.prepare('SELECT * FROM transcriptions ORDER BY timestamp DESC LIMIT ?');
     const transcriptions = stmt.all(limit);
     console.log(`📚 Retrieved ${transcriptions.length} transcriptions from ${process.env.NODE_ENV || 'production'} DB (limit: ${limit})`);
@@ -781,6 +812,9 @@ ipcMain.handle('db-get-transcriptions', async (event, limit = 50) => {
 
 ipcMain.handle('db-clear-transcriptions', async (event) => {
   try {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
     const stmt = db.prepare('DELETE FROM transcriptions');
     const result = stmt.run();
     console.log(`🗑️ Cleared ${result.changes} transcriptions from ${process.env.NODE_ENV || 'production'} DB`);
@@ -793,6 +827,9 @@ ipcMain.handle('db-clear-transcriptions', async (event) => {
 
 ipcMain.handle('db-delete-transcription', async (event, id) => {
   try {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
     const stmt = db.prepare('DELETE FROM transcriptions WHERE id = ?');
     const result = stmt.run(id);
     console.log(`🗑️ Deleted transcription ${id}, affected rows: ${result.changes}`);
@@ -875,7 +912,23 @@ ipcMain.handle('transcribe-local-whisper', async (event, audioBlob, options = {}
     
     // Convert Blob to Buffer and write to temp file
     console.log('💾 Writing audio to temp file:', tempAudioPath);
-    const buffer = Buffer.from(await audioBlob.arrayBuffer());
+    
+    // Handle different audio data formats
+    let buffer;
+    if (audioBlob instanceof ArrayBuffer) {
+      buffer = Buffer.from(audioBlob);
+    } else if (audioBlob instanceof Uint8Array) {
+      buffer = Buffer.from(audioBlob);
+    } else if (typeof audioBlob === 'string') {
+      // Base64 encoded audio data
+      buffer = Buffer.from(audioBlob, 'base64');
+    } else if (audioBlob && audioBlob.buffer) {
+      // TypedArray with buffer property
+      buffer = Buffer.from(audioBlob.buffer);
+    } else {
+      throw new Error(`Unsupported audio data type: ${typeof audioBlob}`);
+    }
+    
     fs.writeFileSync(tempAudioPath, buffer);
     
     // Prepare Whisper command

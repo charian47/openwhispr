@@ -31,6 +31,8 @@
   "author": "OpenWispr Team",
   "license": "MIT",
   "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
+    "@esbuild/darwin-arm64": "^0.25.5",
     "@eslint/js": "^9.25.0",
     "@tailwindcss/vite": "^4.1.10",
     "@types/react": "^19.1.2",

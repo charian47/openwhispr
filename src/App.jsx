@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
-import { Button } from "./components/ui/button";
-import { Card, CardContent } from "./components/ui/card";
 import { Toast } from "./components/ui/Toast";
 import { LoadingDots } from "./components/ui/LoadingDots";
-import { Mic, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -170,9 +168,15 @@ export default function App() {
       
     } catch (err) {
       console.error("Local Whisper error:", err);
-      // Fallback to OpenAI API if local fails
-      setError('Local Whisper failed, trying OpenAI API...');
-      await processWithOpenAIAPI(audioBlob);
+      // Check if we should attempt fallback to OpenAI API
+      const allowFallback = localStorage.getItem('allowOpenAIFallback') !== 'false';
+      
+      if (allowFallback) {
+        setError('Local Whisper failed. Retrying with OpenAI API...');
+        await processWithOpenAIAPI(audioBlob);
+      } else {
+        throw new Error(`Local Whisper failed: ${err.message}`);
+      }
     }
   };
 
