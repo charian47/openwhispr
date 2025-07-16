@@ -394,7 +394,7 @@ export default function ControlPanel() {
   const resetAccessibilityPermissions = () => {
     const message = `🔄 RESET ACCESSIBILITY PERMISSIONS
 
-If you've rebuilt or reinstalled OpenScribe and automatic inscription isn't functioning, you may have obsolete permissions from the previous version.
+If you've rebuilt or reinstalled OpenWispr and automatic inscription isn't functioning, you may have obsolete permissions from the previous version.
 
 📋 STEP-BY-STEP RESTORATION:
 
@@ -404,8 +404,8 @@ If you've rebuilt or reinstalled OpenScribe and automatic inscription isn't func
 
 2️⃣ Navigate to Privacy & Security → Accessibility
 
-3️⃣ Look for obsolete OpenScribe entries:
-   • Any entries named "OpenScribe"
+3️⃣ Look for obsolete OpenWispr entries:
+   • Any entries named "OpenWispr"
    • Any entries named "Electron" 
    • Any entries with unclear or generic names
    • Entries pointing to old application locations
@@ -415,12 +415,12 @@ If you've rebuilt or reinstalled OpenScribe and automatic inscription isn't func
    • Click the minus (-) button
    • Enter your password if prompted
 
-5️⃣ Add the current OpenScribe:
+5️⃣ Add the current OpenWispr:
    • Click the plus (+) button
-   • Navigate to and select the CURRENT OpenScribe app
+   • Navigate to and select the CURRENT OpenWispr app
    • Ensure the checkbox is ENABLED
 
-6️⃣ Restart OpenScribe completely
+6️⃣ Restart OpenWispr completely
 
 💡 This is very common during development when rebuilding applications!
 

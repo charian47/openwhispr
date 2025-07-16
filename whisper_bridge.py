@@ -307,7 +307,7 @@ def transcribe_audio(audio_path, model_name="base", language=None):
         }
 
 def main():
-    parser = argparse.ArgumentParser(description="Whisper Bridge for OpenScribe")
+    parser = argparse.ArgumentParser(description="Whisper Bridge for OpenWispr")
     parser.add_argument("--mode", default="transcribe", 
                        choices=["transcribe", "download", "check", "list", "delete"],
                        help="Operation mode (default: transcribe)")

@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **[BREAKING]** Project rebranded from "OpenScribe" to "OpenWispr"
+- **[BREAKING]** Project rebranded from "OpenWispr" to "OpenWispr"
 - Cleaned up excessive developer logging for better user experience
 - Improved console output clarity by removing verbose operational messages
 
@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2024-XX-XX
 
 ### Added
-- Initial release of OpenWispr (formerly OpenScribe)
+- Initial release of OpenWispr (formerly OpenWispr)
 - Desktop dictation application using OpenAI Whisper
 - Local and cloud-based speech-to-text transcription
 - Real-time audio recording and processing
