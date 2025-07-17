@@ -8,127 +8,21 @@ import {
   Settings,
   Keyboard,
   Info,
-  Trash2,
   ArrowLeft,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
 import WhisperModelPicker from "./WhisperModelPicker";
+import ProcessingModeSelector from "./ui/ProcessingModeSelector";
+import ApiKeyInput from "./ui/ApiKeyInput";
+import { useWhisper } from "../hooks/useWhisper";
+import { usePermissions } from "../hooks/usePermissions";
+import { useClipboard } from "../hooks/useClipboard";
+import type { TranscriptionItem, ElectronAPI } from "../types/electron";
 
-// Type declaration for electronAPI
 declare global {
   interface Window {
-    electronAPI: {
-      pasteText: (text: string) => Promise<void>;
-      hideWindow: () => Promise<void>;
-      onToggleDictation: (callback: () => void) => void;
-      saveTranscription: (
-        text: string
-      ) => Promise<{ id: number; success: boolean }>;
-      getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
-      clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
-      deleteTranscription: (id: number) => Promise<{ success: boolean }>;
-      getOpenAIKey: () => Promise<string>;
-      saveOpenAIKey: (key: string) => Promise<{ success: boolean }>;
-      readClipboard: () => Promise<string>;
-      createProductionEnvFile: (key: string) => Promise<void>;
-      transcribeLocalWhisper: (audioBlob: Blob, options?: any) => Promise<any>;
-      checkWhisperInstallation: () => Promise<{
-        installed: boolean;
-        working: boolean;
-        error?: string;
-      }>;
-      installWhisper: () => Promise<{
-        success: boolean;
-        message: string;
-        output: string;
-      }>;
-      onWhisperInstallProgress: (
-        callback: (
-          event: any,
-          data: { type: string; message: string; output?: string }
-        ) => void
-      ) => void;
-      downloadWhisperModel: (modelName: string) => Promise<{
-        success: boolean;
-        model: string;
-        downloaded: boolean;
-        size_mb?: number;
-        error?: string;
-      }>;
-      onWhisperDownloadProgress: (
-        callback: (
-          event: any,
-          data: {
-            type: string;
-            model: string;
-            percentage?: number;
-            downloaded_bytes?: number;
-            total_bytes?: number;
-            error?: string;
-            result?: any;
-          }
-        ) => void
-      ) => void;
-      checkModelStatus: (modelName: string) => Promise<{
-        success: boolean;
-        model: string;
-        downloaded: boolean;
-        size_mb?: number;
-        error?: string;
-      }>;
-      listWhisperModels: () => Promise<{
-        success: boolean;
-        models: Array<{ model: string; downloaded: boolean; size_mb?: number }>;
-        cache_dir: string;
-      }>;
-      deleteWhisperModel: (modelName: string) => Promise<{
-        success: boolean;
-        model: string;
-        deleted: boolean;
-        freed_mb?: number;
-        error?: string;
-      }>;
-      // Window control functions
-      windowMinimize: () => Promise<void>;
-      windowMaximize: () => Promise<void>;
-      windowClose: () => Promise<void>;
-      windowIsMaximized: () => Promise<boolean>;
-      // Cleanup functions
-      cleanupApp: () => Promise<void>;
-      // Update functions
-      checkForUpdates: () => Promise<{
-        updateAvailable: boolean;
-        version?: string;
-        releaseDate?: string;
-        files?: any[];
-        releaseNotes?: string;
-        message?: string;
-      }>;
-      downloadUpdate: () => Promise<{ success: boolean; message: string }>;
-      installUpdate: () => Promise<{ success: boolean; message: string }>;
-      getAppVersion: () => Promise<{ version: string }>;
-      getUpdateStatus: () => Promise<{
-        updateAvailable: boolean;
-        updateDownloaded: boolean;
-        isDevelopment: boolean;
-      }>;
-      // Update event listeners
-      onUpdateAvailable: (callback: (event: any, info: any) => void) => void;
-      onUpdateNotAvailable: (callback: (event: any, info: any) => void) => void;
-      onUpdateDownloaded: (callback: (event: any, info: any) => void) => void;
-      onUpdateDownloadProgress: (
-        callback: (event: any, progressObj: any) => void
-      ) => void;
-      onUpdateError: (callback: (event: any, error: any) => void) => void;
-    };
+    electronAPI: ElectronAPI;
   }
-}
-
-interface TranscriptionItem {
-  id: number;
-  text: string;
-  timestamp: string;
-  created_at: string;
 }
 
 interface SettingsPageProps {
@@ -141,10 +35,11 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
   const [useLocalWhisper, setUseLocalWhisper] = useState(false);
   const [whisperModel, setWhisperModel] = useState("base");
   const [allowOpenAIFallback, setAllowOpenAIFallback] = useState(false);
-  const [whisperInstalled, setWhisperInstalled] = useState(false);
-  const [checkingWhisper, setCheckingWhisper] = useState(false);
-  const [installingWhisper, setInstallingWhisper] = useState(false);
-  const [installProgress, setInstallProgress] = useState<string>("");
+
+  // Use custom hooks
+  const whisperHook = useWhisper();
+  const permissionsHook = usePermissions();
+  const { pasteFromClipboardWithFallback } = useClipboard();
 
   // Update state
   const [currentVersion, setCurrentVersion] = useState<string>("");
@@ -195,13 +90,10 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     loadApiKey();
 
     // Check Whisper installation
-    checkWhisperInstallation();
+    whisperHook.checkWhisperInstallation();
 
     // Set up progress listener for Whisper installation
-    window.electronAPI.onWhisperInstallProgress((event, data) => {
-      setInstallProgress(data.message);
-    });
-
+    whisperHook.setupProgressListener();
 
     // Initialize update functionality
     const initializeUpdateData = async () => {
@@ -246,41 +138,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     });
   }, []);
 
-  const checkWhisperInstallation = async () => {
-    try {
-      setCheckingWhisper(true);
-      const result = await window.electronAPI.checkWhisperInstallation();
-      setWhisperInstalled(result.installed && result.working);
-
-    } catch (error) {
-      setWhisperInstalled(false);
-    } finally {
-      setCheckingWhisper(false);
-    }
-  };
-
-  const installWhisper = async () => {
-    try {
-      setInstallingWhisper(true);
-      setInstallProgress("Starting Whisper installation...");
-
-      const result = await window.electronAPI.installWhisper();
-
-      if (result.success) {
-        alert(
-          "✅ Whisper installed successfully! You can now download and use local models."
-        );
-        checkWhisperInstallation();
-      } else {
-        alert(`❌ Failed to install Whisper: ${result.message}`);
-      }
-    } catch (error) {
-      alert(`❌ Failed to install Whisper: ${error}`);
-    } finally {
-      setInstallingWhisper(false);
-      setInstallProgress("");
-    }
-  };
+  // Whisper functions now handled by hooks
 
   const saveKey = () => {
     localStorage.setItem("dictationKey", key);
@@ -331,29 +189,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     );
   };
 
-  const requestPermissions = async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      alert("Microphone access granted! Your voice may now be inscribed.");
-    } catch (err) {
-      alert("Please grant microphone permissions to enable voice inscription.");
-    }
-  };
-
-  const requestAccessibilityPermissions = async () => {
-    try {
-      await window.electronAPI.pasteText(
-        "Test inscription - please verify this appears in another application"
-      );
-      alert(
-        "Accessibility permissions appear to be working! Check if the test inscription appeared in another app."
-      );
-    } catch (err) {
-      alert(
-        "Accessibility permissions required! The app will guide you through granting the necessary privileges for automatic text inscription."
-      );
-    }
-  };
+  // Permission functions now handled by hooks
 
   const resetAccessibilityPermissions = () => {
     const message = `🔄 RESET ACCESSIBILITY PERMISSIONS\n\nIf you've rebuilt or reinstalled OpenWispr and automatic inscription isn't functioning, you may have obsolete permissions from the previous version.\n\n📋 STEP-BY-STEP RESTORATION:\n\n1️⃣ Open System Settings (or System Preferences)\n   • macOS Ventura+: Apple Menu → System Settings\n   • Older macOS: Apple Menu → System Preferences\n\n2️⃣ Navigate to Privacy & Security → Accessibility\n\n3️⃣ Look for obsolete OpenWispr entries:\n   • Any entries named "OpenWispr"\n   • Any entries named "Electron"\n   • Any entries with unclear or generic names\n   • Entries pointing to old application locations\n\n4️⃣ Remove ALL obsolete entries:\n   • Select each old entry\n   • Click the minus (-) button\n   • Enter your password if prompted\n\n5️⃣ Add the current OpenWispr:\n   • Click the plus (+) button\n   • Navigate to and select the CURRENT OpenWispr app\n   • Ensure the checkbox is ENABLED\n\n6️⃣ Restart OpenWispr completely\n\n💡 This is very common during development when rebuilding applications!\n\nClick OK when you're ready to open System Settings.`;
@@ -370,30 +206,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     }
   };
 
-  // Enhanced keyboard paste handler for API key input
-  const handleApiKeyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Handle Cmd+V on Mac or Ctrl+V on Windows/Linux
-    if ((e.metaKey || e.ctrlKey) && e.key === "v") {
-      e.preventDefault(); // Prevent default to handle manually
-
-      // Try to paste from clipboard
-      setTimeout(async () => {
-        try {
-          // Try Electron clipboard first
-          const text = await window.electronAPI.readClipboard();
-          if (text && text.trim()) {
-            setApiKey(text.trim());
-          } else {
-            // Fallback to web clipboard API
-            const webText = await navigator.clipboard.readText();
-            if (webText && webText.trim()) {
-              setApiKey(webText.trim());
-            }
-          }
-        } catch (err) {}
-      }, 0);
-    }
-  };
+  // Clipboard handling now done by shared hooks
 
   return (
     <div className="min-h-screen bg-white">
@@ -442,51 +255,10 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                   <label className="block text-sm font-medium text-neutral-700 mb-4">
                     Processing Method
                   </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setUseLocalWhisper(false)}
-                      className={`p-4 border-2 rounded-xl text-left transition-all ${
-                        !useLocalWhisper
-                          ? "border-indigo-500 bg-indigo-50"
-                          : "border-neutral-200 bg-white hover:border-neutral-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-neutral-900">
-                          Cloud Processing
-                        </h4>
-                        <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                          Fastest
-                        </span>
-                      </div>
-                      <p className="text-sm text-neutral-600">
-                        Audio sent to OpenAI servers. Faster processing,
-                        requires API key.
-                      </p>
-                    </button>
-
-                    <button
-                      onClick={() => setUseLocalWhisper(true)}
-                      className={`p-4 border-2 rounded-xl text-left transition-all ${
-                        useLocalWhisper
-                          ? "border-indigo-500 bg-indigo-50"
-                          : "border-neutral-200 bg-white hover:border-neutral-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-neutral-900">
-                          Local Processing
-                        </h4>
-                        <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                          Private
-                        </span>
-                      </div>
-                      <p className="text-sm text-neutral-600">
-                        Audio stays on your device. Complete privacy, works
-                        offline.
-                      </p>
-                    </button>
-                  </div>
+                  <ProcessingModeSelector
+                    useLocalWhisper={useLocalWhisper}
+                    setUseLocalWhisper={setUseLocalWhisper}
+                  />
                 </div>
 
                 {/* Cloud Configuration */}
@@ -495,52 +267,12 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                     <h4 className="font-medium text-blue-900">
                       OpenAI API Setup
                     </h4>
-                    <div>
-                      <label className="block text-sm font-medium text-blue-800 mb-2">
-                        API Key
-                      </label>
-                      <div className="flex gap-3">
-                        <Input
-                          type="password"
-                          placeholder="sk-..."
-                          value={apiKey}
-                          onChange={(e) => setApiKey(e.target.value)}
-                          className="flex-1"
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={async () => {
-                            try {
-                              const text =
-                                await window.electronAPI.readClipboard();
-                              if (text && text.trim()) {
-                                setApiKey(text.trim());
-                                console.log(
-                                  "Manual paste successful via Electron"
-                                );
-                              } else {
-                                const webText =
-                                  await navigator.clipboard.readText();
-                                setApiKey(webText.trim());
-                                console.log(
-                                  "Manual paste successful via Web API"
-                                );
-                              }
-                            } catch (err) {
-                              console.error("Manual paste failed:", err);
-                              alert(
-                                "Could not paste from clipboard. Please try typing or using Cmd+V/Ctrl+V."
-                              );
-                            }
-                          }}
-                        >
-                          Paste
-                        </Button>
-                      </div>
-                      <p className="text-xs text-blue-700 mt-2">
-                        Get your API key from platform.openai.com
-                      </p>
-                    </div>
+                    <ApiKeyInput
+                      apiKey={apiKey}
+                      setApiKey={setApiKey}
+                      className="text-blue-800"
+                      helpText="Get your API key from platform.openai.com"
+                    />
                   </div>
                 )}
 
@@ -552,11 +284,11 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                         Local Whisper Setup
                       </h4>
                       <div className="flex items-center space-x-2">
-                        {checkingWhisper ? (
+                        {whisperHook.checkingWhisper ? (
                           <span className="text-purple-600 text-sm">
                             Checking...
                           </span>
-                        ) : whisperInstalled ? (
+                        ) : whisperHook.whisperInstalled ? (
                           <span className="text-emerald-600 text-sm font-medium">
                             ✓ Ready
                           </span>
@@ -568,7 +300,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                       </div>
                     </div>
 
-                    {whisperInstalled ? (
+                    {whisperHook.whisperInstalled ? (
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-purple-800 mb-3">
@@ -632,21 +364,9 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      const text =
-                                        await window.electronAPI.readClipboard();
-                                      if (text && text.trim()) {
-                                        setApiKey(text.trim());
-                                      } else {
-                                        const webText =
-                                          await navigator.clipboard.readText();
-                                        setApiKey(webText.trim());
-                                      }
-                                    } catch (err) {
-                                      alert("Could not paste from clipboard.");
-                                    }
-                                  }}
+                                  onClick={() =>
+                                    pasteFromClipboardWithFallback(setApiKey)
+                                  }
                                   className="border-purple-300 text-purple-700 hover:bg-purple-50"
                                 >
                                   Paste
@@ -677,7 +397,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                             setup required.
                           </p>
 
-                          {installingWhisper ? (
+                          {whisperHook.installingWhisper ? (
                             <div className="space-y-4">
                               <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
                                 <div className="flex items-center justify-center space-x-3 mb-2">
@@ -686,9 +406,9 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                                     Installing...
                                   </span>
                                 </div>
-                                {installProgress && (
+                                {whisperHook.installProgress && (
                                   <div className="text-xs text-purple-600 bg-white p-2 rounded font-mono">
-                                    {installProgress}
+                                    {whisperHook.installProgress}
                                   </div>
                                 )}
                               </div>
@@ -699,7 +419,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                           ) : (
                             <div className="space-y-4">
                               <Button
-                                onClick={installWhisper}
+                                onClick={whisperHook.installWhisper}
                                 className="bg-purple-600 hover:bg-purple-700"
                               >
                                 Install Whisper
@@ -707,9 +427,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
 
                               <div className="flex items-center justify-center">
                                 <Button
-                                  onClick={() =>
-                                    setCheckingWhisper(!checkingWhisper)
-                                  }
+                                  onClick={whisperHook.checkWhisperInstallation}
                                   variant="outline"
                                   size="sm"
                                   className="text-purple-600 border-purple-300 hover:bg-purple-50"
@@ -770,12 +488,15 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Button onClick={requestPermissions} variant="outline">
+                  <Button
+                    onClick={permissionsHook.requestMicPermission}
+                    variant="outline"
+                  >
                     <span className="mr-2">🎤</span>
                     Enable Microphone
                   </Button>
                   <Button
-                    onClick={requestAccessibilityPermissions}
+                    onClick={permissionsHook.testAccessibilityPermission}
                     variant="outline"
                   >
                     <span className="mr-2">🔓</span>
