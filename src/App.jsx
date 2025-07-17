@@ -81,30 +81,29 @@ export default function App() {
 
   const startRecording = async () => {
     try {
-      setError("");
+      setError('');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
+      
       mediaRecorderRef.current = new window.MediaRecorder(stream);
       audioChunksRef.current = [];
-
+      
       mediaRecorderRef.current.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data);
       };
-
+      
       mediaRecorderRef.current.onstop = async () => {
         setIsProcessing(true);
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/wav",
-        });
-        await processAudio(audioBlob);
-        stream.getTracks().forEach((track) => track.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        // Start processing immediately without waiting
+        processAudio(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
       };
-
+      
       mediaRecorderRef.current.start();
       setIsRecording(true);
     } catch (err) {
-      console.error("Recording error:", err);
-      setError("Failed to access microphone: " + err.message);
+      console.error("Recording error:", err)
+      setError('Failed to access microphone: ' + err.message);
     }
   };
 
@@ -126,25 +125,25 @@ export default function App() {
 
   const processAudio = async (audioBlob) => {
     try {
-      // Check if local Whisper is available and user preference
-      const useLocalWhisper =
-        localStorage.getItem("useLocalWhisper") === "true";
-      const whisperModel = localStorage.getItem("whisperModel") || "turbo"; // Default to turbo for speed
-
+      // Cache preferences to avoid repeated localStorage calls
+      const useLocalWhisper = localStorage.getItem('useLocalWhisper') === 'true';
+      const whisperModel = localStorage.getItem('whisperModel') || 'base';
+      
       if (useLocalWhisper) {
         await processWithLocalWhisper(audioBlob, whisperModel);
       } else {
         await processWithOpenAIAPI(audioBlob);
       }
+      
     } catch (err) {
-      console.error("Transcription error:", err);
-      setError("Transcription failed: " + err.message);
+      console.error("Transcription error:", err)
+      setError('Transcription failed: ' + err.message);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const processWithLocalWhisper = async (audioBlob, model = "turbo") => {
+  const processWithLocalWhisper = async (audioBlob, model = "base") => {
     try {
       // Convert Blob to ArrayBuffer for IPC transfer - do this early
       const arrayBuffer = await audioBlob.arrayBuffer();

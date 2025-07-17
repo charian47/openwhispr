@@ -6,7 +6,22 @@ const crypto = require("crypto");
 
 class WhisperManager {
   constructor() {
-    // Initialize whisper manager
+    this.pythonCmd = null; // Cache Python executable path
+    this.whisperInstalled = null; // Cache installation status
+    this.isInitialized = false; // Track if startup init completed
+  }
+
+  async initializeAtStartup() {
+    try {
+      // Initialize Python path and Whisper installation status
+      await this.findPythonExecutable();
+      await this.checkWhisperInstallation();
+      this.isInitialized = true;
+      console.log("✅ Whisper manager initialized at startup");
+    } catch (error) {
+      console.log("⚠️ Whisper not available at startup:", error.message);
+      this.isInitialized = true; // Mark as initialized even if Whisper isn't available
+    }
   }
 
   async transcribeLocalWhisper(audioBlob, options = {}) {
@@ -75,13 +90,13 @@ class WhisperManager {
       let stderr = "";
       let isResolved = false;
 
-      // Set timeout for faster failure detection
+      // Set timeout for longer recordings
       const timeout = setTimeout(() => {
         if (!isResolved) {
           whisperProcess.kill("SIGTERM");
-          reject(new Error("Whisper transcription timed out (15 seconds)"));
+          reject(new Error("Whisper transcription timed out (60 seconds)"));
         }
-      }, 15000);
+      }, 60000);
 
       whisperProcess.stdout.on("data", (data) => {
         stdout += data.toString();
@@ -154,13 +169,17 @@ class WhisperManager {
   cleanupTempFile(tempAudioPath) {
     try {
       fs.unlinkSync(tempAudioPath);
-      console.log("🗑️ Cleaned up temp audio file");
     } catch (cleanupError) {
       console.warn("⚠️ Could not clean up temp file:", cleanupError.message);
     }
   }
 
   async findPythonExecutable() {
+    // Return cached result if available
+    if (this.pythonCmd) {
+      return this.pythonCmd;
+    }
+
     const possiblePaths = [
       "python3",
       "python",
@@ -184,7 +203,7 @@ class WhisperManager {
         });
 
         if (result) {
-          console.log("🐍 Found Python at:", pythonPath);
+          this.pythonCmd = pythonPath; // Cache the result
           return pythonPath;
         }
       } catch (error) {
@@ -198,10 +217,15 @@ class WhisperManager {
   }
 
   async checkWhisperInstallation() {
+    // Return cached result if available
+    if (this.whisperInstalled !== null) {
+      return this.whisperInstalled;
+    }
+
     try {
       const pythonCmd = await this.findPythonExecutable();
 
-      return new Promise((resolve) => {
+      const result = await new Promise((resolve) => {
         const checkProcess = spawn(pythonCmd, [
           "-c",
           'import whisper; print("OK")',
@@ -214,22 +238,27 @@ class WhisperManager {
 
         checkProcess.on("close", (code) => {
           if (code === 0 && output.includes("OK")) {
-            console.log("✅ Whisper is installed and working");
             resolve({ installed: true, working: true });
           } else {
-            console.log("❌ Whisper is not properly installed");
             resolve({ installed: false, working: false });
           }
         });
 
         checkProcess.on("error", (error) => {
-          console.log("❌ Error checking Whisper:", error.message);
           resolve({ installed: false, working: false, error: error.message });
         });
       });
+
+      this.whisperInstalled = result; // Cache the result
+      return result;
     } catch (error) {
-      console.log("❌ Error finding Python:", error.message);
-      return { installed: false, working: false, error: error.message };
+      const errorResult = {
+        installed: false,
+        working: false,
+        error: error.message,
+      };
+      this.whisperInstalled = errorResult;
+      return errorResult;
     }
   }
 

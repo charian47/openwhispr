@@ -51,6 +51,11 @@ async function startApp() {
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
+  // Initialize Whisper manager at startup (don't await to avoid blocking)
+  whisperManager.initializeAtStartup().catch((err) => {
+    console.log("Whisper initialization info:", err.message);
+  });
+
   // Create main window
   try {
     await windowManager.createMainWindow();

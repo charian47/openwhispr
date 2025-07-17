@@ -123,7 +123,9 @@ declare global {
       onUpdateAvailable: (callback: (event: any, info: any) => void) => void;
       onUpdateNotAvailable: (callback: (event: any, info: any) => void) => void;
       onUpdateDownloaded: (callback: (event: any, info: any) => void) => void;
-      onUpdateDownloadProgress: (callback: (event: any, progressObj: any) => void) => void;
+      onUpdateDownloadProgress: (
+        callback: (event: any, progressObj: any) => void
+      ) => void;
       onUpdateError: (callback: (event: any, error: any) => void) => void;
     };
   }
@@ -156,7 +158,7 @@ export default function ControlPanel() {
         setUpdateDownloaded(status.updateDownloaded);
         setIsDevelopment(status.isDevelopment);
       } catch (error) {
-        console.error('Error initializing update status:', error);
+        console.error("Error initializing update status:", error);
       }
     };
 
@@ -172,7 +174,7 @@ export default function ControlPanel() {
     });
 
     window.electronAPI.onUpdateError((event, error) => {
-      console.error('Update error:', error);
+      console.error("Update error:", error);
     });
   }, []);
 
@@ -190,7 +192,7 @@ export default function ControlPanel() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      alert("Text copied to your scribal collection!");
+      alert("Text copied to your clipboard!");
     } catch (err) {}
   };
 

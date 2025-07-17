@@ -14,13 +14,32 @@ import whisper
 import threading
 import time
 import requests
+import gc
+
+# Global model cache to avoid reloading
+_model_cache = {}
 
 def load_model(model_name="base"):
-    """Load Whisper model with error handling"""
+    """Load Whisper model with caching for performance"""
+    global _model_cache
+    
+    # Return cached model if available
+    if model_name in _model_cache:
+        return _model_cache[model_name]
+    
     try:
         print(f"Loading Whisper model: {model_name}", file=sys.stderr)
         model = whisper.load_model(model_name)
         print(f"Model {model_name} loaded successfully", file=sys.stderr)
+        
+        # Cache the model but limit cache size
+        if len(_model_cache) >= 2:  # Keep max 2 models in memory
+            # Remove oldest model
+            oldest_key = next(iter(_model_cache))
+            del _model_cache[oldest_key]
+            gc.collect()  # Force garbage collection
+        
+        _model_cache[model_name] = model
         return model
     except Exception as e:
         print(f"Error loading model: {e}", file=sys.stderr)
@@ -288,19 +307,14 @@ def delete_model(model_name="base"):
         }
 
 def transcribe_audio(audio_path, model_name="base", language=None):
-    """Transcribe audio file using Whisper"""
-    print(f"Starting transcription with model: {model_name}", file=sys.stderr)
-    
+    """Transcribe audio file using Whisper with optimizations"""
     try:
-        # Load model
+        # Load model (uses cache for performance)
         model = load_model(model_name)
         if model is None:
             return {"error": "Failed to load Whisper model", "success": False}
         
-        # Transcribe with minimal logging to avoid stdout pollution
-        print(f"Transcribing audio file: {audio_path}", file=sys.stderr)
-        
-        # Set transcription options for performance
+        # Set transcription options - keep it simple for reliability
         options = {
             "fp16": False,  # Use FP32 for better compatibility
             "verbose": False,  # Reduce logging overhead
