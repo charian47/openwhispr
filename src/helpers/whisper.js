@@ -12,6 +12,20 @@ class WhisperManager {
     this.currentDownloadProcess = null; // Track current download process for cancellation
   }
 
+  getWhisperScriptPath() {
+    // In production, the file is unpacked from ASAR
+    if (process.env.NODE_ENV === "development") {
+      return path.join(__dirname, "..", "..", "whisper_bridge.py");
+    } else {
+      // In production, use the unpacked path
+      return path.join(
+        process.resourcesPath,
+        "app.asar.unpacked",
+        "whisper_bridge.py"
+      );
+    }
+  }
+
   async initializeAtStartup() {
     try {
       // Initialize Python path and Whisper installation status
@@ -69,12 +83,7 @@ class WhisperManager {
 
   async runWhisperProcess(tempAudioPath, model, language) {
     const pythonCmd = await this.findPythonExecutable();
-    const whisperScriptPath = path.join(
-      __dirname,
-      "..",
-      "..",
-      "whisper_bridge.py"
-    );
+    const whisperScriptPath = this.getWhisperScriptPath();
     const args = [whisperScriptPath, tempAudioPath, "--model", model];
     if (language) {
       args.push("--language", language);
@@ -336,12 +345,7 @@ class WhisperManager {
       console.log(`📥 Starting download of Whisper model: ${modelName}`);
 
       const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "whisper_bridge.py"
-      );
+      const whisperScriptPath = this.getWhisperScriptPath();
 
       const args = [
         whisperScriptPath,
@@ -481,12 +485,7 @@ class WhisperManager {
       console.log(`🔍 Checking status of Whisper model: ${modelName}`);
 
       const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "whisper_bridge.py"
-      );
+      const whisperScriptPath = this.getWhisperScriptPath();
 
       const args = [whisperScriptPath, "--mode", "check", "--model", modelName];
 
@@ -540,12 +539,7 @@ class WhisperManager {
       console.log("📋 Listing all Whisper models...");
 
       const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "whisper_bridge.py"
-      );
+      const whisperScriptPath = this.getWhisperScriptPath();
 
       const args = [whisperScriptPath, "--mode", "list"];
 
@@ -597,12 +591,7 @@ class WhisperManager {
       console.log(`🗑️ Deleting Whisper model: ${modelName}`);
 
       const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "whisper_bridge.py"
-      );
+      const whisperScriptPath = this.getWhisperScriptPath();
 
       const args = [
         whisperScriptPath,

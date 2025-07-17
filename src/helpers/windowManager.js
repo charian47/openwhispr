@@ -15,11 +15,21 @@ class WindowManager {
   }
 
   async createMainWindow() {
+    console.log("🔄 Creating main window...");
     const display = screen.getPrimaryDisplay();
     const width = 100;
     const height = 100;
-    const x = display.bounds.x + display.workArea.width - width;
-    const y = display.bounds.y + display.workArea.height;
+    // Position window in bottom-right corner, but ensure it's visible
+    const x = Math.max(
+      0,
+      display.bounds.x + display.workArea.width - width - 20
+    );
+    const y = Math.max(
+      0,
+      display.bounds.y + display.workArea.height - height - 20
+    );
+
+    console.log("📐 Window dimensions:", { width, height, x, y });
 
     this.mainWindow = new BrowserWindow({
       width,
@@ -38,11 +48,17 @@ class WindowManager {
       resizable: false,
       transparent: true,
       show: true,
+      skipTaskbar: false,
+      focusable: true,
     });
 
+    console.log("📱 Loading main window content...");
     await this.loadMainWindow();
+    console.log("⌨️ Setting up shortcuts...");
     this.setupShortcuts();
+    console.log("🍎 Setting up menu...");
     this.setupMenu();
+    console.log("✅ Main window created successfully");
 
     this.mainWindow.webContents.on(
       "did-fail-load",
@@ -70,13 +86,24 @@ class WindowManager {
     );
 
     this.mainWindow.webContents.on("did-finish-load", () => {
+      console.log("📱 Main window content loaded");
       setTimeout(() => {
         if (!this.mainWindow.isVisible()) {
-          console.log("Window not visible, forcing show...");
+          console.log("⚠️ Window not visible, forcing show...");
           this.mainWindow.show();
           this.mainWindow.focus();
+        } else {
+          console.log("✅ Main window is visible");
         }
       }, 1000);
+    });
+
+    this.mainWindow.on("show", () => {
+      console.log("🎯 Main window shown");
+    });
+
+    this.mainWindow.on("focus", () => {
+      console.log("🎯 Main window focused");
     });
 
     // Ensure window is always on top, even above fullscreen apps
@@ -131,7 +158,9 @@ class WindowManager {
   }
 
   async createControlPanelWindow() {
+    console.log("🔄 Creating control panel window...");
     if (this.controlPanelWindow) {
+      console.log("📋 Control panel already exists, focusing...");
       this.controlPanelWindow.focus();
       return;
     }
@@ -158,10 +187,13 @@ class WindowManager {
       closable: true,
       fullscreenable: true,
     });
+    console.log("📱 Loading control panel content...");
     await this.loadControlPanel();
     this.controlPanelWindow.on("closed", () => {
+      console.log("📋 Control panel window closed");
       this.controlPanelWindow = null;
     });
+    console.log("✅ Control panel window created successfully");
   }
 
   async loadControlPanel() {
@@ -236,9 +268,10 @@ class WindowManager {
         "dist",
         "index.html"
       );
-      return isControlPanel
+      const url = isControlPanel
         ? `file://${htmlPath}?panel=true`
         : `file://${htmlPath}`;
+      return url;
     }
   }
 }

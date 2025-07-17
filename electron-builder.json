@@ -11,11 +11,18 @@
     "package.json",
     "node_modules/**/*",
     "src/dist/**/*",
+    "src/helpers/**/*",
+    "src/hooks/**/*",
+    "src/types/**/*",
+    "src/utils.js",
+    "src/updater.js",
+    "src/components.json",
     "!node_modules/.cache/**/*",
     "!src/node_modules/**/*"
   ],
   "asarUnpack": [
-    "assets/**/*"
+    "assets/**/*",
+    "whisper_bridge.py"
   ],
   "extraResources": [
     "assets/**/*"
