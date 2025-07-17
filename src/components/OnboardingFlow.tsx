@@ -44,7 +44,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const savedStep = localStorage.getItem("onboardingCurrentStep");
     return savedStep ? parseInt(savedStep, 10) : 0;
   });
-  const [useLocalWhisper, setUseLocalWhisper] = useState(false);
+  const [useLocalWhisper, setUseLocalWhisper] = useState(() => {
+    // Load saved setting or default to false
+    const saved = localStorage.getItem("useLocalWhisper");
+    return saved === "true";
+  });
   const [apiKey, setApiKey] = useState("");
   const [whisperModel, setWhisperModel] = useState("base");
   const [hotkey, setHotkey] = useState("`");
@@ -108,9 +112,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   }, [currentStep, hotkey, isRecording, isProcessing]);
 
-  // Remove individual functions - now using hooks
-
-  // Permission functions now handled by hooks
+  // Helper function to update processing mode and save immediately
+  const updateProcessingMode = (useLocal: boolean) => {
+    setUseLocalWhisper(useLocal);
+    localStorage.setItem("useLocalWhisper", useLocal.toString());
+  };
 
   const startPracticeRecording = async () => {
     try {
@@ -296,7 +302,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
             <ProcessingModeSelector
               useLocalWhisper={useLocalWhisper}
-              setUseLocalWhisper={setUseLocalWhisper}
+              setUseLocalWhisper={updateProcessingMode}
             />
           </div>
         );

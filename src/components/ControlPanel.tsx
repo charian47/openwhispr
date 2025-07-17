@@ -1,150 +1,30 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Tooltip } from "./ui/tooltip";
-import {
-  Copy,
-  Trash2,
-  RefreshCw,
-  Download,
-  Check,
-  X,
-  Settings,
-  Keyboard,
-  FileText,
-  Info,
-  Mic,
-  Minus,
-  Square,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Trash2, RefreshCw, Settings, FileText, Mic } from "lucide-react";
 import SettingsPage from "./SettingsPage";
 import TitleBar from "./TitleBar";
+import TranscriptionItem from "./ui/TranscriptionItem";
+import type {
+  TranscriptionItem as TranscriptionItemType,
+  ElectronAPI,
+} from "../types/electron";
 
-// Type declaration for electronAPI
 declare global {
   interface Window {
-    electronAPI: {
-      pasteText: (text: string) => Promise<void>;
-      hideWindow: () => Promise<void>;
-      onToggleDictation: (callback: () => void) => void;
-      saveTranscription: (
-        text: string
-      ) => Promise<{ id: number; success: boolean }>;
-      getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
-      clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
-      deleteTranscription: (id: number) => Promise<{ success: boolean }>;
-      getOpenAIKey: () => Promise<string>;
-      saveOpenAIKey: (key: string) => Promise<{ success: boolean }>;
-      readClipboard: () => Promise<string>;
-      createProductionEnvFile: (key: string) => Promise<void>;
-      transcribeLocalWhisper: (audioBlob: Blob, options?: any) => Promise<any>;
-      checkWhisperInstallation: () => Promise<{
-        installed: boolean;
-        working: boolean;
-        error?: string;
-      }>;
-      installWhisper: () => Promise<{
-        success: boolean;
-        message: string;
-        output: string;
-      }>;
-      onWhisperInstallProgress: (
-        callback: (
-          event: any,
-          data: { type: string; message: string; output?: string }
-        ) => void
-      ) => void;
-      downloadWhisperModel: (modelName: string) => Promise<{
-        success: boolean;
-        model: string;
-        downloaded: boolean;
-        size_mb?: number;
-        error?: string;
-      }>;
-      onWhisperDownloadProgress: (
-        callback: (
-          event: any,
-          data: {
-            type: string;
-            model: string;
-            percentage?: number;
-            downloaded_bytes?: number;
-            total_bytes?: number;
-            error?: string;
-            result?: any;
-          }
-        ) => void
-      ) => void;
-      checkModelStatus: (modelName: string) => Promise<{
-        success: boolean;
-        model: string;
-        downloaded: boolean;
-        size_mb?: number;
-        error?: string;
-      }>;
-      listWhisperModels: () => Promise<{
-        success: boolean;
-        models: Array<{ model: string; downloaded: boolean; size_mb?: number }>;
-        cache_dir: string;
-      }>;
-      deleteWhisperModel: (modelName: string) => Promise<{
-        success: boolean;
-        model: string;
-        deleted: boolean;
-        freed_mb?: number;
-        error?: string;
-      }>;
-      // Window control functions
-      windowMinimize: () => Promise<void>;
-      windowMaximize: () => Promise<void>;
-      windowClose: () => Promise<void>;
-      windowIsMaximized: () => Promise<boolean>;
-      // Update functions
-      checkForUpdates: () => Promise<{
-        updateAvailable: boolean;
-        version?: string;
-        releaseDate?: string;
-        files?: any[];
-        releaseNotes?: string;
-        message?: string;
-      }>;
-      downloadUpdate: () => Promise<{ success: boolean; message: string }>;
-      installUpdate: () => Promise<{ success: boolean; message: string }>;
-      getAppVersion: () => Promise<{ version: string }>;
-      getUpdateStatus: () => Promise<{
-        updateAvailable: boolean;
-        updateDownloaded: boolean;
-        isDevelopment: boolean;
-      }>;
-      // Update event listeners
-      onUpdateAvailable: (callback: (event: any, info: any) => void) => void;
-      onUpdateNotAvailable: (callback: (event: any, info: any) => void) => void;
-      onUpdateDownloaded: (callback: (event: any, info: any) => void) => void;
-      onUpdateDownloadProgress: (
-        callback: (event: any, progressObj: any) => void
-      ) => void;
-      onUpdateError: (callback: (event: any, error: any) => void) => void;
-    };
+    electronAPI: ElectronAPI;
   }
 }
 
-interface TranscriptionItem {
-  id: number;
-  text: string;
-  timestamp: string;
-  created_at: string;
-}
-
 export default function ControlPanel() {
-  const [history, setHistory] = useState<TranscriptionItem[]>([]);
+  const [history, setHistory] = useState<TranscriptionItemType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [updateDownloaded, setUpdateDownloaded] = useState(false);
-  const [isDevelopment, setIsDevelopment] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState({
+    updateAvailable: false,
+    updateDownloaded: false,
+    isDevelopment: false,
+  });
 
   useEffect(() => {
     // Load transcription history from database
@@ -154,9 +34,7 @@ export default function ControlPanel() {
     const initializeUpdateStatus = async () => {
       try {
         const status = await window.electronAPI.getUpdateStatus();
-        setUpdateAvailable(status.updateAvailable);
-        setUpdateDownloaded(status.updateDownloaded);
-        setIsDevelopment(status.isDevelopment);
+        setUpdateStatus(status);
       } catch (error) {
         console.error("Error initializing update status:", error);
       }
@@ -166,11 +44,11 @@ export default function ControlPanel() {
 
     // Set up update event listeners
     window.electronAPI.onUpdateAvailable((event, info) => {
-      setUpdateAvailable(true);
+      setUpdateStatus((prev) => ({ ...prev, updateAvailable: true }));
     });
 
     window.electronAPI.onUpdateDownloaded((event, info) => {
-      setUpdateDownloaded(true);
+      setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
     });
 
     window.electronAPI.onUpdateError((event, error) => {
@@ -249,20 +127,20 @@ export default function ControlPanel() {
         actions={
           <>
             {/* Update notification badge */}
-            {!isDevelopment && (updateAvailable || updateDownloaded) && (
-              <div className="relative">
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-              </div>
-            )}
-            <Tooltip content="Open settings">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowSettings(!showSettings)}
-              >
-                <Settings size={16} />
-              </Button>
-            </Tooltip>
+            {!updateStatus.isDevelopment &&
+              (updateStatus.updateAvailable ||
+                updateStatus.updateDownloaded) && (
+                <div className="relative">
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                </div>
+              )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowSettings(!showSettings)}
+            >
+              <Settings size={16} />
+            </Button>
           </>
         }
       />
@@ -275,12 +153,12 @@ export default function ControlPanel() {
           <div className="space-y-6 max-w-4xl mx-auto">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText size={18} className="text-indigo-600" />
-                  Recent Transcriptions
-                </CardTitle>
-                <div className="flex gap-2">
-                  <Tooltip content="Refresh history">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText size={18} className="text-indigo-600" />
+                    Recent Transcriptions
+                  </CardTitle>
+                  <div className="flex gap-2">
                     <Button
                       onClick={refreshHistory}
                       variant="ghost"
@@ -288,17 +166,17 @@ export default function ControlPanel() {
                     >
                       <RefreshCw size={16} />
                     </Button>
-                  </Tooltip>
-                  <Tooltip content="Clear all transcriptions">
-                    <Button
-                      onClick={clearHistory}
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 size={16} />
-                    </Button>
-                  </Tooltip>
+                    {history.length > 0 && (
+                      <Button
+                        onClick={clearHistory}
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -311,81 +189,54 @@ export default function ControlPanel() {
                       Loading transcriptions...
                     </p>
                   </div>
+                ) : history.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 rounded-full flex items-center justify-center">
+                      <Mic className="w-8 h-8 text-neutral-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-neutral-900 mb-2">
+                      No transcriptions yet
+                    </h3>
+                    <p className="text-neutral-600 mb-4 max-w-sm mx-auto">
+                      Press your hotkey (backtick by default) to start recording
+                      and create your first transcription.
+                    </p>
+                    <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 max-w-md mx-auto">
+                      <h4 className="font-medium text-neutral-800 mb-2">
+                        Quick Start:
+                      </h4>
+                      <ol className="text-sm text-neutral-600 text-left space-y-1">
+                        <li>1. Click in any text field</li>
+                        <li>
+                          2. Press{" "}
+                          <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
+                            `
+                          </kbd>{" "}
+                          to start recording
+                        </li>
+                        <li>3. Speak your text</li>
+                        <li>
+                          4. Press{" "}
+                          <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
+                            `
+                          </kbd>{" "}
+                          again to stop
+                        </li>
+                        <li>5. Your text will appear automatically!</li>
+                      </ol>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-3 max-h-80 overflow-y-auto">
                     {history.map((item, index) => (
-                      <div
+                      <TranscriptionItem
                         key={item.id}
-                        className="relative bg-gradient-to-b from-blue-50/30 to-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <div
-                          className="p-6 pl-16"
-                          style={{ paddingTop: "8px" }}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 mr-3">
-                              <div
-                                className="flex items-center gap-2 mb-1"
-                                style={{ marginTop: "2px", lineHeight: "24px" }}
-                              >
-                                <span className="text-indigo-600 text-xs font-medium">
-                                  #{history.length - index}
-                                </span>
-                                <div className="w-px h-3 bg-neutral-300" />
-                                <span className="text-xs text-neutral-500">
-                                  {new Date(item.timestamp).toLocaleString(
-                                    "en-US",
-                                    {
-                                      month: "short",
-                                      day: "numeric",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    }
-                                  )}
-                                </span>
-                              </div>
-                              <p
-                                className="text-neutral-800 text-sm"
-                                style={{
-                                  fontFamily:
-                                    'Noto Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                                  lineHeight: "24px",
-                                  textAlign: "left",
-                                  marginTop: "2px",
-                                  paddingBottom: "2px",
-                                }}
-                              >
-                                {item.text}
-                              </p>
-                            </div>
-                            <div
-                              className="flex gap-1 flex-shrink-0"
-                              style={{ marginTop: "2px" }}
-                            >
-                              <Tooltip content="Copy to clipboard">
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => copyToClipboard(item.text)}
-                                  className="h-7 w-7"
-                                >
-                                  <Copy size={12} />
-                                </Button>
-                              </Tooltip>
-                              <Tooltip content="Delete transcription">
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => deleteTranscription(item.id)}
-                                  className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 size={12} />
-                                </Button>
-                              </Tooltip>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                        item={item}
+                        index={index}
+                        total={history.length}
+                        onCopy={copyToClipboard}
+                        onDelete={deleteTranscription}
+                      />
                     ))}
                   </div>
                 )}
