@@ -289,27 +289,31 @@ def delete_model(model_name="base"):
 
 def transcribe_audio(audio_path, model_name="base", language=None):
     """Transcribe audio file using Whisper"""
+    print(f"Starting transcription with model: {model_name}", file=sys.stderr)
+    
     try:
         # Load model
         model = load_model(model_name)
         if model is None:
-            return {"error": "Failed to load Whisper model"}
+            return {"error": "Failed to load Whisper model", "success": False}
         
-        # Transcribe
+        # Transcribe with minimal logging to avoid stdout pollution
         print(f"Transcribing audio file: {audio_path}", file=sys.stderr)
         
-        # Set transcription options
-        options = {}
+        # Set transcription options for performance
+        options = {
+            "fp16": False,  # Use FP32 for better compatibility
+            "verbose": False,  # Reduce logging overhead
+        }
         if language:
             options["language"] = language
             
         result = model.transcribe(audio_path, **options)
         
-        # Return results
+        # Return results - only JSON to stdout
         return {
-            "text": result["text"].strip(),
+            "text": result.get("text", "").strip(),
             "language": result.get("language", "unknown"),
-            "segments": result.get("segments", []),
             "success": True
         }
         

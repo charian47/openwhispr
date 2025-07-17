@@ -10,149 +10,153 @@ class WhisperManager {
   }
 
   async transcribeLocalWhisper(audioBlob, options = {}) {
+    const tempAudioPath = await this.createTempAudioFile(audioBlob);
+    const model = options.model || "base";
+    const language = options.language || null;
+
     try {
-      console.log("🎤 Starting local Whisper transcription...");
-
-      const tempDir = os.tmpdir();
-      const filename = `whisper_audio_${crypto.randomUUID()}.wav`;
-      const tempAudioPath = path.join(tempDir, filename);
-
-      console.log("💾 Writing audio to temp file:", tempAudioPath);
-
-      // Handle different audio data formats
-      let buffer;
-      if (audioBlob instanceof ArrayBuffer) {
-        buffer = Buffer.from(audioBlob);
-      } else if (audioBlob instanceof Uint8Array) {
-        buffer = Buffer.from(audioBlob);
-      } else if (typeof audioBlob === "string") {
-        buffer = Buffer.from(audioBlob, "base64");
-      } else if (audioBlob && audioBlob.buffer) {
-        buffer = Buffer.from(audioBlob.buffer);
-      } else {
-        throw new Error(`Unsupported audio data type: ${typeof audioBlob}`);
-      }
-
-      fs.writeFileSync(tempAudioPath, buffer);
-
-      const model = options.model || "base";
-      const language = options.language || null;
-
-      const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "whisper_bridge.py"
+      const result = await this.runWhisperProcess(
+        tempAudioPath,
+        model,
+        language
       );
-
-      const args = [whisperScriptPath, tempAudioPath, "--model", model];
-      if (language) {
-        args.push("--language", language);
-      }
-      args.push("--output-format", "json");
-
-      console.log("🔧 Running Whisper command:", pythonCmd, args.join(" "));
-
-      return new Promise((resolve, reject) => {
-        const whisperProcess = spawn(pythonCmd, args);
-
-        let stdout = "";
-        let stderr = "";
-
-        whisperProcess.stdout.on("data", (data) => {
-          stdout += data.toString();
-        });
-
-        whisperProcess.stderr.on("data", (data) => {
-          stderr += data.toString();
-          console.log("Whisper log:", data.toString());
-        });
-
-        whisperProcess.on("close", (code) => {
-          // Clean up temp file
-          try {
-            fs.unlinkSync(tempAudioPath);
-            console.log("🗑️ Cleaned up temp audio file");
-          } catch (cleanupError) {
-            console.warn(
-              "⚠️ Could not clean up temp file:",
-              cleanupError.message
-            );
-          }
-
-          if (code === 0) {
-            try {
-              const result = JSON.parse(stdout);
-
-              // Check if the transcription is empty or just whitespace
-              if (!result.text || result.text.trim().length === 0) {
-                console.log(
-                  "🛑 No meaningful audio content detected (empty transcription)"
-                );
-                resolve({ success: false, message: "No audio detected" });
-                return;
-              }
-
-              console.log(
-                "✅ Whisper transcription successful:",
-                result.text?.substring(0, 50) + "..."
-              );
-              resolve(result);
-            } catch (parseError) {
-              console.error("❌ Failed to parse Whisper output:", parseError);
-              reject(
-                new Error(
-                  `Failed to parse Whisper output: ${parseError.message}`
-                )
-              );
-            }
-          } else {
-            if (stderr.includes("no audio") || stderr.includes("empty")) {
-              console.log("🛑 No audio content detected");
-              resolve({ success: false, message: "No audio detected" });
-            } else {
-              console.error("❌ Whisper process failed with code:", code);
-              console.error("Stderr:", stderr);
-              reject(
-                new Error(
-                  `Whisper transcription failed (code ${code}): ${stderr}`
-                )
-              );
-            }
-          }
-        });
-
-        whisperProcess.on("error", (error) => {
-          try {
-            fs.unlinkSync(tempAudioPath);
-          } catch (cleanupError) {
-            console.warn(
-              "⚠️ Could not clean up temp file:",
-              cleanupError.message
-            );
-          }
-
-          console.error("❌ Whisper process error:", error);
-          reject(new Error(`Whisper process error: ${error.message}`));
-        });
-
-        setTimeout(() => {
-          whisperProcess.kill("SIGTERM");
-          try {
-            fs.unlinkSync(tempAudioPath);
-          } catch (cleanupError) {
-            console.warn(
-              "⚠️ Could not clean up temp file:",
-              cleanupError.message
-            );
-          }
-          reject(new Error("Whisper transcription timed out (30 seconds)"));
-        }, 30000);
-      });
+      return this.parseWhisperResult(result);
     } catch (error) {
       console.error("❌ Local Whisper transcription error:", error);
       throw error;
+    } finally {
+      this.cleanupTempFile(tempAudioPath);
+    }
+  }
+
+  async createTempAudioFile(audioBlob) {
+    const tempDir = os.tmpdir();
+    const filename = `whisper_audio_${crypto.randomUUID()}.wav`;
+    const tempAudioPath = path.join(tempDir, filename);
+
+    let buffer;
+    if (audioBlob instanceof ArrayBuffer) {
+      buffer = Buffer.from(audioBlob);
+    } else if (audioBlob instanceof Uint8Array) {
+      buffer = Buffer.from(audioBlob);
+    } else if (typeof audioBlob === "string") {
+      buffer = Buffer.from(audioBlob, "base64");
+    } else if (audioBlob && audioBlob.buffer) {
+      buffer = Buffer.from(audioBlob.buffer);
+    } else {
+      throw new Error(`Unsupported audio data type: ${typeof audioBlob}`);
+    }
+
+    fs.writeFileSync(tempAudioPath, buffer);
+    return tempAudioPath;
+  }
+
+  async runWhisperProcess(tempAudioPath, model, language) {
+    const pythonCmd = await this.findPythonExecutable();
+    const whisperScriptPath = path.join(
+      __dirname,
+      "..",
+      "..",
+      "whisper_bridge.py"
+    );
+    const args = [whisperScriptPath, tempAudioPath, "--model", model];
+    if (language) {
+      args.push("--language", language);
+    }
+    args.push("--output-format", "json");
+
+    return new Promise((resolve, reject) => {
+      const whisperProcess = spawn(pythonCmd, args, {
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+      });
+
+      let stdout = "";
+      let stderr = "";
+      let isResolved = false;
+
+      // Set timeout for faster failure detection
+      const timeout = setTimeout(() => {
+        if (!isResolved) {
+          whisperProcess.kill("SIGTERM");
+          reject(new Error("Whisper transcription timed out (15 seconds)"));
+        }
+      }, 15000);
+
+      whisperProcess.stdout.on("data", (data) => {
+        stdout += data.toString();
+      });
+
+      whisperProcess.stderr.on("data", (data) => {
+        stderr += data.toString();
+        // Reduce logging verbosity
+        if (
+          data.toString().includes("Error") ||
+          data.toString().includes("failed")
+        ) {
+          console.log("Whisper log:", data.toString());
+        }
+      });
+
+      whisperProcess.on("close", (code) => {
+        if (isResolved) return;
+        isResolved = true;
+        clearTimeout(timeout);
+
+        if (code === 0) {
+          resolve(stdout);
+        } else {
+          reject(
+            new Error(`Whisper transcription failed (code ${code}): ${stderr}`)
+          );
+        }
+      });
+
+      whisperProcess.on("error", (error) => {
+        if (isResolved) return;
+        isResolved = true;
+        clearTimeout(timeout);
+        reject(new Error(`Whisper process error: ${error.message}`));
+      });
+    });
+  }
+
+  parseWhisperResult(stdout) {
+    try {
+      // Clean stdout by removing any non-JSON content
+      const lines = stdout.split("\n").filter((line) => line.trim());
+      let jsonLine = "";
+
+      // Find the line that looks like JSON (starts with { and ends with })
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+          jsonLine = trimmed;
+          break;
+        }
+      }
+
+      if (!jsonLine) {
+        throw new Error("No JSON output found in Whisper response");
+      }
+
+      const result = JSON.parse(jsonLine);
+      if (!result.text || result.text.trim().length === 0) {
+        return { success: false, message: "No audio detected" };
+      }
+      return { success: true, text: result.text.trim() };
+    } catch (parseError) {
+      console.error("Raw stdout:", stdout);
+      throw new Error(`Failed to parse Whisper output: ${parseError.message}`);
+    }
+  }
+
+  cleanupTempFile(tempAudioPath) {
+    try {
+      fs.unlinkSync(tempAudioPath);
+      console.log("🗑️ Cleaned up temp audio file");
+    } catch (cleanupError) {
+      console.warn("⚠️ Could not clean up temp file:", cleanupError.message);
     }
   }
 
