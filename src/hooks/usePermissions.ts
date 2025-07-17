@@ -12,7 +12,17 @@ export interface UsePermissionsReturn {
   setAccessibilityPermissionGranted: (granted: boolean) => void;
 }
 
-export const usePermissions = (): UsePermissionsReturn => {
+export interface UsePermissionsProps {
+  setAlertDialog: (dialog: {
+    open: boolean;
+    title: string;
+    description?: string;
+  }) => void;
+}
+
+export const usePermissions = (
+  setAlertDialog?: UsePermissionsProps["setAlertDialog"]
+): UsePermissionsReturn => {
   const [micPermissionGranted, setMicPermissionGranted] = useState(false);
   const [accessibilityPermissionGranted, setAccessibilityPermissionGranted] =
     useState(false);
@@ -23,24 +33,51 @@ export const usePermissions = (): UsePermissionsReturn => {
       setMicPermissionGranted(true);
     } catch (err) {
       console.error("Microphone permission denied:", err);
-      alert("Please grant microphone permissions to use voice dictation.");
+      if (setAlertDialog) {
+        setAlertDialog({
+          open: true,
+          title: "Microphone Permission Required",
+          description:
+            "Please grant microphone permissions to use voice dictation.",
+        });
+      } else {
+        alert("Please grant microphone permissions to use voice dictation.");
+      }
     }
-  }, []);
+  }, [setAlertDialog]);
 
   const testAccessibilityPermission = useCallback(async () => {
     try {
       await window.electronAPI.pasteText("OpenWispr accessibility test");
       setAccessibilityPermissionGranted(true);
-      alert(
-        "✅ Accessibility permissions working! Check if the test text appeared in another app."
-      );
+      if (setAlertDialog) {
+        setAlertDialog({
+          open: true,
+          title: "✅ Accessibility Test Successful",
+          description:
+            "Accessibility permissions working! Check if the test text appeared in another app.",
+        });
+      } else {
+        alert(
+          "✅ Accessibility permissions working! Check if the test text appeared in another app."
+        );
+      }
     } catch (err) {
       console.error("Accessibility permission test failed:", err);
-      alert(
-        "❌ Accessibility permissions needed! Please grant them in System Settings."
-      );
+      if (setAlertDialog) {
+        setAlertDialog({
+          open: true,
+          title: "❌ Accessibility Permissions Needed",
+          description:
+            "Please grant accessibility permissions in System Settings to enable automatic text pasting.",
+        });
+      } else {
+        alert(
+          "❌ Accessibility permissions needed! Please grant them in System Settings."
+        );
+      }
     }
-  }, []);
+  }, [setAlertDialog]);
 
   return {
     micPermissionGranted,

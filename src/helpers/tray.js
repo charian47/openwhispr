@@ -146,11 +146,40 @@ class TrayManager {
       },
       {
         label: "Open Control Panel",
-        click: () => {
-          if (this.controlPanelWindow) {
-            this.controlPanelWindow.focus();
-          } else if (this.createControlPanelCallback) {
-            this.createControlPanelCallback();
+        click: async () => {
+          try {
+            // Check if control panel window exists and is valid
+            if (
+              this.controlPanelWindow &&
+              !this.controlPanelWindow.isDestroyed()
+            ) {
+              if (!this.controlPanelWindow.isVisible()) {
+                this.controlPanelWindow.show();
+              }
+              this.controlPanelWindow.focus();
+            } else if (this.createControlPanelCallback) {
+              // Clear stale reference if window was destroyed
+              if (
+                this.controlPanelWindow &&
+                this.controlPanelWindow.isDestroyed()
+              ) {
+                this.controlPanelWindow = null;
+              }
+
+              await this.createControlPanelCallback();
+
+              // After creation, focus the window if it exists
+              if (
+                this.controlPanelWindow &&
+                !this.controlPanelWindow.isDestroyed()
+              ) {
+                this.controlPanelWindow.focus();
+              }
+            } else {
+              console.error("No control panel callback available");
+            }
+          } catch (error) {
+            console.error("Failed to open control panel:", error);
           }
         },
       },

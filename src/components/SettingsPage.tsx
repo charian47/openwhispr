@@ -31,11 +31,6 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
   const [whisperModel, setWhisperModel] = useState("base");
   const [allowOpenAIFallback, setAllowOpenAIFallback] = useState(false);
 
-  // Use custom hooks
-  const whisperHook = useWhisper();
-  const permissionsHook = usePermissions();
-  const { pasteFromClipboardWithFallback } = useClipboard();
-
   // Update state
   const [currentVersion, setCurrentVersion] = useState<string>("");
   const [updateStatus, setUpdateStatus] = useState<{
@@ -70,6 +65,11 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     open: false,
     title: "",
   });
+
+  // Use custom hooks
+  const whisperHook = useWhisper(setAlertDialog);
+  const permissionsHook = usePermissions(setAlertDialog);
+  const { pasteFromClipboardWithFallback } = useClipboard(setAlertDialog);
 
   useEffect(() => {
     // Load saved settings

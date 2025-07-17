@@ -1,6 +1,4 @@
 import React from "react";
-import { Button } from "./ui/button";
-import { Tooltip } from "./ui/tooltip";
 
 interface TitleBarProps {
   title?: string;
@@ -15,10 +13,12 @@ export default function TitleBar({
   showTitle = false,
   children,
   className = "",
-  actions
+  actions,
 }: TitleBarProps) {
   return (
-    <div className={`bg-white border-b border-gray-100 select-none ${className}`}>
+    <div
+      className={`bg-white border-b border-gray-100 select-none ${className}`}
+    >
       <div
         className="flex items-center justify-between h-12 px-4"
         style={{ WebkitAppRegion: "drag" }}
@@ -32,7 +32,7 @@ export default function TitleBar({
         </div>
 
         {/* Right section - actions */}
-        <div
+        <div 
           className="flex items-center gap-2"
           style={{ WebkitAppRegion: "no-drag" }}
         >

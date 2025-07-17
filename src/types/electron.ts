@@ -93,7 +93,7 @@ declare global {
       // Basic window operations
       pasteText: (text: string) => Promise<void>;
       hideWindow: () => Promise<void>;
-      showDictationPanel?: () => Promise<void>;
+      showDictationPanel: () => Promise<void>;
       onToggleDictation: (callback: () => void) => void;
 
       // Database operations
@@ -111,6 +111,7 @@ declare global {
 
       // Clipboard operations
       readClipboard: () => Promise<string>;
+      writeClipboard: (text: string) => Promise<{ success: boolean }>;
 
       // Whisper operations
       transcribeLocalWhisper: (

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
 import {
   ChevronRight,
   ChevronLeft,
@@ -14,7 +15,7 @@ import {
   Keyboard,
   TestTube,
   Sparkles,
-  Globe,
+  Lock,
   X,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
@@ -46,14 +47,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [apiKey, setApiKey] = useState("");
   const [whisperModel, setWhisperModel] = useState("base");
   const [hotkey, setHotkey] = useState("`");
-  const [practiceText, setPracticeText] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
-    null
-  );
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+
   const [alertDialog, setAlertDialog] = useState<{
     open: boolean;
     title: string;
@@ -62,20 +56,21 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     open: false,
     title: "",
   });
+  const practiceTextareaRef = useRef<HTMLInputElement>(null);
 
   // Use our custom hooks
-  const whisperHook = useWhisper();
-  const permissionsHook = usePermissions();
-  const { pasteFromClipboard } = useClipboard();
+  const whisperHook = useWhisper(setAlertDialog);
+  const permissionsHook = usePermissions(setAlertDialog);
+  const { pasteFromClipboard } = useClipboard(setAlertDialog);
 
   const steps = [
     { title: "Welcome", icon: Sparkles },
-    { title: "Choose Mode", icon: Globe },
-    { title: "Setup Processing", icon: Settings },
+    { title: "Privacy", icon: Lock },
+    { title: "Setup", icon: Settings },
     { title: "Permissions", icon: Shield },
-    { title: "Choose Hotkey", icon: Keyboard },
-    { title: "Test & Practice", icon: TestTube },
-    { title: "Complete", icon: Check },
+    { title: "Hotkey", icon: Keyboard },
+    { title: "Test", icon: TestTube },
+    { title: "Finish", icon: Check },
   ];
 
   useEffect(() => {
@@ -83,128 +78,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     whisperHook.setupProgressListener();
   }, [whisperHook]);
 
-  // Add hotkey listener for practice step and manage dictation panel visibility
-  useEffect(() => {
-    if (currentStep === 5) {
-      // Practice step
-      // Show dictation panel when reaching test step
-      const showDictationPanel = () => {
-        // Create a new window for dictation panel or bring it to front
-        // This depends on your electron setup - you might need to add this to electronAPI
-        if (window.electronAPI?.showDictationPanel) {
-          window.electronAPI.showDictationPanel();
-        }
-      };
-
-      showDictationPanel();
-
-      const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key === hotkey && !event.repeat) {
-          event.preventDefault();
-          if (isRecording) {
-            stopPracticeRecording();
-          } else if (!isProcessing) {
-            startPracticeRecording();
-          }
-        }
-      };
-
-      window.addEventListener("keydown", handleKeyDown);
-      return () => window.removeEventListener("keydown", handleKeyDown);
-    }
-  }, [currentStep, hotkey, isRecording, isProcessing]);
-
   // Helper function to update processing mode and save immediately
   const updateProcessingMode = (useLocal: boolean) => {
     setUseLocalWhisper(useLocal);
     localStorage.setItem("useLocalWhisper", useLocal.toString());
   };
 
-  const startPracticeRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = (event) => {
-        chunks.push(event.data);
-      };
-
-      recorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: "audio/wav" });
-        setRecordingBlob(blob);
-        setIsProcessing(true);
-
-        // Process the audio
-        try {
-          let result;
-          if (useLocalWhisper) {
-            result = await window.electronAPI.transcribeLocalWhisper(blob, {
-              model: whisperModel,
-            });
-          } else {
-            // For demo purposes, we'll use a simple OpenAI API call
-            const formData = new FormData();
-            formData.append("file", blob, "audio.wav");
-            formData.append("model", "whisper-1");
-
-            const response = await fetch(
-              "https://api.openai.com/v1/audio/transcriptions",
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${apiKey}`,
-                },
-                body: formData,
-              }
-            );
-
-            if (response.ok) {
-              result = await response.json();
-            } else {
-              throw new Error("Transcription failed");
-            }
-          }
-
-          if (result.text || result.success) {
-            const text =
-              result.text || result.transcript || "Transcription successful!";
-            setPracticeText(text);
-            // Test paste functionality
-            await window.electronAPI.pasteText(text);
-          }
-        } catch (error) {
-          setAlertDialog({
-            open: true,
-            title: "Transcription Failed",
-            description: "Transcription failed. Please try again.",
-          });
-        } finally {
-          setIsProcessing(false);
-          stream.getTracks().forEach((track) => track.stop());
-        }
-      };
-
-      setMediaRecorder(recorder);
-      setAudioChunks(chunks);
-      recorder.start();
-      setIsRecording(true);
-    } catch (error) {
-      setAlertDialog({
-        open: true,
-        title: "Recording Failed",
-        description:
-          "Failed to start recording. Please check microphone permissions.",
-      });
+  useEffect(() => {
+    if (currentStep === 5) {
+      if (practiceTextareaRef.current) {
+        practiceTextareaRef.current.focus();
+      }
     }
-  };
-
-  const stopPracticeRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-    }
-  };
+  }, [currentStep]);
 
   const saveSettings = async () => {
     // Save all settings
@@ -232,6 +118,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       const newStep = currentStep + 1;
       setCurrentStep(newStep);
       localStorage.setItem("onboardingCurrentStep", newStep.toString());
+
+      // Show dictation panel when moving from permissions step (3) to hotkey step (4)
+      if (currentStep === 3 && newStep === 4) {
+        // Show dictation panel after permissions are granted
+        if (window.electronAPI?.showDictationPanel) {
+          window.electronAPI.showDictationPanel();
+        }
+      }
     }
   };
 
@@ -581,55 +475,35 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   className="text-sm text-blue-800 mb-4"
                   style={{ fontFamily: "Noto Sans, sans-serif" }}
                 >
-                  Press{" "}
+                  <strong>Step 1:</strong> Click in the text area below to place
+                  your cursor there.
+                  <br />
+                  <strong>Step 2:</strong> Press{" "}
                   <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
                     {hotkey}
                   </kbd>{" "}
-                  to start recording, then speak something. Press{" "}
+                  to start recording, then speak something.
+                  <br />
+                  <strong>Step 3:</strong> Press{" "}
                   <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
                     {hotkey}
                   </kbd>{" "}
-                  again to stop and paste the text below.
+                  again to stop and see your transcribed text appear where your
+                  cursor is!
                 </p>
 
                 <div className="space-y-4">
                   <div className="text-center">
-                    {isRecording ? (
-                      <div className="flex items-center justify-center gap-2 text-red-600">
-                        <div className="animate-pulse w-3 h-3 bg-red-500 rounded-full"></div>
-                        <span
-                          className="font-medium"
-                          style={{ fontFamily: "Noto Sans, sans-serif" }}
-                        >
-                          Recording... Press{" "}
-                          <kbd className="bg-white px-1 py-0.5 rounded text-xs font-mono border">
-                            {hotkey}
-                          </kbd>{" "}
-                          to stop
-                        </span>
-                      </div>
-                    ) : isProcessing ? (
-                      <div className="flex items-center justify-center gap-2 text-purple-600">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                        <span
-                          className="font-medium"
-                          style={{ fontFamily: "Noto Sans, sans-serif" }}
-                        >
-                          Processing transcription...
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center gap-2 text-stone-600">
-                        <Mic className="w-4 h-4" />
-                        <span style={{ fontFamily: "Noto Sans, sans-serif" }}>
-                          Press{" "}
-                          <kbd className="bg-white px-1 py-0.5 rounded text-xs font-mono border">
-                            {hotkey}
-                          </kbd>{" "}
-                          to start recording
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-center gap-2 text-stone-600">
+                      <Mic className="w-4 h-4" />
+                      <span style={{ fontFamily: "Noto Sans, sans-serif" }}>
+                        Click in the text area below, then press{" "}
+                        <kbd className="bg-white px-1 py-0.5 rounded text-xs font-mono border">
+                          {hotkey}
+                        </kbd>{" "}
+                        to start dictation
+                      </span>
+                    </div>
                   </div>
 
                   <div>
@@ -639,13 +513,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     >
                       Transcribed Text:
                     </label>
-                    <textarea
-                      value={practiceText}
-                      onChange={(e) => setPracticeText(e.target.value)}
-                      className="w-full p-3 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                      style={{ fontFamily: "Noto Sans, sans-serif" }}
+                    <Textarea
+                      // ref={practiceTextareaRef}
                       rows={4}
-                      placeholder="Your transcribed text will appear here after recording..."
+                      placeholder="Click here to place your cursor, then use your hotkey to start dictation..."
                     />
                   </div>
                 </div>
@@ -768,7 +639,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       case 4:
         return hotkey.trim() !== "";
       case 5:
-        return practiceText.trim() !== "";
+        return true; // Practice step is always ready to proceed
       case 6:
         return true;
       default:
@@ -799,6 +670,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           #e7e5e4 25px
         )`,
         fontFamily: "Noto Sans, sans-serif",
+        paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
       <AlertDialog
@@ -811,56 +683,54 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       {/* Left margin line for entire page */}
       <div className="fixed left-6 md:left-12 top-0 bottom-0 w-px bg-red-300/40 z-0"></div>
 
-      <TitleBar
-        title="OpenWispr Setup"
-        showTitle={true}
-        className="bg-white backdrop-blur-xl border-b border-stone-200/60 relative z-10 flex-shrink-0"
-      >
-        <div
-          className="text-sm text-stone-500"
-          style={{ fontFamily: "Noto Sans, sans-serif" }}
-        >
-          Step {currentStep + 1} of {steps.length}
-        </div>
-      </TitleBar>
+      {/* Title Bar */}
+      <div className="flex-shrink-0 z-10">
+        <TitleBar
+          showTitle={true}
+          className="bg-white/95 backdrop-blur-xl border-b border-stone-200/60 shadow-sm"
+        ></TitleBar>
+      </div>
 
       {/* Progress Bar */}
-      <div className="bg-white backdrop-blur-xl border-b border-stone-200/60 px-6 md:pl-16 md:pr-6 py-2 relative z-10 flex-shrink-0">
-        <StepProgress steps={steps} currentStep={currentStep} />
+      <div className="flex-shrink-0 bg-white/90 backdrop-blur-xl border-b border-stone-200/60 p-6 md:px-16 z-10">
+        <div className="max-w-4xl mx-auto">
+          <StepProgress steps={steps} currentStep={currentStep} />
+        </div>
       </div>
 
       {/* Content - This will grow to fill available space */}
-      <div className="flex-1 px-6 md:pl-16 md:pr-6 py-8 relative z-10 overflow-y-auto">
+      <div className="flex-1 px-6 md:pl-16 md:pr-6 py-12 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          <Card className="bg-white backdrop-blur-xl border border-stone-200/60 shadow-sm rounded-2xl overflow-hidden">
+          <Card className="bg-white/95 backdrop-blur-xl border border-stone-200/60 shadow-lg rounded-2xl overflow-hidden">
             <CardContent
-              className="p-8"
+              className="p-12 md:p-16"
               style={{ fontFamily: "Noto Sans, sans-serif" }}
             >
-              {renderStep()}
+              <div className="space-y-8">{renderStep()}</div>
             </CardContent>
           </Card>
         </div>
       </div>
 
       {/* Footer - This will stick to the bottom */}
-      <div className="bg-white backdrop-blur-xl border-t border-stone-200/60 px-6 md:pl-16 md:pr-6 py-4 relative z-10 flex-shrink-0">
+      <div className="flex-shrink-0 bg-white/95 backdrop-blur-xl border-t border-stone-200/60 px-6 md:pl-16 md:pr-6 py-8 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Button
             onClick={prevStep}
             variant="outline"
             disabled={currentStep === 0}
+            className="px-8 py-3 h-12 text-sm font-medium"
             style={{ fontFamily: "Noto Sans, sans-serif" }}
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Previous
           </Button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {currentStep === steps.length - 1 ? (
               <Button
                 onClick={finishOnboarding}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 px-8 py-3 h-12 text-sm font-medium"
                 style={{ fontFamily: "Noto Sans, sans-serif" }}
               >
                 <Check className="w-4 h-4 mr-2" />
@@ -870,6 +740,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <Button
                 onClick={nextStep}
                 disabled={!canProceed()}
+                className="px-8 py-3 h-12 text-sm font-medium"
                 style={{ fontFamily: "Noto Sans, sans-serif" }}
               >
                 Next
