@@ -84,29 +84,6 @@
   font-style: italic;
 }
 
-/* Elegant parchment-inspired glass effect */
-.glass-effect {
-  backdrop-filter: blur(20px) saturate(1.1);
-  box-shadow: 0 8px 32px rgba(43, 31, 20, 0.08), 
-              0 1px 0 rgba(255, 255, 255, 0.2) inset;
-}
-
-/* Light mode glass effect */
-:root .glass-effect {
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(43, 31, 20, 0.1);
-  box-shadow: 0 8px 32px rgba(43, 31, 20, 0.05), 
-              0 1px 0 rgba(255, 255, 255, 0.5) inset;
-}
-
-/* Dark mode glass effect */
-.dark .glass-effect {
-  background: rgba(15, 15, 25, 0.85);
-  border: 1px solid rgba(100, 150, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
-              0 0 0 1px rgba(100, 150, 255, 0.1) inset;
-}
-
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-weight: 600;

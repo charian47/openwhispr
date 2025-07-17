@@ -1,0 +1,226 @@
+const { ipcMain, app } = require("electron");
+const AppUtils = require("../utils");
+
+class IPCHandlers {
+  constructor(managers) {
+    this.environmentManager = managers.environmentManager;
+    this.databaseManager = managers.databaseManager;
+    this.clipboardManager = managers.clipboardManager;
+    this.whisperManager = managers.whisperManager;
+    this.windowManager = managers.windowManager;
+    this.setupHandlers();
+  }
+
+  setupHandlers() {
+    // Window control handlers
+    ipcMain.handle("window-minimize", () => {
+      if (this.windowManager.controlPanelWindow) {
+        this.windowManager.controlPanelWindow.minimize();
+      }
+    });
+
+    ipcMain.handle("window-maximize", () => {
+      if (this.windowManager.controlPanelWindow) {
+        if (this.windowManager.controlPanelWindow.isMaximized()) {
+          this.windowManager.controlPanelWindow.unmaximize();
+        } else {
+          this.windowManager.controlPanelWindow.maximize();
+        }
+      }
+    });
+
+    ipcMain.handle("window-close", () => {
+      if (this.windowManager.controlPanelWindow) {
+        this.windowManager.controlPanelWindow.close();
+      }
+    });
+
+    ipcMain.handle("window-is-maximized", () => {
+      if (this.windowManager.controlPanelWindow) {
+        return this.windowManager.controlPanelWindow.isMaximized();
+      }
+      return false;
+    });
+
+    ipcMain.handle("hide-window", () => {
+      if (process.platform === "darwin") {
+        this.windowManager.mainWindow.minimize();
+        if (app.dock) app.dock.show();
+      } else {
+        this.windowManager.mainWindow.hide();
+      }
+    });
+
+    // Environment handlers
+    ipcMain.handle("get-openai-key", async (event) => {
+      return this.environmentManager.getOpenAIKey();
+    });
+
+    ipcMain.handle("save-openai-key", async (event, key) => {
+      return this.environmentManager.saveOpenAIKey(key);
+    });
+
+    ipcMain.handle("create-production-env-file", async (event, apiKey) => {
+      return this.environmentManager.createProductionEnvFile(apiKey);
+    });
+
+    // Database handlers
+    ipcMain.handle("db-save-transcription", async (event, text) => {
+      return this.databaseManager.saveTranscription(text);
+    });
+
+    ipcMain.handle("db-get-transcriptions", async (event, limit = 50) => {
+      return this.databaseManager.getTranscriptions(limit);
+    });
+
+    ipcMain.handle("db-clear-transcriptions", async (event) => {
+      return this.databaseManager.clearTranscriptions();
+    });
+
+    ipcMain.handle("db-delete-transcription", async (event, id) => {
+      return this.databaseManager.deleteTranscription(id);
+    });
+
+    // Clipboard handlers
+    ipcMain.handle("paste-text", async (event, text) => {
+      return this.clipboardManager.pasteText(text);
+    });
+
+    ipcMain.handle("read-clipboard", async (event) => {
+      return this.clipboardManager.readClipboard();
+    });
+
+    // Whisper handlers
+    ipcMain.handle(
+      "transcribe-local-whisper",
+      async (event, audioBlob, options = {}) => {
+        try {
+          const result = await this.whisperManager.transcribeLocalWhisper(
+            audioBlob,
+            options
+          );
+
+          // Check if no audio was detected and send appropriate event
+          if (!result.success && result.message === "No audio detected") {
+            event.sender.send("no-audio-detected");
+          }
+
+          return result;
+        } catch (error) {
+          console.error("❌ Local Whisper transcription error:", error);
+          throw error;
+        }
+      }
+    );
+
+    ipcMain.handle("check-whisper-installation", async (event) => {
+      return this.whisperManager.checkWhisperInstallation();
+    });
+
+    ipcMain.handle("install-whisper", async (event) => {
+      try {
+        // Set up progress forwarding for installation
+        const originalConsoleLog = console.log;
+        console.log = (...args) => {
+          const message = args.join(" ");
+          if (
+            message.includes("Installing") ||
+            message.includes("Downloading") ||
+            message.includes("Collecting")
+          ) {
+            event.sender.send("whisper-install-progress", {
+              type: "progress",
+              message: message,
+            });
+          }
+          originalConsoleLog(...args);
+        };
+
+        const result = await this.whisperManager.installWhisper();
+
+        // Restore original console.log
+        console.log = originalConsoleLog;
+
+        return result;
+      } catch (error) {
+        console.error("❌ Whisper installation error:", error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle("download-whisper-model", async (event, modelName) => {
+      try {
+        // Set up progress forwarding for model downloads
+        const originalConsoleError = console.error;
+        console.error = (...args) => {
+          const message = args.join(" ");
+          if (message.startsWith("PROGRESS:")) {
+            try {
+              const progressData = JSON.parse(message.substring(9));
+              event.sender.send("whisper-download-progress", {
+                type: "progress",
+                model: modelName,
+                ...progressData,
+              });
+            } catch (parseError) {
+              // Ignore parsing errors for progress data
+            }
+          }
+          originalConsoleError(...args);
+        };
+
+        const result = await this.whisperManager.downloadWhisperModel(
+          modelName
+        );
+
+        // Restore original console.error
+        console.error = originalConsoleError;
+
+        // Send completion event
+        event.sender.send("whisper-download-progress", {
+          type: "complete",
+          model: modelName,
+          result: result,
+        });
+
+        return result;
+      } catch (error) {
+        console.error("❌ Model download error:", error);
+
+        // Send error event
+        event.sender.send("whisper-download-progress", {
+          type: "error",
+          model: modelName,
+          error: error.message,
+        });
+
+        throw error;
+      }
+    });
+
+    ipcMain.handle("check-model-status", async (event, modelName) => {
+      return this.whisperManager.checkModelStatus(modelName);
+    });
+
+    ipcMain.handle("list-whisper-models", async (event) => {
+      return this.whisperManager.listWhisperModels();
+    });
+
+    ipcMain.handle("delete-whisper-model", async (event, modelName) => {
+      return this.whisperManager.deleteWhisperModel(modelName);
+    });
+
+    // Utility handlers
+    ipcMain.handle("cleanup-app", async (event) => {
+      try {
+        AppUtils.cleanup(this.windowManager.mainWindow);
+        return { success: true, message: "Cleanup completed successfully" };
+      } catch (error) {
+        console.error("❌ Cleanup error:", error);
+        throw error;
+      }
+    });
+  }
+}
+
+module.exports = IPCHandlers;

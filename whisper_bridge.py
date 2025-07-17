@@ -14,13 +14,32 @@ import whisper
 import threading
 import time
 import requests
+import gc
+
+# Global model cache to avoid reloading
+_model_cache = {}
 
 def load_model(model_name="base"):
-    """Load Whisper model with error handling"""
+    """Load Whisper model with caching for performance"""
+    global _model_cache
+    
+    # Return cached model if available
+    if model_name in _model_cache:
+        return _model_cache[model_name]
+    
     try:
         print(f"Loading Whisper model: {model_name}", file=sys.stderr)
         model = whisper.load_model(model_name)
         print(f"Model {model_name} loaded successfully", file=sys.stderr)
+        
+        # Cache the model but limit cache size
+        if len(_model_cache) >= 2:  # Keep max 2 models in memory
+            # Remove oldest model
+            oldest_key = next(iter(_model_cache))
+            del _model_cache[oldest_key]
+            gc.collect()  # Force garbage collection
+        
+        _model_cache[model_name] = model
         return model
     except Exception as e:
         print(f"Error loading model: {e}", file=sys.stderr)
@@ -116,6 +135,7 @@ def monitor_download_progress(model_name, expected_size):
 
 def download_model(model_name="base"):
     """Download Whisper model with real-time progress monitoring"""
+    progress_thread = None
     try:
         print(f"Starting download of Whisper model: {model_name}", file=sys.stderr)
         
@@ -182,6 +202,14 @@ def download_model(model_name="base"):
             "success": True
         }
         
+    except KeyboardInterrupt:
+        print(f"Download interrupted by user", file=sys.stderr)
+        return {
+            "model": model_name,
+            "downloaded": False,
+            "error": "Download interrupted by user",
+            "success": False
+        }
     except Exception as e:
         print(f"Error downloading model: {e}", file=sys.stderr)
         return {
@@ -190,6 +218,11 @@ def download_model(model_name="base"):
             "error": str(e),
             "success": False
         }
+    finally:
+        # Cleanup: let the progress thread finish naturally
+        if progress_thread and progress_thread.is_alive():
+            # Give the progress thread a moment to finish
+            time.sleep(0.5)
 
 def check_model_status(model_name="base"):
     """Check if a model is already downloaded"""
@@ -274,28 +307,27 @@ def delete_model(model_name="base"):
         }
 
 def transcribe_audio(audio_path, model_name="base", language=None):
-    """Transcribe audio file using Whisper"""
+    """Transcribe audio file using Whisper with optimizations"""
     try:
-        # Load model
+        # Load model (uses cache for performance)
         model = load_model(model_name)
         if model is None:
-            return {"error": "Failed to load Whisper model"}
+            return {"error": "Failed to load Whisper model", "success": False}
         
-        # Transcribe
-        print(f"Transcribing audio file: {audio_path}", file=sys.stderr)
-        
-        # Set transcription options
-        options = {}
+        # Set transcription options - keep it simple for reliability
+        options = {
+            "fp16": False,  # Use FP32 for better compatibility
+            "verbose": False,  # Reduce logging overhead
+        }
         if language:
             options["language"] = language
             
         result = model.transcribe(audio_path, **options)
         
-        # Return results
+        # Return results - only JSON to stdout
         return {
-            "text": result["text"].strip(),
+            "text": result.get("text", "").strip(),
             "language": result.get("language", "unknown"),
-            "segments": result.get("segments", []),
             "success": True
         }
         

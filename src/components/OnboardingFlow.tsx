@@ -1,0 +1,942 @@
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import {
+  ChevronRight,
+  ChevronLeft,
+  Check,
+  Settings,
+  Mic,
+  Download,
+  Key,
+  Zap,
+  RefreshCw,
+  Trash2,
+  Cloud,
+  Shield,
+  Keyboard,
+  TestTube,
+  Sparkles,
+  Globe,
+  Lock,
+  Play,
+  ArrowRight,
+  X,
+} from "lucide-react";
+import TitleBar from "./TitleBar";
+import WhisperModelPicker from "./WhisperModelPicker";
+
+// Type declaration for electronAPI
+declare global {
+  interface Window {
+    electronAPI: {
+      pasteText: (text: string) => Promise<void>;
+      hideWindow: () => Promise<void>;
+      showDictationPanel?: () => Promise<void>;
+      onToggleDictation: (callback: () => void) => void;
+      saveTranscription: (text: string) => Promise<{ id: number; success: boolean }>;
+      getTranscriptions: (limit?: number) => Promise<any[]>;
+      clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
+      deleteTranscription: (id: number) => Promise<{ success: boolean }>;
+      getOpenAIKey: () => Promise<string>;
+      saveOpenAIKey: (key: string) => Promise<{ success: boolean }>;
+      readClipboard: () => Promise<string>;
+      createProductionEnvFile: (key: string) => Promise<void>;
+      transcribeLocalWhisper: (audioBlob: Blob, options?: any) => Promise<any>;
+      checkWhisperInstallation: () => Promise<{
+        installed: boolean;
+        working: boolean;
+        error?: string;
+      }>;
+      installWhisper: () => Promise<{
+        success: boolean;
+        message: string;
+        output: string;
+      }>;
+      onWhisperInstallProgress: (
+        callback: (event: any, data: { type: string; message: string; output?: string }) => void
+      ) => void;
+      downloadWhisperModel: (modelName: string) => Promise<{
+        success: boolean;
+        model: string;
+        downloaded: boolean;
+        size_mb?: number;
+        error?: string;
+      }>;
+      onWhisperDownloadProgress: (
+        callback: (event: any, data: {
+          type: string;
+          model: string;
+          percentage?: number;
+          downloaded_bytes?: number;
+          total_bytes?: number;
+          error?: string;
+          result?: any;
+        }) => void
+      ) => void;
+      checkModelStatus: (modelName: string) => Promise<{
+        success: boolean;
+        model: string;
+        downloaded: boolean;
+        size_mb?: number;
+        error?: string;
+      }>;
+      listWhisperModels: () => Promise<{
+        success: boolean;
+        models: Array<{ model: string; downloaded: boolean; size_mb?: number }>;
+        cache_dir: string;
+      }>;
+      deleteWhisperModel: (modelName: string) => Promise<{
+        success: boolean;
+        model: string;
+        deleted: boolean;
+        freed_mb?: number;
+        error?: string;
+      }>;
+      windowMinimize: () => Promise<void>;
+      windowMaximize: () => Promise<void>;
+      windowClose: () => Promise<void>;
+      windowIsMaximized: () => Promise<boolean>;
+    };
+  }
+}
+
+interface OnboardingFlowProps {
+  onComplete: () => void;
+}
+
+export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+  const [currentStep, setCurrentStep] = useState(() => {
+    // Load the current step from localStorage on component mount
+    const savedStep = localStorage.getItem('onboardingCurrentStep');
+    return savedStep ? parseInt(savedStep, 10) : 0;
+  });
+  const [useLocalWhisper, setUseLocalWhisper] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [whisperModel, setWhisperModel] = useState("base");
+  const [hotkey, setHotkey] = useState("`");
+  const [whisperInstalled, setWhisperInstalled] = useState(false);
+  const [installingWhisper, setInstallingWhisper] = useState(false);
+  const [installProgress, setInstallProgress] = useState("");
+  const [micPermissionGranted, setMicPermissionGranted] = useState(false);
+  const [accessibilityPermissionGranted, setAccessibilityPermissionGranted] = useState(false);
+  const [practiceText, setPracticeText] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+
+  const steps = [
+    { title: "Welcome", icon: Sparkles },
+    { title: "Choose Mode", icon: Globe },
+    { title: "Setup Processing", icon: Settings },
+    { title: "Permissions", icon: Shield },
+    { title: "Choose Hotkey", icon: Keyboard },
+    { title: "Test & Practice", icon: TestTube },
+    { title: "Complete", icon: Check },
+  ];
+
+  useEffect(() => {
+    // Set up progress listeners
+    window.electronAPI.onWhisperInstallProgress((event, data) => {
+      setInstallProgress(data.message);
+    });
+
+// No longer needed - WhisperModelPicker handles its own progress
+  }, [useLocalWhisper]);
+
+  // Add hotkey listener for practice step and manage dictation panel visibility
+  useEffect(() => {
+    if (currentStep === 5) { // Practice step
+      // Show dictation panel when reaching test step
+      const showDictationPanel = () => {
+        // Create a new window for dictation panel or bring it to front
+        // This depends on your electron setup - you might need to add this to electronAPI
+        if (window.electronAPI?.showDictationPanel) {
+          window.electronAPI.showDictationPanel();
+        }
+      };
+      
+      showDictationPanel();
+      
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === hotkey && !event.repeat) {
+          event.preventDefault();
+          if (isRecording) {
+            stopPracticeRecording();
+          } else if (!isProcessing) {
+            startPracticeRecording();
+          }
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [currentStep, hotkey, isRecording, isProcessing]);
+
+  const checkWhisperInstallation = async () => {
+    try {
+      const result = await window.electronAPI.checkWhisperInstallation();
+      setWhisperInstalled(result.installed && result.working);
+    } catch (error) {
+      setWhisperInstalled(false);
+    }
+  };
+
+  const installWhisper = async () => {
+    try {
+      setInstallingWhisper(true);
+      setInstallProgress("Starting Whisper installation...");
+      
+      const result = await window.electronAPI.installWhisper();
+      
+      if (result.success) {
+        setWhisperInstalled(true);
+        setInstallProgress("Installation complete!");
+      } else {
+        alert(`❌ Failed to install Whisper: ${result.message}`);
+      }
+    } catch (error) {
+      alert(`❌ Failed to install Whisper: ${error}`);
+    } finally {
+      setInstallingWhisper(false);
+      setInstallProgress("");
+    }
+  };
+
+  const requestMicPermission = async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      setMicPermissionGranted(true);
+    } catch (err) {
+      alert("Please grant microphone permissions to use voice dictation.");
+    }
+  };
+
+  const testAccessibilityPermission = async () => {
+    try {
+      await window.electronAPI.pasteText("OpenWispr accessibility test");
+      setAccessibilityPermissionGranted(true);
+      alert("✅ Accessibility permissions working! Check if the test text appeared in another app.");
+    } catch (err) {
+      alert("❌ Accessibility permissions needed! Please grant them in System Settings.");
+    }
+  };
+
+  const startPracticeRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
+      
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/wav' });
+        setRecordingBlob(blob);
+        setIsProcessing(true);
+        
+        // Process the audio
+        try {
+          let result;
+          if (useLocalWhisper) {
+            result = await window.electronAPI.transcribeLocalWhisper(blob, { model: whisperModel });
+          } else {
+            // For demo purposes, we'll use a simple OpenAI API call
+            const formData = new FormData();
+            formData.append('file', blob, 'audio.wav');
+            formData.append('model', 'whisper-1');
+            
+            const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${apiKey}`
+              },
+              body: formData
+            });
+            
+            if (response.ok) {
+              result = await response.json();
+            } else {
+              throw new Error('Transcription failed');
+            }
+          }
+          
+          if (result.text || result.success) {
+            const text = result.text || result.transcript || "Transcription successful!";
+            setPracticeText(text);
+            // Test paste functionality
+            await window.electronAPI.pasteText(text);
+          }
+        } catch (error) {
+          alert("Transcription failed. Please try again.");
+        } finally {
+          setIsProcessing(false);
+          stream.getTracks().forEach(track => track.stop());
+        }
+      };
+      
+      setMediaRecorder(recorder);
+      setAudioChunks(chunks);
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      alert("Failed to start recording. Please check microphone permissions.");
+    }
+  };
+
+  const stopPracticeRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    // Save all settings
+    localStorage.setItem("useLocalWhisper", useLocalWhisper.toString());
+    localStorage.setItem("whisperModel", whisperModel);
+    localStorage.setItem("dictationKey", hotkey);
+    localStorage.setItem("micPermissionGranted", micPermissionGranted.toString());
+    localStorage.setItem("accessibilityPermissionGranted", accessibilityPermissionGranted.toString());
+    localStorage.setItem("onboardingCompleted", "true");
+    
+    if (!useLocalWhisper && apiKey) {
+      await window.electronAPI.saveOpenAIKey(apiKey);
+      localStorage.setItem("openaiApiKey", apiKey);
+    }
+  };
+
+  const nextStep = () => {
+    if (currentStep < steps.length - 1) {
+      const newStep = currentStep + 1;
+      setCurrentStep(newStep);
+      localStorage.setItem('onboardingCurrentStep', newStep.toString());
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      const newStep = currentStep - 1;
+      setCurrentStep(newStep);
+      localStorage.setItem('onboardingCurrentStep', newStep.toString());
+    }
+  };
+
+  const finishOnboarding = async () => {
+    await saveSettings();
+    // Clear the onboarding step since we're done
+    localStorage.removeItem('onboardingCurrentStep');
+    onComplete();
+  };
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 0: // Welcome
+        return (
+          <div className="text-center space-y-6" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+            <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-stone-900 mb-2" style={{ fontFamily: 'Noto Sans, sans-serif' }}>Welcome to OpenWispr</h2>
+              <p className="text-stone-600" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+                Let's set up your voice dictation in just a few simple steps.
+              </p>
+            </div>
+            <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200/60">
+              <p className="text-sm text-blue-800" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+                🎤 Turn your voice into text instantly<br />
+                ⚡ Works anywhere on your computer<br />
+                🔒 Your privacy is protected
+              </p>
+            </div>
+          </div>
+        );
+
+      case 1: // Choose Mode
+        return (
+          <div className="space-y-6" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-stone-900 mb-2" style={{ fontFamily: 'Noto Sans, sans-serif' }}>Choose Your Processing Mode</h2>
+              <p className="text-stone-600" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+                How would you like to convert your speech to text?
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={() => setUseLocalWhisper(false)}
+                className={`p-6 border-2 rounded-xl text-left transition-all cursor-pointer ${
+                  !useLocalWhisper
+                    ? "border-blue-500 bg-blue-50/50 shadow-md"
+                    : "border-stone-200 bg-white hover:border-stone-300 hover:shadow-sm"
+                }`}
+                style={{ fontFamily: 'Noto Sans, sans-serif' }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <Cloud className="w-6 h-6 text-blue-600" />
+                    <h3 className="font-semibold text-stone-900">Cloud Processing</h3>
+                  </div>
+                  <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                    Fastest
+                  </span>
+                </div>
+                <p className="text-sm text-stone-600 mb-3">
+                  Uses OpenAI's servers for lightning-fast transcription
+                </p>
+                <div className="text-xs text-stone-500">
+                  ✓ Fastest processing<br />
+                  ✓ Best accuracy<br />
+                  • Requires internet<br />
+                  • Needs API key
+                </div>
+              </button>
+
+              <button
+                onClick={() => setUseLocalWhisper(true)}
+                className={`p-6 border-2 rounded-xl text-left transition-all cursor-pointer ${
+                  useLocalWhisper
+                    ? "border-blue-500 bg-blue-50/50 shadow-md"
+                    : "border-stone-200 bg-white hover:border-stone-300 hover:shadow-sm"
+                }`}
+                style={{ fontFamily: 'Noto Sans, sans-serif' }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <Lock className="w-6 h-6 text-blue-600" />
+                    <h3 className="font-semibold text-stone-900">Local Processing</h3>
+                  </div>
+                  <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                    Private
+                  </span>
+                </div>
+                <p className="text-sm text-stone-600 mb-3">
+                  Processes everything on your device for complete privacy
+                </p>
+                <div className="text-xs text-stone-500">
+                  ✓ Complete privacy<br />
+                  ✓ Works offline<br />
+                  ✓ No monthly costs<br />
+                  • Slower processing
+                </div>
+              </button>
+            </div>
+          </div>
+        );
+
+      case 2: // Setup Processing
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                {useLocalWhisper ? "Local Processing Setup" : "Cloud Processing Setup"}
+              </h2>
+              <p className="text-gray-600">
+                {useLocalWhisper 
+                  ? "Let's install and configure Whisper on your device" 
+                  : "Enter your OpenAI API key to get started"}
+              </p>
+            </div>
+
+            {useLocalWhisper ? (
+              <div className="space-y-4">
+                {!whisperInstalled ? (
+                  <div className="text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center">
+                      <Download className="w-8 h-8 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Install Whisper</h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        We'll automatically install Whisper for you. No technical setup required.
+                      </p>
+                    </div>
+                    
+                    {installingWhisper ? (
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <div className="flex items-center justify-center gap-3 mb-3">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                          <span className="font-medium text-purple-900">Installing...</span>
+                        </div>
+                        {installProgress && (
+                          <div className="text-xs text-purple-600 bg-white p-2 rounded font-mono">
+                            {installProgress}
+                          </div>
+                        )}
+                        <p className="text-xs text-purple-600 mt-2">
+                          This may take a few minutes. Please keep the app open.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <Button onClick={installWhisper} className="w-full">
+                          Install Whisper
+                        </Button>
+                        <Button 
+                          onClick={checkWhisperInstallation} 
+                          variant="outline" 
+                          size="sm"
+                          className="w-full"
+                        >
+                          Check if already installed
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
+                        <Check className="w-8 h-8 text-green-600" />
+                      </div>
+                      <h3 className="font-semibold text-green-900 mb-2">Whisper Installed!</h3>
+                      <p className="text-sm text-gray-600">Now choose your model quality:</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Choose your model quality below
+                      </label>
+                      <p className="text-xs text-gray-500">
+                        Download and select the model that best fits your needs.
+                      </p>
+                    </div>
+
+                    <WhisperModelPicker
+                      selectedModel={whisperModel}
+                      onModelSelect={setWhisperModel}
+                      variant="onboarding"
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                    <Key className="w-8 h-8 text-blue-600" />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    OpenAI API Key
+                  </label>
+                  <div className="flex gap-3">
+                    <Input
+                      type="password"
+                      placeholder="sk-..."
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const text = await window.electronAPI.readClipboard();
+                          if (text && text.trim()) {
+                            setApiKey(text.trim());
+                          }
+                        } catch (err) {
+                          alert("Could not paste from clipboard.");
+                        }
+                      }}
+                    >
+                      Paste
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Get your API key from <strong>platform.openai.com</strong>
+                  </p>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">How to get your API key:</h4>
+                  <ol className="text-sm text-blue-800 space-y-1">
+                    <li>1. Go to platform.openai.com</li>
+                    <li>2. Sign in to your account</li>
+                    <li>3. Navigate to API Keys</li>
+                    <li>4. Create a new secret key</li>
+                    <li>5. Copy and paste it here</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case 3: // Permissions
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Grant Permissions</h2>
+              <p className="text-gray-600">
+                OpenWispr needs a couple of permissions to work properly
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <Mic className="w-6 h-6 text-indigo-600" />
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Microphone Access</h3>
+                      <p className="text-sm text-gray-600">Required to record your voice</p>
+                    </div>
+                  </div>
+                  {micPermissionGranted ? (
+                    <div className="text-green-600">
+                      <Check className="w-5 h-5" />
+                    </div>
+                  ) : (
+                    <Button onClick={requestMicPermission} size="sm">
+                      Grant Access
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <Shield className="w-6 h-6 text-indigo-600" />
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Accessibility Permission</h3>
+                      <p className="text-sm text-gray-600">Required to paste text automatically</p>
+                    </div>
+                  </div>
+                  {accessibilityPermissionGranted ? (
+                    <div className="text-green-600">
+                      <Check className="w-5 h-5" />
+                    </div>
+                  ) : (
+                    <Button onClick={testAccessibilityPermission} size="sm">
+                      Test & Grant
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 p-4 rounded-lg">
+              <h4 className="font-medium text-amber-900 mb-2">🔒 Privacy Note</h4>
+              <p className="text-sm text-amber-800">
+                OpenWispr only uses these permissions for dictation. 
+                {useLocalWhisper ? " With local processing, your voice never leaves your device." : " Your voice is sent to OpenAI's servers for transcription."}
+              </p>
+            </div>
+          </div>
+        );
+
+      case 4: // Choose Hotkey
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Hotkey</h2>
+              <p className="text-gray-600">
+                Select which key you want to press to start/stop dictation
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Activation Key
+                </label>
+                <Input
+                  placeholder="Default: ` (backtick)"
+                  value={hotkey}
+                  onChange={(e) => setHotkey(e.target.value)}
+                  className="text-center text-lg font-mono"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Press this key from anywhere to start/stop dictation
+                </p>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-3">Popular Choices:</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {['`', 'F1', 'F2', 'F3', 'F4'].map((key) => (
+                    <button
+                      key={key}
+                      onClick={() => setHotkey(key)}
+                      className={`p-2 text-sm font-mono rounded border transition-all ${
+                        hotkey === key 
+                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700' 
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      {key}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 5: // Test & Practice
+        return (
+          <div className="space-y-6" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-stone-900 mb-2" style={{ fontFamily: 'Noto Sans, sans-serif' }}>Test & Practice</h2>
+              <p className="text-stone-600" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+                Let's test your setup and practice using OpenWispr
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-blue-50/50 p-6 rounded-lg border border-blue-200/60">
+                <h3 className="font-semibold text-blue-900 mb-3" style={{ fontFamily: 'Noto Sans, sans-serif' }}>Practice with Your Hotkey</h3>
+                <p className="text-sm text-blue-800 mb-4" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+                  Press <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">{hotkey}</kbd> to start recording, then speak something. Press <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">{hotkey}</kbd> again to stop and paste the text below.
+                </p>
+                
+                <div className="space-y-4">
+                  <div className="text-center">
+                    {isRecording ? (
+                      <div className="flex items-center justify-center gap-2 text-red-600">
+                        <div className="animate-pulse w-3 h-3 bg-red-500 rounded-full"></div>
+                        <span className="font-medium" style={{ fontFamily: 'Noto Sans, sans-serif' }}>Recording... Press <kbd className="bg-white px-1 py-0.5 rounded text-xs font-mono border">{hotkey}</kbd> to stop</span>
+                      </div>
+                    ) : isProcessing ? (
+                      <div className="flex items-center justify-center gap-2 text-purple-600">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                        <span className="font-medium" style={{ fontFamily: 'Noto Sans, sans-serif' }}>Processing transcription...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2 text-stone-600">
+                        <Mic className="w-4 h-4" />
+                        <span style={{ fontFamily: 'Noto Sans, sans-serif' }}>Press <kbd className="bg-white px-1 py-0.5 rounded text-xs font-mono border">{hotkey}</kbd> to start recording</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-2" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+                      Transcribed Text:
+                    </label>
+                    <textarea
+                      value={practiceText}
+                      onChange={(e) => setPracticeText(e.target.value)}
+                      className="w-full p-3 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      style={{ fontFamily: 'Noto Sans, sans-serif' }}
+                      rows={4}
+                      placeholder="Your transcribed text will appear here after recording..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-50/50 p-4 rounded-lg border border-green-200/60">
+                <h4 className="font-medium text-green-900 mb-2" style={{ fontFamily: 'Noto Sans, sans-serif' }}>💡 How to use OpenWispr:</h4>
+                <ol className="text-sm text-green-800 space-y-1" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+                  <li>1. Click in any text field (email, document, etc.)</li>
+                  <li>2. Press <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-green-200">{hotkey}</kbd> to start recording</li>
+                  <li>3. Speak your text clearly</li>
+                  <li>4. Press <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-green-200">{hotkey}</kbd> again to stop</li>
+                  <li>5. Your text will automatically appear where you were typing!</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 6: // Complete
+        return (
+          <div className="text-center space-y-6">
+            <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+              <Check className="w-8 h-8 text-green-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">You're All Set!</h2>
+              <p className="text-gray-600">
+                OpenWispr is now configured and ready to use.
+              </p>
+            </div>
+            
+            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-lg">
+              <h3 className="font-semibold text-gray-900 mb-3">Your Setup Summary:</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Processing:</span>
+                  <span className="font-medium">
+                    {useLocalWhisper ? `Local (${whisperModel})` : 'OpenAI Cloud'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Hotkey:</span>
+                  <kbd className="bg-white px-2 py-1 rounded text-xs font-mono">{hotkey}</kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span>Permissions:</span>
+                  <span className="font-medium text-green-600">
+                    {micPermissionGranted && accessibilityPermissionGranted ? '✓ Granted' : '⚠ Review needed'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Pro tip:</strong> You can always change these settings later in the Control Panel.
+              </p>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const canProceed = () => {
+    switch (currentStep) {
+      case 0: return true;
+      case 1: return true; // Mode selection
+case 2: 
+        if (useLocalWhisper) {
+          return whisperInstalled;
+        } else {
+          return apiKey.trim() !== '';
+        }
+      case 3: return micPermissionGranted && accessibilityPermissionGranted;
+      case 4: return hotkey.trim() !== '';
+      case 5: return practiceText.trim() !== '';
+      case 6: return true;
+      default: return false;
+    }
+  };
+
+  // Load Google Font only in the browser
+  React.useEffect(() => {
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&display=swap';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+    return () => {
+      document.head.removeChild(link);
+    };
+  }, []);
+
+  return (
+    <div 
+      className="h-screen flex flex-col bg-gradient-to-br from-stone-50 via-white to-blue-50/30"
+      style={{
+        backgroundImage: `repeating-linear-gradient(
+          transparent,
+          transparent 24px,
+          #e7e5e4 24px,
+          #e7e5e4 25px
+        )`,
+        fontFamily: 'Noto Sans, sans-serif',
+      }}
+    >
+      {/* Left margin line for entire page */}
+      <div className="fixed left-6 md:left-12 top-0 bottom-0 w-px bg-red-300/40 z-0"></div>
+      
+      <TitleBar
+        title="OpenWispr Setup"
+        showTitle={true}
+        className="bg-white backdrop-blur-xl border-b border-stone-200/60 relative z-10 flex-shrink-0"
+      >
+        <div className="text-sm text-stone-500" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+          Step {currentStep + 1} of {steps.length}
+        </div>
+      </TitleBar>
+
+      {/* Progress Bar */}
+      <div className="bg-white backdrop-blur-xl border-b border-stone-200/60 px-6 md:pl-16 md:pr-6 py-2 relative z-10 flex-shrink-0">
+        <div className="flex items-center justify-between mb-2">
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            const isActive = index === currentStep;
+            const isCompleted = index < currentStep;
+            
+            return (
+              <div key={index} className="flex items-center">
+                <div className={`flex items-center gap-2 ${
+                  isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-stone-400'
+                }`} style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                    isActive 
+                      ? 'border-blue-600 bg-blue-50' 
+                      : isCompleted 
+                        ? 'border-green-600 bg-green-50' 
+                        : 'border-stone-300 bg-white'
+                  }`}>
+                    {isCompleted ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <Icon className="w-4 h-4" />
+                    )}
+                  </div>
+                  <span className="text-xs font-medium hidden md:block">{step.title}</span>
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={`w-8 h-0.5 mx-2 ${
+                    isCompleted ? 'bg-green-600' : 'bg-stone-300'
+                  }`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Content - This will grow to fill available space */}
+      <div className="flex-1 px-6 md:pl-16 md:pr-6 py-8 relative z-10 overflow-y-auto">
+        <div className="max-w-4xl mx-auto">
+          <Card className="bg-white backdrop-blur-xl border border-stone-200/60 shadow-sm rounded-2xl overflow-hidden">
+            <CardContent className="p-8" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+              {renderStep()}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Footer - This will stick to the bottom */}
+      <div className="bg-white backdrop-blur-xl border-t border-stone-200/60 px-6 md:pl-16 md:pr-6 py-4 relative z-10 flex-shrink-0">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <Button
+            onClick={prevStep}
+            variant="outline"
+            disabled={currentStep === 0}
+            style={{ fontFamily: 'Noto Sans, sans-serif' }}
+          >
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            Previous
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            {currentStep === steps.length - 1 ? (
+              <Button onClick={finishOnboarding} className="bg-green-600 hover:bg-green-700" style={{ fontFamily: 'Noto Sans, sans-serif' }}>
+                <Check className="w-4 h-4 mr-2" />
+                Finish Setup
+              </Button>
+            ) : (
+              <Button
+                onClick={nextStep}
+                disabled={!canProceed()}
+                style={{ fontFamily: 'Noto Sans, sans-serif' }}
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

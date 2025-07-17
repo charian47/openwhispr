@@ -31,6 +31,8 @@
   "author": "OpenWispr Team",
   "license": "MIT",
   "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
+    "@esbuild/darwin-arm64": "^0.25.5",
     "@eslint/js": "^9.25.0",
     "@tailwindcss/vite": "^4.1.10",
     "@types/react": "^19.1.2",
@@ -54,6 +56,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^16.3.1",
+    "electron-updater": "^6.6.2",
     "lucide-react": "^0.518.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
