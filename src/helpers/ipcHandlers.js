@@ -51,6 +51,10 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("show-dictation-panel", () => {
+      this.windowManager.showDictationPanel();
+    });
+
     // Environment handlers
     ipcMain.handle("get-openai-key", async (event) => {
       return this.environmentManager.getOpenAIKey();
@@ -62,6 +66,19 @@ class IPCHandlers {
 
     ipcMain.handle("create-production-env-file", async (event, apiKey) => {
       return this.environmentManager.createProductionEnvFile(apiKey);
+    });
+
+    ipcMain.handle("save-settings", async (event, settings) => {
+      try {
+        // Save settings to environment and localStorage
+        if (settings.apiKey) {
+          await this.environmentManager.saveOpenAIKey(settings.apiKey);
+        }
+        return { success: true };
+      } catch (error) {
+        console.error("Failed to save settings:", error);
+        return { success: false, error: error.message };
+      }
     });
 
     // Database handlers
@@ -88,6 +105,10 @@ class IPCHandlers {
 
     ipcMain.handle("read-clipboard", async (event) => {
       return this.clipboardManager.readClipboard();
+    });
+
+    ipcMain.handle("write-clipboard", async (event, text) => {
+      return this.clipboardManager.writeClipboard(text);
     });
 
     // Whisper handlers
@@ -150,31 +171,13 @@ class IPCHandlers {
 
     ipcMain.handle("download-whisper-model", async (event, modelName) => {
       try {
-        // Set up progress forwarding for model downloads
-        const originalConsoleError = console.error;
-        console.error = (...args) => {
-          const message = args.join(" ");
-          if (message.startsWith("PROGRESS:")) {
-            try {
-              const progressData = JSON.parse(message.substring(9));
-              event.sender.send("whisper-download-progress", {
-                type: "progress",
-                model: modelName,
-                ...progressData,
-              });
-            } catch (parseError) {
-              // Ignore parsing errors for progress data
-            }
-          }
-          originalConsoleError(...args);
-        };
-
         const result = await this.whisperManager.downloadWhisperModel(
-          modelName
+          modelName,
+          (progressData) => {
+            // Forward progress updates to the renderer
+            event.sender.send("whisper-download-progress", progressData);
+          }
         );
-
-        // Restore original console.error
-        console.error = originalConsoleError;
 
         // Send completion event
         event.sender.send("whisper-download-progress", {
@@ -208,6 +211,10 @@ class IPCHandlers {
 
     ipcMain.handle("delete-whisper-model", async (event, modelName) => {
       return this.whisperManager.deleteWhisperModel(modelName);
+    });
+
+    ipcMain.handle("cancel-whisper-download", async (event) => {
+      return this.whisperManager.cancelDownload();
     });
 
     // Utility handlers

@@ -9,6 +9,21 @@ class WhisperManager {
     this.pythonCmd = null; // Cache Python executable path
     this.whisperInstalled = null; // Cache installation status
     this.isInitialized = false; // Track if startup init completed
+    this.currentDownloadProcess = null; // Track current download process for cancellation
+  }
+
+  getWhisperScriptPath() {
+    // In production, the file is unpacked from ASAR
+    if (process.env.NODE_ENV === "development") {
+      return path.join(__dirname, "..", "..", "whisper_bridge.py");
+    } else {
+      // In production, use the unpacked path
+      return path.join(
+        process.resourcesPath,
+        "app.asar.unpacked",
+        "whisper_bridge.py"
+      );
+    }
   }
 
   async initializeAtStartup() {
@@ -68,12 +83,7 @@ class WhisperManager {
 
   async runWhisperProcess(tempAudioPath, model, language) {
     const pythonCmd = await this.findPythonExecutable();
-    const whisperScriptPath = path.join(
-      __dirname,
-      "..",
-      "..",
-      "whisper_bridge.py"
-    );
+    const whisperScriptPath = this.getWhisperScriptPath();
     const args = [whisperScriptPath, tempAudioPath, "--model", model];
     if (language) {
       args.push("--language", language);
@@ -330,17 +340,12 @@ class WhisperManager {
     }
   }
 
-  async downloadWhisperModel(modelName) {
+  async downloadWhisperModel(modelName, progressCallback = null) {
     try {
       console.log(`📥 Starting download of Whisper model: ${modelName}`);
 
       const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "whisper_bridge.py"
-      );
+      const whisperScriptPath = this.getWhisperScriptPath();
 
       const args = [
         whisperScriptPath,
@@ -350,14 +355,9 @@ class WhisperManager {
         modelName,
       ];
 
-      console.log(
-        "🔧 Running model download command:",
-        pythonCmd,
-        args.join(" ")
-      );
-
       return new Promise((resolve, reject) => {
         const downloadProcess = spawn(pythonCmd, args);
+        this.currentDownloadProcess = downloadProcess; // Store for potential cancellation
 
         let stdout = "";
         let stderr = "";
@@ -369,14 +369,35 @@ class WhisperManager {
         downloadProcess.stderr.on("data", (data) => {
           const output = data.toString();
           stderr += output;
-          console.log("Model download log:", output);
+
+          // Parse progress updates from stderr
+          const lines = output.split("\n");
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith("PROGRESS:")) {
+              try {
+                const progressData = JSON.parse(trimmed.substring(9));
+                if (progressCallback) {
+                  progressCallback({
+                    type: "progress",
+                    model: modelName,
+                    ...progressData,
+                  });
+                }
+              } catch (parseError) {
+                // Ignore parsing errors for progress data
+              }
+            }
+          }
         });
 
         downloadProcess.on("close", (code) => {
+          this.currentDownloadProcess = null; // Clear process reference
+
           if (code === 0) {
             try {
               const result = JSON.parse(stdout);
-              console.log(`✅ Model ${modelName} download completed:`, result);
+              console.log(`✅ Model ${modelName} download completed`);
               resolve(result);
             } catch (parseError) {
               console.error("❌ Failed to parse download result:", parseError);
@@ -387,15 +408,21 @@ class WhisperManager {
               );
             }
           } else {
-            console.error("❌ Model download failed with code:", code);
-            console.error("Stderr:", stderr);
-            reject(
-              new Error(`Model download failed (code ${code}): ${stderr}`)
-            );
+            // Check if this was a cancellation (SIGTERM = 143, SIGKILL = 137)
+            if (code === 143 || code === 137) {
+              console.log(`🛑 Model ${modelName} download cancelled`);
+              reject(new Error("Download interrupted by user"));
+            } else {
+              console.error("❌ Model download failed with code:", code);
+              reject(
+                new Error(`Model download failed (code ${code}): ${stderr}`)
+              );
+            }
           }
         });
 
         downloadProcess.on("error", (error) => {
+          this.currentDownloadProcess = null; // Clear process reference
           console.error("❌ Model download process error:", error);
           reject(new Error(`Model download process error: ${error.message}`));
         });
@@ -426,17 +453,39 @@ class WhisperManager {
     }
   }
 
+  async cancelDownload() {
+    if (this.currentDownloadProcess) {
+      try {
+        console.log("🛑 Cancelling current download...");
+        this.currentDownloadProcess.kill("SIGTERM");
+
+        // Force kill after 3 seconds if still running
+        setTimeout(() => {
+          if (
+            this.currentDownloadProcess &&
+            !this.currentDownloadProcess.killed
+          ) {
+            console.log("🛑 Force killing download process...");
+            this.currentDownloadProcess.kill("SIGKILL");
+          }
+        }, 3000);
+
+        return { success: true, message: "Download cancelled" };
+      } catch (error) {
+        console.error("❌ Error cancelling download:", error);
+        return { success: false, error: error.message };
+      }
+    } else {
+      return { success: false, error: "No active download to cancel" };
+    }
+  }
+
   async checkModelStatus(modelName) {
     try {
       console.log(`🔍 Checking status of Whisper model: ${modelName}`);
 
       const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "whisper_bridge.py"
-      );
+      const whisperScriptPath = this.getWhisperScriptPath();
 
       const args = [whisperScriptPath, "--mode", "check", "--model", modelName];
 
@@ -490,12 +539,7 @@ class WhisperManager {
       console.log("📋 Listing all Whisper models...");
 
       const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "whisper_bridge.py"
-      );
+      const whisperScriptPath = this.getWhisperScriptPath();
 
       const args = [whisperScriptPath, "--mode", "list"];
 
@@ -547,12 +591,7 @@ class WhisperManager {
       console.log(`🗑️ Deleting Whisper model: ${modelName}`);
 
       const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "whisper_bridge.py"
-      );
+      const whisperScriptPath = this.getWhisperScriptPath();
 
       const args = [
         whisperScriptPath,

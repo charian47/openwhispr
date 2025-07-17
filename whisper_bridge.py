@@ -28,9 +28,7 @@ def load_model(model_name="base"):
         return _model_cache[model_name]
     
     try:
-        print(f"Loading Whisper model: {model_name}", file=sys.stderr)
         model = whisper.load_model(model_name)
-        print(f"Model {model_name} loaded successfully", file=sys.stderr)
         
         # Cache the model but limit cache size
         if len(_model_cache) >= 2:  # Keep max 2 models in memory
@@ -42,7 +40,6 @@ def load_model(model_name="base"):
         _model_cache[model_name] = model
         return model
     except Exception as e:
-        print(f"Error loading model: {e}", file=sys.stderr)
         return None
 
 def get_expected_model_size(model_name):
@@ -54,8 +51,8 @@ def get_expected_model_size(model_name):
             content_length = response.headers.get('content-length')
             if content_length:
                 return int(content_length)
-    except Exception as e:
-        print(f"Could not get expected size for {model_name}: {e}", file=sys.stderr)
+    except Exception:
+        pass
     
     # Fallback to approximate sizes (in bytes)
     approximate_sizes = {
@@ -68,7 +65,7 @@ def get_expected_model_size(model_name):
     }
     return approximate_sizes.get(model_name, 100 * 1024 * 1024)  # Default 100MB
 
-def monitor_download_progress(model_name, expected_size):
+def monitor_download_progress(model_name, expected_size, stop_event):
     """Monitor download progress by watching file size growth"""
     cache_dir = os.path.expanduser("~/.cache/whisper")
     model_url = whisper._MODELS[model_name]
@@ -79,19 +76,36 @@ def monitor_download_progress(model_name, expected_size):
     
     last_size = 0
     last_update_time = time.time()
-    stagnant_count = 0
+    speed_samples = []
+    last_progress_update = 0
     
-    while True:
+    while not stop_event.is_set():
         try:
             current_size = 0
             if os.path.exists(model_file):
                 current_size = os.path.getsize(model_file)
             
             current_time = time.time()
+            time_diff = current_time - last_update_time
             
-            # Only send updates if size changed or every 2 seconds
-            if current_size != last_size or (current_time - last_update_time) >= 2:
-                percentage = min((current_size / expected_size * 100) if expected_size > 0 else 0, 100)
+            # Calculate speed if we have a previous measurement
+            speed_mbps = 0
+            if last_size > 0 and time_diff > 0 and current_size > last_size:
+                bytes_per_second = (current_size - last_size) / time_diff
+                speed_mbps = (bytes_per_second * 8) / (1024 * 1024)  # Convert to Mbps
+                
+                # Keep rolling average of speed samples
+                speed_samples.append(speed_mbps)
+                if len(speed_samples) > 10:  # Keep last 10 samples
+                    speed_samples.pop(0)
+                speed_mbps = sum(speed_samples) / len(speed_samples)
+            
+            # Send progress update (throttled to avoid spam)
+            percentage = min((current_size / expected_size * 100) if expected_size > 0 else 0, 100)
+            
+            # Only send progress updates every 0.5 seconds or when percentage changes significantly
+            if (current_time - last_progress_update > 0.5 or 
+                abs(percentage - last_progress_update) > 1.0):
                 
                 progress_data = {
                     "type": "progress",
@@ -99,46 +113,35 @@ def monitor_download_progress(model_name, expected_size):
                     "downloaded_bytes": current_size,
                     "total_bytes": expected_size,
                     "percentage": round(percentage, 1),
-                    "speed_mbps": 0
+                    "speed_mbps": round(speed_mbps, 2) if speed_mbps > 0 else 0
                 }
                 
-                # Calculate download speed if we have a previous measurement
-                if last_size > 0 and current_time > last_update_time:
-                    bytes_per_second = (current_size - last_size) / (current_time - last_update_time)
-                    mbps = (bytes_per_second * 8) / (1024 * 1024)  # Convert to Mbps
-                    progress_data["speed_mbps"] = round(mbps, 2)
-                
                 print(f"PROGRESS:{json.dumps(progress_data)}", file=sys.stderr)
+                last_progress_update = percentage
+            
+            # Check if download is complete
+            if current_size >= expected_size * 0.95:  # 95% threshold
+                break
                 
-                last_size = current_size
-                last_update_time = current_time
-                
-                # Check if download is complete
-                if current_size >= expected_size * 0.95:  # 95% threshold to account for slight size differences
-                    print(f"Download appears complete: {current_size}/{expected_size} bytes", file=sys.stderr)
+            # Check if no progress for too long (stagnation detection)
+            if current_size == last_size and time_diff > 5:  # 5 seconds no progress
+                if current_size > expected_size * 0.9:  # If we're close to done, assume complete
                     break
+                    
+            last_size = current_size
+            last_update_time = current_time
             
-            # Check for stagnation (no progress for too long)
-            if current_size == last_size:
-                stagnant_count += 1
-                if stagnant_count > 100:  # 10 seconds of no progress
-                    print(f"Download may be stagnant, checking if complete...", file=sys.stderr)
-                    if current_size > 0:
-                        break  # Assume download is done
-            else:
-                stagnant_count = 0
-                
-        except Exception as e:
-            print(f"Error monitoring progress: {e}", file=sys.stderr)
+        except Exception:
+            pass
             
-        time.sleep(0.1)  # Check every 100ms
+        time.sleep(0.5)  # Check every 500ms
 
 def download_model(model_name="base"):
     """Download Whisper model with real-time progress monitoring"""
+    stop_event = threading.Event()
     progress_thread = None
+    
     try:
-        print(f"Starting download of Whisper model: {model_name}", file=sys.stderr)
-        
         # Check if model is already downloaded
         cache_dir = os.path.expanduser("~/.cache/whisper")
         model_url = whisper._MODELS[model_name]
@@ -146,7 +149,6 @@ def download_model(model_name="base"):
         
         if os.path.exists(model_file):
             file_size = os.path.getsize(model_file)
-            print(f"Model {model_name} already exists ({file_size} bytes)", file=sys.stderr)
             return {
                 "model": model_name,
                 "downloaded": True,
@@ -158,40 +160,39 @@ def download_model(model_name="base"):
         
         # Get expected file size
         expected_size = get_expected_model_size(model_name)
-        print(f"Expected size for {model_name}: {expected_size} bytes ({expected_size/(1024*1024):.1f} MB)", file=sys.stderr)
         
         # Start progress monitoring in background thread
         progress_thread = threading.Thread(
             target=monitor_download_progress, 
-            args=(model_name, expected_size),
+            args=(model_name, expected_size, stop_event),
             daemon=True
         )
         progress_thread.start()
         
         # Start the actual download (this will block until complete)
-        print(f"Initiating Whisper model download: {model_name}", file=sys.stderr)
         model = whisper.load_model(model_name)
         
-        # Wait a moment for the progress thread to finish
-        time.sleep(0.5)
+        # Stop progress monitoring
+        stop_event.set()
+        
+        # Wait for progress thread to finish
+        if progress_thread and progress_thread.is_alive():
+            progress_thread.join(timeout=1)
         
         # Get final file info
         final_size = 0
         if os.path.exists(model_file):
             final_size = os.path.getsize(model_file)
         
-        print(f"Download completed: {model_name} ({final_size} bytes)", file=sys.stderr)
-        
-        # Send final progress update
-        final_progress = {
-            "type": "progress",
+        # Send completion signal
+        completion_data = {
+            "type": "complete",
             "model": model_name,
             "downloaded_bytes": final_size,
             "total_bytes": expected_size,
-            "percentage": 100,
-            "speed_mbps": 0
+            "percentage": 100
         }
-        print(f"PROGRESS:{json.dumps(final_progress)}", file=sys.stderr)
+        print(f"PROGRESS:{json.dumps(completion_data)}", file=sys.stderr)
         
         return {
             "model": model_name,
@@ -203,7 +204,7 @@ def download_model(model_name="base"):
         }
         
     except KeyboardInterrupt:
-        print(f"Download interrupted by user", file=sys.stderr)
+        stop_event.set()
         return {
             "model": model_name,
             "downloaded": False,
@@ -211,18 +212,13 @@ def download_model(model_name="base"):
             "success": False
         }
     except Exception as e:
-        print(f"Error downloading model: {e}", file=sys.stderr)
+        stop_event.set()
         return {
             "model": model_name,
             "downloaded": False,
             "error": str(e),
             "success": False
         }
-    finally:
-        # Cleanup: let the progress thread finish naturally
-        if progress_thread and progress_thread.is_alive():
-            # Give the progress thread a moment to finish
-            time.sleep(0.5)
 
 def check_model_status(model_name="base"):
     """Check if a model is already downloaded"""
@@ -272,8 +268,6 @@ def list_models():
 def delete_model(model_name="base"):
     """Delete a downloaded Whisper model"""
     try:
-        print(f"Deleting Whisper model: {model_name}", file=sys.stderr)
-        
         cache_dir = os.path.expanduser("~/.cache/whisper")
         model_url = whisper._MODELS[model_name]
         model_file = os.path.join(cache_dir, os.path.basename(model_url))
@@ -281,7 +275,6 @@ def delete_model(model_name="base"):
         if os.path.exists(model_file):
             file_size = os.path.getsize(model_file)
             os.remove(model_file)
-            print(f"Model {model_name} deleted successfully ({file_size} bytes freed)", file=sys.stderr)
             return {
                 "model": model_name,
                 "deleted": True,
@@ -290,7 +283,6 @@ def delete_model(model_name="base"):
                 "success": True
             }
         else:
-            print(f"Model {model_name} not found, nothing to delete", file=sys.stderr)
             return {
                 "model": model_name,
                 "deleted": False,
@@ -298,7 +290,6 @@ def delete_model(model_name="base"):
                 "success": False
             }
     except Exception as e:
-        print(f"Error deleting model: {e}", file=sys.stderr)
         return {
             "model": model_name,
             "deleted": False,
@@ -332,7 +323,6 @@ def transcribe_audio(audio_path, model_name="base", language=None):
         }
         
     except Exception as e:
-        print(f"Transcription error: {e}", file=sys.stderr)
         return {
             "error": str(e),
             "success": False
@@ -397,4 +387,4 @@ def main():
                 sys.exit(1)
 
 if __name__ == "__main__":
-    main() 
+    main()

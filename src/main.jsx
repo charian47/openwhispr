@@ -26,8 +26,8 @@ function AppRouter() {
       setShowOnboarding(true);
     }
     
-    // Hide dictation panel window unless onboarding is complete or we're on the test step (step 5)
-    if (isDictationPanel && !onboardingCompleted && currentStep !== 5) {
+    // Hide dictation panel window unless onboarding is complete or we're past the permissions step
+    if (isDictationPanel && !onboardingCompleted && currentStep < 4) {
       window.electronAPI?.hideWindow?.();
     }
     

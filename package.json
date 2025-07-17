@@ -10,6 +10,7 @@
     "dev:main": "NODE_ENV=development electron . --dev",
     "dev:renderer": "cd src && vite",
     "build": "cd src && vite build && cd .. && electron-builder",
+    "postinstall": "electron-builder install-app-deps",
     "build:renderer": "cd src && vite build",
     "build:mac": "npm run build:renderer && electron-builder --mac",
     "build:win": "npm run build:renderer && electron-builder --win",
@@ -31,7 +32,6 @@
   "author": "OpenWispr Team",
   "license": "MIT",
   "devDependencies": {
-    "@electron/rebuild": "^4.0.1",
     "@esbuild/darwin-arm64": "^0.25.5",
     "@eslint/js": "^9.25.0",
     "@tailwindcss/vite": "^4.1.10",
@@ -51,6 +51,7 @@
     "vite": "^6.3.5"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-slot": "^1.2.3",
     "better-sqlite3": "^11.10.0",
     "class-variance-authority": "^0.7.1",

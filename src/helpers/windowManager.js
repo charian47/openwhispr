@@ -15,11 +15,21 @@ class WindowManager {
   }
 
   async createMainWindow() {
+    console.log("🔄 Creating main window...");
     const display = screen.getPrimaryDisplay();
     const width = 100;
     const height = 100;
-    const x = display.bounds.x + display.workArea.width - width;
-    const y = display.bounds.y + display.workArea.height;
+    // Position window in bottom-right corner, but ensure it's visible
+    const x = Math.max(
+      0,
+      display.bounds.x + display.workArea.width - width - 20
+    );
+    const y = Math.max(
+      0,
+      display.bounds.y + display.workArea.height - height - 20
+    );
+
+    console.log("📐 Window dimensions:", { width, height, x, y });
 
     this.mainWindow = new BrowserWindow({
       width,
@@ -38,11 +48,17 @@ class WindowManager {
       resizable: false,
       transparent: true,
       show: true,
+      skipTaskbar: false,
+      focusable: true,
     });
 
+    console.log("📱 Loading main window content...");
     await this.loadMainWindow();
+    console.log("⌨️ Setting up shortcuts...");
     this.setupShortcuts();
+    console.log("🍎 Setting up menu...");
     this.setupMenu();
+    console.log("✅ Main window created successfully");
 
     this.mainWindow.webContents.on(
       "did-fail-load",
@@ -70,13 +86,24 @@ class WindowManager {
     );
 
     this.mainWindow.webContents.on("did-finish-load", () => {
+      console.log("📱 Main window content loaded");
       setTimeout(() => {
         if (!this.mainWindow.isVisible()) {
-          console.log("Window not visible, forcing show...");
+          console.log("⚠️ Window not visible, forcing show...");
           this.mainWindow.show();
           this.mainWindow.focus();
+        } else {
+          console.log("✅ Main window is visible");
         }
       }, 1000);
+    });
+
+    this.mainWindow.on("show", () => {
+      console.log("🎯 Main window shown");
+    });
+
+    this.mainWindow.on("focus", () => {
+      console.log("🎯 Main window focused");
     });
 
     // Ensure window is always on top, even above fullscreen apps
@@ -130,11 +157,62 @@ class WindowManager {
     }
   }
 
+  setupControlPanelMenu() {
+    const template = [
+      {
+        label: "File",
+        submenu: [{ role: "close", label: "Close Window" }],
+      },
+      {
+        label: "Edit",
+        submenu: [
+          { role: "undo", label: "Undo" },
+          { role: "redo", label: "Redo" },
+          { type: "separator" },
+          { role: "cut", label: "Cut" },
+          { role: "copy", label: "Copy" },
+          { role: "paste", label: "Paste" },
+          { role: "pasteAndMatchStyle", label: "Paste and Match Style" },
+          { type: "separator" },
+          { role: "selectall", label: "Select All" },
+        ],
+      },
+      {
+        label: "View",
+        submenu: [
+          { role: "reload", label: "Reload" },
+          { role: "forceReload", label: "Force Reload" },
+          { role: "toggleDevTools", label: "Toggle Developer Tools" },
+          { type: "separator" },
+          { role: "resetZoom", label: "Actual Size" },
+          { role: "zoomIn", label: "Zoom In" },
+          { role: "zoomOut", label: "Zoom Out" },
+          { type: "separator" },
+          { role: "togglefullscreen", label: "Toggle Full Screen" },
+        ],
+      },
+    ];
+
+    const menu = Menu.buildFromTemplate(template);
+    this.controlPanelWindow.setMenu(menu);
+
+    // Also set the menu as the application menu to ensure clipboard access
+    if (process.platform === "darwin") {
+      Menu.setApplicationMenu(menu);
+    }
+  }
+
   async createControlPanelWindow() {
-    if (this.controlPanelWindow) {
+    console.log("🔄 Creating control panel window...");
+    if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
+      console.log("📋 Control panel already exists, focusing...");
+      if (!this.controlPanelWindow.isVisible()) {
+        this.controlPanelWindow.show();
+      }
       this.controlPanelWindow.focus();
       return;
     }
+
     this.controlPanelWindow = new BrowserWindow({
       width: 800,
       height: 700,
@@ -145,10 +223,27 @@ class WindowManager {
         enableRemoteModule: false,
         sandbox: false,
         webSecurity: false,
+        // Enable text input and clipboard access
+        spellcheck: false,
+        experimentalFeatures: false,
+        // Ensure text input works
+        allowRunningInsecureContent: false,
+        // Enable proper text selection and input
+        enableWebSQL: false,
+        // Allow paste operations
+        enableBlinkFeatures: "",
+        // Additional settings for text input
+        defaultEncoding: "UTF-8",
+        // Ensure text input is not blocked
+        disableHtmlFullscreenWindowResize: false,
+        // Enable clipboard access
+        enableClipboardAccess: true,
+        // Allow clipboard read/write
+        clipboard: true,
       },
       title: "OpenWispr Control Panel",
       resizable: true,
-      show: true,
+      show: false, // Don't show until content is loaded
       titleBarStyle: "hiddenInset",
       frame: false,
       transparent: false,
@@ -158,10 +253,23 @@ class WindowManager {
       closable: true,
       fullscreenable: true,
     });
+
+    console.log("📱 Loading control panel content...");
     await this.loadControlPanel();
+
+    // Set up menu for control panel to ensure text input works
+    this.setupControlPanelMenu();
+
+    // Show and focus the window after content is loaded
+    this.controlPanelWindow.show();
+    this.controlPanelWindow.focus();
+
     this.controlPanelWindow.on("closed", () => {
+      console.log("📋 Control panel window closed");
       this.controlPanelWindow = null;
     });
+
+    console.log("✅ Control panel window created successfully");
   }
 
   async loadControlPanel() {
@@ -175,6 +283,15 @@ class WindowManager {
       }
     }
     this.controlPanelWindow.loadURL(appUrl);
+  }
+
+  showDictationPanel() {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      if (!this.mainWindow.isVisible()) {
+        this.mainWindow.show();
+      }
+      this.mainWindow.focus();
+    }
   }
 
   async waitForDevServer(
@@ -236,9 +353,10 @@ class WindowManager {
         "dist",
         "index.html"
       );
-      return isControlPanel
+      const url = isControlPanel
         ? `file://${htmlPath}?panel=true`
         : `file://${htmlPath}`;
+      return url;
     }
   }
 }

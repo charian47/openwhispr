@@ -22,12 +22,14 @@ class TrayManager {
     if (process.platform !== "darwin") return;
 
     try {
+      console.log("🔄 Creating tray icon...");
       const trayIcon = await this.loadTrayIcon();
       if (!trayIcon || trayIcon.isEmpty()) {
-        console.error("Failed to load tray icon");
+        console.error("❌ Failed to load tray icon - icon is empty or null");
         return;
       }
 
+      console.log("🔧 Setting up tray icon...");
       trayIcon.setTemplateImage(true);
       this.tray = new Tray(trayIcon);
 
@@ -37,7 +39,11 @@ class TrayManager {
 
       console.log("✅ Tray icon created successfully");
     } catch (error) {
-      console.error("Error creating tray icon:", error);
+      console.error("❌ Error creating tray icon:", error);
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+      });
     }
   }
 
@@ -50,7 +56,14 @@ class TrayManager {
         "assets",
         "iconTemplate@3x.png"
       );
-      return nativeImage.createFromPath(iconPath);
+      console.log("🔍 Looking for tray icon at:", iconPath);
+      if (fs.existsSync(iconPath)) {
+        console.log("✅ Found tray icon at:", iconPath);
+        return nativeImage.createFromPath(iconPath);
+      } else {
+        console.error("❌ Tray icon not found at:", iconPath);
+        return this.createFallbackIcon();
+      }
     } else {
       const possiblePaths = [
         path.join(process.resourcesPath, "assets", "iconTemplate@3x.png"),
@@ -133,11 +146,40 @@ class TrayManager {
       },
       {
         label: "Open Control Panel",
-        click: () => {
-          if (this.controlPanelWindow) {
-            this.controlPanelWindow.focus();
-          } else if (this.createControlPanelCallback) {
-            this.createControlPanelCallback();
+        click: async () => {
+          try {
+            // Check if control panel window exists and is valid
+            if (
+              this.controlPanelWindow &&
+              !this.controlPanelWindow.isDestroyed()
+            ) {
+              if (!this.controlPanelWindow.isVisible()) {
+                this.controlPanelWindow.show();
+              }
+              this.controlPanelWindow.focus();
+            } else if (this.createControlPanelCallback) {
+              // Clear stale reference if window was destroyed
+              if (
+                this.controlPanelWindow &&
+                this.controlPanelWindow.isDestroyed()
+              ) {
+                this.controlPanelWindow = null;
+              }
+
+              await this.createControlPanelCallback();
+
+              // After creation, focus the window if it exists
+              if (
+                this.controlPanelWindow &&
+                !this.controlPanelWindow.isDestroyed()
+              ) {
+                this.controlPanelWindow.focus();
+              }
+            } else {
+              console.error("No control panel callback available");
+            }
+          } catch (error) {
+            console.error("Failed to open control panel:", error);
           }
         },
       },
