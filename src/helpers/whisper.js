@@ -45,11 +45,15 @@ class WhisperManager {
     const language = options.language || null;
 
     try {
+      console.log(tempAudioPath,
+        model,
+        language)
       const result = await this.runWhisperProcess(
         tempAudioPath,
         model,
         language
       );
+      console.log(result)
       return this.parseWhisperResult(result);
     } catch (error) {
       console.error("❌ Local Whisper transcription error:", error);
@@ -82,69 +86,104 @@ class WhisperManager {
   }
 
   async runWhisperProcess(tempAudioPath, model, language) {
-    const pythonCmd = await this.findPythonExecutable();
-    const whisperScriptPath = this.getWhisperScriptPath();
-    const args = [whisperScriptPath, tempAudioPath, "--model", model];
-    if (language) {
-      args.push("--language", language);
-    }
-    args.push("--output-format", "json");
+  const pythonCmd = await this.findPythonExecutable();
+  const whisperScriptPath = this.getWhisperScriptPath();
+  const args = [whisperScriptPath, tempAudioPath, '--model', model];
+  if (language) {
+    args.push('--language', language);
+  }
+  args.push('--output-format', 'json');
 
     return new Promise((resolve, reject) => {
-      const whisperProcess = spawn(pythonCmd, args, {
-        stdio: ["ignore", "pipe", "pipe"],
-        windowsHide: true,
-      });
 
-      let stdout = "";
-      let stderr = "";
-      let isResolved = false;
+      const ffmpegPath = require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
+    // Enhanced environment setup with multiple FFmpeg paths
+    const enhancedEnv = {
+      ...process.env,
+      FFMPEG_PATH: ffmpegPath,
+      FFMPEG_EXECUTABLE: ffmpegPath,
+      FFMPEG_BINARY: ffmpegPath,
+    };
 
-      // Set timeout for longer recordings
-      const timeout = setTimeout(() => {
-        if (!isResolved) {
-          whisperProcess.kill("SIGTERM");
-          reject(new Error("Whisper transcription timed out (60 seconds)"));
-        }
-      }, 60000);
+    // Add ffmpeg directory to PATH
+    const ffmpegDir = path.dirname(ffmpegPath);
+    const currentPath = enhancedEnv.PATH || '';
+    const pathSeparator = process.platform === 'win32' ? ';' : ':';
 
-      whisperProcess.stdout.on("data", (data) => {
-        stdout += data.toString();
-      });
+    if (!currentPath.includes(ffmpegDir)) {
+      enhancedEnv.PATH = `${ffmpegDir}${pathSeparator}${currentPath}`;
+    }
 
-      whisperProcess.stderr.on("data", (data) => {
-        stderr += data.toString();
-        // Reduce logging verbosity
-        if (
-          data.toString().includes("Error") ||
-          data.toString().includes("failed")
-        ) {
-          console.log("Whisper log:", data.toString());
-        }
-      });
-
-      whisperProcess.on("close", (code) => {
-        if (isResolved) return;
-        isResolved = true;
-        clearTimeout(timeout);
-
-        if (code === 0) {
-          resolve(stdout);
-        } else {
-          reject(
-            new Error(`Whisper transcription failed (code ${code}): ${stderr}`)
-          );
-        }
-      });
-
-      whisperProcess.on("error", (error) => {
-        if (isResolved) return;
-        isResolved = true;
-        clearTimeout(timeout);
-        reject(new Error(`Whisper process error: ${error.message}`));
-      });
+    console.log('🎬 FFmpeg setup:', {
+      ffmpegPath,
+      ffmpegDir,
+      pathUpdated: enhancedEnv.PATH.includes(ffmpegDir)
     });
-  }
+
+    const whisperProcess = spawn(pythonCmd, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+      env: enhancedEnv, // Use enhanced environment
+    });
+
+    let stdout = '';
+    let stderr = '';
+    let isResolved = false;
+
+    // Set timeout for longer recordings
+    const timeout = setTimeout(() => {
+      if (!isResolved) {
+        whisperProcess.kill('SIGTERM');
+        reject(new Error('Whisper transcription timed out (60 seconds)'));
+      }
+    }, 60000);
+
+    whisperProcess.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    whisperProcess.stderr.on('data', (data) => {
+      const stderrText = data.toString();
+      stderr += stderrText;
+
+      // Log FFmpeg-related messages
+      if (stderrText.includes('ffmpeg') ||
+          stderrText.includes('Error') ||
+          stderrText.includes('failed')) {
+        console.log('Whisper log:', stderrText.trim());
+      }
+    });
+
+    whisperProcess.on('close', (code) => {
+      if (isResolved) return;
+      isResolved = true;
+      clearTimeout(timeout);
+
+      if (code === 0) {
+        resolve(stdout);
+      } else {
+        // Better error message for FFmpeg issues
+        let errorMessage = `Whisper transcription failed (code ${code}): ${stderr}`;
+
+        if (stderr.includes('ffmpeg') || stderr.includes('No such file or directory')) {
+          errorMessage += '\n\n💡 This appears to be an FFmpeg issue. Try:\n';
+          errorMessage += '1. Restart the app completely\n';
+          errorMessage += '2. Check if FFmpeg is bundled correctly\n';
+          errorMessage += '3. Install FFmpeg system-wide as fallback';
+        }
+
+        reject(new Error(errorMessage));
+      }
+    });
+
+    whisperProcess.on('error', (error) => {
+      if (isResolved) return;
+      isResolved = true;
+      clearTimeout(timeout);
+      reject(new Error(`Whisper process error: ${error.message}`));
+    });
+  });
+}
 
   parseWhisperResult(stdout) {
     try {
