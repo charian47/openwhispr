@@ -150,31 +150,13 @@ class IPCHandlers {
 
     ipcMain.handle("download-whisper-model", async (event, modelName) => {
       try {
-        // Set up progress forwarding for model downloads
-        const originalConsoleError = console.error;
-        console.error = (...args) => {
-          const message = args.join(" ");
-          if (message.startsWith("PROGRESS:")) {
-            try {
-              const progressData = JSON.parse(message.substring(9));
-              event.sender.send("whisper-download-progress", {
-                type: "progress",
-                model: modelName,
-                ...progressData,
-              });
-            } catch (parseError) {
-              // Ignore parsing errors for progress data
-            }
-          }
-          originalConsoleError(...args);
-        };
-
         const result = await this.whisperManager.downloadWhisperModel(
-          modelName
+          modelName,
+          (progressData) => {
+            // Forward progress updates to the renderer
+            event.sender.send("whisper-download-progress", progressData);
+          }
         );
-
-        // Restore original console.error
-        console.error = originalConsoleError;
 
         // Send completion event
         event.sender.send("whisper-download-progress", {

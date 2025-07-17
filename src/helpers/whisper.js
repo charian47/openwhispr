@@ -330,7 +330,7 @@ class WhisperManager {
     }
   }
 
-  async downloadWhisperModel(modelName) {
+  async downloadWhisperModel(modelName, progressCallback = null) {
     try {
       console.log(`📥 Starting download of Whisper model: ${modelName}`);
 
@@ -350,12 +350,6 @@ class WhisperManager {
         modelName,
       ];
 
-      console.log(
-        "🔧 Running model download command:",
-        pythonCmd,
-        args.join(" ")
-      );
-
       return new Promise((resolve, reject) => {
         const downloadProcess = spawn(pythonCmd, args);
 
@@ -369,14 +363,33 @@ class WhisperManager {
         downloadProcess.stderr.on("data", (data) => {
           const output = data.toString();
           stderr += output;
-          console.log("Model download log:", output);
+
+          // Parse progress updates from stderr
+          const lines = output.split("\n");
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith("PROGRESS:")) {
+              try {
+                const progressData = JSON.parse(trimmed.substring(9));
+                if (progressCallback) {
+                  progressCallback({
+                    type: "progress",
+                    model: modelName,
+                    ...progressData,
+                  });
+                }
+              } catch (parseError) {
+                // Ignore parsing errors for progress data
+              }
+            }
+          }
         });
 
         downloadProcess.on("close", (code) => {
           if (code === 0) {
             try {
               const result = JSON.parse(stdout);
-              console.log(`✅ Model ${modelName} download completed:`, result);
+              console.log(`✅ Model ${modelName} download completed`);
               resolve(result);
             } catch (parseError) {
               console.error("❌ Failed to parse download result:", parseError);
@@ -388,7 +401,6 @@ class WhisperManager {
             }
           } else {
             console.error("❌ Model download failed with code:", code);
-            console.error("Stderr:", stderr);
             reject(
               new Error(`Model download failed (code ${code}): ${stderr}`)
             );
