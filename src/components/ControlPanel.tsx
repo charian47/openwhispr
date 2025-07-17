@@ -5,16 +5,8 @@ import { Trash2, RefreshCw, Settings, FileText, Mic } from "lucide-react";
 import SettingsPage from "./SettingsPage";
 import TitleBar from "./TitleBar";
 import TranscriptionItem from "./ui/TranscriptionItem";
-import type {
-  TranscriptionItem as TranscriptionItemType,
-  ElectronAPI,
-} from "../types/electron";
-
-declare global {
-  interface Window {
-    electronAPI: ElectronAPI;
-  }
-}
+import { ConfirmDialog, AlertDialog } from "./ui/dialog";
+import type { TranscriptionItem as TranscriptionItemType } from "../types/electron";
 
 export default function ControlPanel() {
   const [history, setHistory] = useState<TranscriptionItemType[]>([]);
@@ -24,6 +16,25 @@ export default function ControlPanel() {
     updateAvailable: false,
     updateDownloaded: false,
     isDevelopment: false,
+  });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description?: string;
+    onConfirm: () => void;
+    variant?: "default" | "destructive";
+  }>({
+    open: false,
+    title: "",
+    onConfirm: () => {},
+  });
+  const [alertDialog, setAlertDialog] = useState<{
+    open: boolean;
+    title: string;
+    description?: string;
+  }>({
+    open: false,
+    title: "",
   });
 
   useEffect(() => {
@@ -70,50 +81,73 @@ export default function ControlPanel() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      alert("Text copied to your clipboard!");
+      setAlertDialog({
+        open: true,
+        title: "Copied!",
+        description: "Text copied to your clipboard!",
+      });
     } catch (err) {}
   };
 
   const clearHistory = async () => {
-    if (
-      confirm(
-        "Are you certain you wish to clear all inscribed records? This action cannot be undone."
-      )
-    ) {
-      try {
-        const result = await window.electronAPI.clearTranscriptions();
-        setHistory([]);
-        alert(
-          `Successfully cleared ${result.cleared} transcriptions from your chronicles.`
-        );
-      } catch (error) {
-        alert("Failed to clear history. Please try again.");
-      }
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Clear History",
+      description:
+        "Are you certain you wish to clear all inscribed records? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          const result = await window.electronAPI.clearTranscriptions();
+          setHistory([]);
+          setAlertDialog({
+            open: true,
+            title: "History Cleared",
+            description: `Successfully cleared ${result.cleared} transcriptions from your chronicles.`,
+          });
+        } catch (error) {
+          setAlertDialog({
+            open: true,
+            title: "Error",
+            description: "Failed to clear history. Please try again.",
+          });
+        }
+      },
+      variant: "destructive",
+    });
   };
 
   const deleteTranscription = async (id: number) => {
-    if (
-      confirm(
-        "Are you certain you wish to remove this inscription from your records?"
-      )
-    ) {
-      try {
-        const result = await window.electronAPI.deleteTranscription(id);
-        if (result.success) {
-          // Remove from local state
-          setHistory((prev) => prev.filter((item) => item.id !== id));
-          console.log(`🗑️ Deleted transcription ${id}`);
-        } else {
-          alert(
-            "Failed to delete transcription. It may have already been removed."
-          );
+    setConfirmDialog({
+      open: true,
+      title: "Delete Transcription",
+      description:
+        "Are you certain you wish to remove this inscription from your records?",
+      onConfirm: async () => {
+        try {
+          const result = await window.electronAPI.deleteTranscription(id);
+          if (result.success) {
+            // Remove from local state
+            setHistory((prev) => prev.filter((item) => item.id !== id));
+            console.log(`🗑️ Deleted transcription ${id}`);
+          } else {
+            setAlertDialog({
+              open: true,
+              title: "Delete Failed",
+              description:
+                "Failed to delete transcription. It may have already been removed.",
+            });
+          }
+        } catch (error) {
+          console.error("❌ Failed to delete transcription:", error);
+          setAlertDialog({
+            open: true,
+            title: "Delete Failed",
+            description: "Failed to delete transcription. Please try again.",
+          });
         }
-      } catch (error) {
-        console.error("❌ Failed to delete transcription:", error);
-        alert("Failed to delete transcription. Please try again.");
-      }
-    }
+      },
+      variant: "destructive",
+    });
   };
 
   const refreshHistory = async () => {
@@ -123,6 +157,23 @@ export default function ControlPanel() {
 
   return (
     <div className="min-h-screen bg-white">
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+        variant={confirmDialog.variant}
+      />
+
+      <AlertDialog
+        open={alertDialog.open}
+        onOpenChange={(open) => setAlertDialog((prev) => ({ ...prev, open }))}
+        title={alertDialog.title}
+        description={alertDialog.description}
+        onOk={() => {}}
+      />
+
       <TitleBar
         actions={
           <>

@@ -14,16 +14,11 @@ import TitleBar from "./TitleBar";
 import WhisperModelPicker from "./WhisperModelPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
+import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
-import type { TranscriptionItem, ElectronAPI } from "../types/electron";
-
-declare global {
-  interface Window {
-    electronAPI: ElectronAPI;
-  }
-}
+import type { TranscriptionItem } from "../types/electron";
 
 interface SettingsPageProps {
   onBack: () => void;
@@ -56,6 +51,25 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     releaseDate?: string;
     releaseNotes?: string;
   }>({});
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description?: string;
+    onConfirm: () => void;
+    variant?: "default" | "destructive";
+  }>({
+    open: false,
+    title: "",
+    onConfirm: () => {},
+  });
+  const [alertDialog, setAlertDialog] = useState<{
+    open: boolean;
+    title: string;
+    description?: string;
+  }>({
+    open: false,
+    title: "",
+  });
 
   useEffect(() => {
     // Load saved settings
@@ -142,7 +156,11 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
 
   const saveKey = () => {
     localStorage.setItem("dictationKey", key);
-    alert(`Dictation key inscribed: ${key}`);
+    setAlertDialog({
+      open: true,
+      title: "Key Saved",
+      description: `Dictation key inscribed: ${key}`,
+    });
   };
 
   const saveApiKey = async () => {
@@ -152,19 +170,29 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
 
       try {
         await window.electronAPI.createProductionEnvFile(apiKey);
-        alert(
-          "OpenAI API key inscribed successfully! Your credentials have been securely recorded for transcription services."
-        );
+        setAlertDialog({
+          open: true,
+          title: "API Key Saved",
+          description:
+            "OpenAI API key inscribed successfully! Your credentials have been securely recorded for transcription services.",
+        });
       } catch (envError) {
         console.log("Could not create production .env file:", envError);
-        alert(
-          "OpenAI API key saved successfully and will be available for transcription"
-        );
+        setAlertDialog({
+          open: true,
+          title: "API Key Saved",
+          description:
+            "OpenAI API key saved successfully and will be available for transcription",
+        });
       }
     } catch (error) {
       console.error("Failed to save API key:", error);
       localStorage.setItem("openaiApiKey", apiKey);
-      alert("OpenAI API key saved to localStorage (fallback mode)");
+      setAlertDialog({
+        open: true,
+        title: "API Key Saved",
+        description: "OpenAI API key saved to localStorage (fallback mode)",
+      });
     }
   };
 
@@ -178,15 +206,17 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
       localStorage.setItem("openaiApiKey", apiKey);
     }
 
-    alert(
-      `Whisper settings saved! ${
+    setAlertDialog({
+      open: true,
+      title: "Settings Saved",
+      description: `Whisper settings saved! ${
         useLocalWhisper
           ? `Using local model: ${whisperModel}${
               allowOpenAIFallback ? " with OpenAI fallback" : ""
             }`
           : "Using OpenAI API"
-      }`
-    );
+      }`,
+    });
   };
 
   // Permission functions now handled by hooks
@@ -194,22 +224,47 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
   const resetAccessibilityPermissions = () => {
     const message = `🔄 RESET ACCESSIBILITY PERMISSIONS\n\nIf you've rebuilt or reinstalled OpenWispr and automatic inscription isn't functioning, you may have obsolete permissions from the previous version.\n\n📋 STEP-BY-STEP RESTORATION:\n\n1️⃣ Open System Settings (or System Preferences)\n   • macOS Ventura+: Apple Menu → System Settings\n   • Older macOS: Apple Menu → System Preferences\n\n2️⃣ Navigate to Privacy & Security → Accessibility\n\n3️⃣ Look for obsolete OpenWispr entries:\n   • Any entries named "OpenWispr"\n   • Any entries named "Electron"\n   • Any entries with unclear or generic names\n   • Entries pointing to old application locations\n\n4️⃣ Remove ALL obsolete entries:\n   • Select each old entry\n   • Click the minus (-) button\n   • Enter your password if prompted\n\n5️⃣ Add the current OpenWispr:\n   • Click the plus (+) button\n   • Navigate to and select the CURRENT OpenWispr app\n   • Ensure the checkbox is ENABLED\n\n6️⃣ Restart OpenWispr completely\n\n💡 This is very common during development when rebuilding applications!\n\nClick OK when you're ready to open System Settings.`;
 
-    if (confirm(message)) {
-      alert(
-        "Opening System Settings... Look for the Accessibility section under Privacy & Security."
-      );
+    setConfirmDialog({
+      open: true,
+      title: "Reset Accessibility Permissions",
+      description: message,
+      onConfirm: () => {
+        setAlertDialog({
+          open: true,
+          title: "Opening System Settings",
+          description:
+            "Opening System Settings... Look for the Accessibility section under Privacy & Security.",
+        });
 
-      window.open(
-        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-        "_blank"
-      );
-    }
+        window.open(
+          "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+          "_blank"
+        );
+      },
+    });
   };
 
   // Clipboard handling now done by shared hooks
 
   return (
     <div className="min-h-screen bg-white">
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+        variant={confirmDialog.variant}
+      />
+
+      <AlertDialog
+        open={alertDialog.open}
+        onOpenChange={(open) => setAlertDialog((prev) => ({ ...prev, open }))}
+        title={alertDialog.title}
+        description={alertDialog.description}
+        onOk={() => {}}
+      />
+
       <TitleBar
         title="Settings"
         showTitle={true}
@@ -571,12 +626,24 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                           ...prev,
                           updateAvailable: true,
                         }));
-                        alert(`Update available: v${result.version}`);
+                        setAlertDialog({
+                          open: true,
+                          title: "Update Available",
+                          description: `Update available: v${result.version}`,
+                        });
                       } else {
-                        alert(result.message || "No updates available");
+                        setAlertDialog({
+                          open: true,
+                          title: "No Updates",
+                          description: result.message || "No updates available",
+                        });
                       }
                     } catch (error) {
-                      alert(`Error checking for updates: ${error.message}`);
+                      setAlertDialog({
+                        open: true,
+                        title: "Update Check Failed",
+                        description: `Error checking for updates: ${error.message}`,
+                      });
                     } finally {
                       setCheckingForUpdates(false);
                     }
@@ -608,11 +675,18 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                             ...prev,
                             updateDownloaded: true,
                           }));
-                          alert(
-                            "Update downloaded successfully! You can now install it."
-                          );
+                          setAlertDialog({
+                            open: true,
+                            title: "Update Downloaded",
+                            description:
+                              "Update downloaded successfully! You can now install it.",
+                          });
                         } catch (error) {
-                          alert(`Error downloading update: ${error.message}`);
+                          setAlertDialog({
+                            open: true,
+                            title: "Download Failed",
+                            description: `Error downloading update: ${error.message}`,
+                          });
                         } finally {
                           setDownloadingUpdate(false);
                         }
@@ -640,7 +714,11 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                       try {
                         await window.electronAPI.installUpdate();
                       } catch (error) {
-                        alert(`Error installing update: ${error.message}`);
+                        setAlertDialog({
+                          open: true,
+                          title: "Install Failed",
+                          description: `Error installing update: ${error.message}`,
+                        });
                       }
                     }}
                     disabled={updateStatus.isDevelopment}
@@ -726,14 +804,17 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
               <div className="border-t border-neutral-200 pt-4 space-y-3">
                 <Button
                   onClick={() => {
-                    if (
-                      confirm(
-                        "Are you sure you want to reset the onboarding process? This will clear your setup and show the welcome flow again."
-                      )
-                    ) {
-                      localStorage.removeItem("onboardingCompleted");
-                      window.location.reload();
-                    }
+                    setConfirmDialog({
+                      open: true,
+                      title: "Reset Onboarding",
+                      description:
+                        "Are you sure you want to reset the onboarding process? This will clear your setup and show the welcome flow again.",
+                      onConfirm: () => {
+                        localStorage.removeItem("onboardingCompleted");
+                        window.location.reload();
+                      },
+                      variant: "destructive",
+                    });
                   }}
                   variant="outline"
                   className="w-full text-amber-600 border-amber-300 hover:bg-amber-50 hover:border-amber-400"
@@ -745,25 +826,35 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                 {/* Cleanup App Data */}
                 <Button
                   onClick={() => {
-                    if (
-                      confirm(
-                        "⚠️ DANGER: This will permanently delete ALL OpenWispr data including:\n\n• Database and transcriptions\n• Local storage settings\n• Downloaded Whisper models\n• Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone. Are you sure?"
-                      )
-                    ) {
-                      window.electronAPI
-                        .cleanupApp()
-                        .then(() => {
-                          alert(
-                            "✅ Cleanup completed! All app data has been removed."
-                          );
-                          setTimeout(() => {
-                            window.location.reload();
-                          }, 1000);
-                        })
-                        .catch((error) => {
-                          alert(`❌ Cleanup failed: ${error.message}`);
-                        });
-                    }
+                    setConfirmDialog({
+                      open: true,
+                      title: "⚠️ DANGER: Cleanup App Data",
+                      description:
+                        "This will permanently delete ALL OpenWispr data including:\n\n• Database and transcriptions\n• Local storage settings\n• Downloaded Whisper models\n• Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone. Are you sure?",
+                      onConfirm: () => {
+                        window.electronAPI
+                          .cleanupApp()
+                          .then(() => {
+                            setAlertDialog({
+                              open: true,
+                              title: "Cleanup Completed",
+                              description:
+                                "✅ Cleanup completed! All app data has been removed.",
+                            });
+                            setTimeout(() => {
+                              window.location.reload();
+                            }, 1000);
+                          })
+                          .catch((error) => {
+                            setAlertDialog({
+                              open: true,
+                              title: "Cleanup Failed",
+                              description: `❌ Cleanup failed: ${error.message}`,
+                            });
+                          });
+                      },
+                      variant: "destructive",
+                    });
                   }}
                   variant="outline"
                   className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"

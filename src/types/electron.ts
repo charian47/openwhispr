@@ -131,6 +131,11 @@ declare global {
       deleteWhisperModel: (
         modelName: string
       ) => Promise<WhisperModelDeleteResult>;
+      cancelWhisperDownload: () => Promise<{
+        success: boolean;
+        message?: string;
+        error?: string;
+      }>;
 
       // Window control operations
       windowMinimize: () => Promise<void>;

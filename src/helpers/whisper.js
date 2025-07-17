@@ -9,6 +9,7 @@ class WhisperManager {
     this.pythonCmd = null; // Cache Python executable path
     this.whisperInstalled = null; // Cache installation status
     this.isInitialized = false; // Track if startup init completed
+    this.currentDownloadProcess = null; // Track current download process for cancellation
   }
 
   async initializeAtStartup() {
@@ -352,6 +353,7 @@ class WhisperManager {
 
       return new Promise((resolve, reject) => {
         const downloadProcess = spawn(pythonCmd, args);
+        this.currentDownloadProcess = downloadProcess; // Store for potential cancellation
 
         let stdout = "";
         let stderr = "";
@@ -386,6 +388,8 @@ class WhisperManager {
         });
 
         downloadProcess.on("close", (code) => {
+          this.currentDownloadProcess = null; // Clear process reference
+
           if (code === 0) {
             try {
               const result = JSON.parse(stdout);
@@ -400,14 +404,21 @@ class WhisperManager {
               );
             }
           } else {
-            console.error("❌ Model download failed with code:", code);
-            reject(
-              new Error(`Model download failed (code ${code}): ${stderr}`)
-            );
+            // Check if this was a cancellation (SIGTERM = 143, SIGKILL = 137)
+            if (code === 143 || code === 137) {
+              console.log(`🛑 Model ${modelName} download cancelled`);
+              reject(new Error("Download interrupted by user"));
+            } else {
+              console.error("❌ Model download failed with code:", code);
+              reject(
+                new Error(`Model download failed (code ${code}): ${stderr}`)
+              );
+            }
           }
         });
 
         downloadProcess.on("error", (error) => {
+          this.currentDownloadProcess = null; // Clear process reference
           console.error("❌ Model download process error:", error);
           reject(new Error(`Model download process error: ${error.message}`));
         });
@@ -435,6 +446,33 @@ class WhisperManager {
     } catch (error) {
       console.error("❌ Model download error:", error);
       throw error;
+    }
+  }
+
+  async cancelDownload() {
+    if (this.currentDownloadProcess) {
+      try {
+        console.log("🛑 Cancelling current download...");
+        this.currentDownloadProcess.kill("SIGTERM");
+
+        // Force kill after 3 seconds if still running
+        setTimeout(() => {
+          if (
+            this.currentDownloadProcess &&
+            !this.currentDownloadProcess.killed
+          ) {
+            console.log("🛑 Force killing download process...");
+            this.currentDownloadProcess.kill("SIGKILL");
+          }
+        }, 3000);
+
+        return { success: true, message: "Download cancelled" };
+      } catch (error) {
+        console.error("❌ Error cancelling download:", error);
+        return { success: false, error: error.message };
+      }
+    } else {
+      return { success: false, error: "No active download to cancel" };
     }
   }
 

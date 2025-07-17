@@ -23,16 +23,10 @@ import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
 import StepProgress from "./ui/StepProgress";
+import { AlertDialog } from "./ui/dialog";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
-import type { TranscriptionItem, ElectronAPI } from "../types/electron";
-
-declare global {
-  interface Window {
-    electronAPI: ElectronAPI;
-  }
-}
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -60,6 +54,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     null
   );
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [alertDialog, setAlertDialog] = useState<{
+    open: boolean;
+    title: string;
+    description?: string;
+  }>({
+    open: false,
+    title: "",
+  });
 
   // Use our custom hooks
   const whisperHook = useWhisper();
@@ -172,7 +174,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             await window.electronAPI.pasteText(text);
           }
         } catch (error) {
-          alert("Transcription failed. Please try again.");
+          setAlertDialog({
+            open: true,
+            title: "Transcription Failed",
+            description: "Transcription failed. Please try again.",
+          });
         } finally {
           setIsProcessing(false);
           stream.getTracks().forEach((track) => track.stop());
@@ -184,7 +190,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       recorder.start();
       setIsRecording(true);
     } catch (error) {
-      alert("Failed to start recording. Please check microphone permissions.");
+      setAlertDialog({
+        open: true,
+        title: "Recording Failed",
+        description:
+          "Failed to start recording. Please check microphone permissions.",
+      });
     }
   };
 
@@ -790,6 +801,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         fontFamily: "Noto Sans, sans-serif",
       }}
     >
+      <AlertDialog
+        open={alertDialog.open}
+        onOpenChange={(open) => setAlertDialog((prev) => ({ ...prev, open }))}
+        title={alertDialog.title}
+        description={alertDialog.description}
+        onOk={() => {}}
+      />
       {/* Left margin line for entire page */}
       <div className="fixed left-6 md:left-12 top-0 bottom-0 w-px bg-red-300/40 z-0"></div>
 

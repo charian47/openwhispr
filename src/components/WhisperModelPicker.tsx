@@ -1,13 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "./ui/button";
-import { RefreshCw, Download, Trash2 } from "lucide-react";
-
-// Type assertion for window.electronAPI
-declare global {
-  interface Window {
-    electronAPI: any;
-  }
-}
+import { RefreshCw, Download, Trash2, X } from "lucide-react";
+import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 
 interface WhisperModel {
   model: string;
@@ -109,6 +103,25 @@ export default function WhisperModelPicker({
     totalBytes: 0,
   });
   const [loadingModels, setLoadingModels] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description?: string;
+    onConfirm: () => void;
+    variant?: "default" | "destructive";
+  }>({
+    open: false,
+    title: "",
+    onConfirm: () => {},
+  });
+  const [alertDialog, setAlertDialog] = useState<{
+    open: boolean;
+    title: string;
+    description?: string;
+  }>({
+    open: false,
+    title: "",
+  });
 
   const styles = useMemo(() => VARIANT_STYLES[variant], [variant]);
 
@@ -163,11 +176,20 @@ export default function WhisperModelPicker({
         if (data.error?.includes("interrupted by user")) {
           console.log("Model download was cancelled by user");
         } else if (data.error?.includes("timeout")) {
-          alert(
-            "❌ Model download timed out. Please check your internet connection and try again."
-          );
+          setAlertDialog({
+            open: true,
+            title: "Download Timeout",
+            description:
+              "Model download timed out. Please check your internet connection and try again.",
+          });
         } else {
-          alert(`❌ Model download failed: ${data.error || "Unknown error"}`);
+          setAlertDialog({
+            open: true,
+            title: "Download Failed",
+            description: `Model download failed: ${
+              data.error || "Unknown error"
+            }`,
+          });
         }
       }
     },
@@ -194,10 +216,24 @@ export default function WhisperModelPicker({
         if (result.success) {
           await loadModelList();
         } else {
-          alert(`❌ Failed to download model "${modelName}": ${result.error}`);
+          // Only show error if it's not a cancellation
+          if (!result.error?.includes("interrupted by user")) {
+            setAlertDialog({
+              open: true,
+              title: "Download Failed",
+              description: `Failed to download model "${modelName}": ${result.error}`,
+            });
+          }
         }
       } catch (error) {
-        alert(`❌ Failed to download model "${modelName}": ${error}`);
+        // Only show error if it's not a cancellation
+        if (!error.toString().includes("interrupted by user")) {
+          setAlertDialog({
+            open: true,
+            title: "Download Failed",
+            description: `Failed to download model "${modelName}": ${error}`,
+          });
+        }
       } finally {
         setDownloadingModel(null);
         setDownloadProgress({
@@ -210,28 +246,78 @@ export default function WhisperModelPicker({
     [loadModelList]
   );
 
-  const deleteModel = useCallback(
-    async (modelName: string) => {
-      if (
-        confirm(
-          `Are you sure you want to delete the "${modelName}" model? This will free up disk space but you'll need to re-download it if you want to use it again.`
-        )
-      ) {
+  const cancelDownload = useCallback(async (modelName: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Cancel Download",
+      description: `Are you sure you want to cancel the download of "${modelName}"?`,
+      onConfirm: async () => {
         try {
-          const result = await window.electronAPI.deleteWhisperModel(modelName);
+          const result = await window.electronAPI.cancelWhisperDownload();
 
           if (result.success) {
-            alert(
-              `✅ Model "${modelName}" deleted successfully! Freed ${result.freed_mb}MB of disk space.`
-            );
-            loadModelList();
+            setDownloadingModel(null);
+            setDownloadProgress({
+              percentage: 0,
+              downloadedBytes: 0,
+              totalBytes: 0,
+            });
+            console.log(`Download of "${modelName}" cancelled successfully`);
           } else {
-            alert(`❌ Failed to delete model "${modelName}": ${result.error}`);
+            setAlertDialog({
+              open: true,
+              title: "Cancel Failed",
+              description: `Failed to cancel download: ${result.error}`,
+            });
           }
         } catch (error) {
-          alert(`❌ Failed to delete model "${modelName}": ${error}`);
+          console.error(`Failed to cancel download of "${modelName}":`, error);
+          setAlertDialog({
+            open: true,
+            title: "Cancel Failed",
+            description: `Failed to cancel download: ${error}`,
+          });
         }
-      }
+      },
+    });
+  }, []);
+
+  const deleteModel = useCallback(
+    async (modelName: string) => {
+      setConfirmDialog({
+        open: true,
+        title: "Delete Model",
+        description: `Are you sure you want to delete the "${modelName}" model? This will free up disk space but you'll need to re-download it if you want to use it again.`,
+        onConfirm: async () => {
+          try {
+            const result = await window.electronAPI.deleteWhisperModel(
+              modelName
+            );
+
+            if (result.success) {
+              setAlertDialog({
+                open: true,
+                title: "Model Deleted",
+                description: `Model "${modelName}" deleted successfully! Freed ${result.freed_mb}MB of disk space.`,
+              });
+              loadModelList();
+            } else {
+              setAlertDialog({
+                open: true,
+                title: "Delete Failed",
+                description: `Failed to delete model "${modelName}": ${result.error}`,
+              });
+            }
+          } catch (error) {
+            setAlertDialog({
+              open: true,
+              title: "Delete Failed",
+              description: `Failed to delete model "${modelName}": ${error}`,
+            });
+          }
+        },
+        variant: "destructive",
+      });
     },
     [loadModelList]
   );
@@ -271,6 +357,24 @@ export default function WhisperModelPicker({
       {progressDisplay}
 
       <div className="p-4">
+        <ConfirmDialog
+          open={confirmDialog.open}
+          onOpenChange={(open) =>
+            setConfirmDialog((prev) => ({ ...prev, open }))
+          }
+          title={confirmDialog.title}
+          description={confirmDialog.description}
+          onConfirm={confirmDialog.onConfirm}
+          variant={confirmDialog.variant}
+        />
+
+        <AlertDialog
+          open={alertDialog.open}
+          onOpenChange={(open) => setAlertDialog((prev) => ({ ...prev, open }))}
+          title={alertDialog.title}
+          description={alertDialog.description}
+          onOk={() => {}}
+        />
         <div className="flex items-center justify-between mb-3">
           <h5 className={styles.header}>Available Models</h5>
           <Button
@@ -359,22 +463,35 @@ export default function WhisperModelPicker({
                       </Button>
                     </>
                   )}
-                  {!model.downloaded && (
+                  {!model.downloaded && !isDownloading && (
                     <Button
                       onClick={() => downloadModel(model.model)}
-                      disabled={isDownloading}
                       size="sm"
                       className={styles.buttons.download}
                     >
-                      {isDownloading ? (
-                        `${Math.round(downloadProgress.percentage)}%`
-                      ) : (
-                        <>
-                          <Download size={14} />
-                          <span className="ml-1">Download</span>
-                        </>
-                      )}
+                      <Download size={14} />
+                      <span className="ml-1">Download</span>
                     </Button>
+                  )}
+                  {isDownloading && (
+                    <div className="flex gap-2">
+                      <Button
+                        disabled
+                        size="sm"
+                        className={styles.buttons.download}
+                      >
+                        {`${Math.round(downloadProgress.percentage)}%`}
+                      </Button>
+                      <Button
+                        onClick={() => cancelDownload(model.model)}
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                      >
+                        <X size={14} />
+                        <span className="ml-1">Cancel</span>
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>

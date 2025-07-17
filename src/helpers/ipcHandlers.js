@@ -192,6 +192,10 @@ class IPCHandlers {
       return this.whisperManager.deleteWhisperModel(modelName);
     });
 
+    ipcMain.handle("cancel-whisper-download", async (event) => {
+      return this.whisperManager.cancelDownload();
+    });
+
     // Utility handlers
     ipcMain.handle("cleanup-app", async (event) => {
       try {
