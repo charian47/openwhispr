@@ -16,6 +16,46 @@ import time
 import requests
 import gc
 
+def get_ffmpeg_path():
+    """Get path to bundled FFmpeg executable"""
+    if getattr(sys, 'frozen', False):
+        # Running in Electron app (packed)
+        base_path = sys._MEIPASS
+    else:
+        # Running in development
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    
+    # Platform-specific FFmpeg paths
+    if sys.platform == "darwin":  # macOS
+        ffmpeg_path = os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg")
+    elif sys.platform == "win32":  # Windows
+        ffmpeg_path = os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg.exe")
+    else:  # Linux
+        ffmpeg_path = os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg")
+    
+    # Make sure the path exists
+    if os.path.exists(ffmpeg_path):
+        return ffmpeg_path
+    
+    # Fallback: try to find system FFmpeg
+    import subprocess
+    try:
+        result = subprocess.run(['which', 'ffmpeg'], capture_output=True, text=True)
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except:
+        pass
+    
+    return None
+
+# Set FFmpeg path for Whisper
+ffmpeg_path = get_ffmpeg_path()
+if ffmpeg_path:
+    os.environ["FFMPEG_BINARY"] = ffmpeg_path
+    print(f"Using FFmpeg at: {ffmpeg_path}", file=sys.stderr)
+else:
+    print("Warning: FFmpeg not found, Whisper may not work properly", file=sys.stderr)
+
 # Global model cache to avoid reloading
 _model_cache = {}
 
@@ -328,10 +368,50 @@ def transcribe_audio(audio_path, model_name="base", language=None):
             "success": False
         }
 
+def check_ffmpeg():
+    """Check if FFmpeg is available and working"""
+    try:
+        # Test FFmpeg by trying to get its version
+        import subprocess
+        result = subprocess.run([ffmpeg_path or "ffmpeg", "-version"], 
+                              capture_output=True, text=True, timeout=10)
+        
+        if result.returncode == 0:
+            return {
+                "available": True,
+                "path": ffmpeg_path or "ffmpeg",
+                "version": result.stdout.split('\n')[0] if result.stdout else "Unknown",
+                "success": True
+            }
+        else:
+            return {
+                "available": False,
+                "error": f"FFmpeg returned code {result.returncode}",
+                "success": False
+            }
+    except subprocess.TimeoutExpired:
+        return {
+            "available": False,
+            "error": "FFmpeg check timed out",
+            "success": False
+        }
+    except FileNotFoundError:
+        return {
+            "available": False,
+            "error": "FFmpeg not found in PATH",
+            "success": False
+        }
+    except Exception as e:
+        return {
+            "available": False,
+            "error": str(e),
+            "success": False
+        }
+
 def main():
     parser = argparse.ArgumentParser(description="Whisper Bridge for OpenWispr")
     parser.add_argument("--mode", default="transcribe", 
-                       choices=["transcribe", "download", "check", "list", "delete"],
+                       choices=["transcribe", "download", "check", "list", "delete", "check-ffmpeg"],
                        help="Operation mode (default: transcribe)")
     parser.add_argument("audio_file", nargs="?", help="Path to audio file to transcribe")
     parser.add_argument("--model", default="base", 
@@ -359,6 +439,10 @@ def main():
         return
     elif args.mode == "delete":
         result = delete_model(args.model)
+        print(json.dumps(result))
+        return
+    elif args.mode == "check-ffmpeg":
+        result = check_ffmpeg()
         print(json.dumps(result))
         return
     elif args.mode == "transcribe":

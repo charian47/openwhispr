@@ -22,10 +22,12 @@
   ],
   "asarUnpack": [
     "assets/**/*",
-    "whisper_bridge.py"
+    "whisper_bridge.py",
+    "node_modules/ffmpeg-static/**/*"
   ],
   "extraResources": [
-    "assets/**/*"
+    "assets/**/*",
+    "node_modules/ffmpeg-static/**/*"
   ],
   "mac": {
     "category": "public.app-category.productivity",

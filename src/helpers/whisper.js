@@ -272,6 +272,59 @@ class WhisperManager {
     }
   }
 
+  async checkFFmpegAvailability() {
+    try {
+      const pythonCmd = await this.findPythonExecutable();
+      const whisperScriptPath = this.getWhisperScriptPath();
+
+      const result = await new Promise((resolve) => {
+        const checkProcess = spawn(pythonCmd, [
+          whisperScriptPath,
+          "--mode",
+          "check-ffmpeg",
+        ]);
+
+        let output = "";
+        let stderr = "";
+
+        checkProcess.stdout.on("data", (data) => {
+          output += data.toString();
+        });
+
+        checkProcess.stderr.on("data", (data) => {
+          stderr += data.toString();
+        });
+
+        checkProcess.on("close", (code) => {
+          if (code === 0) {
+            try {
+              const result = JSON.parse(output);
+              resolve(result);
+            } catch (parseError) {
+              resolve({
+                available: false,
+                error: "Failed to parse FFmpeg check result",
+              });
+            }
+          } else {
+            resolve({
+              available: false,
+              error: stderr || "FFmpeg check failed",
+            });
+          }
+        });
+
+        checkProcess.on("error", (error) => {
+          resolve({ available: false, error: error.message });
+        });
+      });
+
+      return result;
+    } catch (error) {
+      return { available: false, error: error.message };
+    }
+  }
+
   async installWhisper() {
     try {
       console.log("🔧 Starting automatic Whisper installation...");

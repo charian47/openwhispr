@@ -72,15 +72,24 @@ Your OpenWispr app has been successfully refactored to support **local Whisper m
 - ✅ **Fast & Efficient**: Minimal local resource usage
 - ✅ **Always Latest Model**: OpenAI's most advanced model
 
-## 📦 Requirements (Already Installed)
+## 📦 Requirements
 
-The following are already installed and configured:
+### ✅ Bundled Dependencies (No Installation Required)
 
-- ✅ **Python 3**: Installed via Homebrew
-- ✅ **FFmpeg**: Installed via Homebrew  
-- ✅ **OpenAI Whisper**: Installed via pip3
-- ✅ **Bridge Script**: Created and configured
+The following are now **bundled with the app** and require no user installation:
+
+- ✅ **FFmpeg**: Bundled with the app (no system installation needed)
+- ✅ **Python Bridge Script**: Included in the app bundle
 - ✅ **App Integration**: Fully implemented
+
+### 🔧 Optional Dependencies (For Local Whisper)
+
+For **local Whisper processing**, users still need:
+
+- ✅ **Python 3**: Installed via Homebrew or system package manager
+- ✅ **OpenAI Whisper**: Installed via `pip3 install openai-whisper`
+
+**Note**: FFmpeg is now bundled, so users no longer need to install it separately!
 
 ## 🧪 Testing Your Setup
 
