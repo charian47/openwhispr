@@ -6,12 +6,14 @@ import SettingsPage from "./SettingsPage";
 import TitleBar from "./TitleBar";
 import TranscriptionItem from "./ui/TranscriptionItem";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
+import { useHotkey } from "../hooks/useHotkey";
 import type { TranscriptionItem as TranscriptionItemType } from "../types/electron";
 
 export default function ControlPanel() {
   const [history, setHistory] = useState<TranscriptionItemType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const { hotkey } = useHotkey();
   const [updateStatus, setUpdateStatus] = useState({
     updateAvailable: false,
     updateDownloaded: false,
@@ -249,8 +251,8 @@ export default function ControlPanel() {
                       No transcriptions yet
                     </h3>
                     <p className="text-neutral-600 mb-4 max-w-sm mx-auto">
-                      Press your hotkey (backtick by default) to start recording
-                      and create your first transcription.
+                      Press your hotkey to start recording and create your first
+                      transcription.
                     </p>
                     <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 max-w-md mx-auto">
                       <h4 className="font-medium text-neutral-800 mb-2">
@@ -261,7 +263,7 @@ export default function ControlPanel() {
                         <li>
                           2. Press{" "}
                           <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
-                            `
+                            {hotkey}
                           </kbd>{" "}
                           to start recording
                         </li>
@@ -269,7 +271,7 @@ export default function ControlPanel() {
                         <li>
                           4. Press{" "}
                           <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
-                            `
+                            {hotkey}
                           </kbd>{" "}
                           again to stop
                         </li>

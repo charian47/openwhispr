@@ -154,13 +154,23 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
 
   // Whisper functions now handled by hooks
 
-  const saveKey = () => {
-    localStorage.setItem("dictationKey", key);
-    setAlertDialog({
-      open: true,
-      title: "Key Saved",
-      description: `Dictation key inscribed: ${key}`,
-    });
+  const saveKey = async () => {
+    try {
+      localStorage.setItem("dictationKey", key);
+      await window.electronAPI.updateHotkey(key);
+      setAlertDialog({
+        open: true,
+        title: "Key Saved",
+        description: `Dictation key inscribed: ${key}`,
+      });
+    } catch (error) {
+      console.error("Failed to update hotkey:", error);
+      setAlertDialog({
+        open: true,
+        title: "Error",
+        description: `Failed to update hotkey: ${error.message}`,
+      });
+    }
   };
 
   const saveApiKey = async () => {

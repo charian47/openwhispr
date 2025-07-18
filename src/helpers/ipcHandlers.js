@@ -231,6 +231,18 @@ class IPCHandlers {
         throw error;
       }
     });
+
+    ipcMain.handle("update-hotkey", async (event, hotkey) => {
+      return await this.windowManager.updateHotkey(hotkey);
+    });
+
+    ipcMain.handle("start-window-drag", async (event) => {
+      return await this.windowManager.startWindowDrag();
+    });
+
+    ipcMain.handle("stop-window-drag", async (event) => {
+      return await this.windowManager.stopWindowDrag();
+    });
   }
 }
 

@@ -34,8 +34,8 @@ Next steps:
 3. Run the app: npm start
 
 Features:
-- Global shortcut: Fn key (Mac) or Cmd+\` (alternative)
-- Space bar to start/stop recording
+- Global hotkey: Customizable (default: backtick \`) - set your own in Control Panel
+- Draggable dictation panel: Click and drag to position anywhere on screen
 - ESC to close the app
 - Automatic text pasting at cursor location
 - FFmpeg bundled (no separate installation needed)

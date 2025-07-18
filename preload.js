@@ -57,6 +57,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Cleanup function
   cleanupApp: () => ipcRenderer.invoke("cleanup-app"),
+  updateHotkey: (hotkey) => ipcRenderer.invoke("update-hotkey", hotkey),
+  startWindowDrag: () => ipcRenderer.invoke("start-window-drag"),
+  stopWindowDrag: () => ipcRenderer.invoke("stop-window-drag"),
 
   // Update functions
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
@@ -74,4 +77,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onUpdateDownloadProgress: (callback) =>
     ipcRenderer.on("update-download-progress", callback),
   onUpdateError: (callback) => ipcRenderer.on("update-error", callback),
+
+  // Audio event listeners
+  onNoAudioDetected: (callback) =>
+    ipcRenderer.on("no-audio-detected", callback),
 });

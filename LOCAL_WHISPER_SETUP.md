@@ -102,9 +102,9 @@ For **local Whisper processing**, users still need:
 1. Enable "Use Local Whisper" in Control Panel
 2. Select "base" model (recommended for testing)
 3. Save settings
-4. Press the backtick key (`) to start dictation
+4. Press your hotkey (default: backtick `) to start dictation
 5. Speak clearly for 2-3 seconds
-6. Press backtick again to stop
+6. Press your hotkey again to stop
 7. The transcription should appear and paste automatically
 
 ### Test 3: Model Download (First Time)
@@ -119,6 +119,7 @@ The app is configured with intelligent fallback:
 1. **Primary**: Use local Whisper if enabled and working
 2. **Fallback**: Automatically switch to OpenAI API if local fails
 3. **Error Handling**: Clear messages about what's happening
+4. **Hotkey Control**: All recording is controlled via customizable hotkey (no clicking required)
 
 ## 📊 Model Performance Guide
 
@@ -178,9 +179,11 @@ Current timeout is 30 seconds. To change:
 Your app now supports both local and cloud transcription! You can:
 
 1. **Switch modes anytime** via Control Panel
-2. **Test different models** to find your preference
+2. **Test different models** to find your preference  
 3. **Enjoy complete privacy** with local processing
 4. **Keep API access** as a backup option
+5. **Customize your hotkey** to any key you prefer
+6. **Drag the panel** to position it anywhere on your screen
 
 The integration is complete and ready for production use. All files have been modified and the Python bridge is fully functional.
 

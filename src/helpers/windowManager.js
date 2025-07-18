@@ -1,60 +1,43 @@
+const { screen, BrowserWindow } = require("electron");
+const HotkeyManager = require("./hotkeyManager");
+const DragManager = require("./dragManager");
+const MenuManager = require("./menuManager");
+const DevServerManager = require("./devServerManager");
 const {
-  screen,
-  BrowserWindow,
-  globalShortcut,
-  Menu,
-  Tray,
-} = require("electron");
-const path = require("path");
+  MAIN_WINDOW_CONFIG,
+  CONTROL_PANEL_CONFIG,
+  WindowPositionUtil,
+} = require("./windowConfig");
 
 class WindowManager {
   constructor() {
     this.mainWindow = null;
     this.controlPanelWindow = null;
     this.tray = null;
+    this.hotkeyManager = new HotkeyManager();
+    this.dragManager = new DragManager();
   }
 
   async createMainWindow() {
     console.log("🔄 Creating main window...");
     const display = screen.getPrimaryDisplay();
-    const width = 100;
-    const height = 100;
-    // Position window in bottom-right corner, but ensure it's visible
-    const x = Math.max(
-      0,
-      display.bounds.x + display.workArea.width - width - 20
-    );
-    const y = Math.max(0, display.bounds.y + display.workArea.height);
+    const position = WindowPositionUtil.getMainWindowPosition(display);
 
-    console.log("📐 Window dimensions:", { width, height, x, y });
+    console.log("📐 Window dimensions:", position);
 
     this.mainWindow = new BrowserWindow({
-      width,
-      height,
-      x,
-      y,
-      webPreferences: {
-        preload: path.join(__dirname, "..", "..", "preload.js"),
-        nodeIntegration: false,
-        contextIsolation: true,
-        enableRemoteModule: false,
-        sandbox: true,
-      },
-      frame: false,
-      alwaysOnTop: true,
-      resizable: false,
-      transparent: true,
-      show: true,
-      skipTaskbar: false,
-      focusable: true,
+      ...MAIN_WINDOW_CONFIG,
+      ...position,
     });
 
     console.log("📱 Loading main window content...");
     await this.loadMainWindow();
     console.log("⌨️ Setting up shortcuts...");
-    this.setupShortcuts();
+    await this.initializeHotkey();
+    console.log("🖱️ Setting up drag manager...");
+    this.dragManager.setTargetWindow(this.mainWindow);
     console.log("🍎 Setting up menu...");
-    this.setupMenu();
+    MenuManager.setupMainMenu();
     console.log("✅ Main window created successfully");
 
     this.mainWindow.webContents.on(
@@ -72,7 +55,7 @@ class WindowManager {
         ) {
           console.log("Retrying connection to dev server in 2 seconds...");
           setTimeout(async () => {
-            const isReady = await this.waitForDevServer();
+            const isReady = await DevServerManager.waitForDevServer();
             if (isReady) {
               console.log("Dev server ready, reloading...");
               this.mainWindow.reload();
@@ -104,22 +87,16 @@ class WindowManager {
     });
 
     // Ensure window is always on top, even above fullscreen apps
-    this.mainWindow.setAlwaysOnTop(true, "screen-saver");
-    this.mainWindow.setVisibleOnAllWorkspaces(true, {
-      visibleOnFullScreen: true,
-    });
+    WindowPositionUtil.setupAlwaysOnTop(this.mainWindow);
     this.mainWindow.on("show", () => {
-      this.mainWindow.setAlwaysOnTop(true, "screen-saver");
-      this.mainWindow.setVisibleOnAllWorkspaces(true, {
-        visibleOnFullScreen: true,
-      });
+      WindowPositionUtil.setupAlwaysOnTop(this.mainWindow);
     });
   }
 
   async loadMainWindow() {
-    const appUrl = this.getAppUrl(false);
+    const appUrl = DevServerManager.getAppUrl(false);
     if (process.env.NODE_ENV === "development") {
-      const isReady = await this.waitForDevServer();
+      const isReady = await DevServerManager.waitForDevServer();
       if (!isReady) {
         console.error("Dev server not ready, loading anyway...");
       }
@@ -127,76 +104,34 @@ class WindowManager {
     this.mainWindow.loadURL(appUrl);
   }
 
-  setupShortcuts() {
-    globalShortcut.unregisterAll();
-    globalShortcut.register("`", () => {
+  async initializeHotkey() {
+    const callback = () => {
       if (!this.mainWindow.isVisible()) {
         this.mainWindow.show();
       }
       this.mainWindow.webContents.send("toggle-dictation");
-    });
+    };
+
+    await this.hotkeyManager.initializeHotkey(this.mainWindow, callback);
   }
 
-  setupMenu() {
-    if (process.platform === "darwin") {
-      const template = [
-        {
-          label: "OpenWispr",
-          submenu: [
-            { role: "about" },
-            { type: "separator" },
-            { role: "quit", label: "Quit OpenWispr" },
-          ],
-        },
-      ];
-      const menu = Menu.buildFromTemplate(template);
-      Menu.setApplicationMenu(menu);
-    }
+  async updateHotkey(hotkey) {
+    const callback = () => {
+      if (!this.mainWindow.isVisible()) {
+        this.mainWindow.show();
+      }
+      this.mainWindow.webContents.send("toggle-dictation");
+    };
+
+    return await this.hotkeyManager.updateHotkey(hotkey, callback);
   }
 
-  setupControlPanelMenu() {
-    const template = [
-      {
-        label: "File",
-        submenu: [{ role: "close", label: "Close Window" }],
-      },
-      {
-        label: "Edit",
-        submenu: [
-          { role: "undo", label: "Undo" },
-          { role: "redo", label: "Redo" },
-          { type: "separator" },
-          { role: "cut", label: "Cut" },
-          { role: "copy", label: "Copy" },
-          { role: "paste", label: "Paste" },
-          { role: "pasteAndMatchStyle", label: "Paste and Match Style" },
-          { type: "separator" },
-          { role: "selectall", label: "Select All" },
-        ],
-      },
-      {
-        label: "View",
-        submenu: [
-          { role: "reload", label: "Reload" },
-          { role: "forceReload", label: "Force Reload" },
-          { role: "toggleDevTools", label: "Toggle Developer Tools" },
-          { type: "separator" },
-          { role: "resetZoom", label: "Actual Size" },
-          { role: "zoomIn", label: "Zoom In" },
-          { role: "zoomOut", label: "Zoom Out" },
-          { type: "separator" },
-          { role: "togglefullscreen", label: "Toggle Full Screen" },
-        ],
-      },
-    ];
+  async startWindowDrag() {
+    return await this.dragManager.startWindowDrag();
+  }
 
-    const menu = Menu.buildFromTemplate(template);
-    this.controlPanelWindow.setMenu(menu);
-
-    // Also set the menu as the application menu to ensure clipboard access
-    if (process.platform === "darwin") {
-      Menu.setApplicationMenu(menu);
-    }
+  async stopWindowDrag() {
+    return await this.dragManager.stopWindowDrag();
   }
 
   async createControlPanelWindow() {
@@ -210,52 +145,13 @@ class WindowManager {
       return;
     }
 
-    this.controlPanelWindow = new BrowserWindow({
-      width: 800,
-      height: 700,
-      webPreferences: {
-        preload: path.join(__dirname, "..", "..", "preload.js"),
-        nodeIntegration: false,
-        contextIsolation: true,
-        enableRemoteModule: false,
-        sandbox: false,
-        webSecurity: false,
-        // Enable text input and clipboard access
-        spellcheck: false,
-        experimentalFeatures: false,
-        // Ensure text input works
-        allowRunningInsecureContent: false,
-        // Enable proper text selection and input
-        enableWebSQL: false,
-        // Allow paste operations
-        enableBlinkFeatures: "",
-        // Additional settings for text input
-        defaultEncoding: "UTF-8",
-        // Ensure text input is not blocked
-        disableHtmlFullscreenWindowResize: false,
-        // Enable clipboard access
-        enableClipboardAccess: true,
-        // Allow clipboard read/write
-        clipboard: true,
-      },
-      title: "OpenWispr Control Panel",
-      resizable: true,
-      show: false, // Don't show until content is loaded
-      titleBarStyle: "hiddenInset",
-      frame: false,
-      transparent: false,
-      backgroundColor: "#ffffff",
-      minimizable: true,
-      maximizable: true,
-      closable: true,
-      fullscreenable: true,
-    });
+    this.controlPanelWindow = new BrowserWindow(CONTROL_PANEL_CONFIG);
 
     console.log("📱 Loading control panel content...");
     await this.loadControlPanel();
 
     // Set up menu for control panel to ensure text input works
-    this.setupControlPanelMenu();
+    MenuManager.setupControlPanelMenu(this.controlPanelWindow);
 
     // Show and focus the window after content is loaded
     this.controlPanelWindow.show();
@@ -270,9 +166,9 @@ class WindowManager {
   }
 
   async loadControlPanel() {
-    const appUrl = this.getAppUrl(true);
+    const appUrl = DevServerManager.getAppUrl(true);
     if (process.env.NODE_ENV === "development") {
-      const isReady = await this.waitForDevServer();
+      const isReady = await DevServerManager.waitForDevServer();
       if (!isReady) {
         console.error(
           "Dev server not ready for control panel, loading anyway..."
@@ -288,72 +184,6 @@ class WindowManager {
         this.mainWindow.show();
       }
       this.mainWindow.focus();
-    }
-  }
-
-  async waitForDevServer(
-    url = "http://localhost:5174/",
-    maxAttempts = 30,
-    delay = 1000
-  ) {
-    for (let i = 0; i < maxAttempts; i++) {
-      try {
-        const http = require("http");
-        const urlObj = new URL(url);
-
-        const result = await new Promise((resolve) => {
-          const req = http.get(
-            {
-              hostname: urlObj.hostname,
-              port: urlObj.port || 80,
-              path: urlObj.pathname,
-              timeout: 2000,
-            },
-            (res) => {
-              resolve(res.statusCode >= 200 && res.statusCode < 400);
-            }
-          );
-
-          req.on("error", () => resolve(false));
-          req.on("timeout", () => {
-            req.destroy();
-            resolve(false);
-          });
-        });
-
-        if (result) {
-          console.log(`Dev server ready after ${i + 1} attempts`);
-          return true;
-        }
-      } catch (error) {
-        console.log(
-          `Waiting for dev server... attempt ${i + 1}/${maxAttempts}`
-        );
-      }
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-    console.error("Dev server failed to start within timeout");
-    return false;
-  }
-
-  getAppUrl(isControlPanel = false) {
-    if (process.env.NODE_ENV === "development") {
-      return isControlPanel
-        ? "http://localhost:5174/?panel=true"
-        : "http://localhost:5174/";
-    } else {
-      const htmlPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "src",
-        "dist",
-        "index.html"
-      );
-      const url = isControlPanel
-        ? `file://${htmlPath}?panel=true`
-        : `file://${htmlPath}`;
-      return url;
     }
   }
 }
