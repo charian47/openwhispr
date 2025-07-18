@@ -166,8 +166,20 @@ class UpdateManager {
           };
         }
 
+        if (!this.updateDownloaded) {
+          console.error("❌ No update downloaded to install");
+          return {
+            success: false,
+            message: "No update available to install",
+          };
+        }
+
         console.log("🔄 Installing update and restarting...");
-        autoUpdater.quitAndInstall();
+        
+        // Use setImmediate to ensure the response is sent before quitting
+        setImmediate(() => {
+          autoUpdater.quitAndInstall();
+        });
 
         return { success: true, message: "Update installation started" };
       } catch (error) {

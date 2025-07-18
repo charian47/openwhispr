@@ -1,6 +1,6 @@
 {
   "name": "open-wispr",
-  "version": "0.0.4-alpha",
+  "version": "0.0.5-alpha",
   "description": "A desktop dictation application using OpenAI Whisper for speech-to-text transcription",
   "main": "main.js",
   "private": true,
