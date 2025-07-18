@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
-import { Toast } from "./components/ui/Toast";
+import { useToast } from "./components/ui/Toast";
 import { LoadingDots } from "./components/ui/LoadingDots";
-import { Settings } from "lucide-react";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -78,32 +77,39 @@ export default function App() {
   const [isHovered, setIsHovered] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const { toast } = useToast();
 
   const startRecording = async () => {
     try {
-      setError('');
+      setError("");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+
       mediaRecorderRef.current = new window.MediaRecorder(stream);
       audioChunksRef.current = [];
-      
+
       mediaRecorderRef.current.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data);
       };
-      
+
       mediaRecorderRef.current.onstop = async () => {
         setIsProcessing(true);
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: "audio/wav",
+        });
         // Start processing immediately without waiting
         processAudio(audioBlob);
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       };
-      
+
       mediaRecorderRef.current.start();
       setIsRecording(true);
     } catch (err) {
-      console.error("Recording error:", err)
-      setError('Failed to access microphone: ' + err.message);
+      console.error("Recording error:", err);
+      toast({
+        title: "Recording Error",
+        description: "Failed to access microphone: " + err.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -119,25 +125,34 @@ export default function App() {
     try {
       await window.electronAPI.pasteText(text);
     } catch (err) {
-      setError("Failed to paste text. Please check accessibility permissions.");
+      toast({
+        title: "Paste Error",
+        description:
+          "Failed to paste text. Please check accessibility permissions.",
+        variant: "destructive",
+      });
     }
   };
 
   const processAudio = async (audioBlob) => {
     try {
       // Cache preferences to avoid repeated localStorage calls
-      const useLocalWhisper = localStorage.getItem('useLocalWhisper') === 'true';
-      const whisperModel = localStorage.getItem('whisperModel') || 'base';
-      
+      const useLocalWhisper =
+        localStorage.getItem("useLocalWhisper") === "true";
+      const whisperModel = localStorage.getItem("whisperModel") || "base";
+
       if (useLocalWhisper) {
         await processWithLocalWhisper(audioBlob, whisperModel);
       } else {
         await processWithOpenAIAPI(audioBlob);
       }
-      
     } catch (err) {
-      console.error("Transcription error:", err)
-      setError('Transcription failed: ' + err.message);
+      console.error("Transcription error:", err);
+      toast({
+        title: "Transcription Error",
+        description: "Transcription failed: " + err.message,
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -172,13 +187,21 @@ export default function App() {
           // Wait for paste to complete, but don't block on database save
           await pastePromise;
         } else {
-          setError("No text transcribed. Try again.");
+          toast({
+            title: "No Audio",
+            description: "No text transcribed. Try again.",
+            variant: "destructive",
+          });
         }
       } else if (
         result.success === false &&
         result.message === "No audio detected"
       ) {
-        setError("No audio detected");
+        toast({
+          title: "No Audio",
+          description: "No audio detected",
+          variant: "destructive",
+        });
         return;
       } else {
         throw new Error(result.error || "Local Whisper transcription failed");
@@ -189,7 +212,11 @@ export default function App() {
         localStorage.getItem("allowOpenAIFallback") === "true";
 
       if (allowFallback) {
-        setError("Local Whisper failed. Retrying with OpenAI API...");
+        toast({
+          title: "Fallback Mode",
+          description: "Local Whisper failed. Retrying with OpenAI API...",
+          variant: "default",
+        });
         await processWithOpenAIAPI(audioBlob);
       } else {
         throw new Error(`Local Whisper failed: ${err.message}`);
@@ -214,9 +241,12 @@ export default function App() {
         apiKey.trim() === "" ||
         apiKey === "your_openai_api_key_here"
       ) {
-        setError(
-          "OpenAI API key not found. Please set your API key in the .env file or Control Panel."
-        );
+        toast({
+          title: "API Key Missing",
+          description:
+            "OpenAI API key not found. Please set your API key in the .env file or Control Panel.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -238,7 +268,11 @@ export default function App() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("API Error:", errorText);
-        setError(`Transcription failed: ${response.status} ${errorText}`);
+        toast({
+          title: "API Error",
+          description: `Transcription failed: ${response.status} ${errorText}`,
+          variant: "destructive",
+        });
         throw new Error(
           `Failed to transcribe audio: ${response.status} ${errorText}`
         );
@@ -263,7 +297,11 @@ export default function App() {
         // Wait for paste to complete, but don't block on database save
         await pastePromise;
       } else {
-        setError("No text transcribed. Try again.");
+        toast({
+          title: "No Audio",
+          description: "No text transcribed. Try again.",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       console.error("OpenAI API error:", err);
@@ -416,8 +454,6 @@ export default function App() {
           </button>
         </Tooltip>
       </div>
-
-      <Toast message={error} onClose={() => setError("")} />
     </>
   );
 }

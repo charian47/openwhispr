@@ -46,6 +46,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deleteWhisperModel: (modelName) =>
     ipcRenderer.invoke("delete-whisper-model", modelName),
   cancelWhisperDownload: () => ipcRenderer.invoke("cancel-whisper-download"),
+  checkFFmpegAvailability: () =>
+    ipcRenderer.invoke("check-ffmpeg-availability"),
 
   // Window control functions
   windowMinimize: () => ipcRenderer.invoke("window-minimize"),

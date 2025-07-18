@@ -28,14 +28,12 @@ class WhisperManager {
 
   async initializeAtStartup() {
     try {
-      // Initialize Python path and Whisper installation status
       await this.findPythonExecutable();
       await this.checkWhisperInstallation();
       this.isInitialized = true;
-      console.log("✅ Whisper manager initialized at startup");
     } catch (error) {
-      console.log("⚠️ Whisper not available at startup:", error.message);
-      this.isInitialized = true; // Mark as initialized even if Whisper isn't available
+      console.error("Whisper not available at startup:", error.message);
+      this.isInitialized = true;
     }
   }
 
@@ -52,7 +50,7 @@ class WhisperManager {
       );
       return this.parseWhisperResult(result);
     } catch (error) {
-      console.error("❌ Local Whisper transcription error:", error);
+      console.error("Local Whisper transcription error:", error);
       throw error;
     } finally {
       this.cleanupTempFile(tempAudioPath);
@@ -91,9 +89,51 @@ class WhisperManager {
     args.push("--output-format", "json");
 
     return new Promise((resolve, reject) => {
+      // Get FFmpeg path with proper production/development handling
+      let ffmpegPath;
+
+      if (process.env.NODE_ENV === "development") {
+        ffmpegPath = require("ffmpeg-static");
+      } else {
+        // Production: try unpacked location first, then fallback
+        try {
+          const originalPath = require("ffmpeg-static");
+          ffmpegPath = originalPath.replace("app.asar", "app.asar.unpacked");
+
+          if (!fs.existsSync(ffmpegPath)) {
+            ffmpegPath = originalPath;
+          }
+        } catch (e) {
+          console.error("Could not resolve FFmpeg path:", e.message);
+          ffmpegPath = null;
+        }
+      }
+
+      // Enhanced environment setup
+      const enhancedEnv = {
+        ...process.env,
+        FFMPEG_PATH: ffmpegPath,
+        FFMPEG_EXECUTABLE: ffmpegPath,
+        FFMPEG_BINARY: ffmpegPath,
+      };
+
+      // Add ffmpeg directory to PATH if we have a valid path
+      if (ffmpegPath) {
+        const ffmpegDir = path.dirname(ffmpegPath);
+        const currentPath = enhancedEnv.PATH || "";
+        const pathSeparator = process.platform === "win32" ? ";" : ":";
+
+        if (!currentPath.includes(ffmpegDir)) {
+          enhancedEnv.PATH = `${ffmpegDir}${pathSeparator}${currentPath}`;
+        }
+      } else {
+        console.warn("No valid FFmpeg path found, transcription may fail");
+      }
+
       const whisperProcess = spawn(pythonCmd, args, {
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
+        env: enhancedEnv,
       });
 
       let stdout = "";
@@ -113,13 +153,15 @@ class WhisperManager {
       });
 
       whisperProcess.stderr.on("data", (data) => {
-        stderr += data.toString();
-        // Reduce logging verbosity
+        const stderrText = data.toString();
+        stderr += stderrText;
+
         if (
-          data.toString().includes("Error") ||
-          data.toString().includes("failed")
+          stderrText.includes("ffmpeg") ||
+          stderrText.includes("Error") ||
+          stderrText.includes("failed")
         ) {
-          console.log("Whisper log:", data.toString());
+          console.error("Whisper error:", stderrText.trim());
         }
       });
 
@@ -131,9 +173,19 @@ class WhisperManager {
         if (code === 0) {
           resolve(stdout);
         } else {
-          reject(
-            new Error(`Whisper transcription failed (code ${code}): ${stderr}`)
-          );
+          // Better error message for FFmpeg issues
+          let errorMessage = `Whisper transcription failed (code ${code}): ${stderr}`;
+
+          if (
+            stderr.includes("ffmpeg") ||
+            stderr.includes("No such file or directory") ||
+            stderr.includes("FFmpeg not found")
+          ) {
+            errorMessage +=
+              "\n\nFFmpeg issue detected. Try restarting the app or reinstalling.";
+          }
+
+          reject(new Error(errorMessage));
         }
       });
 
@@ -180,7 +232,7 @@ class WhisperManager {
     try {
       fs.unlinkSync(tempAudioPath);
     } catch (cleanupError) {
-      console.warn("⚠️ Could not clean up temp file:", cleanupError.message);
+      console.warn("Could not clean up temp file:", cleanupError.message);
     }
   }
 
@@ -272,20 +324,63 @@ class WhisperManager {
     }
   }
 
+  async checkFFmpegAvailability() {
+    try {
+      const pythonCmd = await this.findPythonExecutable();
+      const whisperScriptPath = this.getWhisperScriptPath();
+
+      const result = await new Promise((resolve) => {
+        const checkProcess = spawn(pythonCmd, [
+          whisperScriptPath,
+          "--mode",
+          "check-ffmpeg",
+        ]);
+
+        let output = "";
+        let stderr = "";
+
+        checkProcess.stdout.on("data", (data) => {
+          output += data.toString();
+        });
+
+        checkProcess.stderr.on("data", (data) => {
+          stderr += data.toString();
+        });
+
+        checkProcess.on("close", (code) => {
+          if (code === 0) {
+            try {
+              const result = JSON.parse(output);
+              resolve(result);
+            } catch (parseError) {
+              resolve({
+                available: false,
+                error: "Failed to parse FFmpeg check result",
+              });
+            }
+          } else {
+            resolve({
+              available: false,
+              error: stderr || "FFmpeg check failed",
+            });
+          }
+        });
+
+        checkProcess.on("error", (error) => {
+          resolve({ available: false, error: error.message });
+        });
+      });
+
+      return result;
+    } catch (error) {
+      return { available: false, error: error.message };
+    }
+  }
+
   async installWhisper() {
     try {
-      console.log("🔧 Starting automatic Whisper installation...");
-
       const pythonCmd = await this.findPythonExecutable();
-      console.log("🐍 Using Python:", pythonCmd);
-
       const args = ["-m", "pip", "install", "-U", "openai-whisper"];
-
-      console.log(
-        "📦 Running installation command:",
-        pythonCmd,
-        args.join(" ")
-      );
 
       return new Promise((resolve, reject) => {
         const installProcess = spawn(pythonCmd, args);
@@ -294,27 +389,22 @@ class WhisperManager {
         let stderr = "";
 
         installProcess.stdout.on("data", (data) => {
-          const output = data.toString();
-          stdout += output;
-          console.log("Install output:", output);
+          stdout += data.toString();
         });
 
         installProcess.stderr.on("data", (data) => {
-          const output = data.toString();
-          stderr += output;
-          console.log("Install stderr:", output);
+          stderr += data.toString();
         });
 
         installProcess.on("close", (code) => {
           if (code === 0) {
-            console.log("✅ Whisper installation completed successfully");
             resolve({
               success: true,
               message: "Whisper installed successfully!",
               output: stdout,
             });
           } else {
-            console.error("❌ Whisper installation failed with code:", code);
+            console.error("Whisper installation failed with code:", code);
             console.error("Installation stderr:", stderr);
             reject(
               new Error(`Whisper installation failed (code ${code}): ${stderr}`)
@@ -323,7 +413,7 @@ class WhisperManager {
         });
 
         installProcess.on("error", (error) => {
-          console.error("❌ Whisper installation process error:", error);
+          console.error("Whisper installation process error:", error);
           reject(
             new Error(`Whisper installation process error: ${error.message}`)
           );
@@ -335,15 +425,13 @@ class WhisperManager {
         }, 600000);
       });
     } catch (error) {
-      console.error("❌ Whisper installation error:", error);
+      console.error("Whisper installation error:", error);
       throw error;
     }
   }
 
   async downloadWhisperModel(modelName, progressCallback = null) {
     try {
-      console.log(`📥 Starting download of Whisper model: ${modelName}`);
-
       const pythonCmd = await this.findPythonExecutable();
       const whisperScriptPath = this.getWhisperScriptPath();
 
@@ -397,10 +485,9 @@ class WhisperManager {
           if (code === 0) {
             try {
               const result = JSON.parse(stdout);
-              console.log(`✅ Model ${modelName} download completed`);
               resolve(result);
             } catch (parseError) {
-              console.error("❌ Failed to parse download result:", parseError);
+              console.error("Failed to parse download result:", parseError);
               reject(
                 new Error(
                   `Failed to parse download result: ${parseError.message}`
@@ -408,38 +495,29 @@ class WhisperManager {
               );
             }
           } else {
-            // Check if this was a cancellation (SIGTERM = 143, SIGKILL = 137)
-            if (code === 143 || code === 137) {
-              console.log(`🛑 Model ${modelName} download cancelled`);
+            // Handle cancellation cases (SIGTERM, SIGKILL, or null exit codes)
+            if (code === 143 || code === 137 || code === null) {
               reject(new Error("Download interrupted by user"));
             } else {
-              console.error("❌ Model download failed with code:", code);
-              reject(
-                new Error(`Model download failed (code ${code}): ${stderr}`)
-              );
+              console.error("Model download failed with code:", code);
+              reject(new Error(`Model download failed (exit code ${code})`));
             }
           }
         });
 
         downloadProcess.on("error", (error) => {
-          this.currentDownloadProcess = null; // Clear process reference
-          console.error("❌ Model download process error:", error);
+          this.currentDownloadProcess = null;
+          console.error("Model download process error:", error);
           reject(new Error(`Model download process error: ${error.message}`));
         });
 
         const timeout = setTimeout(() => {
-          console.warn(
-            "⚠️ Model download timed out, attempting graceful shutdown..."
-          );
           downloadProcess.kill("SIGTERM");
-
           setTimeout(() => {
             if (!downloadProcess.killed) {
-              console.warn("⚠️ Force killing download process...");
               downloadProcess.kill("SIGKILL");
             }
           }, 5000);
-
           reject(new Error("Model download timed out (20 minutes)"));
         }, 1200000);
 
@@ -448,7 +526,7 @@ class WhisperManager {
         });
       });
     } catch (error) {
-      console.error("❌ Model download error:", error);
+      console.error("Model download error:", error);
       throw error;
     }
   }
@@ -456,23 +534,18 @@ class WhisperManager {
   async cancelDownload() {
     if (this.currentDownloadProcess) {
       try {
-        console.log("🛑 Cancelling current download...");
         this.currentDownloadProcess.kill("SIGTERM");
-
-        // Force kill after 3 seconds if still running
         setTimeout(() => {
           if (
             this.currentDownloadProcess &&
             !this.currentDownloadProcess.killed
           ) {
-            console.log("🛑 Force killing download process...");
             this.currentDownloadProcess.kill("SIGKILL");
           }
         }, 3000);
-
         return { success: true, message: "Download cancelled" };
       } catch (error) {
-        console.error("❌ Error cancelling download:", error);
+        console.error("Error cancelling download:", error);
         return { success: false, error: error.message };
       }
     } else {
@@ -482,8 +555,6 @@ class WhisperManager {
 
   async checkModelStatus(modelName) {
     try {
-      console.log(`🔍 Checking status of Whisper model: ${modelName}`);
-
       const pythonCmd = await this.findPythonExecutable();
       const whisperScriptPath = this.getWhisperScriptPath();
 
@@ -507,16 +578,15 @@ class WhisperManager {
           if (code === 0) {
             try {
               const result = JSON.parse(stdout);
-              console.log(`📊 Model ${modelName} status:`, result);
               resolve(result);
             } catch (parseError) {
-              console.error("❌ Failed to parse model status:", parseError);
+              console.error("Failed to parse model status:", parseError);
               reject(
                 new Error(`Failed to parse model status: ${parseError.message}`)
               );
             }
           } else {
-            console.error("❌ Model status check failed with code:", code);
+            console.error("Model status check failed with code:", code);
             reject(
               new Error(`Model status check failed (code ${code}): ${stderr}`)
             );
@@ -524,20 +594,18 @@ class WhisperManager {
         });
 
         checkProcess.on("error", (error) => {
-          console.error("❌ Model status check error:", error);
+          console.error("Model status check error:", error);
           reject(new Error(`Model status check error: ${error.message}`));
         });
       });
     } catch (error) {
-      console.error("❌ Model status check error:", error);
+      console.error("Model status check error:", error);
       throw error;
     }
   }
 
   async listWhisperModels() {
     try {
-      console.log("📋 Listing all Whisper models...");
-
       const pythonCmd = await this.findPythonExecutable();
       const whisperScriptPath = this.getWhisperScriptPath();
 
@@ -561,35 +629,32 @@ class WhisperManager {
           if (code === 0) {
             try {
               const result = JSON.parse(stdout);
-              console.log("📋 Model list retrieved:", result);
               resolve(result);
             } catch (parseError) {
-              console.error("❌ Failed to parse model list:", parseError);
+              console.error("Failed to parse model list:", parseError);
               reject(
                 new Error(`Failed to parse model list: ${parseError.message}`)
               );
             }
           } else {
-            console.error("❌ Model list failed with code:", code);
+            console.error("Model list failed with code:", code);
             reject(new Error(`Model list failed (code ${code}): ${stderr}`));
           }
         });
 
         listProcess.on("error", (error) => {
-          console.error("❌ Model list error:", error);
+          console.error("Model list error:", error);
           reject(new Error(`Model list error: ${error.message}`));
         });
       });
     } catch (error) {
-      console.error("❌ Model list error:", error);
+      console.error("Model list error:", error);
       throw error;
     }
   }
 
   async deleteWhisperModel(modelName) {
     try {
-      console.log(`🗑️ Deleting Whisper model: ${modelName}`);
-
       const pythonCmd = await this.findPythonExecutable();
       const whisperScriptPath = this.getWhisperScriptPath();
 
@@ -619,10 +684,9 @@ class WhisperManager {
           if (code === 0) {
             try {
               const result = JSON.parse(stdout);
-              console.log(`🗑️ Model ${modelName} delete result:`, result);
               resolve(result);
             } catch (parseError) {
-              console.error("❌ Failed to parse delete result:", parseError);
+              console.error("Failed to parse delete result:", parseError);
               reject(
                 new Error(
                   `Failed to parse delete result: ${parseError.message}`
@@ -630,18 +694,18 @@ class WhisperManager {
               );
             }
           } else {
-            console.error("❌ Model delete failed with code:", code);
+            console.error("Model delete failed with code:", code);
             reject(new Error(`Model delete failed (code ${code}): ${stderr}`));
           }
         });
 
         deleteProcess.on("error", (error) => {
-          console.error("❌ Model delete error:", error);
+          console.error("Model delete error:", error);
           reject(new Error(`Model delete error: ${error.message}`));
         });
       });
     } catch (error) {
-      console.error("❌ Model delete error:", error);
+      console.error("Model delete error:", error);
       throw error;
     }
   }

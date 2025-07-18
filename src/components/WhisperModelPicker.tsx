@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "./ui/button";
 import { RefreshCw, Download, Trash2, X } from "lucide-react";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
+import { useToast } from "./ui/Toast";
 
 interface WhisperModel {
   model: string;
@@ -123,6 +124,7 @@ export default function WhisperModelPicker({
     title: "",
   });
 
+  const { toast } = useToast();
   const styles = useMemo(() => VARIANT_STYLES[variant], [variant]);
 
   const loadModelList = useCallback(async () => {
@@ -174,7 +176,7 @@ export default function WhisperModelPicker({
         });
 
         if (data.error?.includes("interrupted by user")) {
-          console.log("Model download was cancelled by user");
+          // Toast is handled by the cancel button - don't show duplicate here
         } else if (data.error?.includes("timeout")) {
           setAlertDialog({
             open: true,
@@ -211,6 +213,9 @@ export default function WhisperModelPicker({
           totalBytes: 0,
         });
 
+        // Auto-select the model when starting download
+        onModelSelect(modelName);
+
         const result = await window.electronAPI.downloadWhisperModel(modelName);
 
         if (result.success) {
@@ -224,6 +229,7 @@ export default function WhisperModelPicker({
               description: `Failed to download model "${modelName}": ${result.error}`,
             });
           }
+          // Don't show toast here - it's handled by the progress handler
         }
       } catch (error) {
         // Only show error if it's not a cancellation
@@ -234,6 +240,7 @@ export default function WhisperModelPicker({
             description: `Failed to download model "${modelName}": ${error}`,
           });
         }
+        // Don't show toast here - it's handled by the progress handler
       } finally {
         setDownloadingModel(null);
         setDownloadProgress({
@@ -243,7 +250,7 @@ export default function WhisperModelPicker({
         });
       }
     },
-    [loadModelList]
+    [loadModelList, onModelSelect]
   );
 
   const cancelDownload = useCallback(async (modelName: string) => {
@@ -262,13 +269,23 @@ export default function WhisperModelPicker({
               downloadedBytes: 0,
               totalBytes: 0,
             });
-            console.log(`Download of "${modelName}" cancelled successfully`);
-          } else {
-            setAlertDialog({
-              open: true,
-              title: "Cancel Failed",
-              description: `Failed to cancel download: ${result.error}`,
+            toast({
+              title: "Download Cancelled",
+              description: "Model download was cancelled successfully.",
+              variant: "default",
             });
+          } else {
+            // Only show error dialog if it's not a successful cancellation
+            if (
+              !result.error?.includes("interrupted") &&
+              !result.error?.includes("cancelled")
+            ) {
+              setAlertDialog({
+                open: true,
+                title: "Cancel Failed",
+                description: `Failed to cancel download: ${result.error}`,
+              });
+            }
           }
         } catch (error) {
           console.error(`Failed to cancel download of "${modelName}":`, error);

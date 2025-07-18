@@ -217,6 +217,10 @@ class IPCHandlers {
       return this.whisperManager.cancelDownload();
     });
 
+    ipcMain.handle("check-ffmpeg-availability", async (event) => {
+      return this.whisperManager.checkFFmpegAvailability();
+    });
+
     // Utility handlers
     ipcMain.handle("cleanup-app", async (event) => {
       try {

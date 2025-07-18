@@ -21,8 +21,8 @@
     "!src/node_modules/**/*"
   ],
   "asarUnpack": [
-    "assets/**/*",
-    "whisper_bridge.py"
+    "whisper_bridge.py",
+    "**/node_modules/ffmpeg-static/**/*"
   ],
   "extraResources": [
     "assets/**/*"
@@ -38,6 +38,7 @@
     "gatekeeperAssess": false,
     "entitlements": "build/entitlements.mac.plist",
     "entitlementsInherit": "build/entitlements.mac.plist",
+    "identity": null,
     "extendInfo": {
       "LSUIElement": false,
       "NSMicrophoneUsageDescription": "OpenWispr needs microphone access for speech-to-text transcription.",
@@ -73,5 +74,12 @@
       "width": 540,
       "height": 380
     }
+  },
+  "publish": {
+    "provider": "github",
+    "owner": "HeroTools",
+    "repo": "open-wispr",
+    "private": false,
+    "releaseType": "release"
   }
-} 
+}

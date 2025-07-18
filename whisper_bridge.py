@@ -16,6 +16,63 @@ import time
 import requests
 import gc
 
+def get_ffmpeg_path():
+    """Get path to bundled FFmpeg executable with proper production support"""
+    
+    # Check environment variables first (set by Node.js)
+    env_paths = [
+        os.environ.get("FFMPEG_PATH"),
+        os.environ.get("FFMPEG_EXECUTABLE"), 
+        os.environ.get("FFMPEG_BINARY")
+    ]
+    
+    for env_path in env_paths:
+        if env_path and os.path.exists(env_path):
+            return env_path
+    
+    # Determine base path
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    
+    # Try multiple possible paths for production Electron app
+    possible_paths = []
+    
+    if sys.platform == "darwin":  # macOS
+        possible_paths = [
+            # Unpacked ASAR locations
+            os.path.join(base_path, "..", "..", "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
+            os.path.join(base_path, "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
+            # Development path
+            os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg"),
+        ]
+    elif sys.platform == "win32":  # Windows
+        possible_paths = [
+            os.path.join(base_path, "..", "..", "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg.exe"),
+            os.path.join(base_path, "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg.exe"),
+            os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg.exe"),
+        ]
+    else:  # Linux
+        possible_paths = [
+            os.path.join(base_path, "..", "..", "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
+            os.path.join(base_path, "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
+            os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg"),
+        ]
+    
+    # Try each possible path
+    for ffmpeg_path in possible_paths:
+        abs_path = os.path.abspath(ffmpeg_path)
+        if os.path.exists(abs_path) and os.access(abs_path, os.X_OK):
+            return abs_path
+    
+    return None
+
+# Set FFmpeg path for Whisper
+ffmpeg_path = get_ffmpeg_path()
+if ffmpeg_path:
+    os.environ["FFMPEG_BINARY"] = ffmpeg_path
+
 # Global model cache to avoid reloading
 _model_cache = {}
 
@@ -71,7 +128,6 @@ def monitor_download_progress(model_name, expected_size, stop_event):
     model_url = whisper._MODELS[model_name]
     model_file = os.path.join(cache_dir, os.path.basename(model_url))
     
-    # Create cache directory if it doesn't exist
     os.makedirs(cache_dir, exist_ok=True)
     
     last_size = 0
@@ -119,13 +175,11 @@ def monitor_download_progress(model_name, expected_size, stop_event):
                 print(f"PROGRESS:{json.dumps(progress_data)}", file=sys.stderr)
                 last_progress_update = percentage
             
-            # Check if download is complete
-            if current_size >= expected_size * 0.95:  # 95% threshold
+            if current_size >= expected_size * 0.95:
                 break
                 
-            # Check if no progress for too long (stagnation detection)
-            if current_size == last_size and time_diff > 5:  # 5 seconds no progress
-                if current_size > expected_size * 0.9:  # If we're close to done, assume complete
+            if current_size == last_size and current_time - last_update_time > 10:
+                if current_size > expected_size * 0.9:
                     break
                     
             last_size = current_size
@@ -328,10 +382,50 @@ def transcribe_audio(audio_path, model_name="base", language=None):
             "success": False
         }
 
+def check_ffmpeg():
+    """Check if FFmpeg is available and working"""
+    try:
+        # Test FFmpeg by trying to get its version
+        import subprocess
+        result = subprocess.run([ffmpeg_path or "ffmpeg", "-version"], 
+                              capture_output=True, text=True, timeout=10)
+        
+        if result.returncode == 0:
+            return {
+                "available": True,
+                "path": ffmpeg_path or "ffmpeg",
+                "version": result.stdout.split('\n')[0] if result.stdout else "Unknown",
+                "success": True
+            }
+        else:
+            return {
+                "available": False,
+                "error": f"FFmpeg returned code {result.returncode}",
+                "success": False
+            }
+    except subprocess.TimeoutExpired:
+        return {
+            "available": False,
+            "error": "FFmpeg check timed out",
+            "success": False
+        }
+    except FileNotFoundError:
+        return {
+            "available": False,
+            "error": "FFmpeg not found in PATH",
+            "success": False
+        }
+    except Exception as e:
+        return {
+            "available": False,
+            "error": str(e),
+            "success": False
+        }
+
 def main():
     parser = argparse.ArgumentParser(description="Whisper Bridge for OpenWispr")
     parser.add_argument("--mode", default="transcribe", 
-                       choices=["transcribe", "download", "check", "list", "delete"],
+                       choices=["transcribe", "download", "check", "list", "delete", "check-ffmpeg"],
                        help="Operation mode (default: transcribe)")
     parser.add_argument("audio_file", nargs="?", help="Path to audio file to transcribe")
     parser.add_argument("--model", default="base", 
@@ -359,6 +453,10 @@ def main():
         return
     elif args.mode == "delete":
         result = delete_model(args.model)
+        print(json.dumps(result))
+        return
+    elif args.mode == "check-ffmpeg":
+        result = check_ffmpeg()
         print(json.dumps(result))
         return
     elif args.mode == "transcribe":

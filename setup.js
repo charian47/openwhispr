@@ -1,7 +1,7 @@
-const fs = require("fs")
-const path = require("path")
+const fs = require("fs");
+const path = require("path");
 
-console.log("Setting up OpenWispr...")
+console.log("Setting up OpenWispr...");
 
 const envTemplate = `# OpenAI API Configuration
 # Get your API key from: https://platform.openai.com/api-keys
@@ -16,13 +16,13 @@ WHISPER_MODEL=whisper-1
 LANGUAGE=
 
 # Optional: Debug mode (set to 'true' to enable verbose logging)
-DEBUG=false`
+DEBUG=false`;
 
 if (!fs.existsSync(".env")) {
-  fs.writeFileSync(".env", envTemplate)
-  console.log("✅ Created .env file template")
+  fs.writeFileSync(".env", envTemplate);
+  console.log("✅ Created .env file template");
 } else {
-  console.log("⚠️  .env file already exists")
+  console.log("⚠️  .env file already exists");
 }
 
 console.log(`
@@ -38,8 +38,13 @@ Features:
 - Space bar to start/stop recording
 - ESC to close the app
 - Automatic text pasting at cursor location
+- FFmpeg bundled (no separate installation needed)
 
 Note: Make sure you have the necessary system permissions for:
 - Microphone access
 - Accessibility permissions (for text pasting)
-`)
+
+For local Whisper processing, you'll also need:
+- Python 3 (install via Homebrew: brew install python3)
+- OpenAI Whisper (install via: pip3 install openai-whisper)
+`);

@@ -1,6 +1,6 @@
 {
   "name": "open-wispr",
-  "version": "0.1.0",
+  "version": "0.0.4-alpha",
   "description": "A desktop dictation application using OpenAI Whisper for speech-to-text transcription",
   "main": "main.js",
   "private": true,
@@ -19,7 +19,8 @@
     "pack": "npm run build:renderer && electron-builder --dir",
     "dist": "npm run build:renderer && electron-builder",
     "lint": "cd src && eslint .",
-    "preview": "cd src && vite preview"
+    "preview": "cd src && vite preview",
+    "clean": "node cleanup.js"
   },
   "keywords": [
     "dictation",
@@ -57,6 +58,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^16.3.1",
+    "ffmpeg-static": "^5.2.0",
     "electron-updater": "^6.6.2",
     "lucide-react": "^0.518.0",
     "react": "^19.1.0",

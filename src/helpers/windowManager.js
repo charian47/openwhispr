@@ -24,10 +24,7 @@ class WindowManager {
       0,
       display.bounds.x + display.workArea.width - width - 20
     );
-    const y = Math.max(
-      0,
-      display.bounds.y + display.workArea.height - height - 20
-    );
+    const y = Math.max(0, display.bounds.y + display.workArea.height);
 
     console.log("📐 Window dimensions:", { width, height, x, y });
 
