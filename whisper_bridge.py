@@ -17,34 +17,54 @@ import requests
 import gc
 
 def get_ffmpeg_path():
-    """Get path to bundled FFmpeg executable"""
+    """Get path to bundled FFmpeg executable with proper production support"""
+    
+    # Check environment variables first (set by Node.js)
+    env_paths = [
+        os.environ.get("FFMPEG_PATH"),
+        os.environ.get("FFMPEG_EXECUTABLE"), 
+        os.environ.get("FFMPEG_BINARY")
+    ]
+    
+    for env_path in env_paths:
+        if env_path and os.path.exists(env_path):
+            return env_path
+    
+    # Determine base path
     if getattr(sys, 'frozen', False):
-        # Running in Electron app (packed)
         base_path = sys._MEIPASS
     else:
-        # Running in development
         base_path = os.path.dirname(os.path.abspath(__file__))
     
-    # Platform-specific FFmpeg paths
+    # Try multiple possible paths for production Electron app
+    possible_paths = []
+    
     if sys.platform == "darwin":  # macOS
-        ffmpeg_path = os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg")
+        possible_paths = [
+            # Unpacked ASAR locations
+            os.path.join(base_path, "..", "..", "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
+            os.path.join(base_path, "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
+            # Development path
+            os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg"),
+        ]
     elif sys.platform == "win32":  # Windows
-        ffmpeg_path = os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg.exe")
+        possible_paths = [
+            os.path.join(base_path, "..", "..", "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg.exe"),
+            os.path.join(base_path, "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg.exe"),
+            os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg.exe"),
+        ]
     else:  # Linux
-        ffmpeg_path = os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg")
+        possible_paths = [
+            os.path.join(base_path, "..", "..", "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
+            os.path.join(base_path, "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
+            os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg"),
+        ]
     
-    # Make sure the path exists
-    if os.path.exists(ffmpeg_path):
-        return ffmpeg_path
-    
-    # Fallback: try to find system FFmpeg
-    import subprocess
-    try:
-        result = subprocess.run(['which', 'ffmpeg'], capture_output=True, text=True)
-        if result.returncode == 0:
-            return result.stdout.strip()
-    except:
-        pass
+    # Try each possible path
+    for ffmpeg_path in possible_paths:
+        abs_path = os.path.abspath(ffmpeg_path)
+        if os.path.exists(abs_path) and os.access(abs_path, os.X_OK):
+            return abs_path
     
     return None
 
@@ -52,9 +72,6 @@ def get_ffmpeg_path():
 ffmpeg_path = get_ffmpeg_path()
 if ffmpeg_path:
     os.environ["FFMPEG_BINARY"] = ffmpeg_path
-    print(f"Using FFmpeg at: {ffmpeg_path}", file=sys.stderr)
-else:
-    print("Warning: FFmpeg not found, Whisper may not work properly", file=sys.stderr)
 
 # Global model cache to avoid reloading
 _model_cache = {}
@@ -111,7 +128,6 @@ def monitor_download_progress(model_name, expected_size, stop_event):
     model_url = whisper._MODELS[model_name]
     model_file = os.path.join(cache_dir, os.path.basename(model_url))
     
-    # Create cache directory if it doesn't exist
     os.makedirs(cache_dir, exist_ok=True)
     
     last_size = 0
@@ -159,13 +175,11 @@ def monitor_download_progress(model_name, expected_size, stop_event):
                 print(f"PROGRESS:{json.dumps(progress_data)}", file=sys.stderr)
                 last_progress_update = percentage
             
-            # Check if download is complete
-            if current_size >= expected_size * 0.95:  # 95% threshold
+            if current_size >= expected_size * 0.95:
                 break
                 
-            # Check if no progress for too long (stagnation detection)
-            if current_size == last_size and time_diff > 5:  # 5 seconds no progress
-                if current_size > expected_size * 0.9:  # If we're close to done, assume complete
+            if current_size == last_size and current_time - last_update_time > 10:
+                if current_size > expected_size * 0.9:
                     break
                     
             last_size = current_size
