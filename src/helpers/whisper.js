@@ -126,7 +126,6 @@ class WhisperManager {
         if (!currentPath.includes(ffmpegDir)) {
           enhancedEnv.PATH = `${ffmpegDir}${pathSeparator}${currentPath}`;
         }
-
       } else {
         console.warn("No valid FFmpeg path found, transcription may fail");
       }
@@ -182,7 +181,8 @@ class WhisperManager {
             stderr.includes("No such file or directory") ||
             stderr.includes("FFmpeg not found")
           ) {
-            errorMessage += "\n\nFFmpeg issue detected. Try restarting the app or reinstalling.";
+            errorMessage +=
+              "\n\nFFmpeg issue detected. Try restarting the app or reinstalling.";
           }
 
           reject(new Error(errorMessage));
@@ -495,13 +495,12 @@ class WhisperManager {
               );
             }
           } else {
-            if (code === 143 || code === 137) {
+            // Handle cancellation cases (SIGTERM, SIGKILL, or null exit codes)
+            if (code === 143 || code === 137 || code === null) {
               reject(new Error("Download interrupted by user"));
             } else {
               console.error("Model download failed with code:", code);
-              reject(
-                new Error(`Model download failed (code ${code}): ${stderr}`)
-              );
+              reject(new Error(`Model download failed (exit code ${code})`));
             }
           }
         });
