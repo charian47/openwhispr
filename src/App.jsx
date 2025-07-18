@@ -4,6 +4,7 @@ import { useToast } from "./components/ui/Toast";
 import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
+import AudioManager from "./helpers/audioManager";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -175,7 +176,7 @@ export default function App() {
       );
 
       if (result.success && result.text) {
-        const text = result.text.trim();
+        const text = AudioManager.cleanTranscription(result.text);
 
         if (text) {
           setTranscript(text);
@@ -285,7 +286,7 @@ export default function App() {
       }
 
       const result = await response.json();
-      const text = result.text.trim();
+      const text = AudioManager.cleanTranscription(result.text);
 
       if (text) {
         setTranscript(text);

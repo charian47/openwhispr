@@ -1,3 +1,5 @@
+import TextCleanup from '../utils/textCleanup';
+
 class AudioManager {
   constructor() {
     this.mediaRecorder = null;
@@ -95,6 +97,20 @@ class AudioManager {
     }
   }
 
+  // Clean text transcription using comprehensive utility
+  static cleanTranscription(text, options = {}) {
+    return TextCleanup.cleanTranscription(text, {
+      removeArtifacts: true,
+      normalizeSpaces: true,
+      fixPunctuation: true,
+      removeFillers: true, // Enable filler removal by default
+      removeRepetitions: true,
+      capitalizeFirst: true,
+      addPeriod: false, // Don't auto-add periods to preserve user intent
+      ...options
+    });
+  }
+
   async processWithLocalWhisper(audioBlob, model = "base") {
     try {
       const arrayBuffer = await audioBlob.arrayBuffer();
@@ -105,7 +121,7 @@ class AudioManager {
       );
 
       if (result.success && result.text) {
-        const text = result.text.trim();
+        let text = AudioManager.cleanTranscription(result.text);
         if (text) {
           return { success: true, text, source: "local" };
         } else {
@@ -189,7 +205,7 @@ class AudioManager {
       }
 
       const result = await response.json();
-      const text = result.text.trim();
+      const text = AudioManager.cleanTranscription(result.text);
 
       if (text) {
         return { success: true, text, source: "openai" };
