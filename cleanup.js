@@ -27,7 +27,6 @@ try {
       : path.join(os.homedir(), ".config", "open-wispr");
 
   const devDbPath = path.join(userDataPath, "transcriptions-dev.db");
-  const prodDbPath = path.join(userDataPath, "transcriptions.db");
 
   // Clean development database
   if (fs.existsSync(devDbPath)) {
@@ -35,14 +34,6 @@ try {
     console.log(`✅ Development database cleaned: ${devDbPath}`);
   } else {
     console.log("ℹ️ No development database found to clean");
-  }
-
-  // Clean production database
-  if (fs.existsSync(prodDbPath)) {
-    fs.unlinkSync(prodDbPath);
-    console.log(`✅ Production database cleaned: ${prodDbPath}`);
-  } else {
-    console.log("ℹ️ No production database found to clean");
   }
 } catch (error) {
   console.error("❌ Error cleaning database files:", error.message);
