@@ -29,7 +29,7 @@ class UpdateManager {
       provider: "github",
       owner: "HeroTools",
       repo: "open-wispr",
-      private: true,
+      private: false,
     });
 
     // Auto-updater logging
