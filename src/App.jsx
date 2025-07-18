@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
 import { useToast } from "./components/ui/Toast";
 import { LoadingDots } from "./components/ui/LoadingDots";
+import { useHotkey } from "./hooks/useHotkey";
+import { useWindowDrag } from "./hooks/useWindowDrag";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -78,6 +80,10 @@ export default function App() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const { toast } = useToast();
+  const { hotkey } = useHotkey();
+  const { isDragging, handleMouseDown, handleMouseUp, handleClick } = useWindowDrag();
+  const [dragStartPos, setDragStartPos] = useState(null);
+  const [hasDragged, setHasDragged] = useState(false);
 
   const startRecording = async () => {
     try {
@@ -369,12 +375,12 @@ export default function App() {
       case "idle":
         return {
           className: `${baseClasses} bg-black/50 cursor-pointer`,
-          tooltip: "Click to speak",
+          tooltip: `Press [${hotkey}] to speak`,
         };
       case "hover":
         return {
           className: `${baseClasses} bg-black/50 cursor-pointer`,
-          tooltip: "Click to speak",
+          tooltip: `Press [${hotkey}] to speak`,
         };
       case "recording":
         return {
@@ -403,7 +409,33 @@ export default function App() {
       <div className="fixed bottom-6 right-6 z-50">
         <Tooltip content={micProps.tooltip}>
           <button
-            onClick={toggleListening}
+            onMouseDown={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setDragStartPos({ x: e.clientX, y: e.clientY });
+              setHasDragged(false);
+              handleMouseDown(e);
+            }}
+            onMouseMove={(e) => {
+              if (dragStartPos && !hasDragged) {
+                const distance = Math.sqrt(
+                  Math.pow(e.clientX - dragStartPos.x, 2) + 
+                  Math.pow(e.clientY - dragStartPos.y, 2)
+                );
+                if (distance > 5) { // 5px threshold for drag
+                  setHasDragged(true);
+                }
+              }
+            }}
+            onMouseUp={(e) => {
+              handleMouseUp(e);
+              setDragStartPos(null);
+            }}
+            onClick={(e) => {
+              if (!hasDragged) {
+                toggleListening();
+              }
+              e.preventDefault();
+            }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onFocus={() => setIsHovered(true)}
@@ -415,6 +447,8 @@ export default function App() {
               cursor:
                 micState === "processing"
                   ? "not-allowed !important"
+                  : isDragging
+                  ? "grabbing !important"
                   : "pointer !important",
               transition:
                 "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease-out",

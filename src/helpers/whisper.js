@@ -92,21 +92,25 @@ class WhisperManager {
       // Get FFmpeg path with proper production/development handling
       let ffmpegPath;
 
-      if (process.env.NODE_ENV === "development") {
+      try {
         ffmpegPath = require("ffmpeg-static");
-      } else {
-        // Production: try unpacked location first, then fallback
-        try {
-          const originalPath = require("ffmpeg-static");
-          ffmpegPath = originalPath.replace("app.asar", "app.asar.unpacked");
 
-          if (!fs.existsSync(ffmpegPath)) {
-            ffmpegPath = originalPath;
+        // In production, try unpacked version if original doesn't exist
+        if (
+          process.env.NODE_ENV !== "development" &&
+          !fs.existsSync(ffmpegPath)
+        ) {
+          const unpackedPath = ffmpegPath.replace(
+            "app.asar",
+            "app.asar.unpacked"
+          );
+          if (fs.existsSync(unpackedPath)) {
+            ffmpegPath = unpackedPath;
           }
-        } catch (e) {
-          console.error("Could not resolve FFmpeg path:", e.message);
-          ffmpegPath = null;
         }
+      } catch (e) {
+        console.error("Could not resolve FFmpeg path:", e.message);
+        ffmpegPath = "ffmpeg"; // Try system ffmpeg as fallback
       }
 
       // Enhanced environment setup

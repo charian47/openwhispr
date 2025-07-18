@@ -361,13 +361,27 @@ Would you like to open System Settings now?`;
     tryNextCommand();
   }
 
-  readClipboard() {
+  async readClipboard() {
     try {
       const text = clipboard.readText();
       console.log("📋 Clipboard read:", text ? "Text found" : "Empty");
       return text;
     } catch (error) {
       console.error("❌ Error reading clipboard:", error);
+      throw error;
+    }
+  }
+
+  async writeClipboard(text) {
+    try {
+      clipboard.writeText(text);
+      console.log(
+        "📋 Text written to clipboard:",
+        text.substring(0, 50) + "..."
+      );
+      return { success: true };
+    } catch (error) {
+      console.error("❌ Error writing to clipboard:", error);
       throw error;
     }
   }

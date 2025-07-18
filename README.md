@@ -4,7 +4,7 @@ An open source desktop dictation application that converts speech to text using 
 
 ## Features
 
-- 🎤 **Global Hotkey**: Select your own hotkey to start/stop dictation from anywhere
+- 🎤 **Global Hotkey**: Customizable hotkey to start/stop dictation from anywhere (default: backtick `)
 - 🤖 **Dual AI Processing**: Choose between local Whisper models (private) or OpenAI API (fast)
 - 🔒 **Privacy-First**: Local processing keeps your voice data completely private
 - 🎨 **Modern UI**: Built with React 19, TypeScript, and Tailwind CSS v4
@@ -14,6 +14,7 @@ An open source desktop dictation application that converts speech to text using 
 - 🔧 **Model Management**: Download and manage local Whisper models (tiny, base, small, medium, large)
 - 🌐 **Cross-Platform**: Works on macOS, Windows, and Linux
 - ⚡ **Automatic Pasting**: Transcribed text automatically pastes at your cursor location
+- 🖱️ **Draggable Interface**: Move the dictation panel anywhere on your screen
 
 ## Quick Start
 
@@ -63,17 +64,18 @@ An open source desktop dictation application that converts speech to text using 
 ## Usage
 
 ### Basic Dictation
-1. **Start the app** - A small transparent overlay appears on your screen
-2. **Press ` (backtick)** - Start dictating (overlay shows recording animation)
-3. **Press ` again** - Stop dictation and begin transcription (overlay shows processing animation)
+1. **Start the app** - A small draggable panel appears on your screen
+2. **Press your hotkey** (default: backtick `) - Start dictating (panel shows recording animation)
+3. **Press your hotkey again** - Stop dictation and begin transcription (panel shows processing animation)
 4. **Text appears** - Transcribed text is automatically pasted at your cursor location
+5. **Drag the panel** - Click and drag to move the dictation panel anywhere on your screen
 
 ### Control Panel
-- **Access**: Right-click the tray icon (macOS) or click the overlay
+- **Access**: Right-click the tray icon (macOS) or through the system menu
 - **Configure**: Choose between local and cloud processing
 - **History**: View, copy, and delete past transcriptions
 - **Models**: Download and manage local Whisper models
-- **Settings**: Configure API keys, hotkeys, and permissions
+- **Settings**: Configure API keys, customize hotkeys, and manage permissions
 
 ### Processing Options
 - **Local Processing**: 
@@ -217,7 +219,8 @@ For local processing, OpenWispr will automatically:
 
 ### Customization
 
-- **Hotkey**: Change in the Control Panel (default: backtick `)`
+- **Hotkey**: Change in the Control Panel (default: backtick `) - fully customizable
+- **Panel Position**: Drag the dictation panel to any location on your screen`
 - **Processing Method**: Choose local or cloud in Control Panel
 - **Whisper Model**: Select quality vs speed in Control Panel
 - **UI Theme**: Edit CSS variables in `src/index.css`
@@ -247,8 +250,9 @@ For local processing, OpenWispr will automatically:
    - Ensure Python 3.7+ is installed
    - Use Control Panel to install Whisper automatically
    - Check available disk space for models
-5. **Global hotkey conflicts**: Change the hotkey in the Control Panel
+5. **Global hotkey conflicts**: Change the hotkey in the Control Panel - any key can be used
 6. **Text not pasting**: Check accessibility permissions and try manual paste with Cmd+V
+7. **Panel position**: If the panel appears off-screen, restart the app to reset position
 
 ### Getting Help
 

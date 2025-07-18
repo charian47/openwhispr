@@ -7,21 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Draggable Interface**: Click and drag the dictation panel to any position on screen
+- **Dynamic Hotkey Display**: Tooltip shows your actual hotkey setting instead of generic text
+- **Flexible Hotkey System**: Fixed hardcoded hotkey limitation - now fully respects user settings
+
 ### Changed
-- **[BREAKING]** Project rebranded from "OpenWispr" to "OpenWispr"
-- Cleaned up excessive developer logging for better user experience
-- Improved console output clarity by removing verbose operational messages
+- **[BREAKING]** Removed click-to-record functionality to prevent conflicts with dragging
+- **UI Behavior**: Recording is now exclusively controlled via hotkey (no accidental triggering)
+- **Tooltip Text**: Shows "Press {your-hotkey} to speak" with actual configured hotkey
+- **Cursor Styles**: Changed to grab/grabbing cursors to indicate draggable interface
 
 ### Fixed
-- Reduced console noise while preserving essential error handling
-- Maintained all critical debugging information for troubleshooting
+- **Hotkey Bug**: Fixed issue where hotkey setting was stored but not actually used by global shortcut
+- **Documentation**: Updated all docs to reflect current UI behavior and hotkey system
+- **User Experience**: Eliminated confusion between drag and click actions
 
 ### Technical Details
-- Removed routine operational confirmations from App.jsx
-- Cleaned up verbose success messages in ControlPanel.tsx  
-- Streamlined environment loading and system setup logging in main.js
-- Preserved all error messages, database operations, and accessibility features
-- Maintained appropriate logging for open-source project debugging
+- Added IPC handlers for dynamic hotkey updates (`update-hotkey`)
+- Implemented window-level dragging using screen cursor tracking
+- Added real-time hotkey loading from localStorage in main dictation component
+- Updated WindowManager to support runtime hotkey changes
+- Added proper drag state management with smooth 60fps window positioning
+- **Code Organization**: Extracted functionality into dedicated managers and React hooks:
+  - HotkeyManager, DragManager, AudioManager, MenuManager, DevServerManager
+  - useAudioRecording, useWindowDrag, useHotkey React hooks
+  - WindowConfig utility for centralized window configuration
+  - Reduced WindowManager from 465 to 190 lines through composition pattern
 
 ## [0.1.0] - 2024-XX-XX
 
