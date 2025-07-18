@@ -4,7 +4,7 @@ A desktop dictation application that converts speech to text using OpenAI Whispe
 
 ## Features
 
-- 🎤 **Global Hotkey**: Press ` (backtick) to start/stop dictation from anywhere
+- 🎤 **Global Hotkey**: Select your own hotkey to start/stop dictation from anywhere
 - 🤖 **Dual AI Processing**: Choose between local Whisper models (private) or OpenAI API (fast)
 - 🔒 **Privacy-First**: Local processing keeps your voice data completely private
 - 🎨 **Modern UI**: Built with React 19, TypeScript, and Tailwind CSS v4
