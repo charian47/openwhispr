@@ -18,6 +18,8 @@ import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
+import { getLanguageLabel } from "../utils/languages";
+import LanguageSelector from "./ui/LanguageSelector";
 import type { TranscriptionItem } from "../types/electron";
 
 interface SettingsPageProps {
@@ -32,6 +34,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
   const [allowOpenAIFallback, setAllowOpenAIFallback] = useState(false);
   const [allowLocalFallback, setAllowLocalFallback] = useState(false);
   const [fallbackWhisperModel, setFallbackWhisperModel] = useState("base");
+  const [preferredLanguage, setPreferredLanguage] = useState("en");
 
   // Update state
   const [currentVersion, setCurrentVersion] = useState<string>("");
@@ -92,6 +95,10 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     setAllowOpenAIFallback(savedAllowOpenAIFallback);
     setAllowLocalFallback(savedAllowLocalFallback);
     setFallbackWhisperModel(savedFallbackModel);
+
+    // Load language preference
+    const savedLanguage = localStorage.getItem("preferredLanguage") || "en";
+    setPreferredLanguage(savedLanguage);
 
     // Load API key from main process first, then fallback to localStorage
     const loadApiKey = async () => {
@@ -602,6 +609,36 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                     )}
                   </div>
                 )}
+
+                {/* Language Selection - shown for both modes */}
+                <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                  <h4 className="font-medium text-gray-900 mb-3">
+                    🌍 Preferred Language
+                  </h4>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Which language do you primarily speak?
+                  </label>
+                  <LanguageSelector
+                    value={preferredLanguage}
+                    onChange={(value) => {
+                      setPreferredLanguage(value);
+                      localStorage.setItem("preferredLanguage", value);
+                      setAlertDialog({
+                        open: true,
+                        title: "Language Updated",
+                        description: `Preferred language set to: ${getLanguageLabel(
+                          value
+                        )}`,
+                      });
+                    }}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-600 mt-1">
+                    {useLocalWhisper
+                      ? "Helps Whisper better understand your speech"
+                      : "Improves OpenAI transcription speed and accuracy"}
+                  </p>
+                </div>
 
                 <Button
                   onClick={useLocalWhisper ? saveWhisperSettings : saveApiKey}

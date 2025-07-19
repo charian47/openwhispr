@@ -28,6 +28,8 @@ import { AlertDialog } from "./ui/dialog";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
+import { getLanguageLabel } from "../utils/languages";
+import LanguageSelector from "./ui/LanguageSelector";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -47,6 +49,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [apiKey, setApiKey] = useState("");
   const [whisperModel, setWhisperModel] = useState("base");
   const [hotkey, setHotkey] = useState("`");
+  const [preferredLanguage, setPreferredLanguage] = useState(() => {
+    // Load saved language or default to English
+    const saved = localStorage.getItem("preferredLanguage");
+    return saved || "en";
+  });
 
   const [alertDialog, setAlertDialog] = useState<{
     open: boolean;
@@ -97,6 +104,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     localStorage.setItem("useLocalWhisper", useLocalWhisper.toString());
     localStorage.setItem("whisperModel", whisperModel);
     localStorage.setItem("dictationKey", hotkey);
+    localStorage.setItem("preferredLanguage", preferredLanguage);
     localStorage.setItem(
       "micPermissionGranted",
       permissionsHook.micPermissionGranted.toString()
@@ -341,6 +349,29 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 </div>
               </div>
             )}
+
+            {/* Language Selection - shown for both modes */}
+            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+              <h4 className="font-medium text-gray-900 mb-3">
+                🌍 Preferred Language
+              </h4>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Which language do you primarily speak?
+              </label>
+              <LanguageSelector
+                value={preferredLanguage}
+                onChange={(value) => {
+                  setPreferredLanguage(value);
+                  localStorage.setItem("preferredLanguage", value);
+                }}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                {useLocalWhisper
+                  ? "Helps Whisper better understand your speech"
+                  : "Improves OpenAI transcription speed and accuracy"}
+              </p>
+            </div>
           </div>
         );
 
@@ -592,6 +623,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <kbd className="bg-white px-2 py-1 rounded text-xs font-mono">
                     {hotkey}
                   </kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span>Language:</span>
+                  <span className="font-medium">
+                    {getLanguageLabel(preferredLanguage)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Permissions:</span>
