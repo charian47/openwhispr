@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "./ui/button";
 import { RefreshCw, Download, Trash2, X } from "lucide-react";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
+import { useDialogs } from "../hooks/useDialogs";
 import { useToast } from "./ui/Toast";
 
 interface WhisperModel {
@@ -104,26 +105,16 @@ export default function WhisperModelPicker({
     totalBytes: 0,
   });
   const [loadingModels, setLoadingModels] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    title: string;
-    description?: string;
-    onConfirm: () => void;
-    variant?: "default" | "destructive";
-  }>({
-    open: false,
-    title: "",
-    onConfirm: () => {},
-  });
-  const [alertDialog, setAlertDialog] = useState<{
-    open: boolean;
-    title: string;
-    description?: string;
-  }>({
-    open: false,
-    title: "",
-  });
 
+  // Use custom hooks
+  const {
+    confirmDialog,
+    alertDialog,
+    showConfirmDialog,
+    showAlertDialog,
+    hideConfirmDialog,
+    hideAlertDialog,
+  } = useDialogs();
   const { toast } = useToast();
   const styles = useMemo(() => VARIANT_STYLES[variant], [variant]);
 
@@ -176,17 +167,14 @@ export default function WhisperModelPicker({
         });
 
         if (data.error?.includes("interrupted by user")) {
-          // Toast is handled by the cancel button - don't show duplicate here
         } else if (data.error?.includes("timeout")) {
-          setAlertDialog({
-            open: true,
+          showAlertDialog({
             title: "Download Timeout",
             description:
               "Model download timed out. Please check your internet connection and try again.",
           });
         } else {
-          setAlertDialog({
-            open: true,
+          showAlertDialog({
             title: "Download Failed",
             description: `Model download failed: ${
               data.error || "Unknown error"
@@ -195,7 +183,7 @@ export default function WhisperModelPicker({
         }
       }
     },
-    [loadModelList]
+    [loadModelList, showAlertDialog]
   );
 
   useEffect(() => {
@@ -223,8 +211,7 @@ export default function WhisperModelPicker({
         } else {
           // Only show error if it's not a cancellation
           if (!result.error?.includes("interrupted by user")) {
-            setAlertDialog({
-              open: true,
+            showAlertDialog({
               title: "Download Failed",
               description: `Failed to download model "${modelName}": ${result.error}`,
             });
@@ -234,8 +221,7 @@ export default function WhisperModelPicker({
       } catch (error) {
         // Only show error if it's not a cancellation
         if (!error.toString().includes("interrupted by user")) {
-          setAlertDialog({
-            open: true,
+          showAlertDialog({
             title: "Download Failed",
             description: `Failed to download model "${modelName}": ${error}`,
           });
@@ -250,59 +236,61 @@ export default function WhisperModelPicker({
         });
       }
     },
-    [loadModelList, onModelSelect]
+    [loadModelList, onModelSelect, showAlertDialog]
   );
 
-  const cancelDownload = useCallback(async (modelName: string) => {
-    setConfirmDialog({
-      open: true,
-      title: "Cancel Download",
-      description: `Are you sure you want to cancel the download of "${modelName}"?`,
-      onConfirm: async () => {
-        try {
-          const result = await window.electronAPI.cancelWhisperDownload();
+  const cancelDownload = useCallback(
+    async (modelName: string) => {
+      showConfirmDialog({
+        title: "Cancel Download",
+        description: `Are you sure you want to cancel the download of "${modelName}"?`,
+        onConfirm: async () => {
+          try {
+            const result = await window.electronAPI.cancelWhisperDownload();
 
-          if (result.success) {
-            setDownloadingModel(null);
-            setDownloadProgress({
-              percentage: 0,
-              downloadedBytes: 0,
-              totalBytes: 0,
-            });
-            toast({
-              title: "Download Cancelled",
-              description: "Model download was cancelled successfully.",
-              variant: "default",
-            });
-          } else {
-            // Only show error dialog if it's not a successful cancellation
-            if (
-              !result.error?.includes("interrupted") &&
-              !result.error?.includes("cancelled")
-            ) {
-              setAlertDialog({
-                open: true,
-                title: "Cancel Failed",
-                description: `Failed to cancel download: ${result.error}`,
+            if (result.success) {
+              setDownloadingModel(null);
+              setDownloadProgress({
+                percentage: 0,
+                downloadedBytes: 0,
+                totalBytes: 0,
               });
+              toast({
+                title: "Download Cancelled",
+                description: "Model download was cancelled successfully.",
+                variant: "default",
+              });
+            } else {
+              // Only show error dialog if it's not a successful cancellation
+              if (
+                !result.error?.includes("interrupted") &&
+                !result.error?.includes("cancelled")
+              ) {
+                showAlertDialog({
+                  title: "Cancel Failed",
+                  description: `Failed to cancel download: ${result.error}`,
+                });
+              }
             }
+          } catch (error) {
+            console.error(
+              `Failed to cancel download of "${modelName}":`,
+              error
+            );
+            showAlertDialog({
+              title: "Cancel Failed",
+              description: `Failed to cancel download: ${error}`,
+            });
           }
-        } catch (error) {
-          console.error(`Failed to cancel download of "${modelName}":`, error);
-          setAlertDialog({
-            open: true,
-            title: "Cancel Failed",
-            description: `Failed to cancel download: ${error}`,
-          });
-        }
-      },
-    });
-  }, []);
+        },
+      });
+    },
+    [showConfirmDialog, showAlertDialog, toast]
+  );
 
   const deleteModel = useCallback(
     async (modelName: string) => {
-      setConfirmDialog({
-        open: true,
+      showConfirmDialog({
         title: "Delete Model",
         description: `Are you sure you want to delete the "${modelName}" model? This will free up disk space but you'll need to re-download it if you want to use it again.`,
         onConfirm: async () => {
@@ -312,22 +300,19 @@ export default function WhisperModelPicker({
             );
 
             if (result.success) {
-              setAlertDialog({
-                open: true,
+              showAlertDialog({
                 title: "Model Deleted",
                 description: `Model "${modelName}" deleted successfully! Freed ${result.freed_mb}MB of disk space.`,
               });
               loadModelList();
             } else {
-              setAlertDialog({
-                open: true,
+              showAlertDialog({
                 title: "Delete Failed",
                 description: `Failed to delete model "${modelName}": ${result.error}`,
               });
             }
           } catch (error) {
-            setAlertDialog({
-              open: true,
+            showAlertDialog({
               title: "Delete Failed",
               description: `Failed to delete model "${modelName}": ${error}`,
             });
@@ -336,7 +321,7 @@ export default function WhisperModelPicker({
         variant: "destructive",
       });
     },
-    [loadModelList]
+    [loadModelList, showConfirmDialog, showAlertDialog]
   );
 
   const progressDisplay = useMemo(() => {
@@ -376,9 +361,7 @@ export default function WhisperModelPicker({
       <div className="p-4">
         <ConfirmDialog
           open={confirmDialog.open}
-          onOpenChange={(open) =>
-            setConfirmDialog((prev) => ({ ...prev, open }))
-          }
+          onOpenChange={(open) => !open && hideConfirmDialog()}
           title={confirmDialog.title}
           description={confirmDialog.description}
           onConfirm={confirmDialog.onConfirm}
@@ -387,7 +370,7 @@ export default function WhisperModelPicker({
 
         <AlertDialog
           open={alertDialog.open}
-          onOpenChange={(open) => setAlertDialog((prev) => ({ ...prev, open }))}
+          onOpenChange={(open) => !open && hideAlertDialog()}
           title={alertDialog.title}
           description={alertDialog.description}
           onOk={() => {}}

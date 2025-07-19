@@ -6,6 +6,7 @@ An open source desktop dictation application that converts speech to text using 
 
 - 🎤 **Global Hotkey**: Customizable hotkey to start/stop dictation from anywhere (default: backtick `)
 - 🤖 **Dual AI Processing**: Choose between local Whisper models (private) or OpenAI API (fast)
+- 🎯 **Agent Naming**: Personalize your AI assistant with a custom name for natural interactions
 - 🔒 **Privacy-First**: Local processing keeps your voice data completely private
 - 🎨 **Modern UI**: Built with React 19, TypeScript, and Tailwind CSS v4
 - 🚀 **Fast**: Optimized with Vite and modern tooling
@@ -59,7 +60,12 @@ An open source desktop dictation application that converts speech to text using 
    - **Microphone Access**: Required for voice recording
    - **Accessibility Permissions**: Required for automatic text pasting (macOS)
 
-3. **Configure Global Hotkey**: Default is backtick (`) but can be customized
+3. **Name Your Agent**: Give your AI assistant a personal name (e.g., "Assistant", "Jarvis", "Alex")
+   - Makes interactions feel more natural and conversational
+   - Helps distinguish between giving commands and regular dictation
+   - Can be changed anytime in settings
+
+4. **Configure Global Hotkey**: Default is backtick (`) but can be customized
 
 ## Usage
 
@@ -76,6 +82,22 @@ An open source desktop dictation application that converts speech to text using 
 - **History**: View, copy, and delete past transcriptions
 - **Models**: Download and manage local Whisper models
 - **Settings**: Configure API keys, customize hotkeys, and manage permissions
+
+### Agent Naming
+Once you've named your agent during setup, you can interact with it in two ways:
+
+**🎯 Agent Commands** (for AI assistance):
+- "Hey [AgentName], make this more professional"
+- "Hey [AgentName], format this as a list"
+- "Hey [AgentName], write a thank you email"
+- "Hey [AgentName], convert this to bullet points"
+
+**📝 Regular Dictation** (for normal text):
+- "This is just normal text I want transcribed"
+- "Meeting notes: John mentioned the quarterly report"
+- "Dear Sarah, thank you for your help"
+
+The AI automatically detects when you're giving it commands versus dictating regular text, and removes agent name references from the final output.
 
 ### Processing Options
 - **Local Processing**: 
@@ -106,6 +128,8 @@ open-wispr/
 │   ├── vite.config.js   # Vite configuration
 │   ├── components/
 │   │   ├── ControlPanel.tsx     # Settings and history UI
+│   │   ├── OnboardingFlow.tsx   # First-time setup wizard
+│   │   ├── SettingsPage.tsx     # Settings interface
 │   │   ├── ui/                  # shadcn/ui components
 │   │   │   ├── button.tsx
 │   │   │   ├── card.tsx
@@ -117,6 +141,10 @@ open-wispr/
 │   │   │   └── tooltip.tsx
 │   │   └── lib/
 │   │       └── utils.ts         # Utility functions
+│   ├── services/
+│   │   └── ReasoningService.js  # AI processing and agent name detection
+│   ├── utils/
+│   │   └── agentName.ts         # Agent name management utility
 │   └── components.json          # shadcn/ui configuration
 └── assets/                      # App icons and resources
 ```

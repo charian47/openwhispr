@@ -1,4 +1,5 @@
-import TextCleanup from '../utils/textCleanup';
+import TextCleanup from "../utils/textCleanup";
+import ReasoningService from "../services/ReasoningService";
 
 class AudioManager {
   constructor() {
@@ -9,6 +10,7 @@ class AudioManager {
     this.onStateChange = null;
     this.onError = null;
     this.onTranscriptionComplete = null;
+    this.cachedApiKey = null; // Cache API key
   }
 
   // Set callback functions
@@ -76,6 +78,9 @@ class AudioManager {
       const useLocalWhisper =
         localStorage.getItem("useLocalWhisper") === "true";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
+      const useReasoning = localStorage.getItem("useReasoningModel") === "true";
+      const reasoningModel =
+        localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
 
       let result;
       if (useLocalWhisper) {
@@ -83,10 +88,9 @@ class AudioManager {
       } else {
         result = await this.processWithOpenAIAPI(audioBlob);
       }
-
       this.onTranscriptionComplete?.(result);
     } catch (error) {
-      console.error("Transcription error:", error);
+      console.error(`🎧 [AudioManager] ❌ Transcription error:`, error);
       this.onError?.({
         title: "Transcription Error",
         description: `Transcription failed: ${error.message}`,
@@ -97,24 +101,42 @@ class AudioManager {
     }
   }
 
-  // Clean text transcription using comprehensive utility
   static cleanTranscription(text, options = {}) {
     return TextCleanup.cleanTranscription(text, {
       removeArtifacts: true,
       normalizeSpaces: true,
       fixPunctuation: true,
-      removeFillers: true, // Enable filler removal by default
+      removeFillers: true,
       removeRepetitions: true,
       capitalizeFirst: true,
-      addPeriod: false, // Don't auto-add periods to preserve user intent
-      ...options
+      addPeriod: false,
+      ...options,
+    });
+  }
+
+  static cleanTranscriptionForAPI(text) {
+    return TextCleanup.cleanTranscription(text, {
+      removeArtifacts: true,
+      normalizeSpaces: true,
+      fixPunctuation: false, // Let reasoning model handle this
+      removeFillers: false, // Preserve context for reasoning model
+      removeRepetitions: false, // Let reasoning model decide
+      capitalizeFirst: false, // Let reasoning model handle
+      addPeriod: false,
     });
   }
 
   async processWithLocalWhisper(audioBlob, model = "base") {
     try {
       const arrayBuffer = await audioBlob.arrayBuffer();
+
+      // Get language preference for local Whisper
+      const language = localStorage.getItem("preferredLanguage");
       const options = { model };
+      if (language && language !== "auto") {
+        options.language = language;
+      }
+
       const result = await window.electronAPI.transcribeLocalWhisper(
         arrayBuffer,
         options
@@ -143,13 +165,17 @@ class AudioManager {
         throw error;
       }
 
-      // Try fallback to OpenAI API if enabled
-      const allowFallback =
+      // Try fallback to OpenAI API ONLY if enabled AND we're in local mode
+      const allowOpenAIFallback =
         localStorage.getItem("allowOpenAIFallback") === "true";
-      if (allowFallback) {
+      const isLocalMode = localStorage.getItem("useLocalWhisper") === "true";
+
+      if (allowOpenAIFallback && isLocalMode) {
         console.log("Falling back to OpenAI API...");
         try {
-          return await this.processWithOpenAIAPI(audioBlob);
+          const fallbackResult = await this.processWithOpenAIAPI(audioBlob);
+          // Mark the result as fallback for user awareness
+          return { ...fallbackResult, source: "openai-fallback" };
         } catch (fallbackError) {
           // If OpenAI fallback also fails, throw the original error
           throw new Error(
@@ -157,36 +183,155 @@ class AudioManager {
           );
         }
       } else {
+        // No fallback allowed - strict local mode
         throw new Error(`Local Whisper failed: ${error.message}`);
       }
     }
   }
 
+  // Get and cache API key for performance
+  async getAPIKey() {
+    if (this.cachedApiKey) {
+      return this.cachedApiKey;
+    }
+
+    let apiKey = await window.electronAPI.getOpenAIKey();
+    if (
+      !apiKey ||
+      apiKey.trim() === "" ||
+      apiKey === "your_openai_api_key_here"
+    ) {
+      apiKey = localStorage.getItem("openaiApiKey");
+    }
+
+    if (
+      !apiKey ||
+      apiKey.trim() === "" ||
+      apiKey === "your_openai_api_key_here"
+    ) {
+      throw new Error(
+        "OpenAI API key not found. Please set your API key in the .env file or Control Panel."
+      );
+    }
+
+    this.cachedApiKey = apiKey; // Cache it
+    return apiKey;
+  }
+
+  // Convert audio to optimal format for API (reduces upload time)
+  async optimizeAudio(audioBlob) {
+    return new Promise((resolve) => {
+      const audioContext = new (window.AudioContext ||
+        window.webkitAudioContext)();
+      const reader = new FileReader();
+
+      reader.onload = async () => {
+        try {
+          const arrayBuffer = reader.result;
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+          // Convert to 16kHz mono for smaller size and faster upload
+          const sampleRate = 16000;
+          const channels = 1;
+          const length = Math.floor(audioBuffer.duration * sampleRate);
+          const offlineContext = new OfflineAudioContext(
+            channels,
+            length,
+            sampleRate
+          );
+
+          const source = offlineContext.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(offlineContext.destination);
+          source.start();
+
+          const renderedBuffer = await offlineContext.startRendering();
+
+          // Convert to WAV blob
+          const wavBlob = this.audioBufferToWav(renderedBuffer);
+          resolve(wavBlob);
+        } catch (error) {
+          // If optimization fails, use original
+          resolve(audioBlob);
+        }
+      };
+
+      reader.onerror = () => resolve(audioBlob);
+      reader.readAsArrayBuffer(audioBlob);
+    });
+  }
+
+  // Convert AudioBuffer to WAV format
+  audioBufferToWav(buffer) {
+    const length = buffer.length;
+    const arrayBuffer = new ArrayBuffer(44 + length * 2);
+    const view = new DataView(arrayBuffer);
+    const sampleRate = buffer.sampleRate;
+    const channelData = buffer.getChannelData(0);
+
+    // WAV header
+    const writeString = (offset, string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+
+    writeString(0, "RIFF");
+    view.setUint32(4, 36 + length * 2, true);
+    writeString(8, "WAVE");
+    writeString(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, "data");
+    view.setUint32(40, length * 2, true);
+
+    // Convert samples to 16-bit PCM
+    let offset = 44;
+    for (let i = 0; i < length; i++) {
+      const sample = Math.max(-1, Math.min(1, channelData[i]));
+      view.setInt16(
+        offset,
+        sample < 0 ? sample * 0x8000 : sample * 0x7fff,
+        true
+      );
+      offset += 2;
+    }
+
+    return new Blob([arrayBuffer], { type: "audio/wav" });
+  }
+
+  async processWithReasoningModel(text) {
+    try {
+      const model = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
+      return await ReasoningService.processText(text, model);
+    } catch (error) {
+      console.warn(`Reasoning failed, using basic cleanup:`, error.message);
+      return AudioManager.cleanTranscription(text);
+    }
+  }
+
   async processWithOpenAIAPI(audioBlob) {
     try {
-      // Get API key
-      let apiKey = await window.electronAPI.getOpenAIKey();
-      if (
-        !apiKey ||
-        apiKey.trim() === "" ||
-        apiKey === "your_openai_api_key_here"
-      ) {
-        apiKey = localStorage.getItem("openaiApiKey");
-      }
-
-      if (
-        !apiKey ||
-        apiKey.trim() === "" ||
-        apiKey === "your_openai_api_key_here"
-      ) {
-        throw new Error(
-          "OpenAI API key not found. Please set your API key in the .env file or Control Panel."
-        );
-      }
+      // Parallel: get API key (cached) and optimize audio
+      const [apiKey, optimizedAudio] = await Promise.all([
+        this.getAPIKey(),
+        this.optimizeAudio(audioBlob),
+      ]);
 
       const formData = new FormData();
-      formData.append("file", audioBlob, "audio.wav");
+      formData.append("file", optimizedAudio, "audio.wav");
       formData.append("model", "whisper-1");
+
+      // Add language hint if set (improves processing speed)
+      const language = localStorage.getItem("preferredLanguage");
+      if (language && language !== "auto") {
+        formData.append("language", language);
+      }
 
       const response = await fetch(
         "https://api.openai.com/v1/audio/transcriptions",
@@ -205,15 +350,70 @@ class AudioManager {
       }
 
       const result = await response.json();
-      const text = AudioManager.cleanTranscription(result.text);
+      const rawText = AudioManager.cleanTranscriptionForAPI(result.text);
 
-      if (text) {
-        return { success: true, text, source: "openai" };
+      if (rawText) {
+        // Apply reasoning model if enabled
+        const useReasoning =
+          localStorage.getItem("useReasoningModel") === "true";
+
+        if (useReasoning) {
+          const reasonedText = await this.processWithReasoningModel(rawText);
+          return {
+            success: true,
+            text: reasonedText,
+            source: "openai-reasoned",
+          };
+        } else {
+          const finalText = AudioManager.cleanTranscription(rawText);
+          return { success: true, text: finalText, source: "openai" };
+        }
       } else {
         throw new Error("No text transcribed");
       }
     } catch (error) {
       console.error("OpenAI API error:", error);
+
+      // Try fallback to Local Whisper ONLY if enabled AND we're in OpenAI mode
+      const allowLocalFallback =
+        localStorage.getItem("allowLocalFallback") === "true";
+      const isOpenAIMode = localStorage.getItem("useLocalWhisper") !== "true";
+
+      if (allowLocalFallback && isOpenAIMode) {
+        console.log("Falling back to Local Whisper...");
+        const fallbackModel =
+          localStorage.getItem("fallbackWhisperModel") || "base";
+        try {
+          const arrayBuffer = await audioBlob.arrayBuffer();
+
+          // Get language preference for fallback as well
+          const language = localStorage.getItem("preferredLanguage");
+          const options = { model: fallbackModel };
+          if (language && language !== "auto") {
+            options.language = language;
+          }
+
+          const result = await window.electronAPI.transcribeLocalWhisper(
+            arrayBuffer,
+            options
+          );
+
+          if (result.success && result.text) {
+            let text = AudioManager.cleanTranscription(result.text);
+            if (text) {
+              return { success: true, text, source: "local-fallback" };
+            }
+          }
+          // If local fallback fails, throw the original OpenAI error
+          throw error;
+        } catch (fallbackError) {
+          console.error("Local fallback also failed:", fallbackError);
+          throw new Error(
+            `OpenAI API failed: ${error.message}. Local fallback also failed: ${fallbackError.message}`
+          );
+        }
+      }
+
       throw error;
     }
   }

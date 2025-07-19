@@ -82,7 +82,8 @@ export default function App() {
   const audioChunksRef = useRef([]);
   const { toast } = useToast();
   const { hotkey } = useHotkey();
-  const { isDragging, handleMouseDown, handleMouseUp, handleClick } = useWindowDrag();
+  const { isDragging, handleMouseDown, handleMouseUp, handleClick } =
+    useWindowDrag();
   const [dragStartPos, setDragStartPos] = useState(null);
   const [hasDragged, setHasDragged] = useState(false);
 
@@ -143,18 +144,49 @@ export default function App() {
 
   const processAudio = async (audioBlob) => {
     try {
-      // Cache preferences to avoid repeated localStorage calls
-      const useLocalWhisper =
-        localStorage.getItem("useLocalWhisper") === "true";
-      const whisperModel = localStorage.getItem("whisperModel") || "base";
+      console.log(`🎧 [App] 🎬 Starting audio processing...`);
 
-      if (useLocalWhisper) {
-        await processWithLocalWhisper(audioBlob, whisperModel);
-      } else {
-        await processWithOpenAIAPI(audioBlob);
-      }
+      // Use our enhanced AudioManager with reasoning support
+      const audioManager = new AudioManager();
+      audioManager.setCallbacks({
+        onStateChange: ({ isRecording, isProcessing }) => {
+          setIsRecording(isRecording);
+          setIsProcessing(isProcessing);
+        },
+        onError: (error) => {
+          toast({
+            title: error.title,
+            description: error.description,
+            variant: "destructive",
+          });
+        },
+        onTranscriptionComplete: async (result) => {
+          console.log(
+            `🎧 [App] ✅ Transcription completed with source: ${result.source}`
+          );
+          if (result.success && result.text) {
+            setTranscript(result.text);
+
+            // Paste immediately - don't wait for database save
+            const pastePromise = safePaste(result.text);
+
+            // Save to database in parallel
+            const savePromise = window.electronAPI
+              .saveTranscription(result.text)
+              .catch((err) => {
+                console.error("Failed to save transcription:", err);
+              });
+
+            // Wait for paste to complete, but don't block on database save
+            await pastePromise;
+          }
+        },
+      });
+
+      // Process the audio using our enhanced AudioManager
+      await audioManager.processAudio(audioBlob);
     } catch (err) {
-      console.error("Transcription error:", err);
+      console.error(`🎧 [App] ❌ Transcription error:`, err);
       toast({
         title: "Transcription Error",
         description: "Transcription failed: " + err.message,
@@ -162,157 +194,6 @@ export default function App() {
       });
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const processWithLocalWhisper = async (audioBlob, model = "base") => {
-    try {
-      // Convert Blob to ArrayBuffer for IPC transfer - do this early
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      const options = { model };
-      const result = await window.electronAPI.transcribeLocalWhisper(
-        arrayBuffer,
-        options
-      );
-
-      if (result.success && result.text) {
-        const text = AudioManager.cleanTranscription(result.text);
-
-        if (text) {
-          setTranscript(text);
-
-          // Paste immediately - don't wait for database save
-          const pastePromise = safePaste(text);
-
-          // Save to database in parallel
-          const savePromise = window.electronAPI
-            .saveTranscription(text)
-            .catch((err) => {
-              console.error("Failed to save transcription:", err);
-            });
-
-          // Wait for paste to complete, but don't block on database save
-          await pastePromise;
-        } else {
-          toast({
-            title: "No Audio",
-            description: "No text transcribed. Try again.",
-            variant: "destructive",
-          });
-        }
-      } else if (
-        result.success === false &&
-        result.message === "No audio detected"
-      ) {
-        toast({
-          title: "No Audio",
-          description: "No audio detected",
-          variant: "destructive",
-        });
-        return;
-      } else {
-        throw new Error(result.error || "Local Whisper transcription failed");
-      }
-    } catch (err) {
-      console.error("Local Whisper error:", err);
-      const allowFallback =
-        localStorage.getItem("allowOpenAIFallback") === "true";
-
-      if (allowFallback) {
-        toast({
-          title: "Fallback Mode",
-          description: "Local Whisper failed. Retrying with OpenAI API...",
-          variant: "default",
-        });
-        await processWithOpenAIAPI(audioBlob);
-      } else {
-        throw new Error(`Local Whisper failed: ${err.message}`);
-      }
-    }
-  };
-
-  const processWithOpenAIAPI = async (audioBlob) => {
-    try {
-      // Get API key early and cache it
-      let apiKey = await window.electronAPI.getOpenAIKey();
-      if (
-        !apiKey ||
-        apiKey.trim() === "" ||
-        apiKey === "your_openai_api_key_here"
-      ) {
-        apiKey = localStorage.getItem("openaiApiKey");
-      }
-
-      if (
-        !apiKey ||
-        apiKey.trim() === "" ||
-        apiKey === "your_openai_api_key_here"
-      ) {
-        toast({
-          title: "API Key Missing",
-          description:
-            "OpenAI API key not found. Please set your API key in the .env file or Control Panel.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", audioBlob, "audio.wav");
-      formData.append("model", "whisper-1");
-
-      const response = await fetch(
-        "https://api.openai.com/v1/audio/transcriptions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API Error:", errorText);
-        toast({
-          title: "API Error",
-          description: `Transcription failed: ${response.status} ${errorText}`,
-          variant: "destructive",
-        });
-        throw new Error(
-          `Failed to transcribe audio: ${response.status} ${errorText}`
-        );
-      }
-
-      const result = await response.json();
-      const text = AudioManager.cleanTranscription(result.text);
-
-      if (text) {
-        setTranscript(text);
-
-        // Paste immediately - don't wait for database save
-        const pastePromise = safePaste(text);
-
-        // Save to database in parallel
-        const savePromise = window.electronAPI
-          .saveTranscription(text)
-          .catch((err) => {
-            console.error("Failed to save transcription:", err);
-          });
-
-        // Wait for paste to complete, but don't block on database save
-        await pastePromise;
-      } else {
-        toast({
-          title: "No Audio",
-          description: "No text transcribed. Try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (err) {
-      console.error("OpenAI API error:", err);
-      throw err;
     }
   };
 
@@ -419,10 +300,11 @@ export default function App() {
             onMouseMove={(e) => {
               if (dragStartPos && !hasDragged) {
                 const distance = Math.sqrt(
-                  Math.pow(e.clientX - dragStartPos.x, 2) + 
-                  Math.pow(e.clientY - dragStartPos.y, 2)
+                  Math.pow(e.clientX - dragStartPos.x, 2) +
+                    Math.pow(e.clientY - dragStartPos.y, 2)
                 );
-                if (distance > 5) { // 5px threshold for drag
+                if (distance > 5) {
+                  // 5px threshold for drag
                   setHasDragged(true);
                 }
               }

@@ -17,6 +17,7 @@ import {
   Sparkles,
   Lock,
   X,
+  User,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
 import WhisperModelPicker from "./WhisperModelPicker";
@@ -25,43 +26,57 @@ import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
 import StepProgress from "./ui/StepProgress";
 import { AlertDialog } from "./ui/dialog";
+import { useLocalStorage } from "../hooks/useLocalStorage";
+import { useDialogs } from "../hooks/useDialogs";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
+import { useSettings } from "../hooks/useSettings";
+import { getLanguageLabel, getReasoningModelLabel } from "../utils/languages";
+import LanguageSelector from "./ui/LanguageSelector";
+import { setAgentName as saveAgentName } from "../utils/agentName";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
 }
 
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
-  const [currentStep, setCurrentStep] = useState(() => {
-    // Load the current step from localStorage on component mount
-    const savedStep = localStorage.getItem("onboardingCurrentStep");
-    return savedStep ? parseInt(savedStep, 10) : 0;
-  });
-  const [useLocalWhisper, setUseLocalWhisper] = useState(() => {
-    // Load saved setting or default to false
-    const saved = localStorage.getItem("useLocalWhisper");
-    return saved === "true";
-  });
-  const [apiKey, setApiKey] = useState("");
-  const [whisperModel, setWhisperModel] = useState("base");
-  const [hotkey, setHotkey] = useState("`");
+  const [currentStep, setCurrentStep, removeCurrentStep] = useLocalStorage(
+    "onboardingCurrentStep",
+    0,
+    {
+      serialize: String,
+      deserialize: (value) => parseInt(value, 10),
+    }
+  );
 
-  const [alertDialog, setAlertDialog] = useState<{
-    open: boolean;
-    title: string;
-    description?: string;
-  }>({
-    open: false,
-    title: "",
-  });
+  const {
+    useLocalWhisper,
+    whisperModel,
+    preferredLanguage,
+    useReasoningModel,
+    reasoningModel,
+    openaiApiKey,
+    dictationKey,
+    setUseLocalWhisper,
+    setWhisperModel,
+    setPreferredLanguage,
+    setOpenaiApiKey,
+    setDictationKey,
+    updateTranscriptionSettings,
+    updateReasoningSettings,
+    updateApiKeys,
+  } = useSettings();
+
+  const [apiKey, setApiKey] = useState(openaiApiKey);
+  const [hotkey, setHotkey] = useState(dictationKey || "`");
+  const [agentName, setAgentName] = useState("Agent");
+  const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const practiceTextareaRef = useRef<HTMLInputElement>(null);
 
-  // Use our custom hooks
-  const whisperHook = useWhisper(setAlertDialog);
-  const permissionsHook = usePermissions(setAlertDialog);
-  const { pasteFromClipboard } = useClipboard(setAlertDialog);
+  const whisperHook = useWhisper(showAlertDialog);
+  const permissionsHook = usePermissions(showAlertDialog);
+  const { pasteFromClipboard } = useClipboard(showAlertDialog);
 
   const steps = [
     { title: "Welcome", icon: Sparkles },
@@ -70,18 +85,16 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     { title: "Permissions", icon: Shield },
     { title: "Hotkey", icon: Keyboard },
     { title: "Test", icon: TestTube },
+    { title: "Agent Name", icon: User },
     { title: "Finish", icon: Check },
   ];
 
   useEffect(() => {
-    // Set up progress listeners
     whisperHook.setupProgressListener();
   }, [whisperHook]);
 
-  // Helper function to update processing mode and save immediately
   const updateProcessingMode = (useLocal: boolean) => {
-    setUseLocalWhisper(useLocal);
-    localStorage.setItem("useLocalWhisper", useLocal.toString());
+    updateTranscriptionSettings({ useLocalWhisper: useLocal });
   };
 
   useEffect(() => {
@@ -92,11 +105,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   }, [currentStep]);
 
-  const saveSettings = async () => {
-    // Save all settings
-    localStorage.setItem("useLocalWhisper", useLocalWhisper.toString());
-    localStorage.setItem("whisperModel", whisperModel);
-    localStorage.setItem("dictationKey", hotkey);
+  const saveSettings = useCallback(async () => {
+    updateTranscriptionSettings({ whisperModel, preferredLanguage });
+    setDictationKey(hotkey);
+    saveAgentName(agentName);
+
     localStorage.setItem(
       "micPermissionGranted",
       permissionsHook.micPermissionGranted.toString()
@@ -107,42 +120,51 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     );
     localStorage.setItem("onboardingCompleted", "true");
 
-    if (!useLocalWhisper && apiKey) {
+    if (!useLocalWhisper && apiKey.trim()) {
       await window.electronAPI.saveOpenAIKey(apiKey);
-      localStorage.setItem("openaiApiKey", apiKey);
+      updateApiKeys({ openaiApiKey: apiKey });
     }
-  };
+  }, [
+    whisperModel,
+    hotkey,
+    preferredLanguage,
+    agentName,
+    permissionsHook.micPermissionGranted,
+    permissionsHook.accessibilityPermissionGranted,
+    useLocalWhisper,
+    apiKey,
+    updateTranscriptionSettings,
+    updateApiKeys,
+    setDictationKey,
+  ]);
 
-  const nextStep = () => {
+  const nextStep = useCallback(() => {
     if (currentStep < steps.length - 1) {
       const newStep = currentStep + 1;
       setCurrentStep(newStep);
-      localStorage.setItem("onboardingCurrentStep", newStep.toString());
 
       // Show dictation panel when moving from permissions step (3) to hotkey step (4)
       if (currentStep === 3 && newStep === 4) {
-        // Show dictation panel after permissions are granted
         if (window.electronAPI?.showDictationPanel) {
           window.electronAPI.showDictationPanel();
         }
       }
     }
-  };
+  }, [currentStep, setCurrentStep, steps.length]);
 
-  const prevStep = () => {
+  const prevStep = useCallback(() => {
     if (currentStep > 0) {
       const newStep = currentStep - 1;
       setCurrentStep(newStep);
-      localStorage.setItem("onboardingCurrentStep", newStep.toString());
     }
-  };
+  }, [currentStep, setCurrentStep]);
 
-  const finishOnboarding = async () => {
+  const finishOnboarding = useCallback(async () => {
     await saveSettings();
     // Clear the onboarding step since we're done
-    localStorage.removeItem("onboardingCurrentStep");
+    removeCurrentStep();
     onComplete();
-  };
+  }, [saveSettings, removeCurrentStep, onComplete]);
 
   const renderStep = () => {
     switch (currentStep) {
@@ -341,6 +363,28 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 </div>
               </div>
             )}
+
+            {/* Language Selection - shown for both modes */}
+            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+              <h4 className="font-medium text-gray-900 mb-3">
+                🌍 Preferred Language
+              </h4>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Which language do you primarily speak?
+              </label>
+              <LanguageSelector
+                value={preferredLanguage}
+                onChange={(value) => {
+                  updateTranscriptionSettings({ preferredLanguage: value });
+                }}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                {useLocalWhisper
+                  ? "Helps Whisper better understand your speech"
+                  : "Improves OpenAI transcription speed and accuracy. AI text enhancement is enabled by default."}
+              </p>
+            </div>
           </div>
         );
 
@@ -559,7 +603,53 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </div>
         );
 
-      case 6: // Complete
+      case 6: // Agent Name
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-stone-900 mb-2">
+                Name Your Agent
+              </h2>
+              <p className="text-stone-600">
+                Give your agent a name so you can address it specifically when
+                giving instructions.
+              </p>
+            </div>
+
+            <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
+              <h4 className="font-medium text-purple-900 mb-3">
+                💡 How this helps:
+              </h4>
+              <ul className="text-sm text-purple-800 space-y-1">
+                <li>
+                  • Say "Hey {agentName || "Agent"}, write a formal email" for
+                  specific instructions
+                </li>
+                <li>
+                  • Use the name to distinguish between dictation and commands
+                </li>
+                <li>• Makes interactions feel more natural and personal</li>
+              </ul>
+            </div>
+
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Agent Name
+              </label>
+              <Input
+                placeholder="e.g., Assistant, Jarvis, Alex..."
+                value={agentName}
+                onChange={(e) => setAgentName(e.target.value)}
+                className="text-center text-lg font-mono"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                You can change this anytime in settings
+              </p>
+            </div>
+          </div>
+        );
+
+      case 7: // Complete
         return (
           <div className="text-center space-y-6">
             <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
@@ -592,6 +682,16 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <kbd className="bg-white px-2 py-1 rounded text-xs font-mono">
                     {hotkey}
                   </kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span>Language:</span>
+                  <span className="font-medium">
+                    {getLanguageLabel(preferredLanguage)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Agent Name:</span>
+                  <span className="font-medium">{agentName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Permissions:</span>
@@ -641,6 +741,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       case 5:
         return true; // Practice step is always ready to proceed
       case 6:
+        return agentName.trim() !== ""; // Agent name step
+      case 7:
         return true;
       default:
         return false;
@@ -675,7 +777,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     >
       <AlertDialog
         open={alertDialog.open}
-        onOpenChange={(open) => setAlertDialog((prev) => ({ ...prev, open }))}
+        onOpenChange={(open) => !open && hideAlertDialog()}
         title={alertDialog.title}
         description={alertDialog.description}
         onOk={() => {}}

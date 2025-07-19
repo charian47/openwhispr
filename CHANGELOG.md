@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Agent Naming System**: Personalize your AI assistant with a custom name for more natural interactions
+  - Name your agent during onboarding (step 6 of 8)
+  - Address your agent directly: "Hey [AgentName], make this more professional"
+  - Update agent name anytime through settings
+  - Smart AI processing distinguishes between commands and regular dictation
+  - Clean output automatically removes agent name references
 - **Draggable Interface**: Click and drag the dictation panel to any position on screen
 - **Dynamic Hotkey Display**: Tooltip shows your actual hotkey setting instead of generic text
 - **Flexible Hotkey System**: Fixed hardcoded hotkey limitation - now fully respects user settings
@@ -24,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **User Experience**: Eliminated confusion between drag and click actions
 
 ### Technical Details
+- **Agent Naming Implementation**:
+  - Added centralized agent name utility (`src/utils/agentName.ts`)
+  - Enhanced onboarding flow with agent naming step
+  - Updated ReasoningService with context-aware AI processing
+  - Added agent name settings section with comprehensive UI
+  - Implemented smart prompt generation for agent-addressed vs regular text
 - Added IPC handlers for dynamic hotkey updates (`update-hotkey`)
 - Implemented window-level dragging using screen cursor tracking
 - Added real-time hotkey loading from localStorage in main dictation component
