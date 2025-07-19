@@ -1,4 +1,5 @@
 import TextCleanup from "../utils/textCleanup";
+import ReasoningService from "../services/ReasoningService";
 
 class AudioManager {
   constructor() {
@@ -77,6 +78,9 @@ class AudioManager {
       const useLocalWhisper =
         localStorage.getItem("useLocalWhisper") === "true";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
+      const useReasoning = localStorage.getItem("useReasoningModel") === "true";
+      const reasoningModel =
+        localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
 
       let result;
       if (useLocalWhisper) {
@@ -84,10 +88,9 @@ class AudioManager {
       } else {
         result = await this.processWithOpenAIAPI(audioBlob);
       }
-
       this.onTranscriptionComplete?.(result);
     } catch (error) {
-      console.error("Transcription error:", error);
+      console.error(`🎧 [AudioManager] ❌ Transcription error:`, error);
       this.onError?.({
         title: "Transcription Error",
         description: `Transcription failed: ${error.message}`,
@@ -98,17 +101,28 @@ class AudioManager {
     }
   }
 
-  // Clean text transcription using comprehensive utility
   static cleanTranscription(text, options = {}) {
     return TextCleanup.cleanTranscription(text, {
       removeArtifacts: true,
       normalizeSpaces: true,
       fixPunctuation: true,
-      removeFillers: true, // Enable filler removal by default
+      removeFillers: true,
       removeRepetitions: true,
       capitalizeFirst: true,
-      addPeriod: false, // Don't auto-add periods to preserve user intent
+      addPeriod: false,
       ...options,
+    });
+  }
+
+  static cleanTranscriptionForAPI(text) {
+    return TextCleanup.cleanTranscription(text, {
+      removeArtifacts: true,
+      normalizeSpaces: true,
+      fixPunctuation: false, // Let reasoning model handle this
+      removeFillers: false, // Preserve context for reasoning model
+      removeRepetitions: false, // Let reasoning model decide
+      capitalizeFirst: false, // Let reasoning model handle
+      addPeriod: false,
     });
   }
 
@@ -291,6 +305,16 @@ class AudioManager {
     return new Blob([arrayBuffer], { type: "audio/wav" });
   }
 
+  async processWithReasoningModel(text) {
+    try {
+      const model = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
+      return await ReasoningService.processText(text, model);
+    } catch (error) {
+      console.warn(`Reasoning failed, using basic cleanup:`, error.message);
+      return AudioManager.cleanTranscription(text);
+    }
+  }
+
   async processWithOpenAIAPI(audioBlob) {
     try {
       // Parallel: get API key (cached) and optimize audio
@@ -326,10 +350,24 @@ class AudioManager {
       }
 
       const result = await response.json();
-      const text = AudioManager.cleanTranscription(result.text);
+      const rawText = AudioManager.cleanTranscriptionForAPI(result.text);
 
-      if (text) {
-        return { success: true, text, source: "openai" };
+      if (rawText) {
+        // Apply reasoning model if enabled
+        const useReasoning =
+          localStorage.getItem("useReasoningModel") === "true";
+
+        if (useReasoning) {
+          const reasonedText = await this.processWithReasoningModel(rawText);
+          return {
+            success: true,
+            text: reasonedText,
+            source: "openai-reasoned",
+          };
+        } else {
+          const finalText = AudioManager.cleanTranscription(rawText);
+          return { success: true, text: finalText, source: "openai" };
+        }
       } else {
         throw new Error("No text transcribed");
       }

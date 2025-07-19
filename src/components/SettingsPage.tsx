@@ -9,6 +9,10 @@ import {
   Keyboard,
   Info,
   ArrowLeft,
+  Mic,
+  Brain,
+  Shield,
+  ChevronRight,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
 import WhisperModelPicker from "./WhisperModelPicker";
@@ -18,7 +22,12 @@ import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
-import { getLanguageLabel } from "../utils/languages";
+import {
+  getLanguageLabel,
+  getAllReasoningModels,
+  getModelProvider,
+  REASONING_PROVIDERS,
+} from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
 import type { TranscriptionItem } from "../types/electron";
 
@@ -26,7 +35,18 @@ interface SettingsPageProps {
   onBack: () => void;
 }
 
+type SettingsSection =
+  | "transcription"
+  | "reasoning"
+  | "hotkey"
+  | "updates"
+  | "about";
+
 export default function SettingsPage({ onBack }: SettingsPageProps) {
+  const [activeSection, setActiveSection] =
+    useState<SettingsSection>("transcription");
+
+  // Basic settings
   const [key, setKey] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [useLocalWhisper, setUseLocalWhisper] = useState(false);
@@ -35,6 +55,12 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
   const [allowLocalFallback, setAllowLocalFallback] = useState(false);
   const [fallbackWhisperModel, setFallbackWhisperModel] = useState("base");
   const [preferredLanguage, setPreferredLanguage] = useState("en");
+
+  // Reasoning model settings
+  const [useReasoningModel, setUseReasoningModel] = useState(true);
+  const [reasoningModel, setReasoningModel] = useState("gpt-3.5-turbo");
+  const [reasoningProvider, setReasoningProvider] = useState("openai");
+  const [anthropicApiKey, setAnthropicApiKey] = useState("");
 
   // Update state
   const [currentVersion, setCurrentVersion] = useState<string>("");
@@ -51,6 +77,8 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     releaseDate?: string;
     releaseNotes?: string;
   }>({});
+
+  // Dialog states
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
@@ -71,7 +99,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     title: "",
   });
 
-  // Use custom hooks
+  // Custom hooks
   const whisperHook = useWhisper(setAlertDialog);
   const permissionsHook = usePermissions(setAlertDialog);
   const { pasteFromClipboardWithFallback } = useClipboard(setAlertDialog);
@@ -81,7 +109,6 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     const savedKey = localStorage.getItem("dictationKey");
     if (savedKey) setKey(savedKey);
 
-    // Load Whisper settings
     const savedUseLocal = localStorage.getItem("useLocalWhisper") === "true";
     const savedModel = localStorage.getItem("whisperModel") || "base";
     const savedAllowOpenAIFallback =
@@ -90,50 +117,53 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
       localStorage.getItem("allowLocalFallback") === "true";
     const savedFallbackModel =
       localStorage.getItem("fallbackWhisperModel") || "base";
+    const savedLanguage = localStorage.getItem("preferredLanguage") || "en";
+    const savedUseReasoning =
+      localStorage.getItem("useReasoningModel") !== "false"; // Default true
+    const savedReasoningModel =
+      localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
+
     setUseLocalWhisper(savedUseLocal);
     setWhisperModel(savedModel);
     setAllowOpenAIFallback(savedAllowOpenAIFallback);
     setAllowLocalFallback(savedAllowLocalFallback);
     setFallbackWhisperModel(savedFallbackModel);
-
-    // Load language preference
-    const savedLanguage = localStorage.getItem("preferredLanguage") || "en";
     setPreferredLanguage(savedLanguage);
+    setUseReasoningModel(savedUseReasoning);
+    setReasoningModel(savedReasoningModel);
+    setReasoningProvider(getModelProvider(savedReasoningModel));
 
-    // Load API key from main process first, then fallback to localStorage
-    const loadApiKey = async () => {
+    // Load API keys
+    const loadApiKeys = async () => {
       try {
-        const envApiKey = await window.electronAPI.getOpenAIKey();
+        const envApiKey = await window.electronAPI?.getOpenAIKey();
         if (envApiKey && envApiKey !== "your_openai_api_key_here") {
           setApiKey(envApiKey);
         } else {
           const savedApiKey = localStorage.getItem("openaiApiKey");
           if (savedApiKey) setApiKey(savedApiKey);
         }
+
+        const savedAnthropicKey = localStorage.getItem("anthropicApiKey");
+        if (savedAnthropicKey) setAnthropicApiKey(savedAnthropicKey);
       } catch (error) {
         const savedApiKey = localStorage.getItem("openaiApiKey");
         if (savedApiKey) setApiKey(savedApiKey);
       }
     };
 
-    loadApiKey();
-
-    // Check Whisper installation
+    loadApiKeys();
     whisperHook.checkWhisperInstallation();
-
-    // Set up progress listener for Whisper installation
     whisperHook.setupProgressListener();
 
     // Initialize update functionality
     const initializeUpdateData = async () => {
       try {
-        // Get current app version
-        const versionResult = await window.electronAPI.getAppVersion();
-        setCurrentVersion(versionResult.version);
+        const versionResult = await window.electronAPI?.getAppVersion();
+        if (versionResult) setCurrentVersion(versionResult.version);
 
-        // Get update status
-        const statusResult = await window.electronAPI.getUpdateStatus();
-        setUpdateStatus(statusResult);
+        const statusResult = await window.electronAPI?.getUpdateStatus();
+        if (statusResult) setUpdateStatus(statusResult);
       } catch (error) {
         console.error("Error initializing update data:", error);
       }
@@ -142,61 +172,91 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     initializeUpdateData();
 
     // Set up update event listeners
-    window.electronAPI.onUpdateAvailable((event, info) => {
-      setUpdateStatus((prev) => ({ ...prev, updateAvailable: true }));
-      setUpdateInfo({
-        version: info.version,
-        releaseDate: info.releaseDate,
-        releaseNotes: info.releaseNotes,
+    if (window.electronAPI) {
+      window.electronAPI.onUpdateAvailable?.((event, info) => {
+        setUpdateStatus((prev) => ({ ...prev, updateAvailable: true }));
+        setUpdateInfo({
+          version: info.version,
+          releaseDate: info.releaseDate,
+          releaseNotes: info.releaseNotes,
+        });
       });
-    });
 
-    window.electronAPI.onUpdateDownloaded((event, info) => {
-      setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
-      setDownloadingUpdate(false);
-    });
-
-    window.electronAPI.onUpdateDownloadProgress((event, progressObj) => {
-      setUpdateDownloadProgress(progressObj.percent || 0);
-    });
-
-    window.electronAPI.onUpdateError((event, error) => {
-      setCheckingForUpdates(false);
-      setDownloadingUpdate(false);
-      console.error("Update error:", error);
-    });
-  }, []);
-
-  // Whisper functions now handled by hooks
-
-  const saveKey = async () => {
-    try {
-      localStorage.setItem("dictationKey", key);
-      await window.electronAPI.updateHotkey(key);
-      setAlertDialog({
-        open: true,
-        title: "Key Saved",
-        description: `Dictation key inscribed: ${key}`,
+      window.electronAPI.onUpdateDownloaded?.((event, info) => {
+        setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
+        setDownloadingUpdate(false);
       });
-    } catch (error) {
-      console.error("Failed to update hotkey:", error);
-      setAlertDialog({
-        open: true,
-        title: "Error",
-        description: `Failed to update hotkey: ${error.message}`,
+
+      window.electronAPI.onUpdateDownloadProgress?.((event, progressObj) => {
+        setUpdateDownloadProgress(progressObj.percent || 0);
+      });
+
+      window.electronAPI.onUpdateError?.((event, error) => {
+        setCheckingForUpdates(false);
+        setDownloadingUpdate(false);
+        console.error("Update error:", error);
       });
     }
+  }, []);
+
+  const saveReasoningSettings = () => {
+    console.log(`🧠 [Settings] 🧠 Saving reasoning settings...`);
+    console.log(`🧠 [Settings] 🧠 useReasoningModel: ${useReasoningModel}`);
+    console.log(`🧠 [Settings] 🧠 reasoningModel: ${reasoningModel}`);
+    console.log(`🧠 [Settings] 🧠 reasoningProvider: ${reasoningProvider}`);
+    console.log(`🧠 [Settings] 🧠 apiKey: ${apiKey ? "SET" : "NOT SET"}`);
+    console.log(
+      `🧠 [Settings] 🧠 anthropicApiKey: ${anthropicApiKey ? "SET" : "NOT SET"}`
+    );
+
+    localStorage.setItem("useReasoningModel", useReasoningModel.toString());
+    localStorage.setItem("reasoningModel", reasoningModel);
+
+    // Save provider-specific API keys
+    if (reasoningProvider === "openai" && apiKey.trim()) {
+      localStorage.setItem("openaiApiKey", apiKey);
+      console.log(`🧠 [Settings] 🧠 OpenAI API key saved for reasoning`);
+    } else if (reasoningProvider === "anthropic" && anthropicApiKey.trim()) {
+      localStorage.setItem("anthropicApiKey", anthropicApiKey);
+      console.log(`🧠 [Settings] 🧠 Anthropic API key saved for reasoning`);
+    } else {
+      console.log(
+        `🧠 [Settings] ⚠️ No API key provided for ${reasoningProvider}`
+      );
+    }
+
+    console.log(`🧠 [Settings] ✅ Reasoning settings saved successfully`);
+    console.log(
+      `🧠 [Settings] ✅ AI text enhancement: ${
+        useReasoningModel ? "ENABLED" : "DISABLED"
+      }`
+    );
+    console.log(
+      `🧠 [Settings] ✅ Using: ${reasoningProvider} ${reasoningModel}`
+    );
+
+    setAlertDialog({
+      open: true,
+      title: "Reasoning Settings Saved",
+      description: `AI text enhancement ${
+        useReasoningModel ? "enabled" : "disabled"
+      } with ${
+        REASONING_PROVIDERS[
+          reasoningProvider as keyof typeof REASONING_PROVIDERS
+        ]?.name || reasoningProvider
+      } ${reasoningModel}`,
+    });
   };
 
   const saveApiKey = async () => {
     try {
-      await window.electronAPI.saveOpenAIKey(apiKey);
+      await window.electronAPI?.saveOpenAIKey(apiKey);
       localStorage.setItem("openaiApiKey", apiKey);
       localStorage.setItem("allowLocalFallback", allowLocalFallback.toString());
       localStorage.setItem("fallbackWhisperModel", fallbackWhisperModel);
 
       try {
-        await window.electronAPI.createProductionEnvFile(apiKey);
+        await window.electronAPI?.createProductionEnvFile(apiKey);
         setAlertDialog({
           open: true,
           title: "API Key Saved",
@@ -233,11 +293,9 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     localStorage.setItem("allowOpenAIFallback", allowOpenAIFallback.toString());
 
     // SECURITY: Only save API key if fallback is enabled and key is provided
-    // This ensures we never store unused keys
     if (allowOpenAIFallback && apiKey.trim()) {
       localStorage.setItem("openaiApiKey", apiKey);
     } else if (!allowOpenAIFallback) {
-      // Clear the key if fallback is disabled for security
       localStorage.removeItem("openaiApiKey");
     }
 
@@ -253,8 +311,6 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
       }`,
     });
   };
-
-  // Permission functions now handled by hooks
 
   const resetAccessibilityPermissions = () => {
     const message = `🔄 RESET ACCESSIBILITY PERMISSIONS\n\nIf you've rebuilt or reinstalled OpenWispr and automatic inscription isn't functioning, you may have obsolete permissions from the previous version.\n\n📋 STEP-BY-STEP RESTORATION:\n\n1️⃣ Open System Settings (or System Preferences)\n   • macOS Ventura+: Apple Menu → System Settings\n   • Older macOS: Apple Menu → System Preferences\n\n2️⃣ Navigate to Privacy & Security → Accessibility\n\n3️⃣ Look for obsolete OpenWispr entries:\n   • Any entries named "OpenWispr"\n   • Any entries named "Electron"\n   • Any entries with unclear or generic names\n   • Entries pointing to old application locations\n\n4️⃣ Remove ALL obsolete entries:\n   • Select each old entry\n   • Click the minus (-) button\n   • Enter your password if prompted\n\n5️⃣ Add the current OpenWispr:\n   • Click the plus (+) button\n   • Navigate to and select the CURRENT OpenWispr app\n   • Ensure the checkbox is ENABLED\n\n6️⃣ Restart OpenWispr completely\n\n💡 This is very common during development when rebuilding applications!\n\nClick OK when you're ready to open System Settings.`;
@@ -279,7 +335,667 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     });
   };
 
-  // Clipboard handling now done by shared hooks
+  const saveKey = async () => {
+    try {
+      localStorage.setItem("dictationKey", key);
+      await window.electronAPI?.updateHotkey(key);
+      setAlertDialog({
+        open: true,
+        title: "Key Saved",
+        description: `Dictation key inscribed: ${key}`,
+      });
+    } catch (error) {
+      console.error("Failed to update hotkey:", error);
+      setAlertDialog({
+        open: true,
+        title: "Error",
+        description: `Failed to update hotkey: ${error.message}`,
+      });
+    }
+  };
+
+  const sidebarItems = [
+    {
+      id: "transcription" as SettingsSection,
+      label: "Transcription Setup",
+      icon: Settings,
+    },
+    {
+      id: "reasoning" as SettingsSection,
+      label: "Reasoning Setup",
+      icon: Brain,
+    },
+    { id: "hotkey" as SettingsSection, label: "Hotkey Setup", icon: Keyboard },
+    { id: "updates" as SettingsSection, label: "App Updates", icon: RefreshCw },
+    { id: "about" as SettingsSection, label: "About", icon: Info },
+  ];
+
+  const renderSectionContent = () => {
+    switch (activeSection) {
+      case "transcription":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Speech to Text Processing
+              </h3>
+              <ProcessingModeSelector
+                useLocalWhisper={useLocalWhisper}
+                setUseLocalWhisper={(value) => {
+                  setUseLocalWhisper(value);
+                  localStorage.setItem("useLocalWhisper", value.toString());
+                  console.log(
+                    `🔧 [Settings] Transcription mode switched to: ${
+                      value ? "LOCAL" : "OPENAI API"
+                    }`
+                  );
+                }}
+              />
+            </div>
+
+            {!useLocalWhisper && (
+              <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                <h4 className="font-medium text-blue-900">OpenAI API Setup</h4>
+                <ApiKeyInput
+                  apiKey={apiKey}
+                  setApiKey={setApiKey}
+                  helpText="Get your API key from platform.openai.com"
+                />
+              </div>
+            )}
+
+            {useLocalWhisper && whisperHook.whisperInstalled && (
+              <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                <h4 className="font-medium text-purple-900">
+                  Local Whisper Model
+                </h4>
+                <WhisperModelPicker
+                  selectedModel={whisperModel}
+                  onModelSelect={setWhisperModel}
+                  variant="settings"
+                />
+              </div>
+            )}
+
+            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+              <h4 className="font-medium text-gray-900">Preferred Language</h4>
+              <LanguageSelector
+                value={preferredLanguage}
+                onChange={(value) => {
+                  setPreferredLanguage(value);
+                  localStorage.setItem("preferredLanguage", value);
+                }}
+                className="w-full"
+              />
+            </div>
+
+            <Button
+              onClick={() => {
+                console.log(
+                  `💾 [Settings] 💾 Saving transcription settings...`
+                );
+                console.log(
+                  `💾 [Settings] 💾 useLocalWhisper: ${useLocalWhisper}`
+                );
+                console.log(`💾 [Settings] 💾 whisperModel: ${whisperModel}`);
+                console.log(
+                  `💾 [Settings] 💾 preferredLanguage: ${preferredLanguage}`
+                );
+                console.log(
+                  `💾 [Settings] 💾 apiKey: ${apiKey ? "SET" : "NOT SET"}`
+                );
+
+                localStorage.setItem(
+                  "useLocalWhisper",
+                  useLocalWhisper.toString()
+                );
+                localStorage.setItem("whisperModel", whisperModel);
+                localStorage.setItem("preferredLanguage", preferredLanguage);
+                if (!useLocalWhisper && apiKey.trim()) {
+                  localStorage.setItem("openaiApiKey", apiKey);
+                  console.log(`💾 [Settings] 💾 OpenAI API key saved`);
+                } else if (useLocalWhisper) {
+                  console.log(
+                    `💾 [Settings] 💾 Local Whisper mode - no API key needed`
+                  );
+                } else {
+                  console.log(
+                    `💾 [Settings] ⚠️ No API key provided for OpenAI mode`
+                  );
+                }
+
+                console.log(
+                  `💾 [Settings] ✅ Transcription settings saved successfully`
+                );
+                console.log(
+                  `💾 [Settings] ✅ Mode set to: ${
+                    useLocalWhisper ? "LOCAL WHISPER" : "OPENAI API"
+                  }`
+                );
+
+                setAlertDialog({
+                  open: true,
+                  title: "Settings Saved",
+                  description: `Transcription mode: ${
+                    useLocalWhisper ? "Local Whisper" : "OpenAI API"
+                  }. Language: ${preferredLanguage}.`,
+                });
+              }}
+              className="w-full"
+            >
+              Save Transcription Settings
+            </Button>
+          </div>
+        );
+
+      case "reasoning":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                AI Text Enhancement
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Configure how AI models clean up and format your transcriptions.
+                This handles commands like "scratch that", creates proper lists,
+                and fixes obvious errors while preserving your natural tone.
+              </p>
+
+              <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
+                <div>
+                  <label className="text-sm font-medium text-green-800">
+                    Enable AI Text Enhancement
+                  </label>
+                  <p className="text-xs text-green-700">
+                    Use AI to automatically improve transcription quality
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={useReasoningModel}
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      setUseReasoningModel(enabled);
+                      localStorage.setItem(
+                        "useReasoningModel",
+                        enabled.toString()
+                      );
+                      console.log(
+                        `🔧 [Settings] AI text enhancement ${
+                          enabled ? "ENABLED" : "DISABLED"
+                        }`
+                      );
+                    }}
+                  />
+                  <div
+                    className={`w-11 h-6 bg-gray-200 rounded-full transition-colors duration-200 ${
+                      useReasoningModel ? "bg-green-600" : "bg-gray-300"
+                    }`}
+                  >
+                    <div
+                      className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${
+                        useReasoningModel ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    ></div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {useReasoningModel && (
+              <>
+                <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <h4 className="font-medium text-blue-900">AI Provider</h4>
+                  <select
+                    value={reasoningProvider}
+                    onChange={(e) => {
+                      const newProvider = e.target.value;
+                      setReasoningProvider(newProvider);
+
+                      // Set default model for the provider
+                      const providerModels =
+                        REASONING_PROVIDERS[
+                          newProvider as keyof typeof REASONING_PROVIDERS
+                        ]?.models;
+                      if (providerModels && providerModels.length > 0) {
+                        setReasoningModel(providerModels[0].value);
+                      }
+                    }}
+                    className="w-full text-sm border border-blue-300 rounded-md p-2 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  >
+                    {Object.entries(REASONING_PROVIDERS).map(
+                      ([id, provider]) => (
+                        <option key={id} value={id}>
+                          {provider.name}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+
+                <div className="space-y-4 p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
+                  <h4 className="font-medium text-indigo-900">AI Model</h4>
+                  <select
+                    value={reasoningModel}
+                    onChange={(e) => setReasoningModel(e.target.value)}
+                    className="w-full text-sm border border-indigo-300 rounded-md p-2 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  >
+                    {REASONING_PROVIDERS[
+                      reasoningProvider as keyof typeof REASONING_PROVIDERS
+                    ]?.models.map((model) => (
+                      <option key={model.value} value={model.value}>
+                        {model.label} - {model.description}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-indigo-600">
+                    Different models offer varying levels of quality and speed
+                  </p>
+                </div>
+
+                {reasoningProvider === "openai" && (
+                  <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <h4 className="font-medium text-blue-900">
+                      OpenAI API Key
+                    </h4>
+                    <ApiKeyInput
+                      apiKey={apiKey}
+                      setApiKey={setApiKey}
+                      helpText="Same as your transcription API key"
+                    />
+                  </div>
+                )}
+
+                {reasoningProvider === "anthropic" && (
+                  <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                    <h4 className="font-medium text-purple-900">
+                      Anthropic API Key
+                    </h4>
+                    <div className="flex gap-2">
+                      <Input
+                        type="password"
+                        placeholder="sk-ant-..."
+                        value={anthropicApiKey}
+                        onChange={(e) => setAnthropicApiKey(e.target.value)}
+                        className="flex-1 text-sm border-purple-300 focus:border-purple-500"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          pasteFromClipboardWithFallback(setAnthropicApiKey)
+                        }
+                        className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                      >
+                        Paste
+                      </Button>
+                    </div>
+                    <p className="text-xs text-purple-600">
+                      Get your API key from console.anthropic.com
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            <Button onClick={saveReasoningSettings} className="w-full">
+              Save Reasoning Settings
+            </Button>
+          </div>
+        );
+
+      case "hotkey":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Dictation Hotkey
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Configure the key you press to start and stop voice dictation.
+              </p>
+            </div>
+
+            <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <h4 className="font-medium text-blue-900">Activation Key</h4>
+              <Input
+                placeholder="Current: ` (backtick)"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                className="text-center text-lg font-mono"
+              />
+              <Button onClick={saveKey} disabled={!key.trim()} size="sm">
+                Save Hotkey
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                onClick={permissionsHook.requestMicPermission}
+                variant="outline"
+                className="w-full"
+              >
+                <Mic className="mr-2 h-4 w-4" />
+                Test Microphone Permission
+              </Button>
+              <Button
+                onClick={permissionsHook.testAccessibilityPermission}
+                variant="outline"
+                className="w-full"
+              >
+                <Shield className="mr-2 h-4 w-4" />
+                Test Accessibility Permission
+              </Button>
+              <Button
+                onClick={resetAccessibilityPermissions}
+                variant="secondary"
+                className="w-full"
+              >
+                <span className="mr-2">⚙️</span>
+                Fix Permission Issues
+              </Button>
+            </div>
+          </div>
+        );
+
+      case "updates":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                App Updates
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Keep OpenWispr up to date with the latest features and
+                improvements.
+              </p>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-neutral-800">
+                  Current Version
+                </p>
+                <p className="text-xs text-neutral-600">
+                  {currentVersion || "Loading..."}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {updateStatus.isDevelopment ? (
+                  <span className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-full">
+                    Development Mode
+                  </span>
+                ) : updateStatus.updateAvailable ? (
+                  <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                    Update Available
+                  </span>
+                ) : (
+                  <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded-full">
+                    Up to Date
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                onClick={async () => {
+                  setCheckingForUpdates(true);
+                  try {
+                    const result = await window.electronAPI?.checkForUpdates();
+                    if (result?.updateAvailable) {
+                      setUpdateInfo({
+                        version: result.version,
+                        releaseDate: result.releaseDate,
+                        releaseNotes: result.releaseNotes,
+                      });
+                      setUpdateStatus((prev) => ({
+                        ...prev,
+                        updateAvailable: true,
+                      }));
+                      setAlertDialog({
+                        open: true,
+                        title: "Update Available",
+                        description: `Update available: v${result.version}`,
+                      });
+                    } else {
+                      setAlertDialog({
+                        open: true,
+                        title: "No Updates",
+                        description: result?.message || "No updates available",
+                      });
+                    }
+                  } catch (error: any) {
+                    setAlertDialog({
+                      open: true,
+                      title: "Update Check Failed",
+                      description: `Error checking for updates: ${error.message}`,
+                    });
+                  } finally {
+                    setCheckingForUpdates(false);
+                  }
+                }}
+                disabled={checkingForUpdates || updateStatus.isDevelopment}
+                className="w-full"
+              >
+                {checkingForUpdates ? (
+                  <>
+                    <RefreshCw size={16} className="animate-spin mr-2" />
+                    Checking for Updates...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={16} className="mr-2" />
+                    Check for Updates
+                  </>
+                )}
+              </Button>
+
+              {updateStatus.updateAvailable &&
+                !updateStatus.updateDownloaded && (
+                  <Button
+                    onClick={async () => {
+                      setDownloadingUpdate(true);
+                      try {
+                        await window.electronAPI?.downloadUpdate();
+                        setUpdateStatus((prev) => ({
+                          ...prev,
+                          updateDownloaded: true,
+                        }));
+                        setAlertDialog({
+                          open: true,
+                          title: "Update Downloaded",
+                          description:
+                            "Update downloaded successfully! You can now install it.",
+                        });
+                      } catch (error: any) {
+                        setAlertDialog({
+                          open: true,
+                          title: "Download Failed",
+                          description: `Error downloading update: ${error.message}`,
+                        });
+                      } finally {
+                        setDownloadingUpdate(false);
+                      }
+                    }}
+                    disabled={downloadingUpdate || updateStatus.isDevelopment}
+                    className="w-full"
+                  >
+                    {downloadingUpdate ? (
+                      <>
+                        <Download size={16} className="animate-bounce mr-2" />
+                        Downloading Update...
+                      </>
+                    ) : (
+                      <>
+                        <Download size={16} className="mr-2" />
+                        Download Update
+                      </>
+                    )}
+                  </Button>
+                )}
+
+              {updateStatus.updateDownloaded && (
+                <Button
+                  onClick={async () => {
+                    try {
+                      await window.electronAPI?.installUpdate();
+                    } catch (error: any) {
+                      setAlertDialog({
+                        open: true,
+                        title: "Install Failed",
+                        description: `Error installing update: ${error.message}`,
+                      });
+                    }
+                  }}
+                  disabled={updateStatus.isDevelopment}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  <span className="mr-2">🔄</span>
+                  Install Update & Restart
+                </Button>
+              )}
+
+              {updateInfo.version && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-1">
+                    Update Details
+                  </h4>
+                  <p className="text-sm text-blue-800 mb-1">
+                    Version: {updateInfo.version}
+                  </p>
+                  {updateInfo.releaseDate && (
+                    <p className="text-sm text-blue-700 mb-2">
+                      Released:{" "}
+                      {new Date(updateInfo.releaseDate).toLocaleDateString()}
+                    </p>
+                  )}
+                  {updateInfo.releaseNotes && (
+                    <details className="text-sm text-blue-700">
+                      <summary className="cursor-pointer font-medium">
+                        Release Notes
+                      </summary>
+                      <div className="mt-2 whitespace-pre-wrap">
+                        {updateInfo.releaseNotes}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case "about":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                About OpenWispr
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                OpenWispr converts your speech to text using AI. Press your
+                hotkey, speak, and we'll type what you said wherever your cursor
+                is.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
+                <div className="w-8 h-8 mx-auto mb-2 bg-indigo-600 rounded-lg flex items-center justify-center">
+                  <Keyboard className="w-4 h-4 text-white" />
+                </div>
+                <p className="font-medium text-gray-800 mb-1">Default Hotkey</p>
+                <p className="text-gray-600 font-mono text-xs">` (backtick)</p>
+              </div>
+              <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
+                <div className="w-8 h-8 mx-auto mb-2 bg-emerald-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm">🏷️</span>
+                </div>
+                <p className="font-medium text-gray-800 mb-1">Version</p>
+                <p className="text-gray-600 text-xs">
+                  {currentVersion || "0.1.0"}
+                </p>
+              </div>
+              <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
+                <div className="w-8 h-8 mx-auto mb-2 bg-green-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm">✓</span>
+                </div>
+                <p className="font-medium text-gray-800 mb-1">Status</p>
+                <p className="text-green-600 text-xs font-medium">Active</p>
+              </div>
+            </div>
+
+            {/* Reset Onboarding and Cleanup */}
+            <div className="border-t border-gray-200 pt-4 space-y-3">
+              <Button
+                onClick={() => {
+                  setConfirmDialog({
+                    open: true,
+                    title: "Reset Onboarding",
+                    description:
+                      "Are you sure you want to reset the onboarding process? This will clear your setup and show the welcome flow again.",
+                    onConfirm: () => {
+                      localStorage.removeItem("onboardingCompleted");
+                      window.location.reload();
+                    },
+                    variant: "destructive",
+                  });
+                }}
+                variant="outline"
+                className="w-full text-amber-600 border-amber-300 hover:bg-amber-50 hover:border-amber-400"
+              >
+                <span className="mr-2">🔄</span>
+                Reset Onboarding
+              </Button>
+
+              <Button
+                onClick={() => {
+                  setConfirmDialog({
+                    open: true,
+                    title: "⚠️ DANGER: Cleanup App Data",
+                    description:
+                      "This will permanently delete ALL OpenWispr data including:\n\n• Database and transcriptions\n• Local storage settings\n• Downloaded Whisper models\n• Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone. Are you sure?",
+                    onConfirm: () => {
+                      window.electronAPI
+                        ?.cleanupApp()
+                        .then(() => {
+                          setAlertDialog({
+                            open: true,
+                            title: "Cleanup Completed",
+                            description:
+                              "✅ Cleanup completed! All app data has been removed.",
+                          });
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 1000);
+                        })
+                        .catch((error) => {
+                          setAlertDialog({
+                            open: true,
+                            title: "Cleanup Failed",
+                            description: `❌ Cleanup failed: ${error.message}`,
+                          });
+                        });
+                    },
+                    variant: "destructive",
+                  });
+                }}
+                variant="outline"
+                className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+              >
+                <span className="mr-2">🗑️</span>
+                Clean Up All App Data
+              </Button>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -310,709 +1026,41 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
         }
       />
 
-      {/* Main content */}
-      <div
-        className="bg-gradient-to-br from-neutral-50 via-white to-indigo-50/30 p-6 relative"
-        style={{
-          backgroundImage: `repeating-linear-gradient(
-          transparent,
-          transparent 24px,
-          #d1d5db 24px,
-          #d1d5db 25px
-        )`,
-        }}
-      >
-        {/* Red margin line */}
-        <div className="absolute left-12 top-0 bottom-0 w-px bg-red-300 z-0"></div>
-
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Transcription Setup Card */}
-          <Card className="bg-white relative z-10">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings size={18} className="text-indigo-600" />
-                Transcription Setup
-              </CardTitle>
-              <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
-                Choose how you want to convert speech to text. You can always
-                change this later.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                {/* Processing Choice */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-4">
-                    Processing Method
-                  </label>
-                  <ProcessingModeSelector
-                    useLocalWhisper={useLocalWhisper}
-                    setUseLocalWhisper={setUseLocalWhisper}
-                  />
-                </div>
-
-                {/* Cloud Configuration */}
-                {!useLocalWhisper && (
-                  <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                    <h4 className="font-medium text-blue-900">
-                      OpenAI API Setup
-                    </h4>
-                    <ApiKeyInput
-                      apiKey={apiKey}
-                      setApiKey={setApiKey}
-                      className="text-blue-800"
-                      helpText="Get your API key from platform.openai.com"
-                    />
-
-                    {/* Local Whisper Fallback Toggle */}
-                    {whisperHook.whisperInstalled && (
-                      <div className="space-y-3 mt-4">
-                        <div className="flex items-center justify-between">
-                          <label className="text-sm font-medium text-blue-800">
-                            Fall back to Local Whisper
-                          </label>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="sr-only"
-                              checked={allowLocalFallback}
-                              onChange={(e) =>
-                                setAllowLocalFallback(e.target.checked)
-                              }
-                            />
-                            <div
-                              className={`w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-300 ${
-                                allowLocalFallback
-                                  ? "bg-blue-600"
-                                  : "bg-gray-300"
-                              } transition-colors duration-200`}
-                            >
-                              <div
-                                className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${
-                                  allowLocalFallback
-                                    ? "translate-x-5"
-                                    : "translate-x-0"
-                                }`}
-                              ></div>
-                            </div>
-                          </label>
-                        </div>
-                        <p className="text-xs text-blue-700">
-                          If OpenAI API fails, try Local Whisper as backup
-                        </p>
-
-                        {/* Fallback Model Selection - only show if fallback is enabled */}
-                        {allowLocalFallback && (
-                          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <label className="block text-sm font-medium text-blue-800 mb-2">
-                              Fallback Whisper Model
-                            </label>
-                            <select
-                              value={fallbackWhisperModel}
-                              onChange={(e) =>
-                                setFallbackWhisperModel(e.target.value)
-                              }
-                              className="w-full text-sm border border-blue-300 rounded-md p-2 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                            >
-                              <option value="tiny">
-                                Tiny - Fast, basic quality
-                              </option>
-                              <option value="base">
-                                Base - Balanced (Recommended)
-                              </option>
-                              <option value="small">
-                                Small - Better quality
-                              </option>
-                              <option value="medium">
-                                Medium - High quality
-                              </option>
-                              <option value="large">
-                                Large - Best quality
-                              </option>
-                              <option value="turbo">
-                                Turbo - Fast & high quality
-                              </option>
-                            </select>
-                            <p className="text-xs text-blue-600 mt-1">
-                              Only used if OpenAI API fails
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Local Configuration */}
-                {useLocalWhisper && (
-                  <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-purple-900">
-                        Local Whisper Setup
-                      </h4>
-                      <div className="flex items-center space-x-2">
-                        {whisperHook.checkingWhisper ? (
-                          <span className="text-purple-600 text-sm">
-                            Checking...
-                          </span>
-                        ) : whisperHook.whisperInstalled ? (
-                          <span className="text-emerald-600 text-sm font-medium">
-                            ✓ Ready
-                          </span>
-                        ) : (
-                          <span className="text-amber-600 text-sm font-medium">
-                            ⚠ Not installed
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {whisperHook.whisperInstalled ? (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-purple-800 mb-3">
-                            Choose your model quality from the list below
-                          </label>
-                          <p className="text-xs text-purple-700">
-                            Select the model that best fits your needs.
-                          </p>
-                        </div>
-
-                        {/* OpenAI Fallback Toggle */}
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm font-medium text-purple-800">
-                              Fall back to OpenAI API
-                            </label>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                className="sr-only"
-                                checked={allowOpenAIFallback}
-                                onChange={(e) =>
-                                  setAllowOpenAIFallback(e.target.checked)
-                                }
-                              />
-                              <div
-                                className={`w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-purple-300 ${
-                                  allowOpenAIFallback
-                                    ? "bg-purple-600"
-                                    : "bg-gray-300"
-                                } transition-colors duration-200`}
-                              >
-                                <div
-                                  className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${
-                                    allowOpenAIFallback
-                                      ? "translate-x-5"
-                                      : "translate-x-0"
-                                  }`}
-                                ></div>
-                              </div>
-                            </label>
-                          </div>
-                          <p className="text-xs text-purple-700">
-                            If local processing fails, try OpenAI API as backup
-                          </p>
-
-                          {/* API Key field - only show if fallback is enabled */}
-                          {allowOpenAIFallback && (
-                            <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                              <label className="block text-sm font-medium text-purple-800 mb-2">
-                                OpenAI API Key (for fallback)
-                              </label>
-                              <div className="flex gap-2">
-                                <Input
-                                  type="password"
-                                  placeholder="sk-..."
-                                  value={apiKey}
-                                  onChange={(e) => setApiKey(e.target.value)}
-                                  className="flex-1 text-sm border-purple-300 focus:border-purple-500"
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() =>
-                                    pasteFromClipboardWithFallback(setApiKey)
-                                  }
-                                  className="border-purple-300 text-purple-700 hover:bg-purple-50"
-                                >
-                                  Paste
-                                </Button>
-                              </div>
-                              <p className="text-xs text-purple-600 mt-1">
-                                Only used if local processing fails
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        <WhisperModelPicker
-                          selectedModel={whisperModel}
-                          onModelSelect={setWhisperModel}
-                          variant="settings"
-                        />
-                      </div>
-                    ) : (
-                      <div className="bg-white border border-purple-200 rounded-lg p-6">
-                        <div className="text-center">
-                          <div className="text-3xl mb-4">📦 </div>
-                          <h5 className="font-medium text-purple-900 text-lg mb-2">
-                            Install Local Processing
-                          </h5>
-                          <p className="text-sm text-purple-700 mb-4 max-w-sm mx-auto">
-                            We'll install Whisper automatically. No technical
-                            setup required.
-                          </p>
-
-                          {whisperHook.installingWhisper ? (
-                            <div className="space-y-4">
-                              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                                <div className="flex items-center justify-center space-x-3 mb-2">
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                                  <span className="font-medium text-purple-900">
-                                    Installing...
-                                  </span>
-                                </div>
-                                {whisperHook.installProgress && (
-                                  <div className="text-xs text-purple-600 bg-white p-2 rounded font-mono">
-                                    {whisperHook.installProgress}
-                                  </div>
-                                )}
-                              </div>
-                              <p className="text-xs text-purple-600">
-                                This takes a few minutes. Keep the app open.
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              <Button
-                                onClick={whisperHook.installWhisper}
-                                className="bg-purple-600 hover:bg-purple-700"
-                              >
-                                Install Whisper
-                              </Button>
-
-                              <div className="flex items-center justify-center">
-                                <Button
-                                  onClick={whisperHook.checkWhisperInstallation}
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-purple-600 border-purple-300 hover:bg-purple-50"
-                                >
-                                  Check if already installed
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Language Selection - shown for both modes */}
-                <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                  <h4 className="font-medium text-gray-900 mb-3">
-                    🌍 Preferred Language
-                  </h4>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Which language do you primarily speak?
-                  </label>
-                  <LanguageSelector
-                    value={preferredLanguage}
-                    onChange={(value) => {
-                      setPreferredLanguage(value);
-                      localStorage.setItem("preferredLanguage", value);
-                      setAlertDialog({
-                        open: true,
-                        title: "Language Updated",
-                        description: `Preferred language set to: ${getLanguageLabel(
-                          value
-                        )}`,
-                      });
-                    }}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-gray-600 mt-1">
-                    {useLocalWhisper
-                      ? "Helps Whisper better understand your speech"
-                      : "Improves OpenAI transcription speed and accuracy"}
-                  </p>
-                </div>
-
-                <Button
-                  onClick={useLocalWhisper ? saveWhisperSettings : saveApiKey}
-                  className="w-full"
-                  disabled={!useLocalWhisper && !apiKey.trim()}
+      <div className="flex h-[calc(100vh-60px)]">
+        {/* Sidebar */}
+        <div className="w-64 bg-gray-50 border-r border-gray-200 p-4">
+          <nav className="space-y-2">
+            {sidebarItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveSection(item.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm rounded-lg transition-colors ${
+                    activeSection === item.id
+                      ? "bg-indigo-100 text-indigo-700"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
-                  {useLocalWhisper ? "Save Whisper Settings" : "Save API Key"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Dictation Settings Card */}
-          <Card className="bg-white relative z-10">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Keyboard size={18} className="text-indigo-600" />
-                Dictation Setup
-              </CardTitle>
-              <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
-                Configure how you want to activate voice transcription.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Activation Key
-                  </label>
-                  <Input
-                    placeholder="Current: ` (backtick)"
-                    value={key}
-                    onChange={(e) => setKey(e.target.value)}
-                    className="mb-3"
-                  />
-                  <Button
-                    onClick={saveKey}
-                    disabled={!key.trim()}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Save Key
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Button
-                    onClick={permissionsHook.requestMicPermission}
-                    variant="outline"
-                  >
-                    <span className="mr-2">🎤</span>
-                    Enable Microphone
-                  </Button>
-                  <Button
-                    onClick={permissionsHook.testAccessibilityPermission}
-                    variant="outline"
-                  >
-                    <span className="mr-2">🔓</span>
-                    Check Permissions
-                  </Button>
-                </div>
-
-                <Button
-                  onClick={resetAccessibilityPermissions}
-                  variant="secondary"
-                  className="w-full"
-                >
-                  <span className="mr-2">⚙️</span>
-                  Fix Permission Issues
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Updates Card */}
-          <Card className="bg-white relative z-10">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <RefreshCw size={18} className="text-indigo-600" />
-                App Updates
-              </CardTitle>
-              <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
-                Keep OpenWispr up to date with the latest features and
-                improvements.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
-                <div>
-                  <p className="text-sm font-medium text-neutral-800">
-                    Current Version
-                  </p>
-                  <p className="text-xs text-neutral-600">
-                    {currentVersion || "Loading..."}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {updateStatus.isDevelopment ? (
-                    <span className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-full">
-                      Development Mode
-                    </span>
-                  ) : updateStatus.updateAvailable ? (
-                    <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                      Update Available
-                    </span>
-                  ) : (
-                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded-full">
-                      Up to Date
-                    </span>
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                  {activeSection === item.id && (
+                    <ChevronRight className="h-4 w-4 ml-auto" />
                   )}
-                </div>
-              </div>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
 
-              <div className="space-y-3">
-                <Button
-                  onClick={async () => {
-                    setCheckingForUpdates(true);
-                    try {
-                      const result = await window.electronAPI.checkForUpdates();
-                      if (result.updateAvailable) {
-                        setUpdateInfo({
-                          version: result.version,
-                          releaseDate: result.releaseDate,
-                          releaseNotes: result.releaseNotes,
-                        });
-                        setUpdateStatus((prev) => ({
-                          ...prev,
-                          updateAvailable: true,
-                        }));
-                        setAlertDialog({
-                          open: true,
-                          title: "Update Available",
-                          description: `Update available: v${result.version}`,
-                        });
-                      } else {
-                        setAlertDialog({
-                          open: true,
-                          title: "No Updates",
-                          description: result.message || "No updates available",
-                        });
-                      }
-                    } catch (error) {
-                      setAlertDialog({
-                        open: true,
-                        title: "Update Check Failed",
-                        description: `Error checking for updates: ${error.message}`,
-                      });
-                    } finally {
-                      setCheckingForUpdates(false);
-                    }
-                  }}
-                  disabled={checkingForUpdates || updateStatus.isDevelopment}
-                  className="w-full"
-                >
-                  {checkingForUpdates ? (
-                    <>
-                      <RefreshCw size={16} className="animate-spin mr-2" />
-                      Checking for Updates...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw size={16} className="mr-2" />
-                      Check for Updates
-                    </>
-                  )}
-                </Button>
-
-                {updateStatus.updateAvailable &&
-                  !updateStatus.updateDownloaded && (
-                    <Button
-                      onClick={async () => {
-                        setDownloadingUpdate(true);
-                        try {
-                          await window.electronAPI.downloadUpdate();
-                          setUpdateStatus((prev) => ({
-                            ...prev,
-                            updateDownloaded: true,
-                          }));
-                          setAlertDialog({
-                            open: true,
-                            title: "Update Downloaded",
-                            description:
-                              "Update downloaded successfully! You can now install it.",
-                          });
-                        } catch (error) {
-                          setAlertDialog({
-                            open: true,
-                            title: "Download Failed",
-                            description: `Error downloading update: ${error.message}`,
-                          });
-                        } finally {
-                          setDownloadingUpdate(false);
-                        }
-                      }}
-                      disabled={downloadingUpdate || updateStatus.isDevelopment}
-                      className="w-full"
-                    >
-                      {downloadingUpdate ? (
-                        <>
-                          <Download size={16} className="animate-bounce mr-2" />
-                          Downloading Update...
-                        </>
-                      ) : (
-                        <>
-                          <Download size={16} className="mr-2" />
-                          Download Update
-                        </>
-                      )}
-                    </Button>
-                  )}
-
-                {updateStatus.updateDownloaded && (
-                  <Button
-                    onClick={async () => {
-                      try {
-                        await window.electronAPI.installUpdate();
-                      } catch (error) {
-                        setAlertDialog({
-                          open: true,
-                          title: "Install Failed",
-                          description: `Error installing update: ${error.message}`,
-                        });
-                      }
-                    }}
-                    disabled={updateStatus.isDevelopment}
-                    className="w-full bg-green-600 hover:bg-green-700"
-                  >
-                    <span className="mr-2">🔄</span>
-                    Install Update & Restart
-                  </Button>
-                )}
-
-                {updateInfo.version && (
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h4 className="font-medium text-blue-900 mb-1">
-                      Update Details
-                    </h4>
-                    <p className="text-sm text-blue-800 mb-1">
-                      Version: {updateInfo.version}
-                    </p>
-                    {updateInfo.releaseDate && (
-                      <p className="text-sm text-blue-700 mb-2">
-                        Released:{" "}
-                        {new Date(updateInfo.releaseDate).toLocaleDateString()}
-                      </p>
-                    )}
-                    {updateInfo.releaseNotes && (
-                      <details className="text-sm text-blue-700">
-                        <summary className="cursor-pointer font-medium">
-                          Release Notes
-                        </summary>
-                        <div className="mt-2 whitespace-pre-wrap">
-                          {updateInfo.releaseNotes}
-                        </div>
-                      </details>
-                    )}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* About Card */}
-          <Card className="bg-white relative z-10">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Info size={18} className="text-indigo-600" />
-                About
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-neutral-600 text-sm leading-relaxed mb-6">
-                OpenWispr converts your speech to text using AI. Press your
-                hotkey, speak, and we'll type what you said wherever your cursor
-                is.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="text-center p-4 border border-neutral-200 rounded-xl bg-white">
-                  <div className="w-8 h-8 mx-auto mb-2 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">⌨️</span>
-                  </div>
-                  <p className="font-medium text-neutral-800 mb-1">
-                    Default Hotkey
-                  </p>
-                  <p className="text-neutral-600 font-mono text-xs">
-                    ` (backtick)
-                  </p>
-                </div>
-                <div className="text-center p-4 border border-neutral-200 rounded-xl bg-white">
-                  <div className="w-8 h-8 mx-auto mb-2 bg-emerald-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">🏷️</span>
-                  </div>
-                  <p className="font-medium text-neutral-800 mb-1">Version</p>
-                  <p className="text-neutral-600 text-xs">0.1.0</p>
-                </div>
-                <div className="text-center p-4 border border-neutral-200 rounded-xl bg-white">
-                  <div className="w-8 h-8 mx-auto mb-2 bg-green-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">✓</span>
-                  </div>
-                  <p className="font-medium text-neutral-800 mb-1">Status</p>
-                  <p className="text-green-600 text-xs font-medium">Active</p>
-                </div>
-              </div>
-              {/* Reset Onboarding */}
-              <div className="border-t border-neutral-200 pt-4 space-y-3">
-                <Button
-                  onClick={() => {
-                    setConfirmDialog({
-                      open: true,
-                      title: "Reset Onboarding",
-                      description:
-                        "Are you sure you want to reset the onboarding process? This will clear your setup and show the welcome flow again.",
-                      onConfirm: () => {
-                        localStorage.removeItem("onboardingCompleted");
-                        window.location.reload();
-                      },
-                      variant: "destructive",
-                    });
-                  }}
-                  variant="outline"
-                  className="w-full text-amber-600 border-amber-300 hover:bg-amber-50 hover:border-amber-400"
-                >
-                  <span className="mr-2">🔄</span>
-                  Reset Onboarding
-                </Button>
-
-                {/* Cleanup App Data */}
-                <Button
-                  onClick={() => {
-                    setConfirmDialog({
-                      open: true,
-                      title: "⚠️ DANGER: Cleanup App Data",
-                      description:
-                        "This will permanently delete ALL OpenWispr data including:\n\n• Database and transcriptions\n• Local storage settings\n• Downloaded Whisper models\n• Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone. Are you sure?",
-                      onConfirm: () => {
-                        window.electronAPI
-                          .cleanupApp()
-                          .then(() => {
-                            setAlertDialog({
-                              open: true,
-                              title: "Cleanup Completed",
-                              description:
-                                "✅ Cleanup completed! All app data has been removed.",
-                            });
-                            setTimeout(() => {
-                              window.location.reload();
-                            }, 1000);
-                          })
-                          .catch((error) => {
-                            setAlertDialog({
-                              open: true,
-                              title: "Cleanup Failed",
-                              description: `❌ Cleanup failed: ${error.message}`,
-                            });
-                          });
-                      },
-                      variant: "destructive",
-                    });
-                  }}
-                  variant="outline"
-                  className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
-                >
-                  <span className="mr-2">🗑️</span>
-                  Clean Up All App Data
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Footer */}
-          <div className="text-center py-6">
-            <p className="text-neutral-500 text-sm">
-              Built for thinkers who move at the speed of thought
-            </p>
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-2xl mx-auto p-6">
+            <Card>
+              <CardContent className="p-6">
+                {renderSectionContent()}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

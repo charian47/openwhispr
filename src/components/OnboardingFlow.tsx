@@ -28,7 +28,7 @@ import { AlertDialog } from "./ui/dialog";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
-import { getLanguageLabel } from "../utils/languages";
+import { getLanguageLabel, REASONING_MODEL_OPTIONS, getReasoningModelLabel } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
 
 interface OnboardingFlowProps {
@@ -54,6 +54,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const saved = localStorage.getItem("preferredLanguage");
     return saved || "en";
   });
+  // Reasoning model is enabled by default (configured in settings)
+  const useReasoningModel = true;
+  const reasoningModel = "gpt-3.5-turbo";
 
   const [alertDialog, setAlertDialog] = useState<{
     open: boolean;
@@ -100,11 +103,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }, [currentStep]);
 
   const saveSettings = async () => {
-    // Save all settings
     localStorage.setItem("useLocalWhisper", useLocalWhisper.toString());
     localStorage.setItem("whisperModel", whisperModel);
     localStorage.setItem("dictationKey", hotkey);
     localStorage.setItem("preferredLanguage", preferredLanguage);
+    localStorage.setItem("useReasoningModel", useReasoningModel.toString());
+    localStorage.setItem("reasoningModel", reasoningModel);
     localStorage.setItem(
       "micPermissionGranted",
       permissionsHook.micPermissionGranted.toString()
@@ -347,6 +351,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     <li>5. Copy and paste it here</li>
                   </ol>
                 </div>
+                
               </div>
             )}
 
@@ -369,7 +374,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <p className="text-xs text-gray-600 mt-1">
                 {useLocalWhisper
                   ? "Helps Whisper better understand your speech"
-                  : "Improves OpenAI transcription speed and accuracy"}
+                  : "Improves OpenAI transcription speed and accuracy. AI text enhancement is enabled by default."}
               </p>
             </div>
           </div>
