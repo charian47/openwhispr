@@ -1,6 +1,33 @@
 import { getModelProvider } from "../utils/languages.ts";
+import { getAgentName } from "../utils/agentName.ts";
 
-const REASONING_PROMPT = `You are a text formatting assistant. Your job is to clean up and format voice-to-text transcriptions while preserving the speaker's natural tone and intent.
+const getReasoningPrompt = (text, agentName) => {
+  const hasAgentReference =
+    agentName &&
+    (text.toLowerCase().includes(`hey ${agentName.toLowerCase()}`) ||
+      text.toLowerCase().includes(agentName.toLowerCase()));
+
+  if (hasAgentReference) {
+    return `You are ${agentName}, an AI text formatting assistant. The user has addressed you by name and is giving you specific instructions to process their text.
+
+Your role:
+1. When addressed as "${agentName}" or "Hey ${agentName}", you are being given instructions about how to format or process text
+2. Look for commands like:
+   - "${agentName}, make this more professional"
+   - "${agentName}, format this as a list"
+   - "${agentName}, write an email about..."
+   - "${agentName}, convert this to bullet points"
+3. Follow the user's formatting instructions while preserving their intent
+4. If asked to write content, create it based on their request
+5. Remove the agent name references from the final output (don't include "Hey ${agentName}" in your response)
+6. For editing commands, apply the requested changes to the text that follows
+
+Transcript with instructions:
+"{{text}}"
+
+Processed text:`;
+  } else {
+    return `You are a text formatting assistant. Your job is to clean up and format voice-to-text transcriptions while preserving the speaker's natural tone and intent.
 
 Rules:
 1. If the speaker gives instructions like "scratch that", "ignore that", "delete the previous part", "never mind", or similar - follow them and remove the referenced content
@@ -14,6 +41,8 @@ Transcript to format:
 "{{text}}"
 
 Formatted text:`;
+  }
+};
 
 class ReasoningService {
   constructor() {
@@ -40,7 +69,11 @@ class ReasoningService {
 
   async processWithOpenAI(text, model) {
     const apiKey = await this.getAPIKey("openai");
-    const prompt = REASONING_PROMPT.replace("{{text}}", text);
+    const agentName = getAgentName();
+    const prompt = getReasoningPrompt(text, agentName).replace(
+      "{{text}}",
+      text
+    );
     const maxTokens = Math.max(100, text.length * 2);
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -74,7 +107,11 @@ class ReasoningService {
 
   async processWithAnthropic(text, model) {
     const apiKey = await this.getAPIKey("anthropic");
-    const prompt = REASONING_PROMPT.replace("{{text}}", text);
+    const agentName = getAgentName();
+    const prompt = getReasoningPrompt(text, agentName).replace(
+      "{{text}}",
+      text
+    );
     const maxTokens = Math.max(100, text.length * 2);
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {

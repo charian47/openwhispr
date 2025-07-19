@@ -17,6 +17,7 @@ import {
   Sparkles,
   Lock,
   X,
+  User,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
 import WhisperModelPicker from "./WhisperModelPicker";
@@ -33,6 +34,7 @@ import { useClipboard } from "../hooks/useClipboard";
 import { useSettings } from "../hooks/useSettings";
 import { getLanguageLabel, getReasoningModelLabel } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
+import { setAgentName as saveAgentName } from "../utils/agentName";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -68,6 +70,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const [apiKey, setApiKey] = useState(openaiApiKey);
   const [hotkey, setHotkey] = useState(dictationKey || "`");
+  const [agentName, setAgentName] = useState("Agent");
   const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const practiceTextareaRef = useRef<HTMLInputElement>(null);
 
@@ -82,6 +85,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     { title: "Permissions", icon: Shield },
     { title: "Hotkey", icon: Keyboard },
     { title: "Test", icon: TestTube },
+    { title: "Agent Name", icon: User },
     { title: "Finish", icon: Check },
   ];
 
@@ -104,6 +108,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const saveSettings = useCallback(async () => {
     updateTranscriptionSettings({ whisperModel, preferredLanguage });
     setDictationKey(hotkey);
+    saveAgentName(agentName);
 
     localStorage.setItem(
       "micPermissionGranted",
@@ -123,6 +128,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     whisperModel,
     hotkey,
     preferredLanguage,
+    agentName,
     permissionsHook.micPermissionGranted,
     permissionsHook.accessibilityPermissionGranted,
     useLocalWhisper,
@@ -597,7 +603,53 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </div>
         );
 
-      case 6: // Complete
+      case 6: // Agent Name
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-stone-900 mb-2">
+                Name Your Agent
+              </h2>
+              <p className="text-stone-600">
+                Give your agent a name so you can address it specifically when
+                giving instructions.
+              </p>
+            </div>
+
+            <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
+              <h4 className="font-medium text-purple-900 mb-3">
+                💡 How this helps:
+              </h4>
+              <ul className="text-sm text-purple-800 space-y-1">
+                <li>
+                  • Say "Hey {agentName || "Agent"}, write a formal email" for
+                  specific instructions
+                </li>
+                <li>
+                  • Use the name to distinguish between dictation and commands
+                </li>
+                <li>• Makes interactions feel more natural and personal</li>
+              </ul>
+            </div>
+
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Agent Name
+              </label>
+              <Input
+                placeholder="e.g., Assistant, Jarvis, Alex..."
+                value={agentName}
+                onChange={(e) => setAgentName(e.target.value)}
+                className="text-center text-lg font-mono"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                You can change this anytime in settings
+              </p>
+            </div>
+          </div>
+        );
+
+      case 7: // Complete
         return (
           <div className="text-center space-y-6">
             <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
@@ -636,6 +688,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <span className="font-medium">
                     {getLanguageLabel(preferredLanguage)}
                   </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Agent Name:</span>
+                  <span className="font-medium">{agentName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Permissions:</span>
@@ -685,6 +741,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       case 5:
         return true; // Practice step is always ready to proceed
       case 6:
+        return agentName.trim() !== ""; // Agent name step
+      case 7:
         return true;
       default:
         return false;
