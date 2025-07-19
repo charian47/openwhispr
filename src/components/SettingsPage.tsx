@@ -30,6 +30,8 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
   const [useLocalWhisper, setUseLocalWhisper] = useState(false);
   const [whisperModel, setWhisperModel] = useState("base");
   const [allowOpenAIFallback, setAllowOpenAIFallback] = useState(false);
+  const [allowLocalFallback, setAllowLocalFallback] = useState(false);
+  const [fallbackWhisperModel, setFallbackWhisperModel] = useState("base");
 
   // Update state
   const [currentVersion, setCurrentVersion] = useState<string>("");
@@ -79,11 +81,17 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     // Load Whisper settings
     const savedUseLocal = localStorage.getItem("useLocalWhisper") === "true";
     const savedModel = localStorage.getItem("whisperModel") || "base";
-    const savedAllowFallback =
+    const savedAllowOpenAIFallback =
       localStorage.getItem("allowOpenAIFallback") === "true";
+    const savedAllowLocalFallback =
+      localStorage.getItem("allowLocalFallback") === "true";
+    const savedFallbackModel =
+      localStorage.getItem("fallbackWhisperModel") || "base";
     setUseLocalWhisper(savedUseLocal);
     setWhisperModel(savedModel);
-    setAllowOpenAIFallback(savedAllowFallback);
+    setAllowOpenAIFallback(savedAllowOpenAIFallback);
+    setAllowLocalFallback(savedAllowLocalFallback);
+    setFallbackWhisperModel(savedFallbackModel);
 
     // Load API key from main process first, then fallback to localStorage
     const loadApiKey = async () => {
@@ -177,27 +185,33 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     try {
       await window.electronAPI.saveOpenAIKey(apiKey);
       localStorage.setItem("openaiApiKey", apiKey);
+      localStorage.setItem("allowLocalFallback", allowLocalFallback.toString());
+      localStorage.setItem("fallbackWhisperModel", fallbackWhisperModel);
 
       try {
         await window.electronAPI.createProductionEnvFile(apiKey);
         setAlertDialog({
           open: true,
           title: "API Key Saved",
-          description:
-            "OpenAI API key inscribed successfully! Your credentials have been securely recorded for transcription services.",
+          description: `OpenAI API key inscribed successfully! Your credentials have been securely recorded for transcription services.${
+            allowLocalFallback ? " Local Whisper fallback is enabled." : ""
+          }`,
         });
       } catch (envError) {
         console.log("Could not create production .env file:", envError);
         setAlertDialog({
           open: true,
           title: "API Key Saved",
-          description:
-            "OpenAI API key saved successfully and will be available for transcription",
+          description: `OpenAI API key saved successfully and will be available for transcription${
+            allowLocalFallback ? " with Local Whisper fallback enabled" : ""
+          }`,
         });
       }
     } catch (error) {
       console.error("Failed to save API key:", error);
       localStorage.setItem("openaiApiKey", apiKey);
+      localStorage.setItem("allowLocalFallback", allowLocalFallback.toString());
+      localStorage.setItem("fallbackWhisperModel", fallbackWhisperModel);
       setAlertDialog({
         open: true,
         title: "API Key Saved",
@@ -211,9 +225,13 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     localStorage.setItem("whisperModel", whisperModel);
     localStorage.setItem("allowOpenAIFallback", allowOpenAIFallback.toString());
 
-    // Also save API key if fallback is enabled and key is provided
+    // SECURITY: Only save API key if fallback is enabled and key is provided
+    // This ensures we never store unused keys
     if (allowOpenAIFallback && apiKey.trim()) {
       localStorage.setItem("openaiApiKey", apiKey);
+    } else if (!allowOpenAIFallback) {
+      // Clear the key if fallback is disabled for security
+      localStorage.removeItem("openaiApiKey");
     }
 
     setAlertDialog({
@@ -338,6 +356,83 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                       className="text-blue-800"
                       helpText="Get your API key from platform.openai.com"
                     />
+
+                    {/* Local Whisper Fallback Toggle */}
+                    {whisperHook.whisperInstalled && (
+                      <div className="space-y-3 mt-4">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium text-blue-800">
+                            Fall back to Local Whisper
+                          </label>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="sr-only"
+                              checked={allowLocalFallback}
+                              onChange={(e) =>
+                                setAllowLocalFallback(e.target.checked)
+                              }
+                            />
+                            <div
+                              className={`w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-300 ${
+                                allowLocalFallback
+                                  ? "bg-blue-600"
+                                  : "bg-gray-300"
+                              } transition-colors duration-200`}
+                            >
+                              <div
+                                className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${
+                                  allowLocalFallback
+                                    ? "translate-x-5"
+                                    : "translate-x-0"
+                                }`}
+                              ></div>
+                            </div>
+                          </label>
+                        </div>
+                        <p className="text-xs text-blue-700">
+                          If OpenAI API fails, try Local Whisper as backup
+                        </p>
+
+                        {/* Fallback Model Selection - only show if fallback is enabled */}
+                        {allowLocalFallback && (
+                          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <label className="block text-sm font-medium text-blue-800 mb-2">
+                              Fallback Whisper Model
+                            </label>
+                            <select
+                              value={fallbackWhisperModel}
+                              onChange={(e) =>
+                                setFallbackWhisperModel(e.target.value)
+                              }
+                              className="w-full text-sm border border-blue-300 rounded-md p-2 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            >
+                              <option value="tiny">
+                                Tiny - Fast, basic quality
+                              </option>
+                              <option value="base">
+                                Base - Balanced (Recommended)
+                              </option>
+                              <option value="small">
+                                Small - Better quality
+                              </option>
+                              <option value="medium">
+                                Medium - High quality
+                              </option>
+                              <option value="large">
+                                Large - Best quality
+                              </option>
+                              <option value="turbo">
+                                Turbo - Fast & high quality
+                              </option>
+                            </select>
+                            <p className="text-xs text-blue-600 mt-1">
+                              Only used if OpenAI API fails
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 

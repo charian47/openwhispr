@@ -1,4 +1,4 @@
-import TextCleanup from '../utils/textCleanup';
+import TextCleanup from "../utils/textCleanup";
 
 class AudioManager {
   constructor() {
@@ -107,7 +107,7 @@ class AudioManager {
       removeRepetitions: true,
       capitalizeFirst: true,
       addPeriod: false, // Don't auto-add periods to preserve user intent
-      ...options
+      ...options,
     });
   }
 
@@ -143,13 +143,17 @@ class AudioManager {
         throw error;
       }
 
-      // Try fallback to OpenAI API if enabled
-      const allowFallback =
+      // Try fallback to OpenAI API ONLY if enabled AND we're in local mode
+      const allowOpenAIFallback =
         localStorage.getItem("allowOpenAIFallback") === "true";
-      if (allowFallback) {
+      const isLocalMode = localStorage.getItem("useLocalWhisper") === "true";
+
+      if (allowOpenAIFallback && isLocalMode) {
         console.log("Falling back to OpenAI API...");
         try {
-          return await this.processWithOpenAIAPI(audioBlob);
+          const fallbackResult = await this.processWithOpenAIAPI(audioBlob);
+          // Mark the result as fallback for user awareness
+          return { ...fallbackResult, source: "openai-fallback" };
         } catch (fallbackError) {
           // If OpenAI fallback also fails, throw the original error
           throw new Error(
@@ -157,6 +161,7 @@ class AudioManager {
           );
         }
       } else {
+        // No fallback allowed - strict local mode
         throw new Error(`Local Whisper failed: ${error.message}`);
       }
     }
@@ -214,6 +219,40 @@ class AudioManager {
       }
     } catch (error) {
       console.error("OpenAI API error:", error);
+
+      // Try fallback to Local Whisper ONLY if enabled AND we're in OpenAI mode
+      const allowLocalFallback =
+        localStorage.getItem("allowLocalFallback") === "true";
+      const isOpenAIMode = localStorage.getItem("useLocalWhisper") !== "true";
+
+      if (allowLocalFallback && isOpenAIMode) {
+        console.log("Falling back to Local Whisper...");
+        const fallbackModel =
+          localStorage.getItem("fallbackWhisperModel") || "base";
+        try {
+          const arrayBuffer = await audioBlob.arrayBuffer();
+          const options = { model: fallbackModel };
+          const result = await window.electronAPI.transcribeLocalWhisper(
+            arrayBuffer,
+            options
+          );
+
+          if (result.success && result.text) {
+            let text = AudioManager.cleanTranscription(result.text);
+            if (text) {
+              return { success: true, text, source: "local-fallback" };
+            }
+          }
+          // If local fallback fails, throw the original OpenAI error
+          throw error;
+        } catch (fallbackError) {
+          console.error("Local fallback also failed:", fallbackError);
+          throw new Error(
+            `OpenAI API failed: ${error.message}. Local fallback also failed: ${fallbackError.message}`
+          );
+        }
+      }
+
       throw error;
     }
   }

@@ -82,7 +82,8 @@ export default function App() {
   const audioChunksRef = useRef([]);
   const { toast } = useToast();
   const { hotkey } = useHotkey();
-  const { isDragging, handleMouseDown, handleMouseUp, handleClick } = useWindowDrag();
+  const { isDragging, handleMouseDown, handleMouseUp, handleClick } =
+    useWindowDrag();
   const [dragStartPos, setDragStartPos] = useState(null);
   const [hasDragged, setHasDragged] = useState(false);
 
@@ -215,10 +216,18 @@ export default function App() {
       }
     } catch (err) {
       console.error("Local Whisper error:", err);
-      const allowFallback =
-        localStorage.getItem("allowOpenAIFallback") === "true";
 
-      if (allowFallback) {
+      // Check if it's a "No audio detected" error and don't retry
+      if (err.message === "No audio detected") {
+        throw err;
+      }
+
+      // Try fallback to OpenAI API ONLY if enabled AND we're in local mode
+      const allowOpenAIFallback =
+        localStorage.getItem("allowOpenAIFallback") === "true";
+      const isLocalMode = localStorage.getItem("useLocalWhisper") === "true";
+
+      if (allowOpenAIFallback && isLocalMode) {
         toast({
           title: "Fallback Mode",
           description: "Local Whisper failed. Retrying with OpenAI API...",
@@ -226,6 +235,7 @@ export default function App() {
         });
         await processWithOpenAIAPI(audioBlob);
       } else {
+        // No fallback allowed - strict local mode
         throw new Error(`Local Whisper failed: ${err.message}`);
       }
     }
@@ -312,6 +322,56 @@ export default function App() {
       }
     } catch (err) {
       console.error("OpenAI API error:", err);
+
+      // Try fallback to Local Whisper ONLY if enabled AND we're in OpenAI mode
+      const allowLocalFallback =
+        localStorage.getItem("allowLocalFallback") === "true";
+      const isOpenAIMode = localStorage.getItem("useLocalWhisper") !== "true";
+
+      if (allowLocalFallback && isOpenAIMode) {
+        toast({
+          title: "Fallback Mode",
+          description: "OpenAI API failed. Retrying with Local Whisper...",
+          variant: "default",
+        });
+        const fallbackModel =
+          localStorage.getItem("fallbackWhisperModel") || "base";
+        try {
+          const arrayBuffer = await audioBlob.arrayBuffer();
+          const options = { model: fallbackModel };
+          const result = await window.electronAPI.transcribeLocalWhisper(
+            arrayBuffer,
+            options
+          );
+
+          if (result.success && result.text) {
+            let text = AudioManager.cleanTranscription(result.text);
+            if (text) {
+              setTranscript(text);
+              // Paste immediately - don't wait for database save
+              const pastePromise = safePaste(text);
+              // Save to database in parallel
+              window.electronAPI.saveTranscription(text).catch((saveErr) => {
+                console.error("Failed to save transcription:", saveErr);
+              });
+              await pastePromise;
+              return; // Success with fallback
+            }
+          }
+          // If local fallback fails, throw the original OpenAI error
+          throw err;
+        } catch (fallbackError) {
+          console.error("Local fallback also failed:", fallbackError);
+          toast({
+            title: "Both Methods Failed",
+            description:
+              "Both OpenAI API and Local Whisper failed. Please try again.",
+            variant: "destructive",
+          });
+          throw err; // Throw original OpenAI error
+        }
+      }
+
       throw err;
     }
   };
@@ -419,10 +479,11 @@ export default function App() {
             onMouseMove={(e) => {
               if (dragStartPos && !hasDragged) {
                 const distance = Math.sqrt(
-                  Math.pow(e.clientX - dragStartPos.x, 2) + 
-                  Math.pow(e.clientY - dragStartPos.y, 2)
+                  Math.pow(e.clientX - dragStartPos.x, 2) +
+                    Math.pow(e.clientY - dragStartPos.y, 2)
                 );
-                if (distance > 5) { // 5px threshold for drag
+                if (distance > 5) {
+                  // 5px threshold for drag
                   setHasDragged(true);
                 }
               }
