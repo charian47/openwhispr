@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import React, { useState, useCallback, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Card, CardContent } from "./ui/card";
 import {
   RefreshCw,
   Download,
@@ -19,23 +19,19 @@ import WhisperModelPicker from "./WhisperModelPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
+import { useSettings } from "../hooks/useSettings";
+import { useDialogs } from "../hooks/useDialogs";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
-import {
-  getLanguageLabel,
-  getAllReasoningModels,
-  getModelProvider,
-  REASONING_PROVIDERS,
-} from "../utils/languages";
+import { REASONING_PROVIDERS } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
-import type { TranscriptionItem } from "../types/electron";
 
 interface SettingsPageProps {
   onBack: () => void;
 }
 
-type SettingsSection =
+type SettingsSectionType =
   | "transcription"
   | "reasoning"
   | "hotkey"
@@ -44,23 +40,47 @@ type SettingsSection =
 
 export default function SettingsPage({ onBack }: SettingsPageProps) {
   const [activeSection, setActiveSection] =
-    useState<SettingsSection>("transcription");
+    useState<SettingsSectionType>("transcription");
 
-  // Basic settings
-  const [key, setKey] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [useLocalWhisper, setUseLocalWhisper] = useState(false);
-  const [whisperModel, setWhisperModel] = useState("base");
-  const [allowOpenAIFallback, setAllowOpenAIFallback] = useState(false);
-  const [allowLocalFallback, setAllowLocalFallback] = useState(false);
-  const [fallbackWhisperModel, setFallbackWhisperModel] = useState("base");
-  const [preferredLanguage, setPreferredLanguage] = useState("en");
+  // Use custom hooks
+  const {
+    confirmDialog,
+    alertDialog,
+    showConfirmDialog,
+    showAlertDialog,
+    hideConfirmDialog,
+    hideAlertDialog,
+  } = useDialogs();
 
-  // Reasoning model settings
-  const [useReasoningModel, setUseReasoningModel] = useState(true);
-  const [reasoningModel, setReasoningModel] = useState("gpt-3.5-turbo");
-  const [reasoningProvider, setReasoningProvider] = useState("openai");
-  const [anthropicApiKey, setAnthropicApiKey] = useState("");
+  const {
+    useLocalWhisper,
+    whisperModel,
+    allowOpenAIFallback,
+    allowLocalFallback,
+    fallbackWhisperModel,
+    preferredLanguage,
+    useReasoningModel,
+    reasoningModel,
+    reasoningProvider,
+    openaiApiKey,
+    anthropicApiKey,
+    dictationKey,
+    setUseLocalWhisper,
+    setWhisperModel,
+    setAllowOpenAIFallback,
+    setAllowLocalFallback,
+    setFallbackWhisperModel,
+    setPreferredLanguage,
+    setUseReasoningModel,
+    setReasoningModel,
+    setReasoningProvider,
+    setOpenaiApiKey,
+    setAnthropicApiKey,
+    setDictationKey,
+    updateTranscriptionSettings,
+    updateReasoningSettings,
+    updateApiKeys,
+  } = useSettings();
 
   // Update state
   const [currentVersion, setCurrentVersion] = useState<string>("");
@@ -78,85 +98,14 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     releaseNotes?: string;
   }>({});
 
-  // Dialog states
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    title: string;
-    description?: string;
-    onConfirm: () => void;
-    variant?: "default" | "destructive";
-  }>({
-    open: false,
-    title: "",
-    onConfirm: () => {},
-  });
-  const [alertDialog, setAlertDialog] = useState<{
-    open: boolean;
-    title: string;
-    description?: string;
-  }>({
-    open: false,
-    title: "",
-  });
-
-  // Custom hooks
-  const whisperHook = useWhisper(setAlertDialog);
-  const permissionsHook = usePermissions(setAlertDialog);
-  const { pasteFromClipboardWithFallback } = useClipboard(setAlertDialog);
+  const whisperHook = useWhisper(showAlertDialog);
+  const permissionsHook = usePermissions(showAlertDialog);
+  const { pasteFromClipboardWithFallback } = useClipboard(showAlertDialog);
 
   useEffect(() => {
-    // Load saved settings
-    const savedKey = localStorage.getItem("dictationKey");
-    if (savedKey) setKey(savedKey);
-
-    const savedUseLocal = localStorage.getItem("useLocalWhisper") === "true";
-    const savedModel = localStorage.getItem("whisperModel") || "base";
-    const savedAllowOpenAIFallback =
-      localStorage.getItem("allowOpenAIFallback") === "true";
-    const savedAllowLocalFallback =
-      localStorage.getItem("allowLocalFallback") === "true";
-    const savedFallbackModel =
-      localStorage.getItem("fallbackWhisperModel") || "base";
-    const savedLanguage = localStorage.getItem("preferredLanguage") || "en";
-    const savedUseReasoning =
-      localStorage.getItem("useReasoningModel") !== "false"; // Default true
-    const savedReasoningModel =
-      localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
-
-    setUseLocalWhisper(savedUseLocal);
-    setWhisperModel(savedModel);
-    setAllowOpenAIFallback(savedAllowOpenAIFallback);
-    setAllowLocalFallback(savedAllowLocalFallback);
-    setFallbackWhisperModel(savedFallbackModel);
-    setPreferredLanguage(savedLanguage);
-    setUseReasoningModel(savedUseReasoning);
-    setReasoningModel(savedReasoningModel);
-    setReasoningProvider(getModelProvider(savedReasoningModel));
-
-    // Load API keys
-    const loadApiKeys = async () => {
-      try {
-        const envApiKey = await window.electronAPI?.getOpenAIKey();
-        if (envApiKey && envApiKey !== "your_openai_api_key_here") {
-          setApiKey(envApiKey);
-        } else {
-          const savedApiKey = localStorage.getItem("openaiApiKey");
-          if (savedApiKey) setApiKey(savedApiKey);
-        }
-
-        const savedAnthropicKey = localStorage.getItem("anthropicApiKey");
-        if (savedAnthropicKey) setAnthropicApiKey(savedAnthropicKey);
-      } catch (error) {
-        const savedApiKey = localStorage.getItem("openaiApiKey");
-        if (savedApiKey) setApiKey(savedApiKey);
-      }
-    };
-
-    loadApiKeys();
     whisperHook.checkWhisperInstallation();
     whisperHook.setupProgressListener();
 
-    // Initialize update functionality
     const initializeUpdateData = async () => {
       try {
         const versionResult = await window.electronAPI?.getAppVersion();
@@ -171,7 +120,6 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
 
     initializeUpdateData();
 
-    // Set up update event listeners
     if (window.electronAPI) {
       window.electronAPI.onUpdateAvailable?.((event, info) => {
         setUpdateStatus((prev) => ({ ...prev, updateAvailable: true }));
@@ -197,46 +145,18 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
         console.error("Update error:", error);
       });
     }
-  }, []);
+  }, [whisperHook]);
 
-  const saveReasoningSettings = () => {
-    console.log(`🧠 [Settings] 🧠 Saving reasoning settings...`);
-    console.log(`🧠 [Settings] 🧠 useReasoningModel: ${useReasoningModel}`);
-    console.log(`🧠 [Settings] 🧠 reasoningModel: ${reasoningModel}`);
-    console.log(`🧠 [Settings] 🧠 reasoningProvider: ${reasoningProvider}`);
-    console.log(`🧠 [Settings] 🧠 apiKey: ${apiKey ? "SET" : "NOT SET"}`);
-    console.log(
-      `🧠 [Settings] 🧠 anthropicApiKey: ${anthropicApiKey ? "SET" : "NOT SET"}`
-    );
+  const saveReasoningSettings = useCallback(() => {
+    updateReasoningSettings({ useReasoningModel, reasoningModel });
+    updateApiKeys({
+      ...(reasoningProvider === "openai" &&
+        openaiApiKey.trim() && { openaiApiKey }),
+      ...(reasoningProvider === "anthropic" &&
+        anthropicApiKey.trim() && { anthropicApiKey }),
+    });
 
-    localStorage.setItem("useReasoningModel", useReasoningModel.toString());
-    localStorage.setItem("reasoningModel", reasoningModel);
-
-    // Save provider-specific API keys
-    if (reasoningProvider === "openai" && apiKey.trim()) {
-      localStorage.setItem("openaiApiKey", apiKey);
-      console.log(`🧠 [Settings] 🧠 OpenAI API key saved for reasoning`);
-    } else if (reasoningProvider === "anthropic" && anthropicApiKey.trim()) {
-      localStorage.setItem("anthropicApiKey", anthropicApiKey);
-      console.log(`🧠 [Settings] 🧠 Anthropic API key saved for reasoning`);
-    } else {
-      console.log(
-        `🧠 [Settings] ⚠️ No API key provided for ${reasoningProvider}`
-      );
-    }
-
-    console.log(`🧠 [Settings] ✅ Reasoning settings saved successfully`);
-    console.log(
-      `🧠 [Settings] ✅ AI text enhancement: ${
-        useReasoningModel ? "ENABLED" : "DISABLED"
-      }`
-    );
-    console.log(
-      `🧠 [Settings] ✅ Using: ${reasoningProvider} ${reasoningModel}`
-    );
-
-    setAlertDialog({
-      open: true,
+    showAlertDialog({
       title: "Reasoning Settings Saved",
       description: `AI text enhancement ${
         useReasoningModel ? "enabled" : "disabled"
@@ -246,28 +166,33 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
         ]?.name || reasoningProvider
       } ${reasoningModel}`,
     });
-  };
+  }, [
+    useReasoningModel,
+    reasoningModel,
+    reasoningProvider,
+    openaiApiKey,
+    anthropicApiKey,
+    updateReasoningSettings,
+    updateApiKeys,
+    showAlertDialog,
+  ]);
 
-  const saveApiKey = async () => {
+  const saveApiKey = useCallback(async () => {
     try {
-      await window.electronAPI?.saveOpenAIKey(apiKey);
-      localStorage.setItem("openaiApiKey", apiKey);
-      localStorage.setItem("allowLocalFallback", allowLocalFallback.toString());
-      localStorage.setItem("fallbackWhisperModel", fallbackWhisperModel);
+      await window.electronAPI?.saveOpenAIKey(openaiApiKey);
+      updateApiKeys({ openaiApiKey });
+      updateTranscriptionSettings({ allowLocalFallback, fallbackWhisperModel });
 
       try {
-        await window.electronAPI?.createProductionEnvFile(apiKey);
-        setAlertDialog({
-          open: true,
+        await window.electronAPI?.createProductionEnvFile(openaiApiKey);
+        showAlertDialog({
           title: "API Key Saved",
-          description: `OpenAI API key inscribed successfully! Your credentials have been securely recorded for transcription services.${
+          description: `OpenAI API key saved successfully! Your credentials have been securely recorded for transcription services.${
             allowLocalFallback ? " Local Whisper fallback is enabled." : ""
           }`,
         });
       } catch (envError) {
-        console.log("Could not create production .env file:", envError);
-        setAlertDialog({
-          open: true,
+        showAlertDialog({
           title: "API Key Saved",
           description: `OpenAI API key saved successfully and will be available for transcription${
             allowLocalFallback ? " with Local Whisper fallback enabled" : ""
@@ -276,52 +201,30 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
       }
     } catch (error) {
       console.error("Failed to save API key:", error);
-      localStorage.setItem("openaiApiKey", apiKey);
-      localStorage.setItem("allowLocalFallback", allowLocalFallback.toString());
-      localStorage.setItem("fallbackWhisperModel", fallbackWhisperModel);
-      setAlertDialog({
-        open: true,
+      updateApiKeys({ openaiApiKey });
+      updateTranscriptionSettings({ allowLocalFallback, fallbackWhisperModel });
+      showAlertDialog({
         title: "API Key Saved",
         description: "OpenAI API key saved to localStorage (fallback mode)",
       });
     }
-  };
-
-  const saveWhisperSettings = () => {
-    localStorage.setItem("useLocalWhisper", useLocalWhisper.toString());
-    localStorage.setItem("whisperModel", whisperModel);
-    localStorage.setItem("allowOpenAIFallback", allowOpenAIFallback.toString());
-
-    // SECURITY: Only save API key if fallback is enabled and key is provided
-    if (allowOpenAIFallback && apiKey.trim()) {
-      localStorage.setItem("openaiApiKey", apiKey);
-    } else if (!allowOpenAIFallback) {
-      localStorage.removeItem("openaiApiKey");
-    }
-
-    setAlertDialog({
-      open: true,
-      title: "Settings Saved",
-      description: `Whisper settings saved! ${
-        useLocalWhisper
-          ? `Using local model: ${whisperModel}${
-              allowOpenAIFallback ? " with OpenAI fallback" : ""
-            }`
-          : "Using OpenAI API"
-      }`,
-    });
-  };
+  }, [
+    openaiApiKey,
+    allowLocalFallback,
+    fallbackWhisperModel,
+    updateApiKeys,
+    updateTranscriptionSettings,
+    showAlertDialog,
+  ]);
 
   const resetAccessibilityPermissions = () => {
     const message = `🔄 RESET ACCESSIBILITY PERMISSIONS\n\nIf you've rebuilt or reinstalled OpenWispr and automatic inscription isn't functioning, you may have obsolete permissions from the previous version.\n\n📋 STEP-BY-STEP RESTORATION:\n\n1️⃣ Open System Settings (or System Preferences)\n   • macOS Ventura+: Apple Menu → System Settings\n   • Older macOS: Apple Menu → System Preferences\n\n2️⃣ Navigate to Privacy & Security → Accessibility\n\n3️⃣ Look for obsolete OpenWispr entries:\n   • Any entries named "OpenWispr"\n   • Any entries named "Electron"\n   • Any entries with unclear or generic names\n   • Entries pointing to old application locations\n\n4️⃣ Remove ALL obsolete entries:\n   • Select each old entry\n   • Click the minus (-) button\n   • Enter your password if prompted\n\n5️⃣ Add the current OpenWispr:\n   • Click the plus (+) button\n   • Navigate to and select the CURRENT OpenWispr app\n   • Ensure the checkbox is ENABLED\n\n6️⃣ Restart OpenWispr completely\n\n💡 This is very common during development when rebuilding applications!\n\nClick OK when you're ready to open System Settings.`;
 
-    setConfirmDialog({
-      open: true,
+    showConfirmDialog({
       title: "Reset Accessibility Permissions",
       description: message,
       onConfirm: () => {
-        setAlertDialog({
-          open: true,
+        showAlertDialog({
           title: "Opening System Settings",
           description:
             "Opening System Settings... Look for the Accessibility section under Privacy & Security.",
@@ -337,17 +240,14 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
 
   const saveKey = async () => {
     try {
-      localStorage.setItem("dictationKey", key);
-      await window.electronAPI?.updateHotkey(key);
-      setAlertDialog({
-        open: true,
+      await window.electronAPI?.updateHotkey(dictationKey);
+      showAlertDialog({
         title: "Key Saved",
-        description: `Dictation key inscribed: ${key}`,
+        description: `Dictation key saved: ${dictationKey}`,
       });
     } catch (error) {
       console.error("Failed to update hotkey:", error);
-      setAlertDialog({
-        open: true,
+      showAlertDialog({
         title: "Error",
         description: `Failed to update hotkey: ${error.message}`,
       });
@@ -356,18 +256,26 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
 
   const sidebarItems = [
     {
-      id: "transcription" as SettingsSection,
+      id: "transcription" as SettingsSectionType,
       label: "Transcription Setup",
       icon: Settings,
     },
     {
-      id: "reasoning" as SettingsSection,
+      id: "reasoning" as SettingsSectionType,
       label: "Reasoning Setup",
       icon: Brain,
     },
-    { id: "hotkey" as SettingsSection, label: "Hotkey Setup", icon: Keyboard },
-    { id: "updates" as SettingsSection, label: "App Updates", icon: RefreshCw },
-    { id: "about" as SettingsSection, label: "About", icon: Info },
+    {
+      id: "hotkey" as SettingsSectionType,
+      label: "Hotkey Setup",
+      icon: Keyboard,
+    },
+    {
+      id: "updates" as SettingsSectionType,
+      label: "App Updates",
+      icon: RefreshCw,
+    },
+    { id: "about" as SettingsSectionType, label: "About", icon: Info },
   ];
 
   const renderSectionContent = () => {
@@ -383,12 +291,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                 useLocalWhisper={useLocalWhisper}
                 setUseLocalWhisper={(value) => {
                   setUseLocalWhisper(value);
-                  localStorage.setItem("useLocalWhisper", value.toString());
-                  console.log(
-                    `🔧 [Settings] Transcription mode switched to: ${
-                      value ? "LOCAL" : "OPENAI API"
-                    }`
-                  );
+                  updateTranscriptionSettings({ useLocalWhisper: value });
                 }}
               />
             </div>
@@ -397,8 +300,8 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
               <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                 <h4 className="font-medium text-blue-900">OpenAI API Setup</h4>
                 <ApiKeyInput
-                  apiKey={apiKey}
-                  setApiKey={setApiKey}
+                  apiKey={openaiApiKey}
+                  setApiKey={setOpenaiApiKey}
                   helpText="Get your API key from platform.openai.com"
                 />
               </div>
@@ -423,7 +326,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                 value={preferredLanguage}
                 onChange={(value) => {
                   setPreferredLanguage(value);
-                  localStorage.setItem("preferredLanguage", value);
+                  updateTranscriptionSettings({ preferredLanguage: value });
                 }}
                 className="w-full"
               />
@@ -431,50 +334,17 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
 
             <Button
               onClick={() => {
-                console.log(
-                  `💾 [Settings] 💾 Saving transcription settings...`
-                );
-                console.log(
-                  `💾 [Settings] 💾 useLocalWhisper: ${useLocalWhisper}`
-                );
-                console.log(`💾 [Settings] 💾 whisperModel: ${whisperModel}`);
-                console.log(
-                  `💾 [Settings] 💾 preferredLanguage: ${preferredLanguage}`
-                );
-                console.log(
-                  `💾 [Settings] 💾 apiKey: ${apiKey ? "SET" : "NOT SET"}`
-                );
+                updateTranscriptionSettings({
+                  useLocalWhisper,
+                  whisperModel,
+                  preferredLanguage,
+                });
 
-                localStorage.setItem(
-                  "useLocalWhisper",
-                  useLocalWhisper.toString()
-                );
-                localStorage.setItem("whisperModel", whisperModel);
-                localStorage.setItem("preferredLanguage", preferredLanguage);
-                if (!useLocalWhisper && apiKey.trim()) {
-                  localStorage.setItem("openaiApiKey", apiKey);
-                  console.log(`💾 [Settings] 💾 OpenAI API key saved`);
-                } else if (useLocalWhisper) {
-                  console.log(
-                    `💾 [Settings] 💾 Local Whisper mode - no API key needed`
-                  );
-                } else {
-                  console.log(
-                    `💾 [Settings] ⚠️ No API key provided for OpenAI mode`
-                  );
+                if (!useLocalWhisper && openaiApiKey.trim()) {
+                  updateApiKeys({ openaiApiKey });
                 }
 
-                console.log(
-                  `💾 [Settings] ✅ Transcription settings saved successfully`
-                );
-                console.log(
-                  `💾 [Settings] ✅ Mode set to: ${
-                    useLocalWhisper ? "LOCAL WHISPER" : "OPENAI API"
-                  }`
-                );
-
-                setAlertDialog({
-                  open: true,
+                showAlertDialog({
                   title: "Settings Saved",
                   description: `Transcription mode: ${
                     useLocalWhisper ? "Local Whisper" : "OpenAI API"
@@ -518,15 +388,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                     onChange={(e) => {
                       const enabled = e.target.checked;
                       setUseReasoningModel(enabled);
-                      localStorage.setItem(
-                        "useReasoningModel",
-                        enabled.toString()
-                      );
-                      console.log(
-                        `🔧 [Settings] AI text enhancement ${
-                          enabled ? "ENABLED" : "DISABLED"
-                        }`
-                      );
+                      updateReasoningSettings({ useReasoningModel: enabled });
                     }}
                   />
                   <div
@@ -551,17 +413,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                   <select
                     value={reasoningProvider}
                     onChange={(e) => {
-                      const newProvider = e.target.value;
-                      setReasoningProvider(newProvider);
-
-                      // Set default model for the provider
-                      const providerModels =
-                        REASONING_PROVIDERS[
-                          newProvider as keyof typeof REASONING_PROVIDERS
-                        ]?.models;
-                      if (providerModels && providerModels.length > 0) {
-                        setReasoningModel(providerModels[0].value);
-                      }
+                      setReasoningProvider(e.target.value);
                     }}
                     className="w-full text-sm border border-blue-300 rounded-md p-2 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   >
@@ -601,8 +453,8 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                       OpenAI API Key
                     </h4>
                     <ApiKeyInput
-                      apiKey={apiKey}
-                      setApiKey={setApiKey}
+                      apiKey={openaiApiKey}
+                      setApiKey={setOpenaiApiKey}
                       helpText="Same as your transcription API key"
                     />
                   </div>
@@ -662,11 +514,15 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
               <h4 className="font-medium text-blue-900">Activation Key</h4>
               <Input
                 placeholder="Current: ` (backtick)"
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
+                value={dictationKey}
+                onChange={(e) => setDictationKey(e.target.value)}
                 className="text-center text-lg font-mono"
               />
-              <Button onClick={saveKey} disabled={!key.trim()} size="sm">
+              <Button
+                onClick={saveKey}
+                disabled={!dictationKey.trim()}
+                size="sm"
+              >
                 Save Hotkey
               </Button>
             </div>
@@ -754,21 +610,18 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                         ...prev,
                         updateAvailable: true,
                       }));
-                      setAlertDialog({
-                        open: true,
+                      showAlertDialog({
                         title: "Update Available",
                         description: `Update available: v${result.version}`,
                       });
                     } else {
-                      setAlertDialog({
-                        open: true,
+                      showAlertDialog({
                         title: "No Updates",
                         description: result?.message || "No updates available",
                       });
                     }
                   } catch (error: any) {
-                    setAlertDialog({
-                      open: true,
+                    showAlertDialog({
                       title: "Update Check Failed",
                       description: `Error checking for updates: ${error.message}`,
                     });
@@ -803,15 +656,13 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                           ...prev,
                           updateDownloaded: true,
                         }));
-                        setAlertDialog({
-                          open: true,
+                        showAlertDialog({
                           title: "Update Downloaded",
                           description:
                             "Update downloaded successfully! You can now install it.",
                         });
                       } catch (error: any) {
-                        setAlertDialog({
-                          open: true,
+                        showAlertDialog({
                           title: "Download Failed",
                           description: `Error downloading update: ${error.message}`,
                         });
@@ -842,8 +693,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                     try {
                       await window.electronAPI?.installUpdate();
                     } catch (error: any) {
-                      setAlertDialog({
-                        open: true,
+                      showAlertDialog({
                         title: "Install Failed",
                         description: `Error installing update: ${error.message}`,
                       });
@@ -931,8 +781,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
             <div className="border-t border-gray-200 pt-4 space-y-3">
               <Button
                 onClick={() => {
-                  setConfirmDialog({
-                    open: true,
+                  showConfirmDialog({
                     title: "Reset Onboarding",
                     description:
                       "Are you sure you want to reset the onboarding process? This will clear your setup and show the welcome flow again.",
@@ -952,8 +801,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
 
               <Button
                 onClick={() => {
-                  setConfirmDialog({
-                    open: true,
+                  showConfirmDialog({
                     title: "⚠️ DANGER: Cleanup App Data",
                     description:
                       "This will permanently delete ALL OpenWispr data including:\n\n• Database and transcriptions\n• Local storage settings\n• Downloaded Whisper models\n• Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone. Are you sure?",
@@ -961,8 +809,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                       window.electronAPI
                         ?.cleanupApp()
                         .then(() => {
-                          setAlertDialog({
-                            open: true,
+                          showAlertDialog({
                             title: "Cleanup Completed",
                             description:
                               "✅ Cleanup completed! All app data has been removed.",
@@ -972,8 +819,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
                           }, 1000);
                         })
                         .catch((error) => {
-                          setAlertDialog({
-                            open: true,
+                          showAlertDialog({
                             title: "Cleanup Failed",
                             description: `❌ Cleanup failed: ${error.message}`,
                           });
@@ -1001,7 +847,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
     <div className="min-h-screen bg-white">
       <ConfirmDialog
         open={confirmDialog.open}
-        onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
+        onOpenChange={(open) => !open && hideConfirmDialog()}
         title={confirmDialog.title}
         description={confirmDialog.description}
         onConfirm={confirmDialog.onConfirm}
@@ -1010,7 +856,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
 
       <AlertDialog
         open={alertDialog.open}
-        onOpenChange={(open) => setAlertDialog((prev) => ({ ...prev, open }))}
+        onOpenChange={(open) => !open && hideAlertDialog()}
         title={alertDialog.title}
         description={alertDialog.description}
         onOk={() => {}}

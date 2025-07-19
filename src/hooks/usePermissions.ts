@@ -5,7 +5,6 @@ export interface UsePermissionsReturn {
   micPermissionGranted: boolean;
   accessibilityPermissionGranted: boolean;
 
-  // Functions
   requestMicPermission: () => Promise<void>;
   testAccessibilityPermission: () => Promise<void>;
   setMicPermissionGranted: (granted: boolean) => void;
@@ -13,15 +12,11 @@ export interface UsePermissionsReturn {
 }
 
 export interface UsePermissionsProps {
-  setAlertDialog: (dialog: {
-    open: boolean;
-    title: string;
-    description?: string;
-  }) => void;
+  showAlertDialog: (dialog: { title: string; description?: string }) => void;
 }
 
 export const usePermissions = (
-  setAlertDialog?: UsePermissionsProps["setAlertDialog"]
+  showAlertDialog?: UsePermissionsProps["showAlertDialog"]
 ): UsePermissionsReturn => {
   const [micPermissionGranted, setMicPermissionGranted] = useState(false);
   const [accessibilityPermissionGranted, setAccessibilityPermissionGranted] =
@@ -33,9 +28,8 @@ export const usePermissions = (
       setMicPermissionGranted(true);
     } catch (err) {
       console.error("Microphone permission denied:", err);
-      if (setAlertDialog) {
-        setAlertDialog({
-          open: true,
+      if (showAlertDialog) {
+        showAlertDialog({
           title: "Microphone Permission Required",
           description:
             "Please grant microphone permissions to use voice dictation.",
@@ -44,15 +38,14 @@ export const usePermissions = (
         alert("Please grant microphone permissions to use voice dictation.");
       }
     }
-  }, [setAlertDialog]);
+  }, [showAlertDialog]);
 
   const testAccessibilityPermission = useCallback(async () => {
     try {
       await window.electronAPI.pasteText("OpenWispr accessibility test");
       setAccessibilityPermissionGranted(true);
-      if (setAlertDialog) {
-        setAlertDialog({
-          open: true,
+      if (showAlertDialog) {
+        showAlertDialog({
           title: "✅ Accessibility Test Successful",
           description:
             "Accessibility permissions working! Check if the test text appeared in another app.",
@@ -64,9 +57,8 @@ export const usePermissions = (
       }
     } catch (err) {
       console.error("Accessibility permission test failed:", err);
-      if (setAlertDialog) {
-        setAlertDialog({
-          open: true,
+      if (showAlertDialog) {
+        showAlertDialog({
           title: "❌ Accessibility Permissions Needed",
           description:
             "Please grant accessibility permissions in System Settings to enable automatic text pasting.",
@@ -77,7 +69,7 @@ export const usePermissions = (
         );
       }
     }
-  }, [setAlertDialog]);
+  }, [showAlertDialog]);
 
   return {
     micPermissionGranted,

@@ -60,7 +60,7 @@ export const LANGUAGE_OPTIONS = [
 ];
 
 export const getLanguageLabel = (code: string): string => {
-  const option = LANGUAGE_OPTIONS.find(lang => lang.value === code);
+  const option = LANGUAGE_OPTIONS.find((lang) => lang.value === code);
   return option?.label || code;
 };
 
@@ -69,41 +69,53 @@ export const REASONING_PROVIDERS = {
   openai: {
     name: "OpenAI",
     models: [
-      { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo", description: "Fast and efficient" },
-      { value: "gpt-4o-mini", label: "GPT-4o Mini", description: "Higher quality" },
-    ]
+      {
+        value: "gpt-3.5-turbo",
+        label: "GPT-3.5 Turbo",
+        description: "Fast and efficient",
+      },
+      {
+        value: "gpt-4o-mini",
+        label: "GPT-4o Mini",
+        description: "Higher quality",
+      },
+    ],
   },
   anthropic: {
     name: "Anthropic",
     models: [
-      { value: "claude-3-haiku-20240307", label: "Claude 3 Haiku", description: "Fast and affordable" },
-      { value: "claude-3-sonnet-20240229", label: "Claude 3 Sonnet", description: "Balanced performance" },
-    ]
-  }
+      {
+        value: "claude-3-haiku-20240307",
+        label: "Claude 3 Haiku",
+        description: "Fast and affordable",
+      },
+      {
+        value: "claude-3-sonnet-20240229",
+        label: "Claude 3 Sonnet",
+        description: "Balanced performance",
+      },
+    ],
+  },
 };
 
-// Get all available models across providers
 export const getAllReasoningModels = () => {
   return Object.entries(REASONING_PROVIDERS).flatMap(([providerId, provider]) =>
-    provider.models.map(model => ({
+    provider.models.map((model) => ({
       ...model,
       provider: providerId,
-      fullLabel: `${provider.name} ${model.label}`
+      fullLabel: `${provider.name} ${model.label}`,
     }))
   );
 };
 
-// Legacy compatibility - returns only OpenAI models for now
-export const REASONING_MODEL_OPTIONS = REASONING_PROVIDERS.openai.models;
-
 export const getReasoningModelLabel = (modelId: string): string => {
   const allModels = getAllReasoningModels();
-  const model = allModels.find(m => m.value === modelId);
+  const model = allModels.find((m) => m.value === modelId);
   return model?.fullLabel || modelId;
 };
 
 export const getModelProvider = (modelId: string): string => {
   const allModels = getAllReasoningModels();
-  const model = allModels.find(m => m.value === modelId);
-  return model?.provider || 'openai';
+  const model = allModels.find((m) => m.value === modelId);
+  return model?.provider || "openai";
 };

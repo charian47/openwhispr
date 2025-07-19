@@ -8,24 +8,17 @@ export interface UseWhisperReturn {
   installingWhisper: boolean;
   installProgress: string;
 
-  // Functions
   checkWhisperInstallation: () => Promise<void>;
   installWhisper: () => Promise<void>;
-
-  // Setup progress listener
   setupProgressListener: () => void;
 }
 
 export interface UseWhisperProps {
-  setAlertDialog: (dialog: {
-    open: boolean;
-    title: string;
-    description?: string;
-  }) => void;
+  showAlertDialog: (dialog: { title: string; description?: string }) => void;
 }
 
 export const useWhisper = (
-  setAlertDialog?: UseWhisperProps["setAlertDialog"]
+  showAlertDialog?: UseWhisperProps["showAlertDialog"]
 ): UseWhisperReturn => {
   const [whisperInstalled, setWhisperInstalled] = useState(false);
   const [checkingWhisper, setCheckingWhisper] = useState(false);
@@ -58,9 +51,8 @@ export const useWhisper = (
         setWhisperInstalled(true);
         setInstallProgress("Installation complete!");
       } else {
-        if (setAlertDialog) {
-          setAlertDialog({
-            open: true,
+        if (showAlertDialog) {
+          showAlertDialog({
             title: "❌ Whisper Installation Failed",
             description: `Failed to install Whisper: ${result.message}`,
           });
@@ -70,9 +62,8 @@ export const useWhisper = (
       }
     } catch (error) {
       console.error("Error installing Whisper:", error);
-      if (setAlertDialog) {
-        setAlertDialog({
-          open: true,
+      if (showAlertDialog) {
+        showAlertDialog({
           title: "❌ Whisper Installation Failed",
           description: `Failed to install Whisper: ${error}`,
         });
@@ -83,7 +74,7 @@ export const useWhisper = (
       setInstallingWhisper(false);
       setTimeout(() => setInstallProgress(""), 2000); // Clear progress after 2 seconds
     }
-  }, [setAlertDialog]);
+  }, [showAlertDialog]);
 
   const setupProgressListener = useCallback(() => {
     window.electronAPI.onWhisperInstallProgress((_, data) => {

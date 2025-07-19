@@ -6,6 +6,7 @@ import SettingsPage from "./SettingsPage";
 import TitleBar from "./TitleBar";
 import TranscriptionItem from "./ui/TranscriptionItem";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
+import { useDialogs } from "../hooks/useDialogs";
 import { useHotkey } from "../hooks/useHotkey";
 import type { TranscriptionItem as TranscriptionItemType } from "../types/electron";
 
@@ -19,25 +20,15 @@ export default function ControlPanel() {
     updateDownloaded: false,
     isDevelopment: false,
   });
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    title: string;
-    description?: string;
-    onConfirm: () => void;
-    variant?: "default" | "destructive";
-  }>({
-    open: false,
-    title: "",
-    onConfirm: () => {},
-  });
-  const [alertDialog, setAlertDialog] = useState<{
-    open: boolean;
-    title: string;
-    description?: string;
-  }>({
-    open: false,
-    title: "",
-  });
+
+  const {
+    confirmDialog,
+    alertDialog,
+    showConfirmDialog,
+    showAlertDialog,
+    hideConfirmDialog,
+    hideAlertDialog,
+  } = useDialogs();
 
   useEffect(() => {
     // Load transcription history from database
@@ -83,8 +74,7 @@ export default function ControlPanel() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setAlertDialog({
-        open: true,
+      showAlertDialog({
         title: "Copied!",
         description: "Text copied to your clipboard!",
       });
@@ -92,8 +82,7 @@ export default function ControlPanel() {
   };
 
   const clearHistory = async () => {
-    setConfirmDialog({
-      open: true,
+    showConfirmDialog({
       title: "Clear History",
       description:
         "Are you certain you wish to clear all inscribed records? This action cannot be undone.",
@@ -101,14 +90,12 @@ export default function ControlPanel() {
         try {
           const result = await window.electronAPI.clearTranscriptions();
           setHistory([]);
-          setAlertDialog({
-            open: true,
+          showAlertDialog({
             title: "History Cleared",
             description: `Successfully cleared ${result.cleared} transcriptions from your chronicles.`,
           });
         } catch (error) {
-          setAlertDialog({
-            open: true,
+          showAlertDialog({
             title: "Error",
             description: "Failed to clear history. Please try again.",
           });
@@ -119,8 +106,7 @@ export default function ControlPanel() {
   };
 
   const deleteTranscription = async (id: number) => {
-    setConfirmDialog({
-      open: true,
+    showConfirmDialog({
       title: "Delete Transcription",
       description:
         "Are you certain you wish to remove this inscription from your records?",
@@ -132,8 +118,7 @@ export default function ControlPanel() {
             setHistory((prev) => prev.filter((item) => item.id !== id));
             console.log(`🗑️ Deleted transcription ${id}`);
           } else {
-            setAlertDialog({
-              open: true,
+            showAlertDialog({
               title: "Delete Failed",
               description:
                 "Failed to delete transcription. It may have already been removed.",
@@ -141,8 +126,7 @@ export default function ControlPanel() {
           }
         } catch (error) {
           console.error("❌ Failed to delete transcription:", error);
-          setAlertDialog({
-            open: true,
+          showAlertDialog({
             title: "Delete Failed",
             description: "Failed to delete transcription. Please try again.",
           });
@@ -161,7 +145,7 @@ export default function ControlPanel() {
     <div className="min-h-screen bg-white">
       <ConfirmDialog
         open={confirmDialog.open}
-        onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
+        onOpenChange={hideConfirmDialog}
         title={confirmDialog.title}
         description={confirmDialog.description}
         onConfirm={confirmDialog.onConfirm}
@@ -170,7 +154,7 @@ export default function ControlPanel() {
 
       <AlertDialog
         open={alertDialog.open}
-        onOpenChange={(open) => setAlertDialog((prev) => ({ ...prev, open }))}
+        onOpenChange={hideAlertDialog}
         title={alertDialog.title}
         description={alertDialog.description}
         onOk={() => {}}

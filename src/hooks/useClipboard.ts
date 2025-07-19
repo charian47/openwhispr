@@ -8,15 +8,11 @@ export interface UseClipboardReturn {
 }
 
 export interface UseClipboardProps {
-  setAlertDialog: (dialog: {
-    open: boolean;
-    title: string;
-    description?: string;
-  }) => void;
+  showAlertDialog: (dialog: { title: string; description?: string }) => void;
 }
 
 export const useClipboard = (
-  setAlertDialog?: UseClipboardProps["setAlertDialog"]
+  showAlertDialog?: UseClipboardProps["showAlertDialog"]
 ): UseClipboardReturn => {
   const pasteFromClipboard = useCallback(
     async (setter: (value: string) => void) => {
@@ -59,9 +55,8 @@ export const useClipboard = (
         console.error("Web clipboard also failed:", err);
       }
 
-      if (setAlertDialog) {
-        setAlertDialog({
-          open: true,
+      if (showAlertDialog) {
+        showAlertDialog({
           title: "Clipboard Paste Failed",
           description:
             "Could not paste from clipboard. Please try typing or using Cmd+V/Ctrl+V.",
@@ -72,7 +67,7 @@ export const useClipboard = (
         );
       }
     },
-    [setAlertDialog]
+    [showAlertDialog]
   );
 
   return {

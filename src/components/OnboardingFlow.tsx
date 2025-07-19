@@ -25,10 +25,13 @@ import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
 import StepProgress from "./ui/StepProgress";
 import { AlertDialog } from "./ui/dialog";
+import { useLocalStorage } from "../hooks/useLocalStorage";
+import { useDialogs } from "../hooks/useDialogs";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
-import { getLanguageLabel, REASONING_MODEL_OPTIONS, getReasoningModelLabel } from "../utils/languages";
+import { useSettings } from "../hooks/useSettings";
+import { getLanguageLabel, getReasoningModelLabel } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
 
 interface OnboardingFlowProps {
@@ -36,42 +39,41 @@ interface OnboardingFlowProps {
 }
 
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
-  const [currentStep, setCurrentStep] = useState(() => {
-    // Load the current step from localStorage on component mount
-    const savedStep = localStorage.getItem("onboardingCurrentStep");
-    return savedStep ? parseInt(savedStep, 10) : 0;
-  });
-  const [useLocalWhisper, setUseLocalWhisper] = useState(() => {
-    // Load saved setting or default to false
-    const saved = localStorage.getItem("useLocalWhisper");
-    return saved === "true";
-  });
-  const [apiKey, setApiKey] = useState("");
-  const [whisperModel, setWhisperModel] = useState("base");
-  const [hotkey, setHotkey] = useState("`");
-  const [preferredLanguage, setPreferredLanguage] = useState(() => {
-    // Load saved language or default to English
-    const saved = localStorage.getItem("preferredLanguage");
-    return saved || "en";
-  });
-  // Reasoning model is enabled by default (configured in settings)
-  const useReasoningModel = true;
-  const reasoningModel = "gpt-3.5-turbo";
+  const [currentStep, setCurrentStep, removeCurrentStep] = useLocalStorage(
+    "onboardingCurrentStep",
+    0,
+    {
+      serialize: String,
+      deserialize: (value) => parseInt(value, 10),
+    }
+  );
 
-  const [alertDialog, setAlertDialog] = useState<{
-    open: boolean;
-    title: string;
-    description?: string;
-  }>({
-    open: false,
-    title: "",
-  });
+  const {
+    useLocalWhisper,
+    whisperModel,
+    preferredLanguage,
+    useReasoningModel,
+    reasoningModel,
+    openaiApiKey,
+    dictationKey,
+    setUseLocalWhisper,
+    setWhisperModel,
+    setPreferredLanguage,
+    setOpenaiApiKey,
+    setDictationKey,
+    updateTranscriptionSettings,
+    updateReasoningSettings,
+    updateApiKeys,
+  } = useSettings();
+
+  const [apiKey, setApiKey] = useState(openaiApiKey);
+  const [hotkey, setHotkey] = useState(dictationKey || "`");
+  const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const practiceTextareaRef = useRef<HTMLInputElement>(null);
 
-  // Use our custom hooks
-  const whisperHook = useWhisper(setAlertDialog);
-  const permissionsHook = usePermissions(setAlertDialog);
-  const { pasteFromClipboard } = useClipboard(setAlertDialog);
+  const whisperHook = useWhisper(showAlertDialog);
+  const permissionsHook = usePermissions(showAlertDialog);
+  const { pasteFromClipboard } = useClipboard(showAlertDialog);
 
   const steps = [
     { title: "Welcome", icon: Sparkles },
@@ -84,14 +86,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   ];
 
   useEffect(() => {
-    // Set up progress listeners
     whisperHook.setupProgressListener();
   }, [whisperHook]);
 
-  // Helper function to update processing mode and save immediately
   const updateProcessingMode = (useLocal: boolean) => {
-    setUseLocalWhisper(useLocal);
-    localStorage.setItem("useLocalWhisper", useLocal.toString());
+    updateTranscriptionSettings({ useLocalWhisper: useLocal });
   };
 
   useEffect(() => {
@@ -102,13 +101,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   }, [currentStep]);
 
-  const saveSettings = async () => {
-    localStorage.setItem("useLocalWhisper", useLocalWhisper.toString());
-    localStorage.setItem("whisperModel", whisperModel);
-    localStorage.setItem("dictationKey", hotkey);
-    localStorage.setItem("preferredLanguage", preferredLanguage);
-    localStorage.setItem("useReasoningModel", useReasoningModel.toString());
-    localStorage.setItem("reasoningModel", reasoningModel);
+  const saveSettings = useCallback(async () => {
+    updateTranscriptionSettings({ whisperModel, preferredLanguage });
+    setDictationKey(hotkey);
+
     localStorage.setItem(
       "micPermissionGranted",
       permissionsHook.micPermissionGranted.toString()
@@ -119,42 +115,50 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     );
     localStorage.setItem("onboardingCompleted", "true");
 
-    if (!useLocalWhisper && apiKey) {
+    if (!useLocalWhisper && apiKey.trim()) {
       await window.electronAPI.saveOpenAIKey(apiKey);
-      localStorage.setItem("openaiApiKey", apiKey);
+      updateApiKeys({ openaiApiKey: apiKey });
     }
-  };
+  }, [
+    whisperModel,
+    hotkey,
+    preferredLanguage,
+    permissionsHook.micPermissionGranted,
+    permissionsHook.accessibilityPermissionGranted,
+    useLocalWhisper,
+    apiKey,
+    updateTranscriptionSettings,
+    updateApiKeys,
+    setDictationKey,
+  ]);
 
-  const nextStep = () => {
+  const nextStep = useCallback(() => {
     if (currentStep < steps.length - 1) {
       const newStep = currentStep + 1;
       setCurrentStep(newStep);
-      localStorage.setItem("onboardingCurrentStep", newStep.toString());
 
       // Show dictation panel when moving from permissions step (3) to hotkey step (4)
       if (currentStep === 3 && newStep === 4) {
-        // Show dictation panel after permissions are granted
         if (window.electronAPI?.showDictationPanel) {
           window.electronAPI.showDictationPanel();
         }
       }
     }
-  };
+  }, [currentStep, setCurrentStep, steps.length]);
 
-  const prevStep = () => {
+  const prevStep = useCallback(() => {
     if (currentStep > 0) {
       const newStep = currentStep - 1;
       setCurrentStep(newStep);
-      localStorage.setItem("onboardingCurrentStep", newStep.toString());
     }
-  };
+  }, [currentStep, setCurrentStep]);
 
-  const finishOnboarding = async () => {
+  const finishOnboarding = useCallback(async () => {
     await saveSettings();
     // Clear the onboarding step since we're done
-    localStorage.removeItem("onboardingCurrentStep");
+    removeCurrentStep();
     onComplete();
-  };
+  }, [saveSettings, removeCurrentStep, onComplete]);
 
   const renderStep = () => {
     switch (currentStep) {
@@ -351,7 +355,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     <li>5. Copy and paste it here</li>
                   </ol>
                 </div>
-                
               </div>
             )}
 
@@ -366,8 +369,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <LanguageSelector
                 value={preferredLanguage}
                 onChange={(value) => {
-                  setPreferredLanguage(value);
-                  localStorage.setItem("preferredLanguage", value);
+                  updateTranscriptionSettings({ preferredLanguage: value });
                 }}
                 className="w-full"
               />
@@ -717,7 +719,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     >
       <AlertDialog
         open={alertDialog.open}
-        onOpenChange={(open) => setAlertDialog((prev) => ({ ...prev, open }))}
+        onOpenChange={(open) => !open && hideAlertDialog()}
         title={alertDialog.title}
         description={alertDialog.description}
         onOk={() => {}}
