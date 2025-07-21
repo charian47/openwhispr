@@ -1,33 +1,28 @@
 import { getModelProvider } from "../utils/languages.ts";
 import { getAgentName } from "../utils/agentName.ts";
 
-const getReasoningPrompt = (text, agentName) => {
-  const hasAgentReference =
-    agentName &&
-    (text.toLowerCase().includes(`hey ${agentName.toLowerCase()}`) ||
-      text.toLowerCase().includes(agentName.toLowerCase()));
-
-  if (hasAgentReference) {
-    return `You are ${agentName}, an AI text formatting assistant. The user has addressed you by name and is giving you specific instructions to process their text.
+// Default prompts (fallback if no custom prompts are saved)
+const DEFAULT_PROMPTS = {
+  agent: `You are {{agentName}}, an AI text formatting assistant. The user has addressed you by name and is giving you specific instructions to process their text.
 
 Your role:
-1. When addressed as "${agentName}" or "Hey ${agentName}", you are being given instructions about how to format or process text
+1. When addressed as "{{agentName}}" or "Hey {{agentName}}", you are being given instructions about how to format or process text
 2. Look for commands like:
-   - "${agentName}, make this more professional"
-   - "${agentName}, format this as a list"
-   - "${agentName}, write an email about..."
-   - "${agentName}, convert this to bullet points"
+   - "{{agentName}}, make this more professional"
+   - "{{agentName}}, format this as a list"
+   - "{{agentName}}, write an email about..."
+   - "{{agentName}}, convert this to bullet points"
 3. Follow the user's formatting instructions while preserving their intent
 4. If asked to write content, create it based on their request
-5. Remove the agent name references from the final output (don't include "Hey ${agentName}" in your response)
+5. Remove the agent name references from the final output (don't include "Hey {{agentName}}" in your response)
 6. For editing commands, apply the requested changes to the text that follows
 
 Transcript with instructions:
 "{{text}}"
 
-Processed text:`;
-  } else {
-    return `You are a text formatting assistant. Your job is to clean up and format voice-to-text transcriptions while preserving the speaker's natural tone and intent.
+Processed text:`,
+  
+  regular: `You are a text formatting assistant. Your job is to clean up and format voice-to-text transcriptions while preserving the speaker's natural tone and intent.
 
 Rules:
 1. If the speaker gives instructions like "scratch that", "ignore that", "delete the previous part", "never mind", or similar - follow them and remove the referenced content
@@ -40,8 +35,35 @@ Rules:
 Transcript to format:
 "{{text}}"
 
-Formatted text:`;
+Formatted text:`
+};
+
+const getReasoningPrompt = (text, agentName) => {
+  // Try to load custom prompts from localStorage
+  let customPrompts;
+  try {
+    const saved = localStorage.getItem("customPrompts");
+    customPrompts = saved ? JSON.parse(saved) : null;
+  } catch (error) {
+    console.warn("Failed to load custom prompts, using defaults:", error);
+    customPrompts = null;
   }
+
+  // Use custom prompts if available, otherwise use defaults
+  const prompts = customPrompts || DEFAULT_PROMPTS;
+
+  const hasAgentReference =
+    agentName &&
+    (text.toLowerCase().includes(`hey ${agentName.toLowerCase()}`) ||
+      text.toLowerCase().includes(agentName.toLowerCase()));
+
+  // Get the appropriate prompt template
+  const promptTemplate = hasAgentReference ? prompts.agent : prompts.regular;
+  
+  // Replace placeholders with actual values
+  return promptTemplate
+    .replace(/\{\{agentName\}\}/g, agentName)
+    .replace(/\{\{text\}\}/g, text);
 };
 
 class ReasoningService {
