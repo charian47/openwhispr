@@ -165,6 +165,11 @@ declare global {
 
       // Settings management (used by OnboardingFlow but not in preload.js)
       saveSettings?: (settings: SaveSettings) => Promise<void>;
+
+      // External URL operations
+      openExternal: (
+        url: string
+      ) => Promise<{ success: boolean; error?: string }>;
     };
   }
 }

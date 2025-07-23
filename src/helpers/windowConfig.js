@@ -22,8 +22,8 @@ const MAIN_WINDOW_CONFIG = {
 
 // Control panel window configuration
 const CONTROL_PANEL_CONFIG = {
-  width: 800,
-  height: 700,
+  width: 1200,
+  height: 800,
   webPreferences: {
     preload: path.join(__dirname, "..", "..", "preload.js"),
     nodeIntegration: false,
@@ -45,6 +45,7 @@ const CONTROL_PANEL_CONFIG = {
   resizable: true,
   show: false,
   titleBarStyle: "hiddenInset",
+  trafficLightPosition: { x: 20, y: 20 },
   frame: false,
   transparent: false,
   backgroundColor: "#ffffff",

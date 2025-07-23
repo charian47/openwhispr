@@ -81,4 +81,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Audio event listeners
   onNoAudioDetected: (callback) =>
     ipcRenderer.on("no-audio-detected", callback),
+
+  // External link opener
+  openExternal: (url) => ipcRenderer.invoke("open-external", url),
 });

@@ -34,6 +34,7 @@ import { useClipboard } from "../hooks/useClipboard";
 import { useSettings } from "../hooks/useSettings";
 import { getLanguageLabel, getReasoningModelLabel } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
+import InteractiveKeyboard from "./ui/Keyboard";
 import { setAgentName as saveAgentName } from "../utils/agentName";
 
 interface OnboardingFlowProps {
@@ -464,23 +465,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="font-medium text-gray-900 mb-3">
-                  Popular Choices:
+                  Click any key to select it:
                 </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {["`", "F1", "F2", "F3", "F4"].map((key) => (
-                    <button
-                      key={key}
-                      onClick={() => setHotkey(key)}
-                      className={`p-2 text-sm font-mono rounded border transition-all ${
-                        hotkey === key
-                          ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                          : "border-gray-200 bg-white hover:border-gray-300"
-                      }`}
-                    >
-                      {key}
-                    </button>
-                  ))}
-                </div>
+                <InteractiveKeyboard selectedKey={hotkey} setSelectedKey={setHotkey} />
               </div>
             </div>
           </div>
