@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Trash2, RefreshCw, Settings, FileText, Mic } from "lucide-react";
 import SettingsModal from "./SettingsModal";
 import TitleBar from "./TitleBar";
+import SupportDropdown from "./ui/SupportDropdown";
 import TranscriptionItem from "./ui/TranscriptionItem";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
@@ -181,6 +182,7 @@ export default function ControlPanel() {
                   <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
                 </div>
               )}
+            <SupportDropdown />
             <Button
               variant="ghost"
               size="icon"

@@ -1,4 +1,4 @@
-const { ipcMain, app } = require("electron");
+const { ipcMain, app, shell } = require("electron");
 const AppUtils = require("../utils");
 
 class IPCHandlers {
@@ -242,6 +242,17 @@ class IPCHandlers {
 
     ipcMain.handle("stop-window-drag", async (event) => {
       return await this.windowManager.stopWindowDrag();
+    });
+
+    // External link handler
+    ipcMain.handle("open-external", async (event, url) => {
+      try {
+        await shell.openExternal(url);
+        return { success: true };
+      } catch (error) {
+        console.error("❌ Failed to open external URL:", error);
+        return { success: false, error: error.message };
+      }
     });
   }
 }
