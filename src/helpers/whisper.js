@@ -258,17 +258,8 @@ class WhisperManager {
 
     for (const pythonPath of possiblePaths) {
       try {
-        const result = await new Promise((resolve, reject) => {
-          const testProcess = spawn(pythonPath, ["--version"]);
-          testProcess.on("close", (code) => {
-            resolve(code === 0);
-          });
-          testProcess.on("error", () => {
-            resolve(false);
-          });
-        });
-
-        if (result) {
+        const version = await this.getPythonVersion(pythonPath);
+        if (this.isPythonVersionSupported(version)) {
           this.pythonCmd = pythonPath; // Cache the result
           return pythonPath;
         }
@@ -278,8 +269,33 @@ class WhisperManager {
     }
 
     throw new Error(
-      "Python executable not found. Please ensure Python 3 is installed."
+      "Python 3.8-3.11 not found. Please ensure a compatible Python version is installed."
     );
+  }
+
+  async getPythonVersion(pythonPath) {
+    return new Promise((resolve) => {
+      const testProcess = spawn(pythonPath, ["--version"]);
+      let output = "";
+      
+      testProcess.stdout.on("data", (data) => output += data);
+      testProcess.stderr.on("data", (data) => output += data);
+      
+      testProcess.on("close", (code) => {
+        if (code === 0) {
+          const match = output.match(/Python (\d+)\.(\d+)/i);
+          resolve(match ? { major: +match[1], minor: +match[2] } : null);
+        } else {
+          resolve(null);
+        }
+      });
+      
+      testProcess.on("error", () => resolve(null));
+    });
+  }
+
+  isPythonVersionSupported(version) {
+    return version && version.major === 3 && version.minor >= 8 && version.minor <= 11;
   }
 
   async checkWhisperInstallation() {
@@ -381,9 +397,34 @@ class WhisperManager {
     }
   }
 
+  async upgradePip(pythonCmd) {
+    return new Promise((resolve) => {
+      const upgradeProcess = spawn(pythonCmd, ["-m", "pip", "install", "--upgrade", "pip"]);
+      
+      const timeout = setTimeout(() => {
+        upgradeProcess.kill("SIGTERM");
+        resolve();
+      }, 60000); // 1 minute timeout
+      
+      upgradeProcess.on("close", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      
+      upgradeProcess.on("error", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+    });
+  }
+
   async installWhisper() {
     try {
       const pythonCmd = await this.findPythonExecutable();
+      
+      // First upgrade pip to ensure compatibility
+      await this.upgradePip(pythonCmd);
+      
       const args = ["-m", "pip", "install", "-U", "openai-whisper"];
 
       return new Promise((resolve, reject) => {
@@ -410,9 +451,20 @@ class WhisperManager {
           } else {
             console.error("Whisper installation failed with code:", code);
             console.error("Installation stderr:", stderr);
-            reject(
-              new Error(`Whisper installation failed (code ${code}): ${stderr}`)
-            );
+            
+            let errorMessage = "Whisper installation failed";
+            
+            if (stderr.includes("pyproject.toml") && stderr.includes("TomlError")) {
+              errorMessage = "Outdated pip version. Please upgrade pip manually and retry.";
+            } else if (stderr.includes("No module named pip")) {
+              errorMessage = "pip not installed.";
+            } else if (stderr.includes("Permission denied")) {
+              errorMessage = "Permission denied. May need administrator privileges.";
+            } else if (stderr.includes("No matching distribution")) {
+              errorMessage = "Incompatible Python version. Use Python 3.8-3.11.";
+            }
+            
+            reject(new Error(errorMessage));
           }
         });
 

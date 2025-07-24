@@ -35,15 +35,17 @@
     ],
     "icon": "assets/icon.icns",
     "gatekeeperAssess": false,
+    "hardenedRuntime": true,
     "entitlements": "build/entitlements.mac.plist",
     "entitlementsInherit": "build/entitlements.mac.plist",
-    "identity": "Developer ID Application: HeroTools Inc. (9R85XFMH59)",
+    "identity": "HeroTools Inc. (9R85XFMH59)",
     "extendInfo": {
       "LSUIElement": false,
       "NSMicrophoneUsageDescription": "OpenWispr needs microphone access for speech-to-text transcription.",
       "NSAccessibilityUsageDescription": "OpenWispr needs accessibility permissions to paste transcribed text into other applications."
     }
   },
+  "afterSign": "scripts/afterSign.js",
   "win": {
     "target": [
       "nsis",
