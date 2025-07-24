@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "./button";
 import { Textarea } from "./textarea";
-import { Input } from "./input";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
 import { 
   Eye, 
@@ -12,133 +11,26 @@ import {
   Copy, 
   Sparkles, 
   Zap,
-  BookOpen,
-  TestTube
+  TestTube,
+  AlertTriangle
 } from "lucide-react";
 import { AlertDialog } from "./dialog";
 import { useDialogs } from "../../hooks/useDialogs";
 import { useAgentName } from "../../utils/agentName";
+import ReasoningService, { DEFAULT_PROMPTS } from "../../services/ReasoningService";
 
 interface PromptStudioProps {
   className?: string;
 }
 
-interface PromptTemplate {
-  id: string;
-  name: string;
-  description: string;
-  agentPrompt: string;
-  regularPrompt: string;
-  category: "creative" | "professional" | "casual" | "technical";
-}
-
-const DEFAULT_PROMPTS = {
-  agent: `You are {{agentName}}, an AI text formatting assistant. The user has addressed you by name and is giving you specific instructions to process their text.
-
-Your role:
-1. When addressed as "{{agentName}}" or "Hey {{agentName}}", you are being given instructions about how to format or process text
-2. Look for commands like:
-   - "{{agentName}}, make this more professional"
-   - "{{agentName}}, format this as a list"
-   - "{{agentName}}, write an email about..."
-   - "{{agentName}}, convert this to bullet points"
-3. Follow the user's formatting instructions while preserving their intent
-4. If asked to write content, create it based on their request
-5. Remove the agent name references from the final output (don't include "Hey {{agentName}}" in your response)
-6. For editing commands, apply the requested changes to the text that follows
-
-Transcript with instructions:
-"{{text}}"
-
-Processed text:`,
-  
-  regular: `You are a text formatting assistant. Your job is to clean up and format voice-to-text transcriptions while preserving the speaker's natural tone and intent.
-
-Rules:
-1. If the speaker gives instructions like "scratch that", "ignore that", "delete the previous part", "never mind", or similar - follow them and remove the referenced content
-2. If the speaker says "put this in a list" or starts listing items, format as a proper list
-3. Fix obvious speech-to-text errors, punctuation, and capitalization
-4. Maintain the speaker's natural tone and style
-5. Don't add content - only clean up what's there
-6. If unclear, err on the side of minimal changes
-
-Transcript to format:
-"{{text}}"
-
-Formatted text:`
-};
-
-const PROMPT_TEMPLATES: PromptTemplate[] = [
-  {
-    id: "creative-writer",
-    name: "Creative Writer",
-    description: "Enhances text with creative flair and storytelling elements",
-    category: "creative",
-    agentPrompt: `You are {{agentName}}, a creative writing assistant. Help transform text into engaging, vivid content.
-
-When addressed:
-- Add descriptive language and imagery
-- Improve flow and rhythm
-- Suggest creative alternatives
-- Maintain the core message while making it more compelling
-
-Transform: "{{text}}"`,
-    regularPrompt: `Clean up this transcript while adding creative touches - better word choices, more engaging phrasing, improved flow.
-
-Original: "{{text}}"
-
-Enhanced:`
-  },
-  {
-    id: "professional-editor",
-    name: "Professional Editor", 
-    description: "Formal, business-appropriate text processing",
-    category: "professional",
-    agentPrompt: `You are {{agentName}}, a professional business editor. Make text appropriate for corporate communication.
-
-When addressed:
-- Use formal, professional language
-- Structure content clearly
-- Remove casual expressions
-- Ensure proper business etiquette
-
-Polish: "{{text}}"`,
-    regularPrompt: `Convert this transcript to professional business language. Fix grammar, improve clarity, use formal tone.
-
-Transcript: "{{text}}"
-
-Professional version:`
-  },
-  {
-    id: "casual-friend",
-    name: "Casual Friend",
-    description: "Friendly, conversational tone for informal communication",
-    category: "casual", 
-    agentPrompt: `You are {{agentName}}, a friendly assistant who keeps things casual and conversational.
-
-When addressed:
-- Keep the tone relaxed and natural
-- Use everyday language
-- Preserve personality and humor
-- Make it sound like a friend talking
-
-Refine: "{{text}}"`,
-    regularPrompt: `Clean up this transcript while keeping it casual and friendly. Fix errors but maintain the conversational tone.
-
-Raw transcript: "{{text}}"
-
-Cleaned up:`
-  }
-];
 
 export default function PromptStudio({ className = "" }: PromptStudioProps) {
-  const [activeTab, setActiveTab] = useState<"current" | "edit" | "templates" | "test">("current");
+  const [activeTab, setActiveTab] = useState<"current" | "edit" | "test">("current");
   const [editedAgentPrompt, setEditedAgentPrompt] = useState(DEFAULT_PROMPTS.agent);
   const [editedRegularPrompt, setEditedRegularPrompt] = useState(DEFAULT_PROMPTS.regular);
   const [testText, setTestText] = useState("Hey Assistant, make this more professional: This is a test message that needs some work.");
   const [testResult, setTestResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null);
   
   const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const { agentName } = useAgentName();
@@ -180,34 +72,57 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     });
   };
 
-  const applyTemplate = (template: PromptTemplate) => {
-    setEditedAgentPrompt(template.agentPrompt);
-    setEditedRegularPrompt(template.regularPrompt);
-    setSelectedTemplate(template);
-    setActiveTab("edit");
-  };
 
   const testPrompt = async () => {
     if (!testText.trim()) return;
     
     setIsLoading(true);
+    setTestResult("");
+    
     try {
-      // Simulate AI processing with the custom prompt
-      const isAgentMode = testText.toLowerCase().includes(agentName.toLowerCase());
-      const prompt = isAgentMode ? editedAgentPrompt : editedRegularPrompt;
+      // Check if reasoning model is enabled and if we have the necessary settings
+      const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+      const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
+      const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
       
-      // Replace placeholders
-      const processedPrompt = prompt
-        .replace(/\{\{agentName\}\}/g, agentName)
-        .replace(/\{\{text\}\}/g, testText);
-
-      // This would normally call your AI service
-      // For now, just show the prompt that would be sent
-      setTestResult(`[PROMPT THAT WOULD BE SENT TO AI]\n\n${processedPrompt}\n\n[This is a preview - actual AI processing would happen here]`);
+      if (!useReasoningModel) {
+        setTestResult("⚠️ AI text enhancement is disabled. Enable it in AI Models settings to test prompts.");
+        return;
+      }
+      
+      // Check if we have the required API key
+      const apiKey = reasoningProvider === "openai" 
+        ? localStorage.getItem("openaiApiKey")
+        : localStorage.getItem("anthropicApiKey");
+        
+      if (!apiKey || apiKey.trim() === "") {
+        setTestResult(`⚠️ No ${reasoningProvider === "openai" ? "OpenAI" : "Anthropic"} API key found. Add it in AI Models settings.`);
+        return;
+      }
+      
+      // Save current prompts temporarily so the test uses them
+      const currentCustomPrompts = localStorage.getItem("customPrompts");
+      localStorage.setItem("customPrompts", JSON.stringify({
+        agent: editedAgentPrompt,
+        regular: editedRegularPrompt
+      }));
+      
+      try {
+        // Call the AI - ReasoningService will automatically use the custom prompts
+        const result = await ReasoningService.processText(testText, reasoningModel);
+        setTestResult(result);
+      } finally {
+        // Restore original prompts
+        if (currentCustomPrompts) {
+          localStorage.setItem("customPrompts", currentCustomPrompts);
+        } else {
+          localStorage.removeItem("customPrompts");
+        }
+      }
       
     } catch (error) {
       console.error("Test failed:", error);
-      setTestResult("Test failed: " + error.message);
+      setTestResult(`❌ Test failed: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -336,91 +251,112 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     </div>
   );
 
-  const renderTemplates = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-purple-600" />
-          Prompt Templates
-        </h3>
-        <p className="text-sm text-gray-600 mb-6">
-          Pre-built prompt templates for different use cases. Click to apply and customize.
-        </p>
-      </div>
 
-      <div className="grid gap-4">
-        {PROMPT_TEMPLATES.map((template) => (
-          <Card key={template.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => applyTemplate(template)}>
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h4 className="font-semibold text-gray-900">{template.name}</h4>
-                  <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-                  <span className={`inline-block mt-2 px-2 py-1 text-xs rounded-full ${
-                    template.category === 'professional' ? 'bg-blue-100 text-blue-800' :
-                    template.category === 'creative' ? 'bg-purple-100 text-purple-800' :
-                    template.category === 'casual' ? 'bg-green-100 text-green-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {template.category}
-                  </span>
-                </div>
-                <Button variant="outline" size="sm">
-                  Apply Template
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
+  const renderTestPlayground = () => {
+    const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+    const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
+    const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
+    
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <TestTube className="w-5 h-5 text-green-600" />
+            Test Your Prompts
+          </h3>
+          <p className="text-sm text-gray-600 mb-6">
+            Test your custom prompts with the actual AI model to see real results.
+          </p>
+        </div>
 
-  const renderTestPlayground = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <TestTube className="w-5 h-5 text-green-600" />
-          Test Your Prompts
-        </h3>
-        <p className="text-sm text-gray-600 mb-6">
-          Try your custom prompts with sample text to see how they work before saving.
-        </p>
-      </div>
-
-      <Card>
-        <CardContent className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Test Input</label>
-            <Textarea
-              value={testText}
-              onChange={(e) => setTestText(e.target.value)}
-              rows={3}
-              placeholder="Enter text to test with your custom prompts..."
-            />
-          </div>
-
-          <Button 
-            onClick={testPrompt} 
-            disabled={!testText.trim() || isLoading}
-            className="w-full"
-          >
-            <Play className="w-4 h-4 mr-2" />
-            {isLoading ? "Testing..." : "Test Prompt"}
-          </Button>
-
-          {testResult && (
-            <div>
-              <label className="block text-sm font-medium mb-2">Result Preview</label>
-              <div className="bg-gray-50 border rounded-lg p-4 font-mono text-sm max-h-60 overflow-y-auto">
-                <pre className="whitespace-pre-wrap">{testResult}</pre>
+        {!useReasoningModel && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-amber-800 font-medium">AI Text Enhancement Disabled</p>
+                <p className="text-sm text-amber-700 mt-1">
+                  Enable AI text enhancement in the AI Models settings to test prompts.
+                </p>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+          </div>
+        )}
+
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">Current Model:</span>
+                <span className="ml-2 font-medium">{reasoningModel}</span>
+              </div>
+              <div>
+                <span className="text-gray-600">Provider:</span>
+                <span className="ml-2 font-medium capitalize">{reasoningProvider}</span>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-2">Test Input</label>
+              <Textarea
+                value={testText}
+                onChange={(e) => setTestText(e.target.value)}
+                rows={3}
+                placeholder="Enter text to test with your custom prompts..."
+              />
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-gray-500">
+                  Try including "{agentName}" in your text to test agent mode prompts
+                </p>
+                {testText && (
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    testText.toLowerCase().includes(agentName.toLowerCase())
+                      ? "bg-purple-100 text-purple-700"
+                      : "bg-green-100 text-green-700"
+                  }`}>
+                    {testText.toLowerCase().includes(agentName.toLowerCase())
+                      ? "🤖 Agent Mode"
+                      : "✨ Regular Mode"}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <Button 
+              onClick={testPrompt} 
+              disabled={!testText.trim() || isLoading || !useReasoningModel}
+              className="w-full"
+            >
+              <Play className="w-4 h-4 mr-2" />
+              {isLoading ? "Processing with AI..." : "Test Prompt with AI"}
+            </Button>
+
+            {testResult && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium">AI Response</label>
+                  <Button
+                    onClick={() => copyPrompt(testResult)}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className={`border rounded-lg p-4 text-sm max-h-60 overflow-y-auto ${
+                  testResult.startsWith("⚠️") || testResult.startsWith("❌")
+                    ? "bg-amber-50 border-amber-200 text-amber-800"
+                    : "bg-gray-50 border-gray-200"
+                }`}>
+                  <pre className="whitespace-pre-wrap">{testResult}</pre>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   return (
     <div className={className}>
@@ -437,7 +373,6 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         {[
           { id: "current", label: "Current Prompts", icon: Eye },
           { id: "edit", label: "Customize", icon: Edit3 },
-          { id: "templates", label: "Templates", icon: BookOpen },
           { id: "test", label: "Test", icon: TestTube }
         ].map((tab) => {
           const Icon = tab.icon;
@@ -461,7 +396,6 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       {/* Tab Content */}
       {activeTab === "current" && renderCurrentPrompts()}
       {activeTab === "edit" && renderEditPrompts()}
-      {activeTab === "templates" && renderTemplates()}
       {activeTab === "test" && renderTestPlayground()}
     </div>
   );

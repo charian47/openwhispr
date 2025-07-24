@@ -2,7 +2,7 @@ import { getModelProvider } from "../utils/languages.ts";
 import { getAgentName } from "../utils/agentName.ts";
 
 // Default prompts (fallback if no custom prompts are saved)
-const DEFAULT_PROMPTS = {
+export const DEFAULT_PROMPTS = {
   agent: `You are {{agentName}}, an AI text formatting assistant. The user has addressed you by name and is giving you specific instructions to process their text.
 
 Your role:

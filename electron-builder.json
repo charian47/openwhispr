@@ -1,5 +1,5 @@
 {
-  "appId": "com.openwispr.app",
+  "appId": "com.herotools.openwispr",
   "productName": "OpenWispr",
   "directories": {
     "output": "dist"
@@ -34,11 +34,10 @@
       "zip"
     ],
     "icon": "assets/icon.icns",
-    "hardenedRuntime": true,
     "gatekeeperAssess": false,
     "entitlements": "build/entitlements.mac.plist",
     "entitlementsInherit": "build/entitlements.mac.plist",
-    "identity": null,
+    "identity": "Developer ID Application: HeroTools Inc. (9R85XFMH59)",
     "extendInfo": {
       "LSUIElement": false,
       "NSMicrophoneUsageDescription": "OpenWispr needs microphone access for speech-to-text transcription.",
