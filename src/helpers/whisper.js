@@ -472,13 +472,37 @@ class WhisperManager {
     const pythonCmd = await this.findPythonExecutable();
     
     // Upgrade pip first to avoid version issues
+    console.log("Upgrading pip to latest version...");
     try {
       await this.upgradePip(pythonCmd);
+      console.log("Pip upgraded successfully");
     } catch (error) {
-      console.warn("Pip upgrade failed, continuing anyway:", error.message);
+      console.warn("First pip upgrade attempt failed:", error.message);
+      
+      // Try user install for pip upgrade
+      try {
+        console.log("Retrying pip upgrade with --user flag...");
+        await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
+        console.log("Pip upgraded successfully with --user flag");
+      } catch (userError) {
+        // If pip upgrade fails completely, try to detect if it's the TOML error
+        if (error.message.includes("pyproject.toml") || error.message.includes("TomlError")) {
+          // Try installing with legacy resolver as a workaround
+          console.log("Pip upgrade failed due to TOML error, trying legacy resolver...");
+          try {
+            await runCommand(pythonCmd, ["-m", "pip", "install", "--use-deprecated=legacy-resolver", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
+            console.log("Pip upgraded with legacy resolver");
+          } catch (legacyError) {
+            throw new Error("Failed to upgrade pip. Please manually run: python -m pip install --upgrade pip");
+          }
+        } else {
+          console.warn("Pip upgrade failed completely, attempting to continue...");
+        }
+      }
     }
     
     // Try regular install, then user install if permission issues
+    console.log("Installing OpenAI Whisper...");
     try {
       return await runCommand(pythonCmd, ["-m", "pip", "install", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
     } catch (error) {
@@ -487,11 +511,20 @@ class WhisperManager {
         return await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
       }
       
+      // If we still get TOML error after pip upgrade, try legacy resolver for whisper
+      if (error.message.includes("pyproject.toml") || error.message.includes("TomlError")) {
+        console.log("TOML error persists, trying legacy resolver for Whisper install...");
+        try {
+          return await runCommand(pythonCmd, ["-m", "pip", "install", "--use-deprecated=legacy-resolver", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
+        } catch (legacyError) {
+          // Try user install with legacy resolver
+          return await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "--use-deprecated=legacy-resolver", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
+        }
+      }
+      
       // Enhanced error messages for common issues
       let message = error.message;
-      if (message.includes("pyproject.toml") && message.includes("TomlError")) {
-        message = "Outdated pip version. Try manually running: python -m pip install --upgrade pip";
-      } else if (message.includes("Microsoft Visual C++")) {
+      if (message.includes("Microsoft Visual C++")) {
         message = "Microsoft Visual C++ build tools required. Install Visual Studio Build Tools.";
       } else if (message.includes("No matching distribution")) {
         message = "Python version incompatible. OpenAI Whisper requires Python 3.8-3.11.";
