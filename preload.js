@@ -28,6 +28,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
   writeClipboard: (text) => ipcRenderer.invoke("write-clipboard", text),
 
+  // Python installation functions
+  checkPythonInstallation: () =>
+    ipcRenderer.invoke("check-python-installation"),
+  installPython: () => ipcRenderer.invoke("install-python"),
+  onPythonInstallProgress: (callback) =>
+    ipcRenderer.on("python-install-progress", callback),
+
   // Local Whisper functions
   transcribeLocalWhisper: (audioBlob, options) =>
     ipcRenderer.invoke("transcribe-local-whisper", audioBlob, options),
@@ -84,4 +91,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // External link opener
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
+  
+  // Remove all listeners for a channel
+  removeAllListeners: (channel) => {
+    ipcRenderer.removeAllListeners(channel);
+  },
 });

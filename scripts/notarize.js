@@ -18,7 +18,8 @@ exports.default = async function notarizing(context) {
     const result = await notarize({
       tool: 'notarytool',
       appPath,
-      keychainProfile: 'openwispr-profile'
+      keychainProfile: 'openwispr-profile',
+      staple: true
     });
     console.log('✓ Notarization completed successfully');
     return result;

@@ -79,6 +79,23 @@ export interface WhisperInstallProgressData {
   output?: string;
 }
 
+export interface PythonInstallation {
+  installed: boolean;
+  command?: string;
+  version?: number;
+}
+
+export interface PythonInstallResult {
+  success: boolean;
+  method: string;
+}
+
+export interface PythonInstallProgressData {
+  type: string;
+  stage: string;
+  percentage: number;
+}
+
 // Additional interface missing from preload.js
 export interface SaveSettings {
   useLocalWhisper: boolean;
@@ -112,6 +129,13 @@ declare global {
       // Clipboard operations
       readClipboard: () => Promise<string>;
       writeClipboard: (text: string) => Promise<{ success: boolean }>;
+
+      // Python operations
+      checkPythonInstallation: () => Promise<PythonInstallation>;
+      installPython: () => Promise<PythonInstallResult>;
+      onPythonInstallProgress: (
+        callback: (event: any, data: PythonInstallProgressData) => void
+      ) => void;
 
       // Whisper operations
       transcribeLocalWhisper: (

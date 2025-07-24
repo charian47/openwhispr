@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { WhisperCheckResult, WhisperInstallResult } from "../types/electron";
 
 export interface UseWhisperReturn {
@@ -77,10 +77,18 @@ export const useWhisper = (
   }, [showAlertDialog]);
 
   const setupProgressListener = useCallback(() => {
+    // Remove any existing listeners first
+    window.electronAPI?.removeAllListeners?.("whisper-install-progress");
+    
     window.electronAPI.onWhisperInstallProgress((_, data) => {
       setInstallProgress(data.message);
     });
   }, []);
+
+  // Check Whisper installation on mount
+  useEffect(() => {
+    checkWhisperInstallation();
+  }, [checkWhisperInstallation]);
 
   return {
     whisperInstalled,

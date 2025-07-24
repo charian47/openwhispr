@@ -1,8 +1,11 @@
 const { spawn } = require("child_process");
 const fs = require("fs");
+const fsPromises = require("fs").promises;
 const os = require("os");
 const path = require("path");
 const crypto = require("crypto");
+const PythonInstaller = require("./pythonInstaller");
+const { runCommand, TIMEOUTS } = require("../utils/process");
 
 class WhisperManager {
   constructor() {
@@ -10,6 +13,7 @@ class WhisperManager {
     this.whisperInstalled = null; // Cache installation status
     this.isInitialized = false; // Track if startup init completed
     this.currentDownloadProcess = null; // Track current download process for cancellation
+    this.pythonInstaller = new PythonInstaller();
   }
 
   getWhisperScriptPath() {
@@ -53,7 +57,7 @@ class WhisperManager {
       console.error("Local Whisper transcription error:", error);
       throw error;
     } finally {
-      this.cleanupTempFile(tempAudioPath);
+      await this.cleanupTempFile(tempAudioPath);
     }
   }
 
@@ -75,7 +79,7 @@ class WhisperManager {
       throw new Error(`Unsupported audio data type: ${typeof audioBlob}`);
     }
 
-    fs.writeFileSync(tempAudioPath, buffer);
+    await fsPromises.writeFile(tempAudioPath, buffer);
     return tempAudioPath;
   }
 
@@ -88,37 +92,68 @@ class WhisperManager {
     }
     args.push("--output-format", "json");
 
-    return new Promise((resolve, reject) => {
-      // Get FFmpeg path with proper production/development handling
+    return new Promise(async (resolve, reject) => {
+      // Get FFmpeg path with robust production/development handling
       let ffmpegPath;
 
       try {
         ffmpegPath = require("ffmpeg-static");
+        
+        // Add Windows .exe extension if missing
+        if (process.platform === "win32" && !ffmpegPath.endsWith(".exe")) {
+          ffmpegPath += ".exe";
+        }
 
-        // In production, try unpacked version if original doesn't exist
-        if (
-          process.env.NODE_ENV !== "development" &&
-          !fs.existsSync(ffmpegPath)
-        ) {
-          const unpackedPath = ffmpegPath.replace(
-            "app.asar",
-            "app.asar.unpacked"
-          );
-          if (fs.existsSync(unpackedPath)) {
-            ffmpegPath = unpackedPath;
+        // In production, handle ASAR unpacking more robustly
+        if (process.env.NODE_ENV !== "development" && !fs.existsSync(ffmpegPath)) {
+          const possiblePaths = [
+            // Direct ASAR replacement
+            ffmpegPath.replace("app.asar", "app.asar.unpacked"),
+            // Alternative unpacked locations
+            ffmpegPath.replace(/.*app\.asar/, path.join(__dirname, "..", "..", "app.asar.unpacked")),
+            // Resources folder fallback
+            path.join(process.resourcesPath, "app.asar.unpacked", "node_modules", "ffmpeg-static", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg")
+          ];
+
+          for (const possiblePath of possiblePaths) {
+            if (fs.existsSync(possiblePath)) {
+              ffmpegPath = possiblePath;
+              break;
+            }
           }
         }
+
+        // Final validation of bundled FFmpeg
+        if (!fs.existsSync(ffmpegPath)) {
+          throw new Error(`Bundled FFmpeg not found at ${ffmpegPath}`);
+        }
+        
+        // Validate it's actually executable
+        try {
+          fs.accessSync(ffmpegPath, fs.constants.X_OK);
+        } catch (e) {
+          throw new Error(`FFmpeg exists but is not executable: ${ffmpegPath}`);
+        }
+
       } catch (e) {
-        console.error("Could not resolve FFmpeg path:", e.message);
-        ffmpegPath = "ffmpeg"; // Try system ffmpeg as fallback
+        console.warn("Bundled FFmpeg not available:", e.message);
+        
+        // Try system FFmpeg with validation
+        const systemFFmpeg = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+        try {
+          await runCommand(systemFFmpeg, ["--version"], { timeout: TIMEOUTS.QUICK_CHECK });
+          ffmpegPath = systemFFmpeg;
+          console.log("Using system FFmpeg");
+        } catch (systemError) {
+          console.error("System FFmpeg also unavailable:", systemError.message);
+          ffmpegPath = systemFFmpeg; // Last resort - let Python handle the error
+        }
       }
 
       // Enhanced environment setup
       const enhancedEnv = {
         ...process.env,
         FFMPEG_PATH: ffmpegPath,
-        FFMPEG_EXECUTABLE: ffmpegPath,
-        FFMPEG_BINARY: ffmpegPath,
       };
 
       // Add ffmpeg directory to PATH if we have a valid path
@@ -232,9 +267,9 @@ class WhisperManager {
     }
   }
 
-  cleanupTempFile(tempAudioPath) {
+  async cleanupTempFile(tempAudioPath) {
     try {
-      fs.unlinkSync(tempAudioPath);
+      await fsPromises.unlink(tempAudioPath);
     } catch (cleanupError) {
       console.warn("Could not clean up temp file:", cleanupError.message);
     }
@@ -247,10 +282,14 @@ class WhisperManager {
     }
 
     const possiblePaths = [
+      "python3.11",
       "python3",
       "python",
+      "/usr/bin/python3.11",
       "/usr/bin/python3",
+      "/usr/local/bin/python3.11",
       "/usr/local/bin/python3",
+      "/opt/homebrew/bin/python3.11",
       "/opt/homebrew/bin/python3",
       "/usr/bin/python",
       "/usr/local/bin/python",
@@ -269,8 +308,33 @@ class WhisperManager {
     }
 
     throw new Error(
-      "Python 3.8-3.11 not found. Please ensure a compatible Python version is installed."
+      "Python 3.x not found. Use installPython() to install it automatically."
     );
+  }
+
+  async installPython(progressCallback = null) {
+    try {
+      // Clear cached Python command since we're installing new one
+      this.pythonCmd = null;
+      
+      const result = await this.pythonInstaller.installPython(progressCallback);
+      
+      // After installation, try to find Python again
+      try {
+        await this.findPythonExecutable();
+        return result;
+      } catch (findError) {
+        throw new Error("Python installed but not found in PATH. Please restart the application.");
+      }
+      
+    } catch (error) {
+      console.error("Python installation failed:", error);
+      throw error;
+    }
+  }
+
+  async checkPythonInstallation() {
+    return await this.pythonInstaller.isPythonInstalled();
   }
 
   async getPythonVersion(pythonPath) {
@@ -295,7 +359,8 @@ class WhisperManager {
   }
 
   isPythonVersionSupported(version) {
-    return version && version.major === 3 && version.minor >= 8 && version.minor <= 11;
+    // Accept any Python 3.x version
+    return version && version.major === 3;
   }
 
   async checkWhisperInstallation() {
@@ -397,92 +462,42 @@ class WhisperManager {
     }
   }
 
-  async upgradePip(pythonCmd) {
-    return new Promise((resolve) => {
-      const upgradeProcess = spawn(pythonCmd, ["-m", "pip", "install", "--upgrade", "pip"]);
-      
-      const timeout = setTimeout(() => {
-        upgradeProcess.kill("SIGTERM");
-        resolve();
-      }, 60000); // 1 minute timeout
-      
-      upgradeProcess.on("close", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      
-      upgradeProcess.on("error", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-    });
+  upgradePip(pythonCmd) {
+    return runCommand(pythonCmd, ["-m", "pip", "install", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
   }
 
+  // Removed - now using shared runCommand from utils/process.js
+
   async installWhisper() {
+    const pythonCmd = await this.findPythonExecutable();
+    
+    // Upgrade pip first to avoid version issues
     try {
-      const pythonCmd = await this.findPythonExecutable();
-      
-      // First upgrade pip to ensure compatibility
       await this.upgradePip(pythonCmd);
-      
-      const args = ["-m", "pip", "install", "-U", "openai-whisper"];
-
-      return new Promise((resolve, reject) => {
-        const installProcess = spawn(pythonCmd, args);
-
-        let stdout = "";
-        let stderr = "";
-
-        installProcess.stdout.on("data", (data) => {
-          stdout += data.toString();
-        });
-
-        installProcess.stderr.on("data", (data) => {
-          stderr += data.toString();
-        });
-
-        installProcess.on("close", (code) => {
-          if (code === 0) {
-            resolve({
-              success: true,
-              message: "Whisper installed successfully!",
-              output: stdout,
-            });
-          } else {
-            console.error("Whisper installation failed with code:", code);
-            console.error("Installation stderr:", stderr);
-            
-            let errorMessage = "Whisper installation failed";
-            
-            if (stderr.includes("pyproject.toml") && stderr.includes("TomlError")) {
-              errorMessage = "Outdated pip version. Please upgrade pip manually and retry.";
-            } else if (stderr.includes("No module named pip")) {
-              errorMessage = "pip not installed.";
-            } else if (stderr.includes("Permission denied")) {
-              errorMessage = "Permission denied. May need administrator privileges.";
-            } else if (stderr.includes("No matching distribution")) {
-              errorMessage = "Incompatible Python version. Use Python 3.8-3.11.";
-            }
-            
-            reject(new Error(errorMessage));
-          }
-        });
-
-        installProcess.on("error", (error) => {
-          console.error("Whisper installation process error:", error);
-          reject(
-            new Error(`Whisper installation process error: ${error.message}`)
-          );
-        });
-
-        setTimeout(() => {
-          installProcess.kill("SIGTERM");
-          reject(new Error("Whisper installation timed out (10 minutes)"));
-        }, 600000);
-      });
     } catch (error) {
-      console.error("Whisper installation error:", error);
-      throw error;
+      console.warn("Pip upgrade failed, continuing anyway:", error.message);
+    }
+    
+    // Try regular install, then user install if permission issues
+    try {
+      return await runCommand(pythonCmd, ["-m", "pip", "install", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
+    } catch (error) {
+      if (error.message.includes("Permission denied") || error.message.includes("access is denied")) {
+        console.log("Retrying with user installation...");
+        return await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
+      }
+      
+      // Enhanced error messages for common issues
+      let message = error.message;
+      if (message.includes("pyproject.toml") && message.includes("TomlError")) {
+        message = "Outdated pip version. Try manually running: python -m pip install --upgrade pip";
+      } else if (message.includes("Microsoft Visual C++")) {
+        message = "Microsoft Visual C++ build tools required. Install Visual Studio Build Tools.";
+      } else if (message.includes("No matching distribution")) {
+        message = "Python version incompatible. OpenAI Whisper requires Python 3.8-3.11.";
+      }
+      
+      throw new Error(message);
     }
   }
 

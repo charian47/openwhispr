@@ -80,15 +80,17 @@ class TrayManager {
           "assets",
           "iconTemplate@3x.png"
         ),
+        path.join(app.getPath("exe"), "..", "Resources", "assets", "iconTemplate@3x.png"),
+        path.join(app.getAppPath(), "assets", "iconTemplate@3x.png"),
       ];
-
+      
       for (const testPath of possiblePaths) {
         try {
           if (fs.existsSync(testPath)) {
             return nativeImage.createFromPath(testPath);
           }
         } catch (e) {
-          // Ignore and try next path
+          console.log("❌ Error checking path:", testPath, e.message);
         }
       }
 

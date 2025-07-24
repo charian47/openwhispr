@@ -340,6 +340,82 @@ export default function SettingsPage({
                     </>
                   )}
                 </Button>
+
+                {updateStatus.updateAvailable && !updateStatus.updateDownloaded && (
+                  <Button
+                    onClick={async () => {
+                      setDownloadingUpdate(true);
+                      setUpdateDownloadProgress(0);
+                      try {
+                        await window.electronAPI?.downloadUpdate();
+                      } catch (error: any) {
+                        setDownloadingUpdate(false);
+                        showAlertDialog({
+                          title: "Download Failed",
+                          description: `Failed to download update: ${error.message}`,
+                        });
+                      }
+                    }}
+                    disabled={downloadingUpdate}
+                    className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                    {downloadingUpdate ? (
+                      <>
+                        <Download size={16} className="animate-pulse mr-2" />
+                        Downloading... {Math.round(updateDownloadProgress)}%
+                      </>
+                    ) : (
+                      <>
+                        <Download size={16} className="mr-2" />
+                        Download Update v{updateInfo.version}
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                {updateStatus.updateDownloaded && (
+                  <Button
+                    onClick={async () => {
+                      showConfirmDialog({
+                        title: "Install Update",
+                        description: `Ready to install update v${updateInfo.version}. The app will restart to complete installation.`,
+                        onConfirm: async () => {
+                          try {
+                            await window.electronAPI?.installUpdate();
+                          } catch (error: any) {
+                            showAlertDialog({
+                              title: "Install Failed",
+                              description: `Failed to install update: ${error.message}`,
+                            });
+                          }
+                        },
+                      });
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    <span className="mr-2">🚀</span>
+                    Install Update & Restart
+                  </Button>
+                )}
+
+                {updateInfo.version && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2">
+                      Update v{updateInfo.version}
+                    </h4>
+                    {updateInfo.releaseDate && (
+                      <p className="text-sm text-blue-700 mb-2">
+                        Released: {new Date(updateInfo.releaseDate).toLocaleDateString()}
+                      </p>
+                    )}
+                    {updateInfo.releaseNotes && (
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">What's New:</p>
+                        <div className="whitespace-pre-wrap">{updateInfo.releaseNotes}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

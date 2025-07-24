@@ -138,6 +138,26 @@ class IPCHandlers {
       return this.whisperManager.checkWhisperInstallation();
     });
 
+    ipcMain.handle("check-python-installation", async (event) => {
+      return this.whisperManager.checkPythonInstallation();
+    });
+
+    ipcMain.handle("install-python", async (event) => {
+      try {
+        const result = await this.whisperManager.installPython((progress) => {
+          event.sender.send("python-install-progress", {
+            type: "progress",
+            stage: progress.stage,
+            percentage: progress.percentage,
+          });
+        });
+        return result;
+      } catch (error) {
+        console.error("❌ Python installation error:", error);
+        throw error;
+      }
+    });
+
     ipcMain.handle("install-whisper", async (event) => {
       try {
         // Set up progress forwarding for installation
