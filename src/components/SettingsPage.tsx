@@ -14,13 +14,15 @@ import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
 import { REASONING_PROVIDERS } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
+import PromptStudio from "./ui/PromptStudio";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 
 export type SettingsSectionType =
   | "general"
   | "transcription"
   | "aiModels"
-  | "agentConfig";
+  | "agentConfig"
+  | "prompts";
 
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;
@@ -850,6 +852,23 @@ export default function SettingsPage({
           </div>
         );
 
+
+      case "prompts":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                AI Prompt Management
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                View and customize the prompts that power OpenWispr's AI text processing. 
+                Adjust these to change how your transcriptions are formatted and enhanced.
+              </p>
+            </div>
+            
+            <PromptStudio />
+          </div>
+        );
       default:
         return null;
     }
@@ -878,3 +897,4 @@ export default function SettingsPage({
     </>
   );
 }
+

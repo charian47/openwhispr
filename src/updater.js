@@ -193,7 +193,6 @@ class UpdateManager {
       try {
         const { app } = require("electron");
         const version = app.getVersion();
-        console.log("📱 App version requested:", version);
         return { version };
       } catch (error) {
         console.error("❌ Error getting app version:", error);
