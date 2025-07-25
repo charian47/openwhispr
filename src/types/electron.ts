@@ -194,6 +194,12 @@ declare global {
       openExternal: (
         url: string
       ) => Promise<{ success: boolean; error?: string }>;
+
+      // Event listener cleanup
+      removeAllListeners?: (channel: string) => void;
+
+      // Hotkey management
+      updateHotkey?: (key: string) => Promise<void>;
     };
   }
 }

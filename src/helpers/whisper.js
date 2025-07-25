@@ -525,18 +525,15 @@ class WhisperManager {
       let ffmpegPath;
       try {
         ffmpegPath = require("ffmpeg-static");
-        console.log("🎬 [WhisperManager] Initial FFmpeg path for check:", ffmpegPath);
-        const envInfo = {
+        debugLogger.logFFmpegDebug('checkFFmpegAvailability', ffmpegPath, {
           NODE_ENV: process.env.NODE_ENV,
           resourcesPath: process.resourcesPath,
           __dirname: __dirname
-        };
-        console.log("🎬 [WhisperManager] Environment:", envInfo);
-        debugLogger.logFFmpegDebug('checkFFmpegAvailability', ffmpegPath, envInfo);
+        });
         
         // Always check if the path exists and handle ASAR unpacking
         if (!fs.existsSync(ffmpegPath)) {
-          console.log("🎬 [WhisperManager] FFmpeg not found at initial path, checking alternatives...");
+          debugLogger.log('FFmpeg not found at initial path, checking alternatives');
           
           const possiblePaths = [
             // Direct ASAR replacement
@@ -549,17 +546,17 @@ class WhisperManager {
             path.join(__dirname, "..", "..", "node_modules", "ffmpeg-static", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg")
           ].filter(Boolean);
 
-          console.log("🎬 [WhisperManager] Checking alternative paths:");
+          // Check alternative paths
           debugLogger.log('Checking alternative FFmpeg paths for availability check');
           
           for (const possiblePath of possiblePaths) {
             const exists = fs.existsSync(possiblePath);
-            console.log("🎬 [WhisperManager] Checking:", possiblePath, "exists:", exists);
+            // Check path existence
             debugLogger.logFFmpegDebug('Checking availability path', possiblePath);
             
             if (exists) {
               ffmpegPath = possiblePath;
-              console.log("✅ [WhisperManager] Found FFmpeg at:", ffmpegPath);
+              // Found FFmpeg
               debugLogger.log('FFmpeg found for availability check at:', ffmpegPath);
               break;
             }
@@ -568,13 +565,13 @@ class WhisperManager {
         
         // Final validation
         if (!ffmpegPath || !fs.existsSync(ffmpegPath)) {
-          console.warn("⚠️ [WhisperManager] FFmpeg not found at any location");
+          debugLogger.log('FFmpeg not found at any location');
           ffmpegPath = null;
         } else {
-          console.log("✅ [WhisperManager] Using FFmpeg at:", ffmpegPath);
+          // Using bundled FFmpeg
         }
       } catch (e) {
-        console.warn("⚠️ [WhisperManager] ffmpeg-static error:", e.message);
+        debugLogger.log('ffmpeg-static error:', e.message);
         ffmpegPath = null;
       }
 
@@ -655,48 +652,42 @@ class WhisperManager {
     const pythonCmd = await this.findPythonExecutable();
     
     // Upgrade pip first to avoid version issues
-    console.log("Upgrading pip to latest version...");
     try {
       await this.upgradePip(pythonCmd);
-      console.log("Pip upgraded successfully");
     } catch (error) {
-      console.warn("First pip upgrade attempt failed:", error.message);
+      debugLogger.log("First pip upgrade attempt failed:", error.message);
       
       // Try user install for pip upgrade
       try {
-        console.log("Retrying pip upgrade with --user flag...");
         await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
-        console.log("Pip upgraded successfully with --user flag");
       } catch (userError) {
         // If pip upgrade fails completely, try to detect if it's the TOML error
         if (error.message.includes("pyproject.toml") || error.message.includes("TomlError")) {
           // Try installing with legacy resolver as a workaround
-          console.log("Pip upgrade failed due to TOML error, trying legacy resolver...");
           try {
             await runCommand(pythonCmd, ["-m", "pip", "install", "--use-deprecated=legacy-resolver", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
-            console.log("Pip upgraded with legacy resolver");
           } catch (legacyError) {
             throw new Error("Failed to upgrade pip. Please manually run: python -m pip install --upgrade pip");
           }
         } else {
-          console.warn("Pip upgrade failed completely, attempting to continue...");
+          debugLogger.log("Pip upgrade failed completely, attempting to continue");
         }
       }
     }
     
     // Try regular install, then user install if permission issues
-    console.log("Installing OpenAI Whisper...");
+    // Install OpenAI Whisper
     try {
       return await runCommand(pythonCmd, ["-m", "pip", "install", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
     } catch (error) {
       if (error.message.includes("Permission denied") || error.message.includes("access is denied")) {
-        console.log("Retrying with user installation...");
+        // Retry with user installation
         return await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
       }
       
       // If we still get TOML error after pip upgrade, try legacy resolver for whisper
       if (error.message.includes("pyproject.toml") || error.message.includes("TomlError")) {
-        console.log("TOML error persists, trying legacy resolver for Whisper install...");
+        // TOML error persists, try legacy resolver
         try {
           return await runCommand(pythonCmd, ["-m", "pip", "install", "--use-deprecated=legacy-resolver", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
         } catch (legacyError) {

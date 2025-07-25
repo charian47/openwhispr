@@ -6,15 +6,16 @@ class ClipboardManager {
     // Initialize clipboard manager
   }
 
-  // Safe logging method to prevent EPIPE errors
+  // Safe logging method - only log in development
   safeLog(...args) {
-    try {
-      console.log(...args);
-    } catch (error) {
-      // Silently ignore EPIPE errors in logging
-      if (error.code !== "EPIPE") {
-        // Only log non-EPIPE errors to stderr
-        process.stderr.write(`Log error: ${error.message}\n`);
+    if (process.env.NODE_ENV === "development") {
+      try {
+        console.log(...args);
+      } catch (error) {
+        // Silently ignore EPIPE errors in logging
+        if (error.code !== "EPIPE") {
+          process.stderr.write(`Log error: ${error.message}\n`);
+        }
       }
     }
   }
@@ -59,13 +60,11 @@ class ClipboardManager {
         return await this.pasteLinux(originalClipboard);
       }
     } catch (error) {
-      console.error("❌ Paste error:", error);
       throw error;
     }
   }
 
   async pasteMacOS(originalClipboard) {
-    console.log("🍎 Attempting macOS paste...");
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         const pasteProcess = spawn("osascript", [
@@ -97,8 +96,6 @@ class ClipboardManager {
             }, 100);
             resolve();
           } else {
-            console.error("❌ Failed to paste text, code:", code);
-            console.error("Error output:", errorOutput);
             const errorMsg = `Paste failed (code ${code}). Text is copied to clipboard - please paste manually with Cmd+V.`;
             reject(new Error(errorMsg));
           }
@@ -108,7 +105,6 @@ class ClipboardManager {
           if (hasTimedOut) return;
           clearTimeout(timeoutId);
           pasteProcess.removeAllListeners();
-          console.error("❌ Error running paste command:", error);
           const errorMsg = `Paste command failed: ${error.message}. Text is copied to clipboard - please paste manually with Cmd+V.`;
           reject(new Error(errorMsg));
         });
@@ -117,7 +113,6 @@ class ClipboardManager {
           hasTimedOut = true;
           pasteProcess.kill("SIGKILL");
           pasteProcess.removeAllListeners();
-          console.error("⏰ Paste operation timed out");
           const errorMsg =
             "Paste operation timed out. Text is copied to clipboard - please paste manually with Cmd+V.";
           reject(new Error(errorMsg));
@@ -127,7 +122,6 @@ class ClipboardManager {
   }
 
   async pasteWindows(originalClipboard) {
-    console.log("🪟 Simulating Ctrl+V on Windows");
     return new Promise((resolve, reject) => {
       const pasteProcess = spawn("powershell", [
         "-Command",
@@ -136,14 +130,12 @@ class ClipboardManager {
 
       pasteProcess.on("close", (code) => {
         if (code === 0) {
-          console.log("✅ Text pasted successfully on Windows");
+          // Text pasted successfully
           setTimeout(() => {
             clipboard.writeText(originalClipboard);
-            console.log("🔄 Original clipboard content restored");
           }, 100);
           resolve();
         } else {
-          console.error("❌ Failed to paste on Windows, code:", code);
           reject(
             new Error(
               `Windows paste failed with code ${code}. Text is copied to clipboard.`
@@ -153,7 +145,6 @@ class ClipboardManager {
       });
 
       pasteProcess.on("error", (error) => {
-        console.error("❌ Windows paste error:", error);
         reject(
           new Error(
             `Windows paste failed: ${error.message}. Text is copied to clipboard.`
@@ -164,20 +155,17 @@ class ClipboardManager {
   }
 
   async pasteLinux(originalClipboard) {
-    console.log("🐧 Simulating Ctrl+V on Linux");
     return new Promise((resolve, reject) => {
       const pasteProcess = spawn("xdotool", ["key", "ctrl+v"]);
 
       pasteProcess.on("close", (code) => {
         if (code === 0) {
-          console.log("✅ Text pasted successfully on Linux");
+          // Text pasted successfully
           setTimeout(() => {
             clipboard.writeText(originalClipboard);
-            console.log("🔄 Original clipboard content restored");
           }, 100);
           resolve();
         } else {
-          console.error("❌ Failed to paste on Linux, code:", code);
           reject(
             new Error(
               `Linux paste failed with code ${code}. Text is copied to clipboard.`
@@ -187,7 +175,6 @@ class ClipboardManager {
       });
 
       pasteProcess.on("error", (error) => {
-        console.error("❌ Linux paste error:", error);
         reject(
           new Error(
             `Linux paste failed: ${error.message}. Text is copied to clipboard.`
@@ -201,7 +188,7 @@ class ClipboardManager {
     if (process.platform !== "darwin") return true;
 
     return new Promise((resolve) => {
-      console.log("🔍 Checking accessibility permissions...");
+      // Check accessibility permissions
 
       const testProcess = spawn("osascript", [
         "-e",
@@ -220,23 +207,15 @@ class ClipboardManager {
       });
 
       testProcess.on("close", (code) => {
-        console.log("Initial accessibility test - Code:", code);
-        console.log("Test output:", testOutput);
-        console.log("Test error:", testError);
-
         if (code === 0) {
-          console.log("✅ Accessibility permissions: GRANTED");
           resolve(true);
         } else {
-          console.log("❌ Accessibility permissions: DENIED");
           this.showAccessibilityDialog(testError);
           resolve(false);
         }
       });
 
       testProcess.on("error", (error) => {
-        console.error("Error checking accessibility permissions:", error);
-        console.log("Fallback: Assuming permissions are needed");
         resolve(false);
       });
     });
@@ -298,13 +277,7 @@ Would you like to open System Settings now?`;
     });
 
     permissionDialog.on("error", (error) => {
-      console.error("Error showing permission dialog:", error);
-      console.log(
-        "Fallback: User needs to manually grant accessibility permissions"
-      );
-      console.log(
-        "💡 TIP: If this is a rebuilt app, remove old OpenWispr entries from Accessibility settings first"
-      );
+      // Permission dialog error - user will need to manually grant permissions
     });
   }
 
@@ -327,32 +300,21 @@ Would you like to open System Settings now?`;
         const settingsProcess = spawn(cmd, args);
 
         settingsProcess.on("error", (error) => {
-          console.log(`Settings command ${commandIndex + 1} failed:`, error);
           commandIndex++;
           tryNextCommand();
         });
 
         settingsProcess.on("close", (settingsCode) => {
           if (settingsCode !== 0) {
-            console.log(
-              `Settings command ${commandIndex + 1} failed with code:`,
-              settingsCode
-            );
             commandIndex++;
             tryNextCommand();
-          } else {
-            console.log(
-              `✅ Opened System Settings with command ${commandIndex + 1}`
-            );
           }
         });
       } else {
-        console.log(
-          "❌ All settings commands failed, user will need to open manually"
-        );
+        // All settings commands failed, try fallback
         spawn("open", ["-a", "System Preferences"]).on("error", () => {
           spawn("open", ["-a", "System Settings"]).on("error", () => {
-            console.log("Could not open settings app");
+            // Could not open settings app
           });
         });
       }
@@ -364,10 +326,8 @@ Would you like to open System Settings now?`;
   async readClipboard() {
     try {
       const text = clipboard.readText();
-      console.log("📋 Clipboard read:", text ? "Text found" : "Empty");
       return text;
     } catch (error) {
-      console.error("❌ Error reading clipboard:", error);
       throw error;
     }
   }
@@ -375,13 +335,8 @@ Would you like to open System Settings now?`;
   async writeClipboard(text) {
     try {
       clipboard.writeText(text);
-      console.log(
-        "📋 Text written to clipboard:",
-        text.substring(0, 50) + "..."
-      );
       return { success: true };
     } catch (error) {
-      console.error("❌ Error writing to clipboard:", error);
       throw error;
     }
   }

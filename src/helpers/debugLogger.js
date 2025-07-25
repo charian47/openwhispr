@@ -1,88 +1,94 @@
-const fs = require('fs');
-const path = require('path');
-const { app } = require('electron');
+const fs = require("fs");
+const path = require("path");
+const { app } = require("electron");
 
 class DebugLogger {
   constructor() {
-    // Check multiple sources for debug mode
-    this.debugMode = process.env.OPENWISPR_DEBUG === 'true' || 
-                     process.argv.includes('--debug') || 
-                     process.env.NODE_ENV === 'development' ||
-                     this.checkDebugFile();
+    // Only enable debug mode when explicitly requested
+    this.debugMode =
+      process.env.OPENWISPR_DEBUG === "true" ||
+      process.argv.includes("--debug") ||
+      this.checkDebugFile();
     this.logFile = null;
     this.logStream = null;
-    
+
     if (this.debugMode) {
       // Create logs directory
-      const logsDir = path.join(app.getPath('userData'), 'logs');
+      const logsDir = path.join(app.getPath("userData"), "logs");
       if (!fs.existsSync(logsDir)) {
         fs.mkdirSync(logsDir, { recursive: true });
       }
-      
+
       // Create log file with timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       this.logFile = path.join(logsDir, `debug-${timestamp}.log`);
-      
+
       // Create write stream for better performance
-      this.logStream = fs.createWriteStream(this.logFile, { flags: 'a' });
-      
-      this.log('🚀 Debug logging enabled', `Log file: ${this.logFile}`);
-      this.log('System Info:', {
+      this.logStream = fs.createWriteStream(this.logFile, { flags: "a" });
+
+      this.log("🚀 Debug logging enabled", `Log file: ${this.logFile}`);
+      this.log("System Info:", {
         platform: process.platform,
         nodeVersion: process.version,
         electronVersion: process.versions.electron,
         appPath: app.getAppPath(),
-        userDataPath: app.getPath('userData'),
+        userDataPath: app.getPath("userData"),
         resourcesPath: process.resourcesPath,
-        environment: process.env.NODE_ENV
+        environment: process.env.NODE_ENV,
       });
     }
   }
-  
+
   log(...args) {
     if (!this.debugMode) return;
-    
+
     const timestamp = new Date().toISOString();
-    const message = args.map(arg => 
-      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-    ).join(' ');
-    
+    const message = args
+      .map((arg) =>
+        typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
+      )
+      .join(" ");
+
     const logLine = `[${timestamp}] ${message}\n`;
-    
+
     console.log(...args);
-    
+
     if (this.logStream) {
       this.logStream.write(logLine);
     }
   }
-  
+
   error(...args) {
     if (!this.debugMode) return;
-    
+
     const timestamp = new Date().toISOString();
-    const message = '❌ ERROR: ' + args.map(arg => 
-      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-    ).join(' ');
-    
+    const message =
+      "❌ ERROR: " +
+      args
+        .map((arg) =>
+          typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
+        )
+        .join(" ");
+
     const logLine = `[${timestamp}] ${message}\n`;
-    
+
     console.error(...args);
-    
+
     if (this.logStream) {
       this.logStream.write(logLine);
     }
   }
-  
+
   logFFmpegDebug(context, ffmpegPath, additionalInfo = {}) {
     if (!this.debugMode) return;
-    
+
     const debugInfo = {
       context,
       ffmpegPath,
       exists: ffmpegPath ? fs.existsSync(ffmpegPath) : false,
-      ...additionalInfo
+      ...additionalInfo,
     };
-    
+
     if (ffmpegPath && fs.existsSync(ffmpegPath)) {
       try {
         const stats = fs.statSync(ffmpegPath);
@@ -91,13 +97,13 @@ class DebugLogger {
           isFile: stats.isFile(),
           isExecutable: !!(stats.mode & fs.constants.X_OK),
           permissions: stats.mode.toString(8),
-          modified: stats.mtime
+          modified: stats.mtime,
         };
       } catch (e) {
         debugInfo.statError = e.message;
       }
     }
-    
+
     // Check parent directory permissions
     if (ffmpegPath) {
       const dir = path.dirname(ffmpegPath);
@@ -109,53 +115,67 @@ class DebugLogger {
         debugInfo.dirError = e.message;
       }
     }
-    
+
     // Check all possible FFmpeg locations
     const possiblePaths = [
       ffmpegPath,
-      ffmpegPath?.replace('app.asar', 'app.asar.unpacked'),
-      path.join(process.resourcesPath || '', 'app.asar.unpacked', 'node_modules', 'ffmpeg-static', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'),
-      '/usr/local/bin/ffmpeg',
-      '/opt/homebrew/bin/ffmpeg',
-      '/usr/bin/ffmpeg'
+      ffmpegPath?.replace("app.asar", "app.asar.unpacked"),
+      path.join(
+        process.resourcesPath || "",
+        "app.asar.unpacked",
+        "node_modules",
+        "ffmpeg-static",
+        process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg"
+      ),
+      "/usr/local/bin/ffmpeg",
+      "/opt/homebrew/bin/ffmpeg",
+      "/usr/bin/ffmpeg",
     ].filter(Boolean);
-    
-    debugInfo.pathChecks = possiblePaths.map(p => ({
+
+    debugInfo.pathChecks = possiblePaths.map((p) => ({
       path: p,
-      exists: fs.existsSync(p)
+      exists: fs.existsSync(p),
     }));
-    
+
     this.log(`🎬 FFmpeg Debug - ${context}`, debugInfo);
   }
-  
+
   logAudioData(context, audioBlob) {
     if (!this.debugMode) return;
-    
+
     const audioInfo = {
       context,
-      type: audioBlob?.type || 'unknown',
+      type: audioBlob?.type || "unknown",
       size: audioBlob?.size || 0,
-      constructor: audioBlob?.constructor?.name || 'unknown'
+      constructor: audioBlob?.constructor?.name || "unknown",
     };
-    
+
     if (audioBlob instanceof ArrayBuffer) {
       audioInfo.byteLength = audioBlob.byteLength;
       // Check first few bytes
-      const view = new Uint8Array(audioBlob, 0, Math.min(16, audioBlob.byteLength));
-      audioInfo.firstBytes = Array.from(view).map(b => b.toString(16).padStart(2, '0')).join(' ');
+      const view = new Uint8Array(
+        audioBlob,
+        0,
+        Math.min(16, audioBlob.byteLength)
+      );
+      audioInfo.firstBytes = Array.from(view)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join(" ");
     } else if (audioBlob instanceof Uint8Array) {
       audioInfo.byteLength = audioBlob.byteLength;
       const view = audioBlob.slice(0, Math.min(16, audioBlob.byteLength));
-      audioInfo.firstBytes = Array.from(view).map(b => b.toString(16).padStart(2, '0')).join(' ');
+      audioInfo.firstBytes = Array.from(view)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join(" ");
     }
-    
-    this.log('🔊 Audio Data Debug', audioInfo);
+
+    this.log("🔊 Audio Data Debug", audioInfo);
   }
-  
+
   logProcessStart(command, args, options = {}) {
     if (!this.debugMode) return;
-    
-    this.log('🚀 Starting process', {
+
+    this.log("🚀 Starting process", {
       command,
       args,
       cwd: options.cwd || process.cwd(),
@@ -163,45 +183,45 @@ class DebugLogger {
         FFMPEG_PATH: options.env?.FFMPEG_PATH,
         FFMPEG_EXECUTABLE: options.env?.FFMPEG_EXECUTABLE,
         FFMPEG_BINARY: options.env?.FFMPEG_BINARY,
-        PATH_preview: options.env?.PATH?.substring(0, 200) + '...'
-      }
+        PATH_preview: options.env?.PATH?.substring(0, 200) + "...",
+      },
     });
   }
-  
+
   logProcessOutput(processName, type, data) {
     if (!this.debugMode) return;
-    
+
     const output = data.toString().trim();
     if (output) {
       this.log(`📝 ${processName} ${type}:`, output);
     }
   }
-  
+
   logWhisperPipeline(stage, details) {
     if (!this.debugMode) return;
-    
+
     this.log(`🎙️ Whisper Pipeline - ${stage}`, details);
   }
-  
+
   getLogPath() {
     return this.logFile;
   }
-  
+
   isEnabled() {
     return this.debugMode;
   }
-  
+
   close() {
     if (this.logStream) {
-      this.log('📝 Debug logger closing');
+      this.log("📝 Debug logger closing");
       this.logStream.end();
       this.logStream = null;
     }
   }
-  
+
   checkDebugFile() {
     try {
-      const debugFilePath = path.join(app.getPath('userData'), 'ENABLE_DEBUG');
+      const debugFilePath = path.join(app.getPath("userData"), "ENABLE_DEBUG");
       return fs.existsSync(debugFilePath);
     } catch (e) {
       return false;

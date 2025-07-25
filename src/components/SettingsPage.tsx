@@ -94,49 +94,70 @@ export default function SettingsPage({
 
   // Defer heavy operations for better performance
   useEffect(() => {
+    let mounted = true;
+
     // Defer version and update checks to improve initial render
     const timer = setTimeout(async () => {
+      if (!mounted) return;
+      
       const versionResult = await window.electronAPI?.getAppVersion();
-      if (versionResult) setCurrentVersion(versionResult.version);
+      if (versionResult && mounted) setCurrentVersion(versionResult.version);
 
       const statusResult = await window.electronAPI?.getUpdateStatus();
-      if (statusResult) {
+      if (statusResult && mounted) {
         setUpdateStatus(statusResult);
         subscribeToUpdates();
       }
 
       // Check whisper after initial render
-      whisperHook.checkWhisperInstallation();
+      if (mounted) {
+        whisperHook.checkWhisperInstallation();
+      }
     }, 100);
 
-    return () => clearTimeout(timer);
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+      // Always clean up update listeners if they exist
+      if (window.electronAPI) {
+        window.electronAPI.removeAllListeners?.("update-available");
+        window.electronAPI.removeAllListeners?.("update-downloaded");
+        window.electronAPI.removeAllListeners?.("update-error");
+        window.electronAPI.removeAllListeners?.("update-download-progress");
+      }
+    };
   }, [whisperHook]);
 
   const subscribeToUpdates = () => {
     if (window.electronAPI) {
-      window.electronAPI.onUpdateAvailable?.((event, info) => {
+      const handleUpdateAvailable = (event, info) => {
         setUpdateStatus((prev) => ({ ...prev, updateAvailable: true }));
         setUpdateInfo({
           version: info.version,
           releaseDate: info.releaseDate,
           releaseNotes: info.releaseNotes,
         });
-      });
+      };
 
-      window.electronAPI.onUpdateDownloaded?.((event, info) => {
+      const handleUpdateDownloaded = (event, info) => {
         setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
         setDownloadingUpdate(false);
-      });
+      };
 
-      window.electronAPI.onUpdateDownloadProgress?.((event, progressObj) => {
+      const handleUpdateProgress = (event, progressObj) => {
         setUpdateDownloadProgress(progressObj.percent || 0);
-      });
+      };
 
-      window.electronAPI.onUpdateError?.((event, error) => {
+      const handleUpdateError = (event, error) => {
         setCheckingForUpdates(false);
         setDownloadingUpdate(false);
         console.error("Update error:", error);
-      });
+      };
+
+      window.electronAPI.onUpdateAvailable?.(handleUpdateAvailable);
+      window.electronAPI.onUpdateDownloaded?.(handleUpdateDownloaded);
+      window.electronAPI.onUpdateDownloadProgress?.(handleUpdateProgress);
+      window.electronAPI.onUpdateError?.(handleUpdateError);
     }
   };
 

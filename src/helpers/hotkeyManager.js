@@ -20,10 +20,9 @@ class HotkeyManager {
 
       if (success) {
         this.currentHotkey = hotkey;
-        console.log(`🔑 Hotkey registered: ${hotkey}`);
         return { success: true, hotkey };
       } else {
-        console.error(`❌ Failed to register hotkey: ${hotkey}`);
+        console.error(`Failed to register hotkey: ${hotkey}`);
         return {
           success: false,
           error: `Failed to register hotkey: ${hotkey}`,
@@ -62,7 +61,7 @@ class HotkeyManager {
       if (savedHotkey && savedHotkey !== "`") {
         const result = this.setupShortcuts(savedHotkey, callback);
         if (result.success) {
-          console.log("🔑 Hotkey initialized from localStorage:", savedHotkey);
+          // Hotkey initialized from localStorage
         }
       }
     } catch (err) {
@@ -97,7 +96,6 @@ class HotkeyManager {
 
   unregisterAll() {
     globalShortcut.unregisterAll();
-    console.log("🔑 All hotkeys unregistered");
   }
 
   isHotkeyRegistered(hotkey) {

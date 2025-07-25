@@ -22,28 +22,20 @@ class TrayManager {
     if (process.platform !== "darwin") return;
 
     try {
-      console.log("🔄 Creating tray icon...");
       const trayIcon = await this.loadTrayIcon();
       if (!trayIcon || trayIcon.isEmpty()) {
-        console.error("❌ Failed to load tray icon - icon is empty or null");
+        console.error("Failed to load tray icon");
         return;
       }
 
-      console.log("🔧 Setting up tray icon...");
       trayIcon.setTemplateImage(true);
       this.tray = new Tray(trayIcon);
 
       this.tray.setIgnoreDoubleClickEvents(true);
       this.setupTrayMenu();
       this.setupTrayEventHandlers();
-
-      console.log("✅ Tray icon created successfully");
     } catch (error) {
-      console.error("❌ Error creating tray icon:", error);
-      console.error("Error details:", {
-        message: error.message,
-        stack: error.stack,
-      });
+      console.error("Error creating tray icon:", error.message);
     }
   }
 
@@ -56,12 +48,10 @@ class TrayManager {
         "assets",
         "iconTemplate@3x.png"
       );
-      console.log("🔍 Looking for tray icon at:", iconPath);
       if (fs.existsSync(iconPath)) {
-        console.log("✅ Found tray icon at:", iconPath);
         return nativeImage.createFromPath(iconPath);
       } else {
-        console.error("❌ Tray icon not found at:", iconPath);
+        console.error("Tray icon not found at:", iconPath);
         return this.createFallbackIcon();
       }
     } else {

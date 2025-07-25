@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Trash2, RefreshCw, Settings, FileText, Mic } from "lucide-react";
@@ -43,24 +43,35 @@ export default function ControlPanel() {
         const status = await window.electronAPI.getUpdateStatus();
         setUpdateStatus(status);
       } catch (error) {
-        console.error("Error initializing update status:", error);
+        // Update status not critical for app function
       }
     };
 
     initializeUpdateStatus();
 
     // Set up update event listeners
-    window.electronAPI.onUpdateAvailable((event, info) => {
+    const handleUpdateAvailable = (_event: any, _info: any) => {
       setUpdateStatus((prev) => ({ ...prev, updateAvailable: true }));
-    });
+    };
 
-    window.electronAPI.onUpdateDownloaded((event, info) => {
+    const handleUpdateDownloaded = (_event: any, _info: any) => {
       setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
-    });
+    };
 
-    window.electronAPI.onUpdateError((event, error) => {
-      console.error("Update error:", error);
-    });
+    const handleUpdateError = (_event: any, _error: any) => {
+      // Update errors are handled by the update service
+    };
+
+    window.electronAPI.onUpdateAvailable(handleUpdateAvailable);
+    window.electronAPI.onUpdateDownloaded(handleUpdateDownloaded);
+    window.electronAPI.onUpdateError(handleUpdateError);
+
+    // Cleanup listeners on unmount
+    return () => {
+      window.electronAPI.removeAllListeners?.("update-available");
+      window.electronAPI.removeAllListeners?.("update-downloaded");
+      window.electronAPI.removeAllListeners?.("update-error");
+    };
   }, []);
 
   const loadTranscriptions = async () => {
@@ -127,7 +138,6 @@ export default function ControlPanel() {
           if (result.success) {
             // Remove from local state
             setHistory((prev) => prev.filter((item) => item.id !== id));
-            console.log(`🗑️ Deleted transcription ${id}`);
           } else {
             showAlertDialog({
               title: "Delete Failed",
@@ -136,7 +146,6 @@ export default function ControlPanel() {
             });
           }
         } catch (error) {
-          console.error("❌ Failed to delete transcription:", error);
           showAlertDialog({
             title: "Delete Failed",
             description: "Failed to delete transcription. Please try again.",
@@ -148,7 +157,6 @@ export default function ControlPanel() {
   };
 
   const refreshHistory = async () => {
-    console.log("🔄 Refreshing transcription history...");
     await loadTranscriptions();
   };
 
