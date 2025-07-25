@@ -26,6 +26,33 @@ const TrayManager = require("./src/helpers/tray");
 const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
 
+// Set up PATH for production builds to find system Python
+function setupProductionPath() {
+  if (process.platform === 'darwin' && process.env.NODE_ENV !== 'development') {
+    const commonPaths = [
+      '/usr/local/bin',
+      '/opt/homebrew/bin',
+      '/usr/bin',
+      '/bin',
+      '/usr/sbin',
+      '/sbin',
+      '/Library/Frameworks/Python.framework/Versions/3.11/bin',
+      '/Library/Frameworks/Python.framework/Versions/3.10/bin',
+      '/Library/Frameworks/Python.framework/Versions/3.9/bin'
+    ];
+    
+    const currentPath = process.env.PATH || '';
+    const pathsToAdd = commonPaths.filter(p => !currentPath.includes(p));
+    
+    if (pathsToAdd.length > 0) {
+      process.env.PATH = `${currentPath}:${pathsToAdd.join(':')}`;
+    }
+  }
+}
+
+// Set up PATH before initializing managers
+setupProductionPath();
+
 // Initialize managers
 const environmentManager = new EnvironmentManager();
 const windowManager = new WindowManager();
@@ -95,9 +122,9 @@ async function startApp() {
 
 // App event handlers
 app.whenReady().then(() => {
-  // Log debug status
-  if (debugLogger.isEnabled()) {
-    console.log(`🐛 Debug mode enabled - Logs saved to: ${debugLogger.getLogPath()}`);
+  // Only log debug status in development
+  if (debugLogger.isEnabled() && process.env.NODE_ENV === 'development') {
+    console.log(`Debug logging enabled: ${debugLogger.getLogPath()}`);
   }
   
   startApp();

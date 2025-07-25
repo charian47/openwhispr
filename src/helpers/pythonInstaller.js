@@ -295,7 +295,6 @@ class PythonInstaller {
       }
       
     } catch (error) {
-      console.error("Python installation failed:", error);
       throw error;
     }
   }
@@ -303,6 +302,19 @@ class PythonInstaller {
   async isPythonInstalled() {
     const possibleCommands = ['python3.11', 'python3', 'python'];
     
+    // On macOS, also check common Python installation paths
+    const additionalPaths = process.platform === 'darwin' ? [
+      '/usr/local/bin/python3',
+      '/usr/local/bin/python3.11',
+      '/opt/homebrew/bin/python3',
+      '/opt/homebrew/bin/python3.11',
+      '/usr/bin/python3',
+      '/Library/Frameworks/Python.framework/Versions/3.11/bin/python3',
+      '/Library/Frameworks/Python.framework/Versions/3.10/bin/python3',
+      '/Library/Frameworks/Python.framework/Versions/3.9/bin/python3',
+    ] : [];
+    
+    // First check commands in PATH
     for (const cmd of possibleCommands) {
       try {
         const result = await runCommand(cmd, ['--version'], { timeout: TIMEOUTS.QUICK_CHECK });
@@ -312,6 +324,25 @@ class PythonInstaller {
           // Accept any Python 3.x version
           if (version >= 3.0) {
             return { installed: true, command: cmd, version: version };
+          }
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+    
+    // Then check absolute paths on macOS
+    for (const fullPath of additionalPaths) {
+      try {
+        const fs = require('fs');
+        if (fs.existsSync(fullPath)) {
+          const result = await runCommand(fullPath, ['--version'], { timeout: TIMEOUTS.QUICK_CHECK });
+          const versionMatch = result.output.match(/Python (\d+\.\d+)/);
+          if (versionMatch) {
+            const version = parseFloat(versionMatch[1]);
+            if (version >= 3.0) {
+              return { installed: true, command: fullPath, version: version };
+            }
           }
         }
       } catch (error) {

@@ -40,36 +40,45 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
   const [installingPython, setInstallingPython] = useState<boolean>(false);
   const [installProgress, setInstallProgress] = useState<string>("");
   const [pythonInfo, setPythonInfo] = useState<PythonInstallation | null>(null);
-  const mountedRef = useRef(true);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  const [isChecking, setIsChecking] = useState<boolean>(false);
 
   const checkPythonInstallation = useCallback(async () => {
+    if (isChecking) {
+      return pythonInfo || { installed: false };
+    }
+    
     try {
-      const result = await window.electronAPI?.checkPythonInstallation();
-      if (result && mountedRef.current) {
+      setIsChecking(true);
+      
+      if (!window.electronAPI) {
+        return { installed: false };
+      }
+      
+      const result = await window.electronAPI.checkPythonInstallation();
+      
+      if (result) {
         setPythonInstalled(result.installed);
         setPythonInfo(result);
         return result;
       }
       return { installed: false };
     } catch (error) {
-      console.error("Error checking Python installation:", error);
-      if (mountedRef.current) {
-        setPythonInstalled(false);
-      }
+      setPythonInstalled(false);
       return { installed: false };
+    } finally {
+      setIsChecking(false);
     }
-  }, []);
+  }, [isChecking, pythonInfo]);
 
   const installPython = useCallback(async () => {
-    console.log("installPython called");
-    if (!mountedRef.current) return;
+    
+    if (!window.electronAPI) {
+      showAlertDialog({
+        title: "Installation Error",
+        description: "Unable to communicate with the main process. Please restart the application.",
+      });
+      return;
+    }
     
     let progressListener: ((event: any, data: PythonInstallProgress) => void) | null = null;
     
@@ -77,24 +86,20 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
       setInstallingPython(true);
       setInstallProgress("Starting Python installation...");
 
-      progressListener = (_event: any, data: PythonInstallProgress) => {
-        if (!mountedRef.current) return;
-        
-        if (data.type === "progress") {
+      progressListener = (_event: any, data: any) => {
+        if (data?.type === "progress" && data?.stage && data?.percentage !== undefined) {
           setInstallProgress(`${data.stage} (${data.percentage}%)`);
         }
       };
 
       // Listen for progress updates
-      if (window.electronAPI?.onPythonInstallProgress) {
+      if (window.electronAPI.onPythonInstallProgress) {
         window.electronAPI.onPythonInstallProgress(progressListener);
       }
       
-      console.log("Calling window.electronAPI.installPython");
-      const result = await window.electronAPI?.installPython();
-      console.log("Install result:", result);
+      const result = await window.electronAPI.installPython();
 
-      if (mountedRef.current && result?.success) {
+      if (result?.success) {
         setPythonInstalled(true);
         setInstallProgress("Python installed successfully!");
         
@@ -109,10 +114,6 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
 
       return result;
     } catch (error: any) {
-      if (!mountedRef.current) return;
-      
-      console.error("Python installation failed:", error);
-      
       const errorMessage = getPythonInstallErrorMessage(error);
       
       showAlertDialog({
@@ -122,9 +123,7 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
       
       throw error;
     } finally {
-      if (mountedRef.current) {
-        setInstallingPython(false);
-      }
+      setInstallingPython(false);
       // Clean up the listener
       if (progressListener) {
         window.electronAPI?.removeAllListeners?.("python-install-progress");
@@ -132,9 +131,14 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
     }
   }, [showAlertDialog, checkPythonInstallation]);
 
-  // Check Python installation on mount
+  // Check Python installation on mount with a small delay to ensure preload is ready
   useEffect(() => {
-    checkPythonInstallation();
+    // In development, there might be a race condition where React loads before preload
+    const timer = setTimeout(() => {
+      checkPythonInstallation();
+    }, 100); // Small delay to ensure preload script is ready
+    
+    return () => clearTimeout(timer);
   }, [checkPythonInstallation]);
 
   return {
@@ -144,5 +148,6 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
     pythonInfo,
     installPython,
     checkPythonInstallation,
+    isChecking,
   };
 }
