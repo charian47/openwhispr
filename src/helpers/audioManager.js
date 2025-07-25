@@ -1,6 +1,7 @@
 import TextCleanup from "../utils/textCleanup";
 import ReasoningService from "../services/ReasoningService";
 
+
 class AudioManager {
   constructor() {
     this.mediaRecorder = null;
@@ -23,11 +24,11 @@ class AudioManager {
   async startRecording() {
     try {
       if (this.isRecording) {
-        console.warn("Recording already in progress");
         return false;
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
 
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
@@ -42,6 +43,10 @@ class AudioManager {
         this.onStateChange?.({ isRecording: false, isProcessing: true });
 
         const audioBlob = new Blob(this.audioChunks, { type: "audio/wav" });
+        
+        if (audioBlob.size === 0) {
+        }
+        
         await this.processAudio(audioBlob);
 
         // Clean up stream
@@ -54,10 +59,25 @@ class AudioManager {
 
       return true;
     } catch (error) {
-      console.error("Recording error:", error);
+      
+      // Provide more specific error messages
+      let errorTitle = "Recording Error";
+      let errorDescription = `Failed to access microphone: ${error.message}`;
+      
+      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+        errorTitle = "Microphone Access Denied";
+        errorDescription = "Please grant microphone permission in your system settings and try again.";
+      } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+        errorTitle = "No Microphone Found";
+        errorDescription = "No microphone was detected. Please connect a microphone and try again.";
+      } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+        errorTitle = "Microphone In Use";
+        errorDescription = "The microphone is being used by another application. Please close other apps and try again.";
+      }
+      
       this.onError?.({
-        title: "Recording Error",
-        description: `Failed to access microphone: ${error.message}`,
+        title: errorTitle,
+        description: errorDescription,
       });
       return false;
     }
@@ -78,9 +98,7 @@ class AudioManager {
       const useLocalWhisper =
         localStorage.getItem("useLocalWhisper") === "true";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
-      const useReasoning = localStorage.getItem("useReasoningModel") === "true";
-      const reasoningModel =
-        localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
+      
 
       let result;
       if (useLocalWhisper) {
@@ -90,11 +108,13 @@ class AudioManager {
       }
       this.onTranscriptionComplete?.(result);
     } catch (error) {
-      console.error(`🎧 [AudioManager] ❌ Transcription error:`, error);
-      this.onError?.({
-        title: "Transcription Error",
-        description: `Transcription failed: ${error.message}`,
-      });
+      // Don't show error here if it's "No audio detected" - already shown elsewhere
+      if (error.message !== "No audio detected") {
+        this.onError?.({
+          title: "Transcription Error",
+          description: `Transcription failed: ${error.message}`,
+        });
+      }
     } finally {
       this.isProcessing = false;
       this.onStateChange?.({ isRecording: false, isProcessing: false });
@@ -127,6 +147,18 @@ class AudioManager {
   }
 
   async processWithLocalWhisper(audioBlob, model = "base") {
+    
+    // Analyze audio levels first
+    const audioAnalysis = await this.analyzeAudioLevels(audioBlob);
+    if (audioAnalysis && audioAnalysis.isSilent) {
+      // Show error to user immediately
+      this.onError?.({
+        title: "No Audio Detected",
+        description: "The recording appears to be silent. Please check that your microphone is working and not muted.",
+      });
+      // Still continue to try transcription in case analysis was wrong
+    }
+    
     try {
       const arrayBuffer = await audioBlob.arrayBuffer();
 
@@ -141,6 +173,7 @@ class AudioManager {
         arrayBuffer,
         options
       );
+      
 
       if (result.success && result.text) {
         let text = AudioManager.cleanTranscription(result.text);
@@ -153,43 +186,36 @@ class AudioManager {
         result.success === false &&
         result.message === "No audio detected"
       ) {
+        // Show specific error to user with more details
+        this.onError?.({
+          title: "No Audio Detected",
+          description: "The recording contained no detectable audio. Please check your microphone settings.",
+        });
         throw new Error("No audio detected");
       } else {
         throw new Error(result.error || "Local Whisper transcription failed");
       }
     } catch (error) {
-      console.error("Local Whisper error:", error);
-
-      // Check if it's a "No audio detected" error and don't retry
       if (error.message === "No audio detected") {
         throw error;
       }
 
-      // Try fallback to OpenAI API ONLY if enabled AND we're in local mode
-      const allowOpenAIFallback =
-        localStorage.getItem("allowOpenAIFallback") === "true";
+      const allowOpenAIFallback = localStorage.getItem("allowOpenAIFallback") === "true";
       const isLocalMode = localStorage.getItem("useLocalWhisper") === "true";
 
       if (allowOpenAIFallback && isLocalMode) {
-        console.log("Falling back to OpenAI API...");
         try {
           const fallbackResult = await this.processWithOpenAIAPI(audioBlob);
-          // Mark the result as fallback for user awareness
           return { ...fallbackResult, source: "openai-fallback" };
         } catch (fallbackError) {
-          // If OpenAI fallback also fails, throw the original error
-          throw new Error(
-            `Local Whisper failed: ${error.message}. OpenAI fallback also failed: ${fallbackError.message}`
-          );
+          throw new Error(`Local Whisper failed: ${error.message}. OpenAI fallback also failed: ${fallbackError.message}`);
         }
       } else {
-        // No fallback allowed - strict local mode
         throw new Error(`Local Whisper failed: ${error.message}`);
       }
     }
   }
 
-  // Get and cache API key for performance
   async getAPIKey() {
     if (this.cachedApiKey) {
       return this.cachedApiKey;
@@ -214,8 +240,39 @@ class AudioManager {
       );
     }
 
-    this.cachedApiKey = apiKey; // Cache it
+    this.cachedApiKey = apiKey;
     return apiKey;
+  }
+
+  async analyzeAudioLevels(audioBlob) {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      
+      const channelData = audioBuffer.getChannelData(0);
+      let sum = 0;
+      let max = 0;
+      
+      for (let i = 0; i < channelData.length; i++) {
+        const sample = Math.abs(channelData[i]);
+        sum += sample;
+        max = Math.max(max, sample);
+      }
+      
+      const average = sum / channelData.length;
+      const duration = audioBuffer.duration;
+      
+      
+      return {
+        duration,
+        averageLevel: average,
+        maxLevel: max,
+        isSilent: max < 0.01
+      };
+    } catch (error) {
+      return null;
+    }
   }
 
   // Convert audio to optimal format for API (reduces upload time)
@@ -310,7 +367,6 @@ class AudioManager {
       const model = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
       return await ReasoningService.processText(text, model);
     } catch (error) {
-      console.warn(`Reasoning failed, using basic cleanup:`, error.message);
       return AudioManager.cleanTranscription(text);
     }
   }
@@ -372,7 +428,6 @@ class AudioManager {
         throw new Error("No text transcribed");
       }
     } catch (error) {
-      console.error("OpenAI API error:", error);
 
       // Try fallback to Local Whisper ONLY if enabled AND we're in OpenAI mode
       const allowLocalFallback =
@@ -380,7 +435,6 @@ class AudioManager {
       const isOpenAIMode = localStorage.getItem("useLocalWhisper") !== "true";
 
       if (allowLocalFallback && isOpenAIMode) {
-        console.log("Falling back to Local Whisper...");
         const fallbackModel =
           localStorage.getItem("fallbackWhisperModel") || "base";
         try {
@@ -407,7 +461,6 @@ class AudioManager {
           // If local fallback fails, throw the original OpenAI error
           throw error;
         } catch (fallbackError) {
-          console.error("Local fallback also failed:", fallbackError);
           throw new Error(
             `OpenAI API failed: ${error.message}. Local fallback also failed: ${fallbackError.message}`
           );
@@ -436,7 +489,6 @@ class AudioManager {
       await window.electronAPI.saveTranscription(text);
       return true;
     } catch (error) {
-      console.error("Failed to save transcription:", error);
       return false;
     }
   }

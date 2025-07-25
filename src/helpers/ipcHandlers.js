@@ -1,5 +1,6 @@
 const { ipcMain, app, shell } = require("electron");
 const AppUtils = require("../utils");
+const debugLogger = require("./debugLogger");
 
 class IPCHandlers {
   constructor(managers) {
@@ -115,20 +116,34 @@ class IPCHandlers {
     ipcMain.handle(
       "transcribe-local-whisper",
       async (event, audioBlob, options = {}) => {
+        debugLogger.log('transcribe-local-whisper called', {
+          audioBlobType: typeof audioBlob,
+          audioBlobSize: audioBlob?.byteLength || audioBlob?.length || 0,
+          options
+        });
+        
         try {
           const result = await this.whisperManager.transcribeLocalWhisper(
             audioBlob,
             options
           );
 
+          debugLogger.log('Whisper result', {
+            success: result.success,
+            hasText: !!result.text,
+            message: result.message,
+            error: result.error
+          });
+          
           // Check if no audio was detected and send appropriate event
           if (!result.success && result.message === "No audio detected") {
+            debugLogger.log('Sending no-audio-detected event to renderer');
             event.sender.send("no-audio-detected");
           }
 
           return result;
         } catch (error) {
-          console.error("❌ Local Whisper transcription error:", error);
+          debugLogger.error('Local Whisper transcription error', error);
           throw error;
         }
       }
@@ -153,7 +168,6 @@ class IPCHandlers {
         });
         return result;
       } catch (error) {
-        console.error("❌ Python installation error:", error);
         throw error;
       }
     });
@@ -184,7 +198,6 @@ class IPCHandlers {
 
         return result;
       } catch (error) {
-        console.error("❌ Whisper installation error:", error);
         throw error;
       }
     });
@@ -208,7 +221,6 @@ class IPCHandlers {
 
         return result;
       } catch (error) {
-        console.error("❌ Model download error:", error);
 
         // Send error event
         event.sender.send("whisper-download-progress", {
@@ -247,7 +259,6 @@ class IPCHandlers {
         AppUtils.cleanup(this.windowManager.mainWindow);
         return { success: true, message: "Cleanup completed successfully" };
       } catch (error) {
-        console.error("❌ Cleanup error:", error);
         throw error;
       }
     });
@@ -270,7 +281,6 @@ class IPCHandlers {
         await shell.openExternal(url);
         return { success: true };
       } catch (error) {
-        console.error("❌ Failed to open external URL:", error);
         return { success: false, error: error.message };
       }
     });

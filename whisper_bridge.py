@@ -18,16 +18,15 @@ import gc
 
 def get_ffmpeg_path():
     """Get path to bundled FFmpeg executable with proper production support"""
-    
-    # Check environment variables first (set by Node.js)
+    # Check environment variables first
     env_paths = [
-        os.environ.get("FFMPEG_PATH"),
-        os.environ.get("FFMPEG_EXECUTABLE"), 
-        os.environ.get("FFMPEG_BINARY")
+        ("FFMPEG_PATH", os.environ.get("FFMPEG_PATH")),
+        ("FFMPEG_EXECUTABLE", os.environ.get("FFMPEG_EXECUTABLE")), 
+        ("FFMPEG_BINARY", os.environ.get("FFMPEG_BINARY"))
     ]
     
-    for env_path in env_paths:
-        if env_path and os.path.exists(env_path):
+    for env_name, env_path in env_paths:
+        if env_path and os.path.exists(env_path) and os.access(env_path, os.X_OK):
             return env_path
     
     # Determine base path
@@ -45,18 +44,22 @@ def get_ffmpeg_path():
             os.path.join(base_path, "..", "..", "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
             os.path.join(base_path, "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
             # Development path
+            os.path.join(base_path, "node_modules", "ffmpeg-static", "ffmpeg"),
+            # Alternative development path
             os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg"),
         ]
     elif sys.platform == "win32":  # Windows
         possible_paths = [
             os.path.join(base_path, "..", "..", "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg.exe"),
             os.path.join(base_path, "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg.exe"),
+            os.path.join(base_path, "node_modules", "ffmpeg-static", "ffmpeg.exe"),
             os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg.exe"),
         ]
     else:  # Linux
         possible_paths = [
             os.path.join(base_path, "..", "..", "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
             os.path.join(base_path, "..", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
+            os.path.join(base_path, "node_modules", "ffmpeg-static", "ffmpeg"),
             os.path.join(base_path, "..", "node_modules", "ffmpeg-static", "ffmpeg"),
         ]
     
@@ -66,12 +69,48 @@ def get_ffmpeg_path():
         if os.path.exists(abs_path) and os.access(abs_path, os.X_OK):
             return abs_path
     
+    # Try system FFmpeg as last resort
+    if sys.platform == "darwin":
+        common_ffmpeg_paths = [
+            "/opt/homebrew/bin/ffmpeg",  # Homebrew on Apple Silicon
+            "/usr/local/bin/ffmpeg",      # Homebrew on Intel or manual installs
+            "/usr/bin/ffmpeg",            # System location
+            "ffmpeg"                      # In PATH
+        ]
+    else:
+        common_ffmpeg_paths = ["ffmpeg"]
+    
+    for ffmpeg_cmd in common_ffmpeg_paths:
+        try:
+            import subprocess
+            result = subprocess.run([ffmpeg_cmd, "-version"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                return ffmpeg_cmd
+        except Exception:
+            continue
+    
     return None
 
 # Set FFmpeg path for Whisper
 ffmpeg_path = get_ffmpeg_path()
 if ffmpeg_path:
     os.environ["FFMPEG_BINARY"] = ffmpeg_path
+    
+    # CRITICAL: Add ffmpeg directory to PATH so Whisper can find it
+    ffmpeg_dir = os.path.dirname(os.path.abspath(ffmpeg_path))
+    current_path = os.environ.get("PATH", "")
+    if ffmpeg_dir not in current_path:
+        os.environ["PATH"] = f"{ffmpeg_dir}:{current_path}"
+    
+    # For Whisper library, we need to ensure 'ffmpeg' command works
+    # Create a symlink if needed (for macOS/Linux)
+    if sys.platform != "win32" and os.path.isfile(ffmpeg_path) and os.path.basename(ffmpeg_path) != "ffmpeg":
+        symlink_path = os.path.join(ffmpeg_dir, "ffmpeg")
+        if not os.path.exists(symlink_path):
+            try:
+                os.symlink(ffmpeg_path, symlink_path)
+            except Exception:
+                pass
 
 # Global model cache to avoid reloading
 _model_cache = {}
@@ -87,12 +126,10 @@ def load_model(model_name="base"):
     try:
         model = whisper.load_model(model_name)
         
-        # Cache the model but limit cache size
-        if len(_model_cache) >= 2:  # Keep max 2 models in memory
-            # Remove oldest model
+        if len(_model_cache) >= 2:
             oldest_key = next(iter(_model_cache))
             del _model_cache[oldest_key]
-            gc.collect()  # Force garbage collection
+            gc.collect()
         
         _model_cache[model_name] = model
         return model
@@ -111,16 +148,15 @@ def get_expected_model_size(model_name):
     except Exception:
         pass
     
-    # Fallback to approximate sizes (in bytes)
     approximate_sizes = {
-        "tiny": 39 * 1024 * 1024,     # ~39MB
-        "base": 74 * 1024 * 1024,     # ~74MB
-        "small": 244 * 1024 * 1024,   # ~244MB
-        "medium": 769 * 1024 * 1024,  # ~769MB
-        "large": 1550 * 1024 * 1024,  # ~1550MB
-        "turbo": 809 * 1024 * 1024    # ~809MB
+        "tiny": 39 * 1024 * 1024,
+        "base": 74 * 1024 * 1024,
+        "small": 244 * 1024 * 1024,
+        "medium": 769 * 1024 * 1024,
+        "large": 1550 * 1024 * 1024,
+        "turbo": 809 * 1024 * 1024
     }
-    return approximate_sizes.get(model_name, 100 * 1024 * 1024)  # Default 100MB
+    return approximate_sizes.get(model_name, 100 * 1024 * 1024)
 
 def monitor_download_progress(model_name, expected_size, stop_event):
     """Monitor download progress by watching file size growth"""
@@ -144,22 +180,18 @@ def monitor_download_progress(model_name, expected_size, stop_event):
             current_time = time.time()
             time_diff = current_time - last_update_time
             
-            # Calculate speed if we have a previous measurement
             speed_mbps = 0
             if last_size > 0 and time_diff > 0 and current_size > last_size:
                 bytes_per_second = (current_size - last_size) / time_diff
-                speed_mbps = (bytes_per_second * 8) / (1024 * 1024)  # Convert to Mbps
+                speed_mbps = (bytes_per_second * 8) / (1024 * 1024)
                 
-                # Keep rolling average of speed samples
                 speed_samples.append(speed_mbps)
-                if len(speed_samples) > 10:  # Keep last 10 samples
+                if len(speed_samples) > 10:
                     speed_samples.pop(0)
                 speed_mbps = sum(speed_samples) / len(speed_samples)
             
-            # Send progress update (throttled to avoid spam)
             percentage = min((current_size / expected_size * 100) if expected_size > 0 else 0, 100)
             
-            # Only send progress updates every 0.5 seconds or when percentage changes significantly
             if (current_time - last_progress_update > 0.5 or 
                 abs(percentage - last_progress_update) > 1.0):
                 
@@ -188,7 +220,7 @@ def monitor_download_progress(model_name, expected_size, stop_event):
         except Exception:
             pass
             
-        time.sleep(0.5)  # Check every 500ms
+        time.sleep(0.5)
 
 def download_model(model_name="base"):
     """Download Whisper model with real-time progress monitoring"""
@@ -353,26 +385,31 @@ def delete_model(model_name="base"):
 
 def transcribe_audio(audio_path, model_name="base", language=None):
     """Transcribe audio file using Whisper with optimizations"""
+    
+    if not os.path.exists(audio_path):
+        return {"error": f"Audio file not found: {audio_path}", "success": False}
+    
     try:
         # Load model (uses cache for performance)
         model = load_model(model_name)
         if model is None:
             return {"error": "Failed to load Whisper model", "success": False}
         
-        # Set transcription options - keep it simple for reliability
         options = {
-            "fp16": False,  # Use FP32 for better compatibility
-            "verbose": False,  # Reduce logging overhead
+            "fp16": False,
+            "verbose": False,
         }
         if language:
             options["language"] = language
             
         result = model.transcribe(audio_path, **options)
         
-        # Return results - only JSON to stdout
+        text = result.get("text", "").strip()
+        language = result.get("language", "unknown")
+        
         return {
-            "text": result.get("text", "").strip(),
-            "language": result.get("language", "unknown"),
+            "text": text,
+            "language": language,
             "success": True
         }
         
@@ -385,22 +422,24 @@ def transcribe_audio(audio_path, model_name="base", language=None):
 def check_ffmpeg():
     """Check if FFmpeg is available and working"""
     try:
-        # Test FFmpeg by trying to get its version
         import subprocess
-        result = subprocess.run([ffmpeg_path or "ffmpeg", "-version"], 
+        test_path = ffmpeg_path or "ffmpeg"
+        
+        result = subprocess.run([test_path, "-version"], 
                               capture_output=True, text=True, timeout=10)
         
         if result.returncode == 0:
+            version_line = result.stdout.split('\n')[0] if result.stdout else "Unknown"
             return {
                 "available": True,
-                "path": ffmpeg_path or "ffmpeg",
-                "version": result.stdout.split('\n')[0] if result.stdout else "Unknown",
+                "path": test_path,
+                "version": version_line,
                 "success": True
             }
         else:
             return {
                 "available": False,
-                "error": f"FFmpeg returned code {result.returncode}",
+                "error": f"FFmpeg returned code {result.returncode}: {result.stderr}",
                 "success": False
             }
     except subprocess.TimeoutExpired:

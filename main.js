@@ -5,7 +5,6 @@ process.on("uncaughtException", (error) => {
   console.error("Uncaught Exception:", error);
   // Don't exit the process for EPIPE errors as they're harmless
   if (error.code === "EPIPE") {
-    console.log("EPIPE error caught and ignored");
     return;
   }
   // For other errors, log and continue
@@ -17,6 +16,7 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 // Import helper modules
+const debugLogger = require("./src/helpers/debugLogger");
 const EnvironmentManager = require("./src/helpers/environment");
 const WindowManager = require("./src/helpers/windowManager");
 const DatabaseManager = require("./src/helpers/database");
@@ -53,7 +53,7 @@ async function startApp() {
 
   // Initialize Whisper manager at startup (don't await to avoid blocking)
   whisperManager.initializeAtStartup().catch((err) => {
-    console.log("Whisper initialization info:", err.message);
+    // Whisper not being available at startup is not critical
   });
 
   // Create main window
@@ -89,7 +89,14 @@ async function startApp() {
 }
 
 // App event handlers
-app.whenReady().then(startApp);
+app.whenReady().then(() => {
+  // Log debug status
+  if (debugLogger.isEnabled()) {
+    console.log(`🐛 Debug mode enabled - Logs saved to: ${debugLogger.getLogPath()}`);
+  }
+  
+  startApp();
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
