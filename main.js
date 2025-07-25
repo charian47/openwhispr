@@ -51,6 +51,11 @@ async function startApp() {
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
+  // Ensure dock is visible on macOS
+  if (process.platform === 'darwin' && app.dock) {
+    app.dock.show();
+  }
+
   // Initialize Whisper manager at startup (don't await to avoid blocking)
   whisperManager.initializeAtStartup().catch((err) => {
     // Whisper not being available at startup is not critical

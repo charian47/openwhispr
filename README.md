@@ -65,11 +65,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If you want to build a standalone app for personal use:
 
 ```bash
-# Build without code signing (personal use only)
+# Build without code signing (no certificates required)
 npm run pack
 
-# The built app will be in the 'dist' folder
+# The unsigned app will be in: dist/mac-arm64/OpenWispr.app (macOS)
+# or dist/win-unpacked/OpenWispr.exe (Windows)
+# or dist/linux-unpacked/open-wispr (Linux)
 ```
+
+**Note**: On macOS, you may see a security warning when first opening the unsigned app. Right-click and select "Open" to bypass this.
 
 ### Building for Distribution
 
@@ -379,7 +383,7 @@ A: OpenWispr supports 58 languages including English, Spanish, French, German, C
 
 ## Project Status
 
-OpenWispr is actively maintained and ready for production use. Current version: 1.0.1
+OpenWispr is actively maintained and ready for production use. Current version: 1.0.2
 
 - ✅ Core functionality complete
 - ✅ Cross-platform support

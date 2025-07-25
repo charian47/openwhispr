@@ -221,6 +221,7 @@ Enable with `--debug` flag or `OPENWISPR_DEBUG=true`:
 - Requires accessibility permissions for clipboard
 - Uses AppleScript for reliable pasting
 - Notarization needed for distribution
+- Shows in dock with indicator dot when running (LSUIElement: false)
 
 **Windows**:
 - Python installer handles PATH automatically

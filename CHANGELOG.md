@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.2] - 2024-12-19
 
 ### Added
 - **Automatic Python Installation**: The app now detects and offers to install Python automatically
@@ -18,6 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added FAQ section to README
   - Added security information section
   - Clearer prerequisites and setup instructions
+  - Added comprehensive CLAUDE.md technical reference
+- **Dock Icon Support**: App now appears in the dock with activity indicator
+  - Changed LSUIElement from true to false in electron-builder.json
+  - App shows in dock on macOS with the standard dot indicator when running
+
+### Changed
+- Updated supported language count from 90+ to 58 (actual count in codebase)
+- Improved README structure for better open source experience
+
+## [1.0.1] - 2024-XX-XX
 
 ### Added
 - **Agent Naming System**: Personalize your AI assistant with a custom name for more natural interactions
