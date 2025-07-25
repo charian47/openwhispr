@@ -30,6 +30,7 @@ class WindowManager {
       ...position,
     });
 
+
     console.log("📱 Loading main window content...");
     await this.loadMainWindow();
     console.log("⌨️ Setting up shortcuts...");
@@ -42,7 +43,7 @@ class WindowManager {
 
     this.mainWindow.webContents.on(
       "did-fail-load",
-      async (event, errorCode, errorDescription, validatedURL) => {
+      async (_event, errorCode, errorDescription, validatedURL) => {
         console.error(
           "Failed to load main window:",
           errorCode,

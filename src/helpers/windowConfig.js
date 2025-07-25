@@ -4,6 +4,7 @@ const path = require("path");
 const MAIN_WINDOW_CONFIG = {
   width: 100,
   height: 100,
+  type: 'panel',
   webPreferences: {
     preload: path.join(__dirname, "..", "..", "preload.js"),
     nodeIntegration: false,
@@ -18,6 +19,8 @@ const MAIN_WINDOW_CONFIG = {
   show: true,
   skipTaskbar: false,
   focusable: true,
+  visibleOnAllWorkspaces: true,
+  hiddenInMissionControl: false,
 };
 
 // Control panel window configuration
@@ -68,10 +71,13 @@ class WindowPositionUtil {
   }
 
   static setupAlwaysOnTop(window) {
-    window.setAlwaysOnTop(true, "screen-saver");
-    window.setVisibleOnAllWorkspaces(true, {
-      visibleOnFullScreen: true,
-    });
+    if (process.platform === 'darwin') {
+      window.setAlwaysOnTop(true, "screen-saver", 1);
+      window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+      window.setFullScreenable(false);
+    } else {
+      window.setAlwaysOnTop(true);
+    }
   }
 }
 

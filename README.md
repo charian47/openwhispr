@@ -204,9 +204,12 @@ open-wispr/
 - `npm run start` - Start production build
 - `npm run setup` - First-time setup (creates .env file)
 - `npm run build:renderer` - Build the React app only
-- `npm run build` - Full build with electron-builder
-- `npm run pack` - Build without packaging (for testing)
-- `npm run dist` - Build and package for current platform
+- `npm run build` - Full build with signing (requires certificates)
+- `npm run build:mac` - macOS build with signing
+- `npm run build:win` - Windows build with signing
+- `npm run build:linux` - Linux build
+- `npm run pack` - Build without signing (for personal use)
+- `npm run dist` - Build and package with signing
 - `npm run lint` - Run ESLint
 - `npm run preview` - Preview production build
 

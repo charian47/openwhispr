@@ -12,6 +12,12 @@ exports.default = async function(context) {
     return;
   }
 
+  // Skip signing if CSC_IDENTITY_AUTO_DISCOVERY is false (pack builds)
+  if (process.env.CSC_IDENTITY_AUTO_DISCOVERY === 'false') {
+    console.log('Skipping signing for pack build');
+    return;
+  }
+
   const appName = context.packager.appInfo.productFilename;
   const appPath = path.join(appOutDir, `${appName}.app`);
   const entitlementsPath = path.join(__dirname, '..', 'build', 'entitlements.mac.plist');

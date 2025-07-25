@@ -211,9 +211,10 @@ Enable with `--debug` flag or `OPENWISPR_DEBUG=true`:
    - Use AppleScript fallback on macOS
 
 4. **Build Issues**:
-   - Use `npm run pack` for unsigned builds
+   - Use `npm run pack` for unsigned builds (CSC_IDENTITY_AUTO_DISCOVERY=false)
    - Signing requires Apple Developer account
    - ASAR unpacking needed for FFmpeg/Python bridge
+   - afterSign.js automatically skips signing when CSC_IDENTITY_AUTO_DISCOVERY=false
 
 ### Platform-Specific Notes
 

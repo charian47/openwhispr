@@ -41,7 +41,7 @@
     "entitlementsInherit": "build/entitlements.mac.plist",
     "identity": "HeroTools Inc. (9R85XFMH59)",
     "extendInfo": {
-      "LSUIElement": false,
+      "LSUIElement": true,
       "NSMicrophoneUsageDescription": "OpenWispr needs microphone access for speech-to-text transcription.",
       "NSAccessibilityUsageDescription": "OpenWispr needs accessibility permissions to paste transcribed text into other applications."
     }
