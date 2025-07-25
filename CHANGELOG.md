@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Automatic Python Installation**: The app now detects and offers to install Python automatically
+  - macOS: Uses Homebrew if available, falls back to official installer
+  - Windows: Downloads and installs official Python with proper PATH configuration
+  - Linux: Uses system package manager (apt, yum, or pacman)
+- **Enhanced Developer Experience**: 
+  - Added MIT LICENSE file
+  - Improved documentation for personal vs distribution builds
+  - Added FAQ section to README
+  - Added security information section
+  - Clearer prerequisites and setup instructions
+
+### Added
 - **Agent Naming System**: Personalize your AI assistant with a custom name for more natural interactions
   - Name your agent during onboarding (step 6 of 8)
   - Address your agent directly: "Hey [AgentName], make this more professional"

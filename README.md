@@ -2,6 +2,10 @@
 
 An open source desktop dictation application that converts speech to text using OpenAI Whisper. Features both local and cloud processing options for maximum flexibility and privacy.
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. This means you can freely use, modify, and distribute this software for personal or commercial purposes.
+
 ## Features
 
 - 🎤 **Global Hotkey**: Customizable hotkey to start/stop dictation from anywhere (default: backtick `)
@@ -17,38 +21,66 @@ An open source desktop dictation application that converts speech to text using 
 - ⚡ **Automatic Pasting**: Transcribed text automatically pastes at your cursor location
 - 🖱️ **Draggable Interface**: Move the dictation panel anywhere on your screen
 
+## Prerequisites
+
+- **Node.js 18+** and npm (Download from [nodejs.org](https://nodejs.org/))
+- **macOS 10.15+**, **Windows 10+**, or **Linux**
+- **Python 3.7+** (Optional - the app can install it automatically for local Whisper processing)
+
 ## Quick Start
 
-1. **Install dependencies**:
+### For Personal Use (Recommended)
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/HeroTools/open-wispr.git
+   cd open-wispr
+   ```
+
+2. **Install dependencies**:
    ```bash
    npm install
    ```
 
-2. **Optional: Set up OpenAI API key** (only needed for cloud processing):
+3. **Optional: Set up OpenAI API key** (only needed for cloud processing):
    
-   **Method A - .env file**:
+   **Method A - Environment file**:
    ```bash
    cp env.example .env
    # Edit .env and add your OpenAI API key
    ```
    
-   **Method B - Control Panel**:
+   **Method B - In-app configuration**:
+   - Run the app and configure the API key through the Control Panel
+
+4. **Run the application**:
    ```bash
-   # Run the app and configure the API key through the Control Panel
+   npm run dev  # Development mode with hot reload
+   # OR
+   npm start    # Production mode
    ```
 
-3. **Run in development**:
-   ```bash
-   npm run dev
-   ```
+### Building for Personal Use (Optional)
 
-4. **Build for production**:
-   ```bash
-   # Build for your platform
-   npm run build:mac    # macOS
-   npm run build:win    # Windows  
-   npm run build:linux  # Linux
-   ```
+If you want to build a standalone app for personal use:
+
+```bash
+# Build without code signing (personal use only)
+npm run pack
+
+# The built app will be in the 'dist' folder
+```
+
+### Building for Distribution
+
+For maintainers who need to distribute signed builds:
+
+```bash
+# Requires code signing certificates and notarization setup
+npm run build:mac    # macOS (requires Apple Developer account)
+npm run build:win    # Windows (requires code signing cert)
+npm run build:linux  # Linux
+```
 
 ### First Time Setup
 
@@ -236,14 +268,23 @@ DEBUG=false
 
 ### Local Whisper Setup
 
-For local processing, OpenWispr will automatically:
-1. Install Python Whisper package via pip
-2. Download your chosen model (tiny, base, small, medium, large)
-3. Handle all transcription locally
+For local processing, OpenWispr offers automated setup:
+
+1. **Automatic Python Installation** (if needed):
+   - The app will detect if Python is missing
+   - Offers to install Python 3.11 automatically
+   - macOS: Uses Homebrew if available, otherwise official installer
+   - Windows: Downloads and installs official Python
+   - Linux: Uses system package manager (apt, yum, or pacman)
+
+2. **Automatic Whisper Setup**:
+   - Installs OpenAI Whisper package via pip
+   - Downloads your chosen model on first use
+   - Handles all transcription locally
 
 **Requirements**:
-- Python 3.7+ installed on your system
 - Sufficient disk space for models (39MB - 1.5GB depending on model)
+- Admin/sudo access may be required for Python installation
 
 ### Customization
 
@@ -257,11 +298,30 @@ For local processing, OpenWispr will automatically:
 
 ## Contributing
 
+We welcome contributions! Please follow these steps:
+
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and lint
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Guidelines
+
+- Run `npm run lint` before committing
+- Follow the existing code style
+- Update documentation as needed
+- Test on your target platform before submitting
+## Security
+
+OpenWispr is designed with privacy and security in mind:
+
+- **Local Processing Option**: Keep your voice data completely private
+- **No Analytics**: We don't collect any usage data or telemetry
+- **Open Source**: All code is available for review
+- **Secure Storage**: API keys are stored securely in your system's keychain/credential manager
+- **Minimal Permissions**: Only requests necessary permissions (microphone, accessibility)
+
 ## Troubleshooting
 
 ### Common Issues
@@ -296,3 +356,35 @@ For local processing, OpenWispr will automatically:
 - **Cloud Processing**: Generally faster but requires internet connection
 - **Model Selection**: tiny (fastest) → base (recommended) → small → medium → large (best quality)
 - **Permissions**: Ensure all required permissions are granted for smooth operation
+
+## FAQ
+
+**Q: Is OpenWispr really free?**
+A: Yes! OpenWispr is open source and free to use. You only pay for OpenAI API usage if you choose cloud processing.
+
+**Q: Which processing method should I use?**
+A: Use local processing for privacy and offline use. Use cloud processing for speed and convenience.
+
+**Q: Can I use this commercially?**
+A: Yes! The MIT license allows commercial use.
+
+**Q: How do I change the hotkey?**
+A: Open the Control Panel (right-click tray icon) and go to Settings. You can set any key as your hotkey.
+
+**Q: Is my data secure?**
+A: With local processing, your audio never leaves your device. With cloud processing, audio is sent to OpenAI's servers (see their privacy policy).
+
+**Q: What languages are supported?**
+A: OpenWispr supports 58 languages including English, Spanish, French, German, Chinese, Japanese, and more. Set your preferred language in the .env file or use auto-detect.
+
+## Project Status
+
+OpenWispr is actively maintained and ready for production use. Current version: 1.0.1
+
+- ✅ Core functionality complete
+- ✅ Cross-platform support
+- ✅ Local and cloud processing
+- ✅ Automatic Python/Whisper installation
+- ✅ Agent naming system
+- ✅ Draggable interface
+- 🚧 Continuous improvements and bug fixes
