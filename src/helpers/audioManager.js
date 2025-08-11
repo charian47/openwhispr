@@ -365,8 +365,20 @@ class AudioManager {
   async processWithReasoningModel(text) {
     try {
       const model = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
-      return await ReasoningService.processText(text, model);
+      console.log(`Processing with reasoning model: ${model}`);
+      
+      const result = await ReasoningService.processText(text, model);
+      console.log(`Reasoning model processing successful`);
+      return result;
     } catch (error) {
+      console.error(`Reasoning model processing failed: ${error.message}`);
+      
+      // If it's a local model error, provide more helpful information
+      if (error.message.includes("llama.cpp") || error.message.includes("Local reasoning")) {
+        console.error("Local AI error - make sure llama.cpp is installed and the model is downloaded");
+      }
+      
+      // Fall back to basic cleaning
       return AudioManager.cleanTranscription(text);
     }
   }
