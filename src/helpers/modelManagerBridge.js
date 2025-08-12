@@ -313,19 +313,17 @@ class ModelManager {
   }
 
   async ensureLlamaCpp() {
-    // Check if llama.cpp is available
+    // Simplify - isInstalled already checks system installation
     const llamaCppInstaller = require("./llamaCppInstaller").default;
-    const isInstalled = await llamaCppInstaller.isInstalled() || 
-                       await llamaCppInstaller.checkSystemInstallation();
     
-    if (!isInstalled) {
+    if (!await llamaCppInstaller.isInstalled()) {
       throw new ModelError(
         "llama.cpp is not installed",
         "LLAMACPP_NOT_INSTALLED"
       );
     }
 
-    this.llamaCppPath = await llamaCppInstaller.getLlamaCppPath();
+    this.llamaCppPath = await llamaCppInstaller.getBinaryPath();
     return true;
   }
 

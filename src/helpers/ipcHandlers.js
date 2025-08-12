@@ -393,8 +393,7 @@ class IPCHandlers {
     ipcMain.handle("llama-cpp-check", async () => {
       try {
         const llamaCppInstaller = require("./llamaCppInstaller").default;
-        const isInstalled = await llamaCppInstaller.isInstalled() || 
-                           await llamaCppInstaller.checkSystemInstallation();
+        const isInstalled = await llamaCppInstaller.isInstalled();
         const version = isInstalled ? await llamaCppInstaller.getVersion() : null;
         return { isInstalled, version };
       } catch (error) {

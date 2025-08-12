@@ -169,7 +169,12 @@ export default function SettingsPage({
   };
 
   const saveReasoningSettings = useCallback(() => {
-    updateReasoningSettings({ useReasoningModel, reasoningModel });
+    // Update reasoning settings
+    updateReasoningSettings({ 
+      useReasoningModel, 
+      reasoningModel
+    });
+    
     updateApiKeys({
       ...(localReasoningProvider === "openai" &&
         openaiApiKey.trim() && { openaiApiKey }),
