@@ -19,6 +19,31 @@ class ReasoningService extends BaseReasoningService {
     this.cacheCleanupStop = this.apiKeyCache.startAutoCleanup();
   }
 
+  private async getApiKey(provider: 'openai' | 'anthropic' | 'gemini'): Promise<string> {
+    let apiKey = this.apiKeyCache.get(provider);
+    if (!apiKey) {
+      try {
+        const keyGetters = {
+          openai: () => window.electronAPI.getOpenAIKey(),
+          anthropic: () => window.electronAPI.getAnthropicKey(),
+          gemini: () => window.electronAPI.getGeminiKey(),
+        };
+        apiKey = await keyGetters[provider]();
+        if (apiKey) {
+          this.apiKeyCache.set(provider, apiKey);
+        }
+      } catch (error) {
+        console.error(`Failed to retrieve ${provider} API key:`, error);
+      }
+    }
+    
+    if (!apiKey) {
+      throw new Error(`${provider.charAt(0).toUpperCase() + provider.slice(1)} API key not configured`);
+    }
+    
+    return apiKey;
+  }
+
   async processText(
     text: string,
     model: string = "gpt-4o-mini",
@@ -56,21 +81,7 @@ class ReasoningService extends BaseReasoningService {
       throw new Error("Already processing a request");
     }
 
-    let apiKey = this.apiKeyCache.get("openai");
-    if (!apiKey) {
-      try {
-        apiKey = await window.electronAPI.getOpenAIKey();
-        if (apiKey) {
-          this.apiKeyCache.set("openai", apiKey);
-        }
-      } catch (error) {
-        console.error("Failed to retrieve OpenAI API key:", error);
-      }
-    }
-
-    if (!apiKey) {
-      throw new Error("OpenAI API key not configured");
-    }
+    const apiKey = await this.getApiKey('openai');
 
     this.isProcessing = true;
 
@@ -130,21 +141,7 @@ class ReasoningService extends BaseReasoningService {
       throw new Error("Already processing a request");
     }
 
-    let apiKey = this.apiKeyCache.get("anthropic");
-    if (!apiKey) {
-      try {
-        apiKey = await window.electronAPI.getAnthropicKey();
-        if (apiKey) {
-          this.apiKeyCache.set("anthropic", apiKey);
-        }
-      } catch (error) {
-        console.error("Failed to retrieve Anthropic API key:", error);
-      }
-    }
-
-    if (!apiKey) {
-      throw new Error("Anthropic API key not configured");
-    }
+    const apiKey = await this.getApiKey('anthropic');
 
     this.isProcessing = true;
 
@@ -223,21 +220,7 @@ class ReasoningService extends BaseReasoningService {
       throw new Error("Already processing a request");
     }
 
-    let apiKey = this.apiKeyCache.get("gemini");
-    if (!apiKey) {
-      try {
-        apiKey = await window.electronAPI.getGeminiKey();
-        if (apiKey) {
-          this.apiKeyCache.set("gemini", apiKey);
-        }
-      } catch (error) {
-        console.error("Failed to retrieve Gemini API key:", error);
-      }
-    }
-
-    if (!apiKey) {
-      throw new Error("Gemini API key not configured");
-    }
+    const apiKey = await this.getApiKey('gemini');
 
     this.isProcessing = true;
 

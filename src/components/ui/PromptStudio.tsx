@@ -82,7 +82,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     try {
       // Check if reasoning model is enabled and if we have the necessary settings
       const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-      const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
+      const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-4o-mini";
       const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
       
       if (!useReasoningModel) {
@@ -278,7 +278,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
 
   const renderTestPlayground = () => {
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-    const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
+    const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-4o-mini";
     const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
     
     return (
