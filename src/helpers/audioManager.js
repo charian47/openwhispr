@@ -356,7 +356,7 @@ class AudioManager {
   }
 
   async processWithReasoningModel(text) {
-    const model = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
+    const model = localStorage.getItem("reasoningModel") || "gpt-4o-mini";
     return await ReasoningService.processText(text, model);
   }
 

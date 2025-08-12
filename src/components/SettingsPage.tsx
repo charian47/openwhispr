@@ -55,6 +55,7 @@ export default function SettingsPage({
     reasoningProvider,
     openaiApiKey,
     anthropicApiKey,
+    geminiApiKey,
     dictationKey,
     setUseLocalWhisper,
     setWhisperModel,
@@ -67,6 +68,7 @@ export default function SettingsPage({
     setReasoningProvider,
     setOpenaiApiKey,
     setAnthropicApiKey,
+    setGeminiApiKey,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
@@ -180,6 +182,8 @@ export default function SettingsPage({
         openaiApiKey.trim() && { openaiApiKey }),
       ...(localReasoningProvider === "anthropic" &&
         anthropicApiKey.trim() && { anthropicApiKey }),
+      ...(localReasoningProvider === "gemini" &&
+        geminiApiKey.trim() && { geminiApiKey }),
     });
     
     // Save the provider separately since it's computed from the model
@@ -874,6 +878,36 @@ export default function SettingsPage({
                     </div>
                     <p className="text-xs text-purple-600">
                       Get your API key from console.anthropic.com
+                    </p>
+                  </div>
+                )}
+
+                {localReasoningProvider === "gemini" && (
+                  <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <h4 className="font-medium text-blue-900">
+                      Google Gemini API Key
+                    </h4>
+                    <div className="flex gap-2">
+                      <Input
+                        type="password"
+                        placeholder="AIza..."
+                        value={geminiApiKey}
+                        onChange={(e) => setGeminiApiKey(e.target.value)}
+                        className="flex-1 text-sm border-blue-300 focus:border-blue-500"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          pasteFromClipboardWithFallback(setGeminiApiKey)
+                        }
+                        className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                      >
+                        Paste
+                      </Button>
+                    </div>
+                    <p className="text-xs text-blue-600">
+                      Get your API key from makersuite.google.com/app/apikey
                     </p>
                   </div>
                 )}

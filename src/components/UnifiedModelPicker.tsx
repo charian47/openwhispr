@@ -488,7 +488,7 @@ export default function UnifiedModelPicker({
 
         {modelType === 'llm' && (
           <div className="mt-6 text-xs text-muted-foreground">
-            <p>Models are stored in: ~/.cache/openwispr/models/</p>
+            <p>Models are stored in: ~/.cache/openwhispr/models/</p>
           </div>
         )}
       </div>

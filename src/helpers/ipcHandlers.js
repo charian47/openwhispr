@@ -364,6 +364,14 @@ class IPCHandlers {
       return this.environmentManager.getAnthropicKey();
     });
 
+    ipcMain.handle("get-gemini-key", async (event) => {
+      return this.environmentManager.getGeminiKey();
+    });
+
+    ipcMain.handle("save-gemini-key", async (event, key) => {
+      return this.environmentManager.saveGeminiKey(key);
+    });
+
     ipcMain.handle("save-anthropic-key", async (event, key) => {
       return this.environmentManager.saveAnthropicKey(key);
     });

@@ -80,10 +80,11 @@ OpenWispr is an Electron-based desktop dictation application that uses OpenAI Wh
 
 ### Services
 
-- **ReasoningService.js**: AI processing for agent-addressed commands
+- **ReasoningService.ts**: AI processing for agent-addressed commands
   - Detects when user addresses their named agent
-  - Routes to appropriate AI provider (OpenAI/Anthropic)
+  - Routes to appropriate AI provider (OpenAI/Anthropic/Gemini)
   - Removes agent name from final output
+  - Supports GPT-5, Claude Opus 4.1, and Gemini 2.5 models
 
 ### Python Bridge
 
@@ -146,10 +147,12 @@ Settings stored in localStorage with these keys:
 - `whisperModel`: Selected Whisper model
 - `useLocalWhisper`: Boolean for local vs cloud
 - `openaiApiKey`: Encrypted API key
-- `anthropicApiKey`: Encrypted API key  
+- `anthropicApiKey`: Encrypted API key
+- `geminiApiKey`: Encrypted API key
 - `language`: Selected language code
 - `agentName`: User's custom agent name
-- `reasoningModel`: Selected AI model for processing
+- `reasoningModel`: Selected AI model for processing (defaults to gpt-4o-mini)
+- `reasoningProvider`: AI provider (openai/anthropic/gemini/local)
 - `hotkey`: Custom hotkey configuration
 - `hasCompletedOnboarding`: Onboarding completion flag
 
@@ -166,6 +169,17 @@ Settings stored in localStorage with these keys:
 - Name stored in localStorage and database
 - ReasoningService detects "Hey [AgentName]" patterns
 - AI processes command and removes agent reference from output
+- Supports multiple AI providers:
+  - **OpenAI**: 
+    - GPT-5 Series (Nano/Mini/Full)
+    - GPT-4.1 Series (Nano/Mini/Full) with 1M context
+    - o-series reasoning models (o3/o3-pro/o4-mini)
+    - GPT-4o multimodal series (4o/4o-mini) - default
+    - GPT-4 Turbo and GPT-4 classic
+    - GPT-3.5 Turbo legacy
+  - **Anthropic**: Claude Opus 4.1, Claude Sonnet 4, Claude 3.5 Sonnet/Haiku
+  - **Google**: Gemini 2.5 Pro/Flash/Flash-Lite, Gemini 2.0 Flash
+  - **Local**: Community models via LocalReasoningService
 
 ### 8. Debug Mode
 

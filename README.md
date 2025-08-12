@@ -9,8 +9,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Features
 
 - 🎤 **Global Hotkey**: Customizable hotkey to start/stop dictation from anywhere (default: backtick `)
-- 🤖 **Dual AI Processing**: Choose between local Whisper models (private) or OpenAI API (fast)
+- 🤖 **Multi-Provider AI Processing**: Choose between OpenAI GPT-5, Anthropic Claude, Google Gemini, or local models
 - 🎯 **Agent Naming**: Personalize your AI assistant with a custom name for natural interactions
+- 🧠 **Advanced Reasoning**: Latest AI models including GPT-5, Claude Opus 4.1, and Gemini 2.5 Pro
 - 🔒 **Privacy-First**: Local processing keeps your voice data completely private
 - 🎨 **Modern UI**: Built with React 19, TypeScript, and Tailwind CSS v4
 - 🚀 **Fast**: Optimized with Vite and modern tooling
@@ -119,14 +120,23 @@ npm run build:linux  # Linux
 - **Models**: Download and manage local Whisper models
 - **Settings**: Configure API keys, customize hotkeys, and manage permissions
 
-### Agent Naming
-Once you've named your agent during setup, you can interact with it in two ways:
+### Agent Naming & AI Processing
+Once you've named your agent during setup, you can interact with it using multiple AI providers:
 
 **🎯 Agent Commands** (for AI assistance):
 - "Hey [AgentName], make this more professional"
 - "Hey [AgentName], format this as a list"
 - "Hey [AgentName], write a thank you email"
 - "Hey [AgentName], convert this to bullet points"
+
+**🤖 AI Provider Options**:
+- **OpenAI**: 
+  - GPT-5 Series (Nano/Mini/Full) - Latest generation with deep reasoning
+  - GPT-4.1 Series - Enhanced coding with 1M token context
+  - o3/o4 Series - Advanced reasoning models with longer thinking
+- **Anthropic**: Claude Opus 4.1, Sonnet 4 - Frontier intelligence models
+- **Google**: Gemini 2.5 Pro/Flash - Advanced multi-modal capabilities
+- **Local**: Community models for complete privacy
 
 **📝 Regular Dictation** (for normal text):
 - "This is just normal text I want transcribed"
@@ -178,7 +188,7 @@ open-whispr/
 │   │   └── lib/
 │   │       └── utils.ts         # Utility functions
 │   ├── services/
-│   │   └── ReasoningService.js  # AI processing and agent name detection
+│   │   └── ReasoningService.ts  # Multi-provider AI processing (OpenAI/Anthropic/Gemini)
 │   ├── utils/
 │   │   └── agentName.ts         # Agent name management utility
 │   └── components.json          # shadcn/ui configuration
@@ -268,6 +278,12 @@ WHISPER_MODEL=whisper-1
 
 # Optional: Set language for better transcription accuracy
 LANGUAGE=
+
+# Optional: Anthropic API Configuration
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+# Optional: Google Gemini API Configuration  
+GEMINI_API_KEY=your_gemini_api_key_here
 
 # Optional: Debug mode
 DEBUG=false
@@ -386,7 +402,7 @@ A: OpenWispr supports 58 languages including English, Spanish, French, German, C
 
 ## Project Status
 
-OpenWispr is actively maintained and ready for production use. Current version: 1.0.2
+OpenWispr is actively maintained and ready for production use. Current version: 1.0.4
 
 - ✅ Core functionality complete
 - ✅ Cross-platform support

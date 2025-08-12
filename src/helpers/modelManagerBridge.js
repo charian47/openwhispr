@@ -103,7 +103,7 @@ class ModelManager {
 
   getModelsDir() {
     const homeDir = app.getPath("home");
-    return path.join(homeDir, ".cache", "openwispr", "models");
+    return path.join(homeDir, ".cache", "openwhispr", "models");
   }
 
   async ensureModelsDirExists() {

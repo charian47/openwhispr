@@ -24,6 +24,7 @@ export interface HotkeySettings {
 export interface ApiKeySettings {
   openaiApiKey: string;
   anthropicApiKey: string;
+  geminiApiKey: string;
 }
 
 export function useSettings() {
@@ -93,7 +94,7 @@ export function useSettings() {
 
   const [reasoningModel, setReasoningModel] = useLocalStorage(
     "reasoningModel",
-    "gpt-3.5-turbo",
+    "gpt-4o-mini",
     {
       serialize: String,
       deserialize: String,
@@ -108,6 +109,15 @@ export function useSettings() {
 
   const [anthropicApiKey, setAnthropicApiKey] = useLocalStorage(
     "anthropicApiKey",
+    "",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [geminiApiKey, setGeminiApiKey] = useLocalStorage(
+    "geminiApiKey",
     "",
     {
       serialize: String,
@@ -166,8 +176,10 @@ export function useSettings() {
       if (keys.openaiApiKey !== undefined) setOpenaiApiKey(keys.openaiApiKey);
       if (keys.anthropicApiKey !== undefined)
         setAnthropicApiKey(keys.anthropicApiKey);
+      if (keys.geminiApiKey !== undefined)
+        setGeminiApiKey(keys.geminiApiKey);
     },
-    [setOpenaiApiKey, setAnthropicApiKey]
+    [setOpenaiApiKey, setAnthropicApiKey, setGeminiApiKey]
   );
 
   return {
@@ -182,6 +194,7 @@ export function useSettings() {
     reasoningProvider,
     openaiApiKey,
     anthropicApiKey,
+    geminiApiKey,
     dictationKey,
     setUseLocalWhisper,
     setWhisperModel,
@@ -193,16 +206,19 @@ export function useSettings() {
     setReasoningModel,
     setReasoningProvider: (provider: string) => {
       const providerModels = {
-        openai: "gpt-3.5-turbo",
-        anthropic: "claude-3-haiku-20240307",
+        openai: "gpt-4o-mini", // Start with cost-efficient multimodal model
+        anthropic: "claude-3.5-sonnet-20241022",
+        gemini: "gemini-2.5-flash",
+        local: "llama-3.2-3b",
       };
       setReasoningModel(
         providerModels[provider as keyof typeof providerModels] ||
-          "gpt-3.5-turbo"
+          "gpt-4o-mini"
       );
     },
     setOpenaiApiKey,
     setAnthropicApiKey,
+    setGeminiApiKey,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,

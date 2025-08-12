@@ -69,6 +69,22 @@ class EnvironmentManager {
     }
   }
 
+  getGeminiKey() {
+    const apiKey = process.env.GEMINI_API_KEY;
+    return apiKey || "";
+  }
+
+  saveGeminiKey(key) {
+    try {
+      // Update the environment variable in memory for immediate use
+      process.env.GEMINI_API_KEY = key;
+      return { success: true };
+    } catch (error) {
+      console.error("Error saving Gemini API key:", error.message);
+      throw error;
+    }
+  }
+
   createProductionEnvFile(apiKey) {
     try {
       const envPath = path.join(app.getPath("userData"), ".env");

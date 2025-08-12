@@ -103,6 +103,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Anthropic API
   getAnthropicKey: () => ipcRenderer.invoke("get-anthropic-key"),
   saveAnthropicKey: (key) => ipcRenderer.invoke("save-anthropic-key", key),
+
+  // Gemini API
+  getGeminiKey: () => ipcRenderer.invoke("get-gemini-key"),
+  saveGeminiKey: (key) => ipcRenderer.invoke("save-gemini-key", key),
   
   // Local reasoning
   processLocalReasoning: (text, modelId, agentName, config) => 

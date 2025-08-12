@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2025-08-12
+
+### Added
+- **Multi-Provider AI Support**: Integrated three major AI providers for text processing
+  - OpenAI: Complete model suite including:
+    - GPT-5 Series (Nano/Mini/Full) - Latest generation with deep reasoning
+    - GPT-4.1 Series (Nano/Mini/Full) - Enhanced coding, 1M token context, June 2024 knowledge
+    - o-series (o3/o3-pro/o4-mini) - Advanced reasoning models with extended thinking time
+    - GPT-4o/4o-mini - Multimodal models with vision support
+  - Anthropic: Claude Opus 4.1, Sonnet 4, and 3.5 variants for frontier intelligence
+  - Google: Gemini 2.5 Pro/Flash/Flash-Lite and 2.0 Flash for advanced processing
+- **Enhanced Reasoning Service**: Complete TypeScript rewrite with provider abstraction
+  - Automatic provider detection based on selected model
+  - Secure API key caching with TTL
+  - Unified retry strategies across all providers
+  - Provider-specific token optimization (up to 8192 for Gemini)
+- **Improved Settings UI**: Comprehensive API key management for all providers
+  - Color-coded provider sections (OpenAI=green, Anthropic=purple, Gemini=blue)
+  - Inline API key validation and secure storage
+  - Provider-specific model selection with descriptions
+
+### Changed  
+- **Default AI Model**: Updated from GPT-3.5 Turbo to GPT-4o Mini for cost-efficient multimodal support
+- **Model Updates**: Refreshed all AI models to their latest 2025 versions
+  - OpenAI: Added GPT-5 family (released August 2025)
+  - Anthropic: Updated to Claude Opus 4.1 and Sonnet 4
+  - Gemini: Added latest 2.5 series models
+- **ReasoningService**: Migrated from JavaScript to TypeScript for better type safety
+- **Documentation**: Updated CLAUDE.md with comprehensive provider information
+
+### Technical Improvements
+- Added Gemini API integration with proper authentication flow
+- Implemented SecureCache utility for API key management
+- Enhanced IPC handlers for multi-provider support
+- Updated environment manager with Gemini key storage
+- Improved error handling with provider-specific messages
+- Added comprehensive retry logic with exponential backoff
+
+## [1.0.3] - 2024-12-20
+
+### Added
+- **Local AI Models**: Integration with community models for complete privacy
+  - Support for Llama, Mistral, and other open-source models
+  - Local model management UI with download progress
+  - Automatic model validation and testing
+- **Enhanced Security**: Improved API key storage and management
+  - System keychain integration where available
+  - Encrypted localStorage fallback
+  - Automatic key rotation support
+
+### Fixed
+- Resolved issues with Whisper model downloads on slow connections
+- Fixed clipboard pasting reliability on Windows 11
+- Improved error messages for better debugging
+- Fixed memory leaks in long-running sessions
+
+### Changed
+- Optimized audio processing pipeline for 30% faster transcription
+- Reduced app bundle size by 15MB through dependency optimization
+- Improved startup time by lazy-loading heavy components
+
 ## [1.0.2] - 2024-12-19
 
 ### Added
