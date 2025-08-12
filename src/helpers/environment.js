@@ -89,7 +89,7 @@ class EnvironmentManager {
     try {
       const envPath = path.join(app.getPath("userData"), ".env");
 
-      const envContent = `# OpenWispr Environment Variables
+      const envContent = `# OpenWhispr Environment Variables
 # This file was created automatically for production use
 OPENAI_API_KEY=${apiKey}
 `;

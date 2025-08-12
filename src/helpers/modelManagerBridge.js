@@ -236,7 +236,7 @@ class ModelManager {
       let totalSize = 0;
 
       https.get(url, { 
-        headers: { 'User-Agent': 'OpenWispr/1.0' },
+        headers: { 'User-Agent': 'OpenWhispr/1.0' },
         timeout: 30000 
       }, (response) => {
         if (response.statusCode === 302 || response.statusCode === 301) {

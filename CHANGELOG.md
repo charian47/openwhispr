@@ -133,7 +133,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2024-XX-XX
 
 ### Added
-- Initial release of OpenWispr (formerly OpenWispr)
+- Initial release of OpenWhispr (formerly OpenWispr)
 - Desktop dictation application using OpenAI Whisper
 - Local and cloud-based speech-to-text transcription
 - Real-time audio recording and processing

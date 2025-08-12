@@ -1,4 +1,4 @@
-# OpenWispr
+# OpenWhispr
 
 An open source desktop dictation application that converts speech to text using OpenAI Whisper. Features both local and cloud processing options for maximum flexibility and privacy.
 
@@ -69,8 +69,8 @@ If you want to build a standalone app for personal use:
 # Build without code signing (no certificates required)
 npm run pack
 
-# The unsigned app will be in: dist/mac-arm64/OpenWispr.app (macOS)
-# or dist/win-unpacked/OpenWispr.exe (Windows)
+# The unsigned app will be in: dist/mac-arm64/OpenWhispr.app (macOS)
+# or dist/win-unpacked/OpenWhispr.exe (Windows)
 # or dist/linux-unpacked/open-whispr (Linux)
 ```
 
@@ -291,7 +291,7 @@ DEBUG=false
 
 ### Local Whisper Setup
 
-For local processing, OpenWispr offers automated setup:
+For local processing, OpenWhispr offers automated setup:
 
 1. **Automatic Python Installation** (if needed):
    - The app will detect if Python is missing
@@ -337,7 +337,7 @@ We welcome contributions! Please follow these steps:
 - Test on your target platform before submitting
 ## Security
 
-OpenWispr is designed with privacy and security in mind:
+OpenWhispr is designed with privacy and security in mind:
 
 - **Local Processing Option**: Keep your voice data completely private
 - **No Analytics**: We don't collect any usage data or telemetry
@@ -352,7 +352,7 @@ OpenWispr is designed with privacy and security in mind:
 1. **Microphone permissions**: Grant permissions in System Preferences/Settings
 2. **Accessibility permissions (macOS)**: Required for automatic text pasting
    - Go to System Settings → Privacy & Security → Accessibility
-   - Add OpenWispr and enable the checkbox
+   - Add OpenWhispr and enable the checkbox
    - Use "Fix Permission Issues" in Control Panel if needed
 3. **API key errors** (cloud processing only): Ensure your OpenAI API key is valid and has credits
    - Set key through Control Panel or .env file
@@ -382,8 +382,8 @@ OpenWispr is designed with privacy and security in mind:
 
 ## FAQ
 
-**Q: Is OpenWispr really free?**
-A: Yes! OpenWispr is open source and free to use. You only pay for OpenAI API usage if you choose cloud processing.
+**Q: Is OpenWhispr really free?**
+A: Yes! OpenWhispr is open source and free to use. You only pay for OpenAI API usage if you choose cloud processing.
 
 **Q: Which processing method should I use?**
 A: Use local processing for privacy and offline use. Use cloud processing for speed and convenience.
@@ -398,11 +398,11 @@ A: Open the Control Panel (right-click tray icon) and go to Settings. You can se
 A: With local processing, your audio never leaves your device. With cloud processing, audio is sent to OpenAI's servers (see their privacy policy).
 
 **Q: What languages are supported?**
-A: OpenWispr supports 58 languages including English, Spanish, French, German, Chinese, Japanese, and more. Set your preferred language in the .env file or use auto-detect.
+A: OpenWhispr supports 58 languages including English, Spanish, French, German, Chinese, Japanese, and more. Set your preferred language in the .env file or use auto-detect.
 
 ## Project Status
 
-OpenWispr is actively maintained and ready for production use. Current version: 1.0.4
+OpenWhispr is actively maintained and ready for production use. Current version: 1.0.4
 
 - ✅ Core functionality complete
 - ✅ Cross-platform support

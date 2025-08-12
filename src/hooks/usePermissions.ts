@@ -42,7 +42,7 @@ export const usePermissions = (
 
   const testAccessibilityPermission = useCallback(async () => {
     try {
-      await window.electronAPI.pasteText("OpenWispr accessibility test");
+      await window.electronAPI.pasteText("OpenWhispr accessibility test");
       setAccessibilityPermissionGranted(true);
       if (showAlertDialog) {
         showAlertDialog({

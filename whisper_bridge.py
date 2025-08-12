@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Whisper Bridge Script for OpenWispr
+Whisper Bridge Script for OpenWhispr
 Handles local speech-to-text processing using OpenAI's Whisper model
 """
 
@@ -462,7 +462,7 @@ def check_ffmpeg():
         }
 
 def main():
-    parser = argparse.ArgumentParser(description="Whisper Bridge for OpenWispr")
+    parser = argparse.ArgumentParser(description="Whisper Bridge for OpenWhispr")
     parser.add_argument("--mode", default="transcribe", 
                        choices=["transcribe", "download", "check", "list", "delete", "check-ffmpeg"],
                        help="Operation mode (default: transcribe)")

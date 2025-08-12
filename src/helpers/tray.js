@@ -177,7 +177,7 @@ class TrayManager {
       },
       { type: "separator" },
       {
-        label: "Quit OpenWispr",
+        label: "Quit OpenWhispr",
         click: () => {
           console.log("Quitting app via tray menu");
           app.quit();
@@ -185,7 +185,7 @@ class TrayManager {
       },
     ]);
 
-    this.tray.setToolTip("OpenWispr - Voice Dictation");
+    this.tray.setToolTip("OpenWhispr - Voice Dictation");
     this.tray.setContextMenu(contextMenu);
   }
 

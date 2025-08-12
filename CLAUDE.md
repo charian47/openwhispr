@@ -1,10 +1,10 @@
-# OpenWispr Technical Reference for AI Assistants
+# OpenWhispr Technical Reference for AI Assistants
 
-This document provides comprehensive technical details about the OpenWispr project architecture for AI assistants working on the codebase.
+This document provides comprehensive technical details about the OpenWhispr project architecture for AI assistants working on the codebase.
 
 ## Project Overview
 
-OpenWispr is an Electron-based desktop dictation application that uses OpenAI Whisper for speech-to-text transcription. It supports both local (privacy-focused) and cloud (OpenAI API) processing modes.
+OpenWhispr is an Electron-based desktop dictation application that uses OpenAI Whisper for speech-to-text transcription. It supports both local (privacy-focused) and cloud (OpenAI API) processing modes.
 
 ## Architecture Overview
 
@@ -183,7 +183,7 @@ Settings stored in localStorage with these keys:
 
 ### 8. Debug Mode
 
-Enable with `--debug` flag or `OPENWISPR_DEBUG=true`:
+Enable with `--debug` flag or `OPENWHISPR_DEBUG=true`:
 - Logs saved to platform-specific app data directory
 - Comprehensive logging of audio pipeline
 - FFmpeg path resolution details

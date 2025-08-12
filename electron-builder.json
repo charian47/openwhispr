@@ -1,6 +1,6 @@
 {
   "appId": "com.herotools.openwispr",
-  "productName": "OpenWispr",
+  "productName": "OpenWhispr",
   "directories": {
     "output": "dist"
   },
@@ -42,8 +42,8 @@
     "identity": "HeroTools Inc. (9R85XFMH59)",
     "extendInfo": {
       "LSUIElement": true,
-      "NSMicrophoneUsageDescription": "OpenWispr needs microphone access for speech-to-text transcription.",
-      "NSAccessibilityUsageDescription": "OpenWispr needs accessibility permissions to paste transcribed text into other applications."
+      "NSMicrophoneUsageDescription": "OpenWhispr needs microphone access for speech-to-text transcription.",
+      "NSAccessibilityUsageDescription": "OpenWhispr needs accessibility permissions to paste transcribed text into other applications."
     }
   },
   "afterSign": "scripts/afterSign.js",
@@ -69,7 +69,7 @@
     "createStartMenuShortcut": true
   },
   "dmg": {
-    "title": "OpenWispr",
+    "title": "OpenWhispr",
     "icon": "assets/icon.icns",
     "background": "assets/dmg-background.png",
     "window": {

@@ -168,7 +168,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
           Current AI Prompts
         </h3>
         <p className="text-sm text-gray-600 mb-6">
-          These are the exact prompts currently being sent to your AI models. Understanding these helps you see how OpenWispr thinks!
+          These are the exact prompts currently being sent to your AI models. Understanding these helps you see how OpenWhispr thinks!
         </p>
       </div>
 
