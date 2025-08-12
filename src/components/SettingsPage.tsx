@@ -115,6 +115,16 @@ export default function SettingsPage({
       const statusResult = await window.electronAPI?.getUpdateStatus();
       if (statusResult && mounted) {
         setUpdateStatus(statusResult);
+        if (statusResult.updateAvailable) {
+          const updateInfoResult = await window.electronAPI?.getUpdateInfo?.();
+          if (updateInfoResult) {
+            setUpdateInfo({
+              version: updateInfoResult.version || 'unknown',
+              releaseDate: updateInfoResult.releaseDate,
+              releaseNotes: updateInfoResult.releaseNotes,
+            });
+          }
+        }
         subscribeToUpdates();
       }
 
@@ -141,11 +151,13 @@ export default function SettingsPage({
     if (window.electronAPI) {
       const handleUpdateAvailable = (event, info) => {
         setUpdateStatus((prev) => ({ ...prev, updateAvailable: true }));
-        setUpdateInfo({
-          version: info.version,
-          releaseDate: info.releaseDate,
-          releaseNotes: info.releaseNotes,
-        });
+        if (info) {
+          setUpdateInfo({
+            version: info.version || 'unknown',
+            releaseDate: info.releaseDate,
+            releaseNotes: info.releaseNotes,
+          });
+        }
       };
 
       const handleUpdateDownloaded = (event, info) => {
@@ -407,7 +419,7 @@ export default function SettingsPage({
                     ) : (
                       <>
                         <Download size={16} className="mr-2" />
-                        Download Update v{updateInfo.version}
+                        Download Update {updateInfo.version ? `v${updateInfo.version}` : ''}
                       </>
                     )}
                   </Button>
@@ -418,7 +430,7 @@ export default function SettingsPage({
                     onClick={async () => {
                       showConfirmDialog({
                         title: "Install Update",
-                        description: `Ready to install update v${updateInfo.version}. The app will restart to complete installation.`,
+                        description: `Ready to install update${updateInfo.version ? ` v${updateInfo.version}` : ''}. The app will restart to complete installation.`,
                         onConfirm: async () => {
                           try {
                             await window.electronAPI?.installUpdate();

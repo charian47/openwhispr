@@ -122,10 +122,6 @@ async function startApp() {
 
 // App event handlers
 app.whenReady().then(() => {
-  // Only log debug status in development
-  if (DebugLogger.isEnabled() && process.env.NODE_ENV === 'development') {
-    console.log(`Debug logging enabled: ${DebugLogger.getLogPath()}`);
-  }
   
   startApp();
 });

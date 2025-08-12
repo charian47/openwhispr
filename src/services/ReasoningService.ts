@@ -33,7 +33,7 @@ class ReasoningService extends BaseReasoningService {
           this.apiKeyCache.set(provider, apiKey);
         }
       } catch (error) {
-        console.error(`Failed to retrieve ${provider} API key:`, error);
+        // API key retrieval failed 
       }
     }
     
@@ -66,7 +66,7 @@ class ReasoningService extends BaseReasoningService {
           throw new Error(`Unsupported reasoning provider: ${provider}`);
       }
     } catch (error) {
-      console.error(`ReasoningService error (${provider}):`, (error as Error).message);
+      // Re-throw error with provider context
       throw error;
     }
   }

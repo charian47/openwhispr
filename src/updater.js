@@ -20,7 +20,7 @@ class UpdateManager {
   setupAutoUpdater() {
     // Only configure auto-updater in production
     if (process.env.NODE_ENV === "development") {
-      console.log("⚠️ Auto-updater disabled in development mode");
+      // Auto-updater disabled in development mode
       return;
     }
 
@@ -32,31 +32,24 @@ class UpdateManager {
       private: false,
     });
 
-    // Auto-updater logging
-    autoUpdater.logger = console;
+    autoUpdater.logger = null;
 
     // Set up event handlers
     this.setupEventHandlers();
   }
 
   setupEventHandlers() {
-    autoUpdater.on("checking-for-update", () => {
-      console.log("🔍 Checking for updates...");
-    });
+    autoUpdater.on("checking-for-update", () => {});
 
     autoUpdater.on("update-available", (info) => {
-      console.log("📥 Update available:", info);
       this.updateAvailable = true;
 
-      // Send notification to renderer processes
       this.notifyRenderers("update-available", info);
     });
 
     autoUpdater.on("update-not-available", (info) => {
-      console.log("✅ Update not available:", info);
       this.updateAvailable = false;
 
-      // Send notification to renderer processes
       this.notifyRenderers("update-not-available", info);
     });
 
@@ -65,25 +58,16 @@ class UpdateManager {
       this.updateAvailable = false;
       this.updateDownloaded = false;
 
-      // Send error notification to renderer processes
       this.notifyRenderers("update-error", err);
     });
 
     autoUpdater.on("download-progress", (progressObj) => {
-      let logMessage = `📊 Download speed: ${progressObj.bytesPerSecond}`;
-      logMessage += ` - Downloaded ${progressObj.percent}%`;
-      logMessage += ` (${progressObj.transferred}/${progressObj.total})`;
-      console.log(logMessage);
-
-      // Send progress to renderer processes
       this.notifyRenderers("update-download-progress", progressObj);
     });
 
     autoUpdater.on("update-downloaded", (info) => {
-      console.log("✅ Update downloaded:", info);
       this.updateDownloaded = true;
 
-      // Send notification to renderer processes
       this.notifyRenderers("update-downloaded", info);
     });
   }
@@ -102,14 +86,12 @@ class UpdateManager {
     ipcMain.handle("check-for-updates", async () => {
       try {
         if (process.env.NODE_ENV === "development") {
-          console.log("⚠️ Update check skipped in development mode");
           return {
             updateAvailable: false,
             message: "Update checks are disabled in development mode",
           };
         }
 
-        console.log("🔍 Manual update check requested...");
         const result = await autoUpdater.checkForUpdates();
 
         if (result && result.updateInfo) {
@@ -122,7 +104,6 @@ class UpdateManager {
             releaseNotes: result.updateInfo.releaseNotes,
           };
         } else {
-          console.log("✅ No updates available");
           return {
             updateAvailable: false,
             message: "You are running the latest version",
@@ -138,14 +119,12 @@ class UpdateManager {
     ipcMain.handle("download-update", async () => {
       try {
         if (process.env.NODE_ENV === "development") {
-          console.log("⚠️ Update download skipped in development mode");
           return {
             success: false,
             message: "Update downloads are disabled in development mode",
           };
         }
 
-        console.log("📥 Manual update download requested...");
         await autoUpdater.downloadUpdate();
 
         return { success: true, message: "Update download started" };
@@ -175,7 +154,7 @@ class UpdateManager {
         }
 
         console.log("🔄 Installing update and restarting...");
-        
+
         // Use setImmediate to ensure the response is sent before quitting
         setImmediate(() => {
           autoUpdater.quitAndInstall();
@@ -188,7 +167,6 @@ class UpdateManager {
       }
     });
 
-    // Get app version
     ipcMain.handle("get-app-version", async () => {
       try {
         const { app } = require("electron");
@@ -200,7 +178,6 @@ class UpdateManager {
       }
     });
 
-    // Get update status
     ipcMain.handle("get-update-status", async () => {
       try {
         return {

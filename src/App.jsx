@@ -144,9 +144,6 @@ export default function App() {
 
   const processAudio = async (audioBlob) => {
     try {
-      console.log(`🎧 [App] 🎬 Starting audio processing...`);
-
-      // Use our enhanced AudioManager with reasoning support
       const audioManager = new AudioManager();
       audioManager.setCallbacks({
         onStateChange: ({ isRecording, isProcessing }) => {
@@ -161,9 +158,6 @@ export default function App() {
           });
         },
         onTranscriptionComplete: async (result) => {
-          console.log(
-            `🎧 [App] ✅ Transcription completed with source: ${result.source}`
-          );
           if (result.success && result.text) {
             setTranscript(result.text);
 
@@ -174,7 +168,7 @@ export default function App() {
             const savePromise = window.electronAPI
               .saveTranscription(result.text)
               .catch((err) => {
-                console.error("Failed to save transcription:", err);
+                // Failed to save transcription
               });
 
             // Wait for paste to complete, but don't block on database save
@@ -186,7 +180,6 @@ export default function App() {
       // Process the audio using our enhanced AudioManager
       await audioManager.processAudio(audioBlob);
     } catch (err) {
-      console.error(`🎧 [App] ❌ Transcription error:`, err);
       toast({
         title: "Transcription Error",
         description: "Transcription failed: " + err.message,

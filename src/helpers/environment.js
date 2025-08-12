@@ -48,7 +48,7 @@ class EnvironmentManager {
       process.env.OPENAI_API_KEY = key;
       return { success: true };
     } catch (error) {
-      console.error("Error saving OpenAI API key:", error.message);
+      // Silent error - already throwing
       throw error;
     }
   }
@@ -64,7 +64,7 @@ class EnvironmentManager {
       process.env.ANTHROPIC_API_KEY = key;
       return { success: true };
     } catch (error) {
-      console.error("Error saving Anthropic API key:", error.message);
+      // Silent error - already throwing
       throw error;
     }
   }
@@ -80,7 +80,7 @@ class EnvironmentManager {
       process.env.GEMINI_API_KEY = key;
       return { success: true };
     } catch (error) {
-      console.error("Error saving Gemini API key:", error.message);
+      // Silent error - already throwing
       throw error;
     }
   }
@@ -100,7 +100,7 @@ OPENAI_API_KEY=${apiKey}
 
       return { success: true, path: envPath };
     } catch (error) {
-      console.error("Error creating production .env file:", error.message);
+      // Silent error - already throwing
       throw error;
     }
   }
