@@ -264,16 +264,6 @@ ${text}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
           contextLength: 128000,
           recommended: true,
         },
-        {
-          id: 'gpt-oss-20b-q5_k_m',
-          name: 'GPT-OSS 20B (Q5)',
-          size: '14.7GB',
-          sizeBytes: 15783559168,
-          description: 'Higher quality OpenAI model',
-          fileName: 'openai_gpt-oss-20b-Q5_K_M.gguf',
-          quantization: 'q5_k_m',
-          contextLength: 128000,
-        },
       ],
       formatPrompt(text: string, systemPrompt: string): string {
         // GPT-OSS uses ChatML format

@@ -44,7 +44,6 @@ class TrayManager {
       const iconPath = path.join(
         __dirname,
         "..",
-        "..",
         "assets",
         "iconTemplate@3x.png"
       );

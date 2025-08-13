@@ -98,6 +98,49 @@ function formatETA(seconds: number): string {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
+// Export the compact variant for cloud models
+export function UnifiedModelPickerCompact({
+  selectedModel,
+  onModelSelect,
+  models,
+  className = "",
+}: {
+  selectedModel: string;
+  onModelSelect: (modelId: string) => void;
+  models: Array<{ value: string; label: string; description?: string }>;
+  className?: string;
+}) {
+  return (
+    <div className={`space-y-2 ${className}`}>
+      {models.map((model) => (
+        <button
+          key={model.value}
+          onClick={() => onModelSelect(model.value)}
+          className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
+            selectedModel === model.value
+              ? 'border-indigo-500 bg-indigo-50'
+              : 'border-gray-200 bg-white hover:border-gray-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium text-gray-900">{model.label}</div>
+              {model.description && (
+                <div className="text-xs text-gray-600 mt-1">{model.description}</div>
+              )}
+            </div>
+            {selectedModel === model.value && (
+              <span className="text-xs text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full font-medium">
+                ✓ Selected
+              </span>
+            )}
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function UnifiedModelPicker({
   selectedModel,
   onModelSelect,

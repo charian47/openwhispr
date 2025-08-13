@@ -15,8 +15,7 @@ import { useClipboard } from "../hooks/useClipboard";
 import { REASONING_PROVIDERS } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
 import PromptStudio from "./ui/PromptStudio";
-import { LocalModelManager } from "./LocalModelManager";
-import AIModelSelector from "./AIModelSelector";
+import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 
 export type SettingsSectionType =
@@ -755,182 +754,27 @@ export default function SettingsPage({
                 This handles commands like "scratch that", creates proper lists,
                 and fixes obvious errors while preserving your natural tone.
               </p>
-
-
-              <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
-                <div>
-                  <label className="text-sm font-medium text-green-800">
-                    Enable AI Text Enhancement
-                  </label>
-                  <p className="text-xs text-green-700">
-                    Use AI to automatically improve transcription quality
-                  </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={useReasoningModel}
-                    onChange={(e) => {
-                      const enabled = e.target.checked;
-                      setUseReasoningModel(enabled);
-                      updateReasoningSettings({ useReasoningModel: enabled });
-                    }}
-                  />
-                  <div
-                    className={`w-11 h-6 bg-gray-200 rounded-full transition-colors duration-200 ${
-                      useReasoningModel ? "bg-green-600" : "bg-gray-300"
-                    }`}
-                  >
-                    <div
-                      className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${
-                        useReasoningModel ? "translate-x-5" : "translate-x-0"
-                      }`}
-                    ></div>
-                  </div>
-                </label>
-              </div>
             </div>
 
-            {useReasoningModel && (
-              <>
-                <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                  <h4 className="font-medium text-blue-900">AI Provider</h4>
-                  <select
-                    value={localReasoningProvider}
-                    onChange={async (e) => {
-                      const newProvider = e.target.value;
-                      setLocalReasoningProvider(newProvider);
-                      
-                      // Update the model to the first model of the new provider
-                      const firstModel = REASONING_PROVIDERS[newProvider as keyof typeof REASONING_PROVIDERS]?.models[0];
-                      if (firstModel) {
-                        setReasoningModel(firstModel.value);
-                      }
-                      
-                      // If switching to local, show a warning if llama.cpp is not available
-                      if (newProvider === "local") {
-                        const isAvailable = await window.electronAPI?.checkLocalReasoningAvailable?.();
-                        if (!isAvailable) {
-                          showAlertDialog({
-                            title: "Local AI Setup Required",
-                            description: "To use local AI models, you need to install llama.cpp and download at least one model. Check the Local AI Models section below for setup instructions.",
-                          });
-                        }
-                      }
-                    }}
-                    className="w-full text-sm border border-blue-300 rounded-md p-2 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  >
-                    {Object.entries(REASONING_PROVIDERS).map(
-                      ([id, provider]) => (
-                        <option key={id} value={id}>
-                          {provider.name}
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-
-                <div className="space-y-4 p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
-                  <h4 className="font-medium text-indigo-900">AI Model</h4>
-                  <select
-                    value={reasoningModel}
-                    onChange={(e) => setReasoningModel(e.target.value)}
-                    className="w-full text-sm border border-indigo-300 rounded-md p-2 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                  >
-                    {REASONING_PROVIDERS[
-                      localReasoningProvider as keyof typeof REASONING_PROVIDERS
-                    ]?.models.map((model) => (
-                      <option key={model.value} value={model.value}>
-                        {model.label} - {model.description}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-indigo-600">
-                    Different models offer varying levels of quality and speed
-                  </p>
-                </div>
-
-                {localReasoningProvider === "openai" && (
-                  <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                    <h4 className="font-medium text-blue-900">
-                      OpenAI API Key
-                    </h4>
-                    <ApiKeyInput
-                      apiKey={openaiApiKey}
-                      setApiKey={setOpenaiApiKey}
-                      helpText="Same as your transcription API key"
-                    />
-                  </div>
-                )}
-
-                {localReasoningProvider === "anthropic" && (
-                  <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                    <h4 className="font-medium text-purple-900">
-                      Anthropic API Key
-                    </h4>
-                    <div className="flex gap-2">
-                      <Input
-                        type="password"
-                        placeholder="sk-ant-..."
-                        value={anthropicApiKey}
-                        onChange={(e) => setAnthropicApiKey(e.target.value)}
-                        className="flex-1 text-sm border-purple-300 focus:border-purple-500"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          pasteFromClipboardWithFallback(setAnthropicApiKey)
-                        }
-                        className="border-purple-300 text-purple-700 hover:bg-purple-50"
-                      >
-                        Paste
-                      </Button>
-                    </div>
-                    <p className="text-xs text-purple-600">
-                      Get your API key from console.anthropic.com
-                    </p>
-                  </div>
-                )}
-
-                {localReasoningProvider === "gemini" && (
-                  <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                    <h4 className="font-medium text-blue-900">
-                      Google Gemini API Key
-                    </h4>
-                    <div className="flex gap-2">
-                      <Input
-                        type="password"
-                        placeholder="AIza..."
-                        value={geminiApiKey}
-                        onChange={(e) => setGeminiApiKey(e.target.value)}
-                        className="flex-1 text-sm border-blue-300 focus:border-blue-500"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          pasteFromClipboardWithFallback(setGeminiApiKey)
-                        }
-                        className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                      >
-                        Paste
-                      </Button>
-                    </div>
-                    <p className="text-xs text-blue-600">
-                      Get your API key from makersuite.google.com/app/apikey
-                    </p>
-                  </div>
-                )}
-
-                {localReasoningProvider === "local" && (
-                  <div className="space-y-4">
-                    <LocalModelManager />
-                  </div>
-                )}
-              </>
-            )}
+            <AIModelSelectorEnhanced
+              useReasoningModel={useReasoningModel}
+              setUseReasoningModel={(value) => {
+                setUseReasoningModel(value);
+                updateReasoningSettings({ useReasoningModel: value });
+              }}
+              reasoningModel={reasoningModel}
+              setReasoningModel={setReasoningModel}
+              localReasoningProvider={localReasoningProvider}
+              setLocalReasoningProvider={setLocalReasoningProvider}
+              openaiApiKey={openaiApiKey}
+              setOpenaiApiKey={setOpenaiApiKey}
+              anthropicApiKey={anthropicApiKey}
+              setAnthropicApiKey={setAnthropicApiKey}
+              geminiApiKey={geminiApiKey}
+              setGeminiApiKey={setGeminiApiKey}
+              pasteFromClipboard={pasteFromClipboardWithFallback}
+              showAlertDialog={showAlertDialog}
+            />
 
             <Button onClick={saveReasoningSettings} className="w-full">
               Save AI Model Settings
