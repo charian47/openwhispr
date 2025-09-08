@@ -169,7 +169,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = "You are a helpful assistant that processes text.";
+      const systemPrompt = "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
       const userPrompt = this.getReasoningPrompt(text, agentName, config);
 
       const requestBody = {
@@ -256,7 +256,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = "You are a helpful assistant that processes text.";
+      const systemPrompt = "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
       const userPrompt = this.getReasoningPrompt(text, agentName, config);
 
       const requestBody = {
@@ -391,7 +391,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = "You are a helpful assistant that processes text.";
+      const systemPrompt = "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
       const userPrompt = this.getReasoningPrompt(text, agentName, config);
 
       const requestBody = {
