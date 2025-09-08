@@ -46,6 +46,8 @@ class EnvironmentManager {
     try {
       // Update the environment variable in memory for immediate use
       process.env.OPENAI_API_KEY = key;
+      // Persist all keys to file
+      this.saveAllKeysToEnvFile();
       return { success: true };
     } catch (error) {
       // Silent error - already throwing
@@ -62,6 +64,8 @@ class EnvironmentManager {
     try {
       // Update the environment variable in memory for immediate use
       process.env.ANTHROPIC_API_KEY = key;
+      // Persist all keys to file
+      this.saveAllKeysToEnvFile();
       return { success: true };
     } catch (error) {
       // Silent error - already throwing
@@ -78,6 +82,8 @@ class EnvironmentManager {
     try {
       // Update the environment variable in memory for immediate use
       process.env.GEMINI_API_KEY = key;
+      // Persist all keys to file
+      this.saveAllKeysToEnvFile();
       return { success: true };
     } catch (error) {
       // Silent error - already throwing
@@ -101,6 +107,36 @@ OPENAI_API_KEY=${apiKey}
       return { success: true, path: envPath };
     } catch (error) {
       // Silent error - already throwing
+      throw error;
+    }
+  }
+
+  saveAllKeysToEnvFile() {
+    try {
+      const envPath = path.join(app.getPath("userData"), ".env");
+      
+      // Build env content with all current keys
+      let envContent = `# OpenWhispr Environment Variables
+# This file was created automatically for production use
+`;
+      
+      if (process.env.OPENAI_API_KEY) {
+        envContent += `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}\n`;
+      }
+      if (process.env.ANTHROPIC_API_KEY) {
+        envContent += `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}\n`;
+      }
+      if (process.env.GEMINI_API_KEY) {
+        envContent += `GEMINI_API_KEY=${process.env.GEMINI_API_KEY}\n`;
+      }
+
+      fs.writeFileSync(envPath, envContent, "utf8");
+      
+      // Reload the env file
+      require("dotenv").config({ path: envPath });
+
+      return { success: true, path: envPath };
+    } catch (error) {
       throw error;
     }
   }
