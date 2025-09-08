@@ -181,12 +181,23 @@ export default function SettingsPage({
     }
   };
 
-  const saveReasoningSettings = useCallback(() => {
+  const saveReasoningSettings = useCallback(async () => {
     // Update reasoning settings
     updateReasoningSettings({ 
       useReasoningModel, 
       reasoningModel
     });
+    
+    // Save API keys to backend based on provider
+    if (localReasoningProvider === "openai" && openaiApiKey) {
+      await window.electronAPI?.saveOpenAIKey(openaiApiKey);
+    }
+    if (localReasoningProvider === "anthropic" && anthropicApiKey) {
+      await window.electronAPI?.saveAnthropicKey(anthropicApiKey);
+    }
+    if (localReasoningProvider === "gemini" && geminiApiKey) {
+      await window.electronAPI?.saveGeminiKey(geminiApiKey);
+    }
     
     updateApiKeys({
       ...(localReasoningProvider === "openai" &&
@@ -223,15 +234,33 @@ export default function SettingsPage({
 
   const saveApiKey = useCallback(async () => {
     try {
-      await window.electronAPI?.saveOpenAIKey(openaiApiKey);
-      updateApiKeys({ openaiApiKey });
+      // Save all API keys to backend
+      if (openaiApiKey) {
+        await window.electronAPI?.saveOpenAIKey(openaiApiKey);
+      }
+      if (anthropicApiKey) {
+        await window.electronAPI?.saveAnthropicKey(anthropicApiKey);
+      }
+      if (geminiApiKey) {
+        await window.electronAPI?.saveGeminiKey(geminiApiKey);
+      }
+      
+      updateApiKeys({ openaiApiKey, anthropicApiKey, geminiApiKey });
       updateTranscriptionSettings({ allowLocalFallback, fallbackWhisperModel });
 
       try {
-        await window.electronAPI?.createProductionEnvFile(openaiApiKey);
+        if (openaiApiKey) {
+          await window.electronAPI?.createProductionEnvFile(openaiApiKey);
+        }
+        
+        const savedKeys: string[] = [];
+        if (openaiApiKey) savedKeys.push("OpenAI");
+        if (anthropicApiKey) savedKeys.push("Anthropic");
+        if (geminiApiKey) savedKeys.push("Gemini");
+        
         showAlertDialog({
-          title: "API Key Saved",
-          description: `OpenAI API key saved successfully! Your credentials have been securely recorded for transcription services.${
+          title: "API Keys Saved",
+          description: `${savedKeys.join(", ")} API key${savedKeys.length > 1 ? 's' : ''} saved successfully! Your credentials have been securely recorded.${
             allowLocalFallback ? " Local Whisper fallback is enabled." : ""
           }`,
         });
@@ -254,6 +283,8 @@ export default function SettingsPage({
     }
   }, [
     openaiApiKey,
+    anthropicApiKey,
+    geminiApiKey,
     allowLocalFallback,
     fallbackWhisperModel,
     updateApiKeys,

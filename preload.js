@@ -119,6 +119,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),
   llamaCppUninstall: () => ipcRenderer.invoke("llama-cpp-uninstall"),
   
+  // Debug logging for reasoning pipeline
+  logReasoning: (stage, details) => 
+    ipcRenderer.invoke("log-reasoning", stage, details),
+  
   // Remove all listeners for a channel
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);

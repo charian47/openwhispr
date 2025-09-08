@@ -237,6 +237,16 @@ declare global {
 
       // Hotkey management
       updateHotkey: (key: string) => Promise<void>;
+      
+      // Gemini API key management
+      getGeminiKey: () => Promise<string | null>;
+      saveGeminiKey: (key: string) => Promise<void>;
+      
+      // Debug logging
+      logReasoning?: (stage: string, details: any) => Promise<void>;
+      
+      // FFmpeg availability
+      checkFFmpegAvailability: () => Promise<boolean>;
     };
     
     api?: {

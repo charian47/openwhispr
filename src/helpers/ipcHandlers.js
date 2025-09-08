@@ -427,6 +427,12 @@ class IPCHandlers {
         return { success: false, error: error.message };
       }
     });
+
+    // Debug logging handler for reasoning pipeline
+    ipcMain.handle("log-reasoning", async (event, stage, details) => {
+      debugLogger.logReasoning(stage, details);
+      return { success: true };
+    });
   }
 }
 
