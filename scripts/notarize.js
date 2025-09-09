@@ -22,7 +22,7 @@ exports.default = async function notarizing(context) {
   
   try {
     // Use API key if available (CI/CD), otherwise use keychain (local)
-    const useApiKey = process.env.APPLE_API_KEY_ID && process.env.APPLE_API_KEY_ISSUER_ID;
+    const useApiKey = process.env.APPLE_API_KEY_ID && process.env.APPLE_API_ISSUER;
     
     await notarize({
       tool: 'notarytool',
@@ -32,7 +32,7 @@ exports.default = async function notarizing(context) {
         teamId: process.env.APPLE_TEAM_ID,
         appleApiKey: process.env.APPLE_API_KEY_PATH,
         appleApiKeyId: process.env.APPLE_API_KEY_ID,
-        appleApiIssuer: process.env.APPLE_API_KEY_ISSUER_ID,
+        appleApiIssuer: process.env.APPLE_API_ISSUER,
       } : {
         // Local with keychain profile
         keychainProfile: 'openwispr-profile',

@@ -72,9 +72,10 @@ jobs:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         # Enable signing only for macOS non-PR builds
         CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.os == 'macos-latest' && github.event_name != 'pull_request' && 'true' || 'false' }}
-        # Notarization credentials (only used on macOS)
+        # Notarization credentials (electron-builder required names)
+        APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
         APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-        APPLE_API_KEY_ISSUER_ID: ${{ secrets.APPLE_API_KEY_ISSUER_ID }}
+        APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         
     - name: Upload Artifacts
