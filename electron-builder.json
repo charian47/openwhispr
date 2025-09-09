@@ -4,6 +4,8 @@
   "directories": {
     "output": "dist"
   },
+  "npmRebuild": true,
+  "buildDependenciesFromSource": true,
   "files": [
     "main.js",
     "preload.js",
@@ -23,7 +25,8 @@
   ],
   "asarUnpack": [
     "whisper_bridge.py",
-    "**/node_modules/ffmpeg-static/**/*"
+    "**/node_modules/ffmpeg-static/**/*",
+    "**/node_modules/better-sqlite3/**/*"
   ],
   "extraResources": [
     "src/assets/**/*"
