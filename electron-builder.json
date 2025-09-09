@@ -26,7 +26,7 @@
     "**/node_modules/ffmpeg-static/**/*"
   ],
   "extraResources": [
-    "assets/**/*"
+    "src/assets/**/*"
   ],
   "mac": {
     "category": "public.app-category.productivity",
@@ -34,7 +34,7 @@
       "dmg",
       "zip"
     ],
-    "icon": "assets/icon.icns",
+    "icon": "src/assets/icon.icns",
     "gatekeeperAssess": false,
     "hardenedRuntime": true,
     "entitlements": "build/entitlements.mac.plist",
@@ -52,14 +52,14 @@
       "nsis",
       "portable"
     ],
-    "icon": "assets/icon.ico"
+    "icon": "src/assets/icon.ico"
   },
   "linux": {
     "target": [
       "AppImage",
       "deb"
     ],
-    "icon": "assets/icon.png",
+    "icon": "src/assets/icon.png",
     "category": "Utility"
   },
   "nsis": {
@@ -70,8 +70,8 @@
   },
   "dmg": {
     "title": "OpenWhispr",
-    "icon": "assets/icon.icns",
-    "background": "assets/dmg-background.png",
+    "icon": "src/assets/icon.icns",
+    "background": "src/assets/dmg-background.png",
     "window": {
       "width": 540,
       "height": 380
