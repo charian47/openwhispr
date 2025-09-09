@@ -122,12 +122,6 @@ jobs:
         # Export API key path for electron-builder (uses APPLE_API_KEY)
         echo "APPLE_API_KEY=$API_KEY_PATH" >> $GITHUB_ENV
         
-    - name: Update package.json version
-      run: |
-        VERSION="${{ needs.create-release.outputs.version }}"
-        VERSION="${VERSION#v}"  # Remove 'v' prefix
-        npm version $VERSION --no-git-tag-version
-        
     - name: Build Application
       run: ${{ matrix.build_cmd }} -- --publish always
       env:
