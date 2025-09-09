@@ -116,8 +116,8 @@ jobs:
         # Allow codesign to use the certificate
         security set-key-partition-list -S apple-tool:,apple: -s -k "runner" $KEYCHAIN_PATH
         
-        # Export API key path for electron-builder
-        echo "APPLE_API_KEY_PATH=$API_KEY_PATH" >> $GITHUB_ENV
+        # Export API key path for electron-builder (uses APPLE_API_KEY)
+        echo "APPLE_API_KEY=$API_KEY_PATH" >> $GITHUB_ENV
         
     - name: Update package.json version
       run: |
@@ -131,8 +131,8 @@ jobs:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         # Enable signing for macOS
         CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.os == 'macos-latest' && 'true' || 'false' }}
-        # Notarization credentials (electron-builder required names)
-        APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
+        # Notarization credentials (electron-builder standard)
+        # APPLE_API_KEY is set from the file path in setup step
         APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
         APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
