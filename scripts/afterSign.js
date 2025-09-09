@@ -20,7 +20,7 @@ exports.default = async function(context) {
 
   const appName = context.packager.appInfo.productFilename;
   const appPath = path.join(appOutDir, `${appName}.app`);
-  const entitlementsPath = path.join(__dirname, '..', 'build', 'entitlements.mac.plist');
+  const entitlementsPath = path.join(__dirname, '..', 'resources', 'mac', 'entitlements.mac.plist');
   
   console.log('Starting custom signing process...');
   

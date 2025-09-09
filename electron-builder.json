@@ -37,8 +37,8 @@
     "icon": "src/assets/icon.icns",
     "gatekeeperAssess": false,
     "hardenedRuntime": true,
-    "entitlements": "build/entitlements.mac.plist",
-    "entitlementsInherit": "build/entitlements.mac.plist",
+    "entitlements": "resources/mac/entitlements.mac.plist",
+    "entitlementsInherit": "resources/mac/entitlements.mac.plist",
     "identity": "HeroTools Inc. (9R85XFMH59)",
     "extendInfo": {
       "LSUIElement": true,
