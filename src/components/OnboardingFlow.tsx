@@ -35,7 +35,7 @@ import { useClipboard } from "../hooks/useClipboard";
 import { useSettings } from "../hooks/useSettings";
 import { getLanguageLabel, getReasoningModelLabel } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
-import InteractiveKeyboard from "./ui/Keyboard";
+const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 import { setAgentName as saveAgentName } from "../utils/agentName";
 
 interface OnboardingFlowProps {
@@ -505,7 +505,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <h4 className="font-medium text-gray-900 mb-3">
                   Click any key to select it:
                 </h4>
-                <InteractiveKeyboard selectedKey={hotkey} setSelectedKey={setHotkey} />
+                <React.Suspense fallback={<div>Loading keyboard...</div>}>
+                  <InteractiveKeyboard selectedKey={hotkey} setSelectedKey={setHotkey} />
+                </React.Suspense>
               </div>
             </div>
           </div>
