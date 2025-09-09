@@ -433,11 +433,12 @@ class ReasoningService extends BaseReasoningService {
             });
             
             const res = await fetch(
-              `${API_ENDPOINTS.GEMINI}/models/${model}:generateContent?key=${apiKey}`,
+              `${API_ENDPOINTS.GEMINI}/models/${model}:generateContent`,
               {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
+                  "x-goog-api-key": apiKey,
                 },
                 body: JSON.stringify(requestBody),
               }
