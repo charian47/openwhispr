@@ -127,7 +127,7 @@ jobs:
         npm version $VERSION --no-git-tag-version
         
     - name: Build Application
-      run: ${{ matrix.build_cmd }}
+      run: ${{ matrix.build_cmd }} -- --publish always
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         # Certificate password for signing
@@ -138,51 +138,6 @@ jobs:
         APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         
-    - name: Upload Release Assets
-      uses: actions/github-script@v7
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const fs = require('fs');
-          const path = require('path');
-          
-          const distPath = path.join(process.cwd(), 'dist');
-          const files = fs.readdirSync(distPath);
-          
-          // Define which files to upload based on OS
-          const patterns = {
-            'macos-latest': ['.dmg', '.zip'],
-            'ubuntu-latest': ['.AppImage', '.deb'],
-            'windows-latest': ['.exe']
-          };
-          
-          const osPatterns = patterns['${{ matrix.os }}'] || [];
-          const filesToUpload = files.filter(file => 
-            osPatterns.some(pattern => file.endsWith(pattern))
-          );
-          
-          // Extract release ID from upload URL
-          const uploadUrl = '${{ needs.create-release.outputs.upload_url }}';
-          const releaseId = uploadUrl.match(/\/releases\/(\d+)/)[1];
-          
-          for (const file of filesToUpload) {
-            const filePath = path.join(distPath, file);
-            const fileContent = fs.readFileSync(filePath);
-            
-            console.log(`Uploading ${file}...`);
-            
-            await github.rest.repos.uploadReleaseAsset({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: parseInt(releaseId),
-              name: file,
-              data: fileContent,
-              headers: {
-                'content-type': 'application/octet-stream',
-                'content-length': fileContent.length
-              }
-            });
-          }
       
     # Security cleanup
     - name: Cleanup Certificates

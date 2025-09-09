@@ -67,7 +67,7 @@ jobs:
         echo "APPLE_API_KEY=$API_KEY_PATH" >> $GITHUB_ENV
         
     - name: Build Application
-      run: ${{ matrix.build_cmd }}
+      run: ${{ matrix.build_cmd }} -- --publish never
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         # Enable signing only for macOS non-PR builds
