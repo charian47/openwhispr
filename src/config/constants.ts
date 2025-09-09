@@ -1,11 +1,13 @@
 // API Configuration
 export const API_ENDPOINTS = {
-  OPENAI: 'https://api.openai.com/v1/chat/completions',
+  OPENAI: 'https://api.openai.com/v1/responses',
   ANTHROPIC: 'https://api.anthropic.com/v1/messages',
+  GEMINI: 'https://generativelanguage.googleapis.com/v1beta',
 } as const;
 
 export const API_VERSIONS = {
   ANTHROPIC: '2023-06-01',
+  GEMINI: 'v1beta',
 } as const;
 
 // Model Configuration
@@ -21,6 +23,8 @@ export const TOKEN_LIMITS = {
   MAX_TOKENS: 2048,
   MIN_TOKENS_ANTHROPIC: 100,
   MAX_TOKENS_ANTHROPIC: 4096,
+  MIN_TOKENS_GEMINI: 100,
+  MAX_TOKENS_GEMINI: 8192,
   TOKEN_MULTIPLIER: 2, // text.length * multiplier
   REASONING_CONTEXT_SIZE: 4096,
 } as const;

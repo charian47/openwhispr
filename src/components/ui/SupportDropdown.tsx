@@ -16,7 +16,7 @@ export default function SupportDropdown({ className }: SupportDropdownProps) {
   const handleContactSupport = async () => {
     try {
       const result = await window.electronAPI?.openExternal(
-        "mailto:support@openwispr.com"
+        "mailto:support@openwhispr.com"
       );
       if (!result?.success) {
         console.error("Failed to open email client:", result?.error);

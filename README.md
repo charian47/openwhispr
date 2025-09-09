@@ -1,4 +1,4 @@
-# OpenWispr
+# OpenWhispr
 
 An open source desktop dictation application that converts speech to text using OpenAI Whisper. Features both local and cloud processing options for maximum flexibility and privacy.
 
@@ -9,17 +9,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Features
 
 - 🎤 **Global Hotkey**: Customizable hotkey to start/stop dictation from anywhere (default: backtick `)
-- 🤖 **Dual AI Processing**: Choose between local Whisper models (private) or OpenAI API (fast)
+- 🤖 **Multi-Provider AI Processing**: Choose between OpenAI, Anthropic Claude, Google Gemini, or local models
 - 🎯 **Agent Naming**: Personalize your AI assistant with a custom name for natural interactions
+- 🧠 **Latest AI Models** (September 2025):
+  - **OpenAI**: GPT-5 Series, GPT-4.1 Series, o-series reasoning models (o3/o4-mini)
+  - **Anthropic**: Claude Opus 4.1, Claude Sonnet 4, Claude 3.5 Sonnet/Haiku
+  - **Google**: Gemini 2.5 Pro/Flash/Flash-Lite with thinking capability, Gemini 2.0 Flash
+  - **Local**: Qwen, LLaMA, Mistral models via llama.cpp
 - 🔒 **Privacy-First**: Local processing keeps your voice data completely private
 - 🎨 **Modern UI**: Built with React 19, TypeScript, and Tailwind CSS v4
 - 🚀 **Fast**: Optimized with Vite and modern tooling
 - 📱 **Control Panel**: Manage settings, view history, and configure API keys
 - 🗄️ **Transcription History**: SQLite database stores all your transcriptions locally
-- 🔧 **Model Management**: Download and manage local Whisper models (tiny, base, small, medium, large)
+- 🔧 **Model Management**: Download and manage local Whisper models (tiny, base, small, medium, large, turbo)
 - 🌐 **Cross-Platform**: Works on macOS, Windows, and Linux
 - ⚡ **Automatic Pasting**: Transcribed text automatically pastes at your cursor location
 - 🖱️ **Draggable Interface**: Move the dictation panel anywhere on your screen
+- 🔄 **OpenAI Responses API**: Using the latest Responses API for improved performance
 
 ## Prerequisites
 
@@ -42,16 +48,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    npm install
    ```
 
-3. **Optional: Set up OpenAI API key** (only needed for cloud processing):
+3. **Optional: Set up API keys** (only needed for cloud processing):
    
    **Method A - Environment file**:
    ```bash
    cp env.example .env
-   # Edit .env and add your OpenAI API key
+   # Edit .env and add your API keys:
+   # OPENAI_API_KEY=your_openai_key
+   # ANTHROPIC_API_KEY=your_anthropic_key  
+   # GEMINI_API_KEY=your_gemini_key
    ```
    
    **Method B - In-app configuration**:
-   - Run the app and configure the API key through the Control Panel
+   - Run the app and configure API keys through the Control Panel
+   - Keys are automatically saved and persist across app restarts
 
 4. **Run the application**:
    ```bash
@@ -68,8 +78,8 @@ If you want to build a standalone app for personal use:
 # Build without code signing (no certificates required)
 npm run pack
 
-# The unsigned app will be in: dist/mac-arm64/OpenWispr.app (macOS)
-# or dist/win-unpacked/OpenWispr.exe (Windows)
+# The unsigned app will be in: dist/mac-arm64/OpenWhispr.app (macOS)
+# or dist/win-unpacked/OpenWhispr.exe (Windows)
 # or dist/linux-unpacked/open-whispr (Linux)
 ```
 
@@ -119,14 +129,23 @@ npm run build:linux  # Linux
 - **Models**: Download and manage local Whisper models
 - **Settings**: Configure API keys, customize hotkeys, and manage permissions
 
-### Agent Naming
-Once you've named your agent during setup, you can interact with it in two ways:
+### Agent Naming & AI Processing
+Once you've named your agent during setup, you can interact with it using multiple AI providers:
 
 **🎯 Agent Commands** (for AI assistance):
 - "Hey [AgentName], make this more professional"
 - "Hey [AgentName], format this as a list"
 - "Hey [AgentName], write a thank you email"
 - "Hey [AgentName], convert this to bullet points"
+
+**🤖 AI Provider Options**:
+- **OpenAI**: 
+  - GPT-5 Series (Nano/Mini/Full) - Latest generation with deep reasoning
+  - GPT-4.1 Series - Enhanced coding with 1M token context
+  - o3/o4 Series - Advanced reasoning models with longer thinking
+- **Anthropic**: Claude Opus 4.1, Sonnet 4 - Frontier intelligence models
+- **Google**: Gemini 2.5 Pro/Flash - Advanced multi-modal capabilities
+- **Local**: Community models for complete privacy
 
 **📝 Regular Dictation** (for normal text):
 - "This is just normal text I want transcribed"
@@ -178,7 +197,7 @@ open-whispr/
 │   │   └── lib/
 │   │       └── utils.ts         # Utility functions
 │   ├── services/
-│   │   └── ReasoningService.js  # AI processing and agent name detection
+│   │   └── ReasoningService.ts  # Multi-provider AI processing (OpenAI/Anthropic/Gemini)
 │   ├── utils/
 │   │   └── agentName.ts         # Agent name management utility
 │   └── components.json          # shadcn/ui configuration
@@ -269,13 +288,19 @@ WHISPER_MODEL=whisper-1
 # Optional: Set language for better transcription accuracy
 LANGUAGE=
 
+# Optional: Anthropic API Configuration
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+# Optional: Google Gemini API Configuration  
+GEMINI_API_KEY=your_gemini_api_key_here
+
 # Optional: Debug mode
 DEBUG=false
 ```
 
 ### Local Whisper Setup
 
-For local processing, OpenWispr offers automated setup:
+For local processing, OpenWhispr offers automated setup:
 
 1. **Automatic Python Installation** (if needed):
    - The app will detect if Python is missing
@@ -321,7 +346,7 @@ We welcome contributions! Please follow these steps:
 - Test on your target platform before submitting
 ## Security
 
-OpenWispr is designed with privacy and security in mind:
+OpenWhispr is designed with privacy and security in mind:
 
 - **Local Processing Option**: Keep your voice data completely private
 - **No Analytics**: We don't collect any usage data or telemetry
@@ -336,7 +361,7 @@ OpenWispr is designed with privacy and security in mind:
 1. **Microphone permissions**: Grant permissions in System Preferences/Settings
 2. **Accessibility permissions (macOS)**: Required for automatic text pasting
    - Go to System Settings → Privacy & Security → Accessibility
-   - Add OpenWispr and enable the checkbox
+   - Add OpenWhispr and enable the checkbox
    - Use "Fix Permission Issues" in Control Panel if needed
 3. **API key errors** (cloud processing only): Ensure your OpenAI API key is valid and has credits
    - Set key through Control Panel or .env file
@@ -366,8 +391,8 @@ OpenWispr is designed with privacy and security in mind:
 
 ## FAQ
 
-**Q: Is OpenWispr really free?**
-A: Yes! OpenWispr is open source and free to use. You only pay for OpenAI API usage if you choose cloud processing.
+**Q: Is OpenWhispr really free?**
+A: Yes! OpenWhispr is open source and free to use. You only pay for OpenAI API usage if you choose cloud processing.
 
 **Q: Which processing method should I use?**
 A: Use local processing for privacy and offline use. Use cloud processing for speed and convenience.
@@ -382,11 +407,11 @@ A: Open the Control Panel (right-click tray icon) and go to Settings. You can se
 A: With local processing, your audio never leaves your device. With cloud processing, audio is sent to OpenAI's servers (see their privacy policy).
 
 **Q: What languages are supported?**
-A: OpenWispr supports 58 languages including English, Spanish, French, German, Chinese, Japanese, and more. Set your preferred language in the .env file or use auto-detect.
+A: OpenWhispr supports 58 languages including English, Spanish, French, German, Chinese, Japanese, and more. Set your preferred language in the .env file or use auto-detect.
 
 ## Project Status
 
-OpenWispr is actively maintained and ready for production use. Current version: 1.0.2
+OpenWhispr is actively maintained and ready for production use. Current version: 1.0.4
 
 - ✅ Core functionality complete
 - ✅ Cross-platform support

@@ -229,17 +229,17 @@ class ClipboardManager {
 
     let dialogMessage;
     if (isStuckPermission) {
-      dialogMessage = `🔒 OpenWispr needs Accessibility permissions, but it looks like you may have OLD PERMISSIONS from a previous version.
+      dialogMessage = `🔒 OpenWhispr needs Accessibility permissions, but it looks like you may have OLD PERMISSIONS from a previous version.
 
-❗ COMMON ISSUE: If you've rebuilt/reinstalled OpenWispr, the old permissions may be "stuck" and preventing new ones.
+❗ COMMON ISSUE: If you've rebuilt/reinstalled OpenWhispr, the old permissions may be "stuck" and preventing new ones.
 
 🔧 To fix this:
 1. Open System Settings → Privacy & Security → Accessibility
-2. Look for ANY old "OpenWispr" entries and REMOVE them (click the - button)
+2. Look for ANY old "OpenWhispr" entries and REMOVE them (click the - button)
 3. Also remove any entries that say "Electron" or have unclear names
-4. Click the + button and manually add the NEW OpenWispr app
+4. Click the + button and manually add the NEW OpenWhispr app
 5. Make sure the checkbox is enabled
-6. Restart OpenWispr
+6. Restart OpenWhispr
 
 ⚠️ This is especially common during development when rebuilding the app.
 
@@ -247,7 +247,7 @@ class ClipboardManager {
 
 Would you like to open System Settings now?`;
     } else {
-      dialogMessage = `🔒 OpenWispr needs Accessibility permissions to paste text into other applications.
+      dialogMessage = `🔒 OpenWhispr needs Accessibility permissions to paste text into other applications.
 
 📋 Current status: Clipboard copy works, but pasting (Cmd+V simulation) fails.
 
@@ -255,8 +255,8 @@ Would you like to open System Settings now?`;
 1. Open System Settings (or System Preferences on older macOS)
 2. Go to Privacy & Security → Accessibility
 3. Click the lock icon and enter your password
-4. Add OpenWispr to the list and check the box
-5. Restart OpenWispr
+4. Add OpenWhispr to the list and check the box
+5. Restart OpenWhispr
 
 ⚠️ Without this permission, dictated text will only be copied to clipboard but won't paste automatically.
 

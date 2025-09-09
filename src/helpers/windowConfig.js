@@ -44,7 +44,7 @@ const CONTROL_PANEL_CONFIG = {
     enableClipboardAccess: true,
     clipboard: true,
   },
-  title: "OpenWispr Control Panel",
+  title: "OpenWhispr Control Panel",
   resizable: true,
   show: false,
   titleBarStyle: "hiddenInset",

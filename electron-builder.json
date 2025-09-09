@@ -1,6 +1,6 @@
 {
   "appId": "com.herotools.openwispr",
-  "productName": "OpenWispr",
+  "productName": "OpenWhispr",
   "directories": {
     "output": "dist"
   },
@@ -26,7 +26,7 @@
     "**/node_modules/ffmpeg-static/**/*"
   ],
   "extraResources": [
-    "assets/**/*"
+    "src/assets/**/*"
   ],
   "mac": {
     "category": "public.app-category.productivity",
@@ -34,7 +34,7 @@
       "dmg",
       "zip"
     ],
-    "icon": "assets/icon.icns",
+    "icon": "src/assets/icon.icns",
     "gatekeeperAssess": false,
     "hardenedRuntime": true,
     "entitlements": "build/entitlements.mac.plist",
@@ -42,8 +42,8 @@
     "identity": "HeroTools Inc. (9R85XFMH59)",
     "extendInfo": {
       "LSUIElement": true,
-      "NSMicrophoneUsageDescription": "OpenWispr needs microphone access for speech-to-text transcription.",
-      "NSAccessibilityUsageDescription": "OpenWispr needs accessibility permissions to paste transcribed text into other applications."
+      "NSMicrophoneUsageDescription": "OpenWhispr needs microphone access for speech-to-text transcription.",
+      "NSAccessibilityUsageDescription": "OpenWhispr needs accessibility permissions to paste transcribed text into other applications."
     }
   },
   "afterSign": "scripts/afterSign.js",
@@ -52,14 +52,14 @@
       "nsis",
       "portable"
     ],
-    "icon": "assets/icon.ico"
+    "icon": "src/assets/icon.ico"
   },
   "linux": {
     "target": [
       "AppImage",
       "deb"
     ],
-    "icon": "assets/icon.png",
+    "icon": "src/assets/icon.png",
     "category": "Utility"
   },
   "nsis": {
@@ -69,9 +69,9 @@
     "createStartMenuShortcut": true
   },
   "dmg": {
-    "title": "OpenWispr",
-    "icon": "assets/icon.icns",
-    "background": "assets/dmg-background.png",
+    "title": "OpenWhispr",
+    "icon": "src/assets/icon.icns",
+    "background": "src/assets/dmg-background.png",
     "window": {
       "width": 540,
       "height": 380

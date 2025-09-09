@@ -82,7 +82,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     try {
       // Check if reasoning model is enabled and if we have the necessary settings
       const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-      const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
+      const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-4o-mini";
       const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
       
       if (!useReasoningModel) {
@@ -168,7 +168,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
           Current AI Prompts
         </h3>
         <p className="text-sm text-gray-600 mb-6">
-          These are the exact prompts currently being sent to your AI models. Understanding these helps you see how OpenWispr thinks!
+          These are the exact prompts currently being sent to your AI models. Understanding these helps you see how OpenWhispr thinks!
         </p>
       </div>
 
@@ -278,7 +278,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
 
   const renderTestPlayground = () => {
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-    const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
+    const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-4o-mini";
     const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
     
     return (

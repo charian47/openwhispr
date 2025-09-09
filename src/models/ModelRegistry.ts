@@ -144,15 +144,140 @@ ${text}<|im_end|>
       }
     });
 
-    // Future: Add Mistral provider
-    // this.registerProvider({
-    //   id: 'mistral',
-    //   name: 'Mistral AI',
-    //   baseUrl: 'https://huggingface.co',
-    //   models: [...],
-    //   formatPrompt: ...,
-    //   getDownloadUrl: ...
-    // });
+    this.registerProvider({
+      id: 'mistral',
+      name: 'Mistral AI',
+      baseUrl: 'https://huggingface.co',
+      models: [
+        {
+          id: 'mistral-7b-instruct-v0.3-q4_k_m',
+          name: 'Mistral 7B Instruct v0.3',
+          size: '4.4GB',
+          sizeBytes: 4724956928,
+          description: 'Fast and efficient instruction model',
+          fileName: 'Mistral-7B-Instruct-v0.3-Q4_K_M.gguf',
+          quantization: 'q4_k_m',
+          contextLength: 32768,
+          recommended: true,
+        },
+        {
+          id: 'mistral-7b-instruct-v0.3-q5_k_m',
+          name: 'Mistral 7B Instruct v0.3 (Q5)',
+          size: '5.1GB',
+          sizeBytes: 5477387264,
+          description: 'Higher quality instruction model',
+          fileName: 'Mistral-7B-Instruct-v0.3-Q5_K_M.gguf',
+          quantization: 'q5_k_m',
+          contextLength: 32768,
+        },
+        {
+          id: 'mistral-7b-v0.1-q4_k_m',
+          name: 'Mistral 7B v0.1',
+          size: '4.4GB',
+          sizeBytes: 4724956928,
+          description: 'Base model for general text',
+          fileName: 'mistral-7b-v0.1.Q4_K_M.gguf',
+          quantization: 'q4_k_m',
+          contextLength: 32768,
+        },
+      ],
+      formatPrompt(text: string, systemPrompt: string): string {
+        return `[INST] ${systemPrompt}\n\n${text} [/INST]`;
+      },
+      getDownloadUrl(model: ModelDefinition): string {
+        if (model.id.includes('v0.3')) {
+          return `${this.baseUrl}/bartowski/Mistral-7B-Instruct-v0.3-GGUF/resolve/main/${model.fileName}`;
+        }
+        return `${this.baseUrl}/TheBloke/Mistral-7B-v0.1-GGUF/resolve/main/${model.fileName}`;
+      }
+    });
+
+    // Llama Provider
+    this.registerProvider({
+      id: 'llama',
+      name: 'Meta Llama',
+      baseUrl: 'https://huggingface.co',
+      models: [
+        {
+          id: 'llama-3.2-1b-instruct-q4_k_m',
+          name: 'Llama 3.2 1B',
+          size: '0.9GB',
+          sizeBytes: 966367642,
+          description: 'Tiny model for edge devices',
+          fileName: 'Llama-3.2-1B-Instruct-Q4_K_M.gguf',
+          quantization: 'q4_k_m',
+          contextLength: 131072,
+        },
+        {
+          id: 'llama-3.2-3b-instruct-q4_k_m',
+          name: 'Llama 3.2 3B',
+          size: '2.0GB',
+          sizeBytes: 2147483648,
+          description: 'Small but capable multilingual model',
+          fileName: 'Llama-3.2-3B-Instruct-Q4_K_M.gguf',
+          quantization: 'q4_k_m',
+          contextLength: 131072,
+          recommended: true,
+        },
+        {
+          id: 'llama-3.1-8b-instruct-q4_k_m',
+          name: 'Llama 3.1 8B',
+          size: '4.9GB',
+          sizeBytes: 5260091802,
+          description: 'Powerful model with great performance',
+          fileName: 'Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf',
+          quantization: 'q4_k_m',
+          contextLength: 131072,
+        },
+      ],
+      formatPrompt(text: string, systemPrompt: string): string {
+        return `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+${systemPrompt}<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+${text}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+`;
+      },
+      getDownloadUrl(model: ModelDefinition): string {
+        if (model.id.includes('3.2')) {
+          return `${this.baseUrl}/bartowski/Llama-3.2-${model.name.split(' ')[2]}-Instruct-GGUF/resolve/main/${model.fileName}`;
+        }
+        return `${this.baseUrl}/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/${model.fileName}`;
+      }
+    });
+
+    // OpenAI OSS Provider
+    this.registerProvider({
+      id: 'openai-oss',
+      name: 'OpenAI OSS',
+      baseUrl: 'https://huggingface.co',
+      models: [
+        {
+          id: 'gpt-oss-20b-q4_k_m',
+          name: 'GPT-OSS 20B',
+          size: '12.1GB',
+          sizeBytes: 12999763968,
+          description: 'OpenAI\'s open-source model for consumer hardware',
+          fileName: 'openai_gpt-oss-20b-Q4_K_M.gguf',
+          quantization: 'q4_k_m',
+          contextLength: 128000,
+          recommended: true,
+        },
+      ],
+      formatPrompt(text: string, systemPrompt: string): string {
+        // GPT-OSS uses ChatML format
+        return `<|im_start|>system
+${systemPrompt}<|im_end|>
+<|im_start|>user
+${text}<|im_end|>
+<|im_start|>assistant
+`;
+      },
+      getDownloadUrl(model: ModelDefinition): string {
+        return `${this.baseUrl}/bartowski/openai_gpt-oss-20b-GGUF/resolve/main/${model.fileName}`;
+      }
+    });
   }
 }
 

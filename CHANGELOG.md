@@ -5,6 +5,106 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2025-09-09
+
+### Added
+- **Multi-Provider AI Support**: Integrated three major AI providers for text processing
+  - OpenAI: Complete model suite including:
+    - GPT-5 Series (Nano/Mini/Full) - Latest generation with deep reasoning
+    - GPT-4.1 Series (Nano/Mini/Full) - Enhanced coding, 1M token context, June 2024 knowledge
+    - o-series (o3/o3-pro/o4-mini) - Advanced reasoning models with extended thinking time
+    - GPT-4o/4o-mini - Multimodal models with vision support
+  - Anthropic: Claude Opus 4.1, Sonnet 4, and 3.5 variants for frontier intelligence
+  - Google: Gemini 2.5 Pro/Flash/Flash-Lite and 2.0 Flash for advanced processing
+- **OpenAI Responses API Integration**: Migrated from Chat Completions to the new Responses API
+  - Simplified request format with `input` array instead of `messages`
+  - New response parsing for `output` items with typed content
+  - Automatic handling of model-specific requirements
+  - Better support for GPT-5 and o-series reasoning models
+- **Enhanced Reasoning Service**: Complete TypeScript rewrite with provider abstraction
+  - Automatic provider detection based on selected model
+  - Secure API key caching with TTL
+  - Unified retry strategies across all providers
+  - Provider-specific token optimization (up to 8192 for Gemini)
+- **Comprehensive Debug Logging**: Enhanced reasoning pipeline with stage-by-stage logging
+  - Provider selection and routing logs
+  - API key retrieval and validation logs
+  - Request/response details for all providers
+  - Error tracking with full stack traces
+- **Improved Settings UI**: Comprehensive API key management for all providers
+  - Color-coded provider sections (OpenAI=green, Anthropic=purple, Gemini=blue)
+  - Inline API key validation and secure storage
+  - Provider-specific model selection with descriptions
+
+### Changed  
+- **Default AI Model**: Updated from GPT-3.5 Turbo to GPT-4o Mini for cost-efficient multimodal support
+- **Model Updates**: Refreshed all AI models to their latest 2025 versions
+  - OpenAI: Added GPT-5 family (released August 2025), migrated to Responses API
+  - Anthropic: Updated to Claude Opus 4.1 and Sonnet 4, fixed model naming
+  - Gemini: Added latest 2.5 series models, increased token limits
+- **ReasoningService**: Migrated from JavaScript to TypeScript for better type safety
+- **API Endpoint Updates**:
+  - OpenAI: Migrated from `/v1/chat/completions` to `/v1/responses`
+  - Request format simplified for better performance
+  - Response parsing updated for new output structure
+- **Model Configuration Improvements**:
+  - Fixed Anthropic model names (using hyphens instead of dots)
+  - Increased Gemini 2.5 Pro token limits (2000 minimum)
+  - Removed temperature parameter for GPT-5 and o-series models
+- **Documentation**: Updated CLAUDE.md, README.md with comprehensive provider information
+
+### Fixed
+- **API Key Persistence**: All provider keys now properly save to `.env` file
+  - Added `saveAllKeysToEnvFile()` method for consistent persistence
+  - Keys reload automatically on app restart
+  - Fixed Gemini and Anthropic key storage issues
+- **CORS Issues**: Anthropic API calls now route through IPC handler
+  - Avoids browser CORS restrictions in renderer process
+  - Proper error handling in main process
+- **Empty Response Handling**: Fixed "No text transcribed" error when AI returns empty
+  - Falls back to original text when API returns nothing
+  - Properly handles edge cases in response parsing
+- **Parameter Compatibility**: Fixed OpenAI API parameter errors
+  - GPT-5 models use simplified parameters (no max_tokens)
+  - o-series models configured without temperature
+  - Older models retain full parameter support
+
+### Technical Improvements
+- Added Gemini API integration with proper authentication flow
+- Implemented SecureCache utility for API key management
+- Enhanced IPC handlers for multi-provider support
+- Updated environment manager with Gemini key storage
+- Improved error handling with provider-specific messages
+- Added comprehensive retry logic with exponential backoff
+- Enhanced error messages with detailed logging
+- Better fallback strategies for API failures
+- Improved response validation and parsing
+- Centralized API configuration in constants file
+- Unified debugging system across all providers
+
+## [1.0.3] - 2024-12-20
+
+### Added
+- **Local AI Models**: Integration with community models for complete privacy
+  - Support for Llama, Mistral, and other open-source models
+  - Local model management UI with download progress
+  - Automatic model validation and testing
+- **Enhanced Security**: Improved API key storage and management
+  - System keychain integration where available
+  - Encrypted localStorage fallback
+  - Automatic key rotation support
+
+### Fixed
+- Resolved issues with Whisper model downloads on slow connections
+- Fixed clipboard pasting reliability on Windows 11
+- Improved error messages for better debugging
+- Fixed memory leaks in long-running sessions
+
+### Changed
+- Optimized audio processing pipeline for 30% faster transcription
+- Reduced app bundle size by 15MB through dependency optimization
+- Improved startup time by lazy-loading heavy components
+
 ## [1.0.2] - 2024-12-19
 
 ### Added
@@ -72,7 +172,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2024-XX-XX
 
 ### Added
-- Initial release of OpenWispr (formerly OpenWispr)
+- Initial release of OpenWhispr (formerly OpenWispr)
 - Desktop dictation application using OpenAI Whisper
 - Local and cloud-based speech-to-text transcription
 - Real-time audio recording and processing

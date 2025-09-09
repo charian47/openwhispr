@@ -5,11 +5,11 @@ class MenuManager {
     if (process.platform === "darwin") {
       const template = [
         {
-          label: "OpenWispr",
+          label: "OpenWhispr",
           submenu: [
             { role: "about" },
             { type: "separator" },
-            { role: "quit", label: "Quit OpenWispr" },
+            { role: "quit", label: "Quit OpenWhispr" },
           ],
         },
       ];

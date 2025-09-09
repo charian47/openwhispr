@@ -1,10 +1,10 @@
-# OpenWispr Technical Reference for AI Assistants
+# OpenWhispr Technical Reference for AI Assistants
 
-This document provides comprehensive technical details about the OpenWispr project architecture for AI assistants working on the codebase.
+This document provides comprehensive technical details about the OpenWhispr project architecture for AI assistants working on the codebase.
 
 ## Project Overview
 
-OpenWispr is an Electron-based desktop dictation application that uses OpenAI Whisper for speech-to-text transcription. It supports both local (privacy-focused) and cloud (OpenAI API) processing modes.
+OpenWhispr is an Electron-based desktop dictation application that uses OpenAI Whisper for speech-to-text transcription. It supports both local (privacy-focused) and cloud (OpenAI API) processing modes.
 
 ## Architecture Overview
 
@@ -80,10 +80,11 @@ OpenWispr is an Electron-based desktop dictation application that uses OpenAI Wh
 
 ### Services
 
-- **ReasoningService.js**: AI processing for agent-addressed commands
+- **ReasoningService.ts**: AI processing for agent-addressed commands
   - Detects when user addresses their named agent
-  - Routes to appropriate AI provider (OpenAI/Anthropic)
+  - Routes to appropriate AI provider (OpenAI/Anthropic/Gemini)
   - Removes agent name from final output
+  - Supports GPT-5, Claude Opus 4.1, and Gemini 2.5 models
 
 ### Python Bridge
 
@@ -146,10 +147,12 @@ Settings stored in localStorage with these keys:
 - `whisperModel`: Selected Whisper model
 - `useLocalWhisper`: Boolean for local vs cloud
 - `openaiApiKey`: Encrypted API key
-- `anthropicApiKey`: Encrypted API key  
+- `anthropicApiKey`: Encrypted API key
+- `geminiApiKey`: Encrypted API key
 - `language`: Selected language code
 - `agentName`: User's custom agent name
-- `reasoningModel`: Selected AI model for processing
+- `reasoningModel`: Selected AI model for processing (defaults to gpt-4o-mini)
+- `reasoningProvider`: AI provider (openai/anthropic/gemini/local)
 - `hotkey`: Custom hotkey configuration
 - `hasCompletedOnboarding`: Onboarding completion flag
 
@@ -166,14 +169,59 @@ Settings stored in localStorage with these keys:
 - Name stored in localStorage and database
 - ReasoningService detects "Hey [AgentName]" patterns
 - AI processes command and removes agent reference from output
+- Supports multiple AI providers:
+  - **OpenAI** (Now using Responses API as of September 2025):
+    - GPT-5 Series (Nano/Mini/Full) - Latest models with fastest performance
+    - GPT-4.1 Series (Nano/Mini/Full) with 1M context window
+    - o-series reasoning models (o3/o3-pro/o4-mini) for deep reasoning tasks
+    - GPT-4o multimodal series (4o/4o-mini) - default model
+    - Legacy support for GPT-4 Turbo, GPT-4 classic, GPT-3.5 Turbo
+  - **Anthropic** (Via IPC bridge to avoid CORS): 
+    - Claude Opus 4.1 (claude-opus-4-1-20250805) - Frontier intelligence
+    - Claude Sonnet 4 (claude-sonnet-4-20250514) - Latest balanced model
+    - Claude 3.5 Sonnet (claude-3-5-sonnet-20241022) - Balanced performance
+    - Claude 3.5 Haiku (claude-3-5-haiku-20241022) - Fast and efficient
+  - **Google Gemini** (Direct API integration):
+    - Gemini 2.5 Pro (gemini-2.5-pro) - Most intelligent with thinking capability
+    - Gemini 2.5 Flash (gemini-2.5-flash) - High-performance with thinking
+    - Gemini 2.5 Flash Lite (gemini-2.5-flash-lite) - Fast and low-cost
+    - Gemini 2.0 Flash (gemini-2.0-flash) - 1M token context
+  - **Local**: Community models via LocalReasoningService (Qwen, LLaMA, Mistral)
 
-### 8. Debug Mode
+### 8. API Integrations and Updates
 
-Enable with `--debug` flag or `OPENWISPR_DEBUG=true`:
+**OpenAI Responses API (September 2025)**:
+- Migrated from Chat Completions to new Responses API
+- Endpoint: `https://api.openai.com/v1/responses`
+- Simplified request format with `input` array instead of `messages`
+- New response format with `output` array containing typed items
+- Automatic handling of GPT-5 and o-series model requirements
+- No temperature parameter for newer models (GPT-5, o-series)
+
+**Anthropic Integration**:
+- Routes through IPC handler to avoid CORS issues in renderer process
+- Uses main process for API calls with proper error handling
+- Model names use hyphens (e.g., `claude-3-5-sonnet` not `claude-3.5-sonnet`)
+
+**Gemini Integration**:
+- Direct API calls from renderer process
+- Increased token limits for Gemini 2.5 Pro (2000 minimum)
+- Proper handling of thinking process in responses
+- Error handling for MAX_TOKENS finish reason
+
+**API Key Persistence**:
+- All API keys now properly persist to `.env` file
+- Keys stored in environment variables and reloaded on app start
+- Centralized `saveAllKeysToEnvFile()` method ensures consistency
+
+### 9. Debug Mode
+
+Enable with `--debug` flag or `OPENWHISPR_DEBUG=true`:
 - Logs saved to platform-specific app data directory
 - Comprehensive logging of audio pipeline
 - FFmpeg path resolution details
 - Audio level analysis
+- Complete reasoning pipeline debugging with stage-by-stage logging
 
 ## Development Guidelines
 

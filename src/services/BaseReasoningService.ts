@@ -16,8 +16,8 @@ export abstract class BaseReasoningService {
     config: ReasoningConfig = {}
   ): string {
     // Default prompts
-    const DEFAULT_AGENT_PROMPT = `You are {{agentName}}, a helpful AI assistant. Process and improve the following text, removing any reference to your name from the output:\n\n{{text}}\n\nImproved text:`;
-    const DEFAULT_REGULAR_PROMPT = `Process and improve the following text:\n\n{{text}}\n\nImproved text:`;
+    const DEFAULT_AGENT_PROMPT = `You are {{agentName}}, a helpful AI assistant. Clean up the following dictated text by fixing grammar, punctuation, and formatting. Remove any reference to your name. Output ONLY the cleaned text without explanations or options:\n\n{{text}}`;
+    const DEFAULT_REGULAR_PROMPT = `Clean up the following dictated text by fixing grammar, punctuation, and formatting. Output ONLY the cleaned text without any explanations, options, or commentary:\n\n{{text}}`;
 
     // Get custom prompts from localStorage if available
     let agentPrompt = DEFAULT_AGENT_PROMPT;

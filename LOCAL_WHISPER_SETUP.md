@@ -2,7 +2,7 @@
 
 ## ✅ What We've Accomplished
 
-Your OpenWispr app has been successfully refactored to support **local Whisper models** in addition to the OpenAI API. Here's what's been implemented:
+Your OpenWhispr app has been successfully refactored to support **local Whisper models** in addition to the OpenAI API. Here's what's been implemented:
 
 ### 🔧 Technical Implementation
 

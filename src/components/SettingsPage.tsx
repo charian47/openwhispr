@@ -15,8 +15,7 @@ import { useClipboard } from "../hooks/useClipboard";
 import { REASONING_PROVIDERS } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
 import PromptStudio from "./ui/PromptStudio";
-import { LocalModelManager } from "./LocalModelManager";
-import AIModelSelector from "./AIModelSelector";
+import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 
 export type SettingsSectionType =
@@ -55,6 +54,7 @@ export default function SettingsPage({
     reasoningProvider,
     openaiApiKey,
     anthropicApiKey,
+    geminiApiKey,
     dictationKey,
     setUseLocalWhisper,
     setWhisperModel,
@@ -67,6 +67,7 @@ export default function SettingsPage({
     setReasoningProvider,
     setOpenaiApiKey,
     setAnthropicApiKey,
+    setGeminiApiKey,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
@@ -113,6 +114,16 @@ export default function SettingsPage({
       const statusResult = await window.electronAPI?.getUpdateStatus();
       if (statusResult && mounted) {
         setUpdateStatus(statusResult);
+        if (statusResult.updateAvailable) {
+          const updateInfoResult = await window.electronAPI?.getUpdateInfo?.();
+          if (updateInfoResult) {
+            setUpdateInfo({
+              version: updateInfoResult.version || 'unknown',
+              releaseDate: updateInfoResult.releaseDate,
+              releaseNotes: updateInfoResult.releaseNotes,
+            });
+          }
+        }
         subscribeToUpdates();
       }
 
@@ -139,11 +150,13 @@ export default function SettingsPage({
     if (window.electronAPI) {
       const handleUpdateAvailable = (event, info) => {
         setUpdateStatus((prev) => ({ ...prev, updateAvailable: true }));
-        setUpdateInfo({
-          version: info.version,
-          releaseDate: info.releaseDate,
-          releaseNotes: info.releaseNotes,
-        });
+        if (info) {
+          setUpdateInfo({
+            version: info.version || 'unknown',
+            releaseDate: info.releaseDate,
+            releaseNotes: info.releaseNotes,
+          });
+        }
       };
 
       const handleUpdateDownloaded = (event, info) => {
@@ -168,18 +181,31 @@ export default function SettingsPage({
     }
   };
 
-  const saveReasoningSettings = useCallback(() => {
+  const saveReasoningSettings = useCallback(async () => {
     // Update reasoning settings
     updateReasoningSettings({ 
       useReasoningModel, 
       reasoningModel
     });
     
+    // Save API keys to backend based on provider
+    if (localReasoningProvider === "openai" && openaiApiKey) {
+      await window.electronAPI?.saveOpenAIKey(openaiApiKey);
+    }
+    if (localReasoningProvider === "anthropic" && anthropicApiKey) {
+      await window.electronAPI?.saveAnthropicKey(anthropicApiKey);
+    }
+    if (localReasoningProvider === "gemini" && geminiApiKey) {
+      await window.electronAPI?.saveGeminiKey(geminiApiKey);
+    }
+    
     updateApiKeys({
       ...(localReasoningProvider === "openai" &&
         openaiApiKey.trim() && { openaiApiKey }),
       ...(localReasoningProvider === "anthropic" &&
         anthropicApiKey.trim() && { anthropicApiKey }),
+      ...(localReasoningProvider === "gemini" &&
+        geminiApiKey.trim() && { geminiApiKey }),
     });
     
     // Save the provider separately since it's computed from the model
@@ -208,15 +234,33 @@ export default function SettingsPage({
 
   const saveApiKey = useCallback(async () => {
     try {
-      await window.electronAPI?.saveOpenAIKey(openaiApiKey);
-      updateApiKeys({ openaiApiKey });
+      // Save all API keys to backend
+      if (openaiApiKey) {
+        await window.electronAPI?.saveOpenAIKey(openaiApiKey);
+      }
+      if (anthropicApiKey) {
+        await window.electronAPI?.saveAnthropicKey(anthropicApiKey);
+      }
+      if (geminiApiKey) {
+        await window.electronAPI?.saveGeminiKey(geminiApiKey);
+      }
+      
+      updateApiKeys({ openaiApiKey, anthropicApiKey, geminiApiKey });
       updateTranscriptionSettings({ allowLocalFallback, fallbackWhisperModel });
 
       try {
-        await window.electronAPI?.createProductionEnvFile(openaiApiKey);
+        if (openaiApiKey) {
+          await window.electronAPI?.createProductionEnvFile(openaiApiKey);
+        }
+        
+        const savedKeys: string[] = [];
+        if (openaiApiKey) savedKeys.push("OpenAI");
+        if (anthropicApiKey) savedKeys.push("Anthropic");
+        if (geminiApiKey) savedKeys.push("Gemini");
+        
         showAlertDialog({
-          title: "API Key Saved",
-          description: `OpenAI API key saved successfully! Your credentials have been securely recorded for transcription services.${
+          title: "API Keys Saved",
+          description: `${savedKeys.join(", ")} API key${savedKeys.length > 1 ? 's' : ''} saved successfully! Your credentials have been securely recorded.${
             allowLocalFallback ? " Local Whisper fallback is enabled." : ""
           }`,
         });
@@ -239,6 +283,8 @@ export default function SettingsPage({
     }
   }, [
     openaiApiKey,
+    anthropicApiKey,
+    geminiApiKey,
     allowLocalFallback,
     fallbackWhisperModel,
     updateApiKeys,
@@ -247,7 +293,7 @@ export default function SettingsPage({
   ]);
 
   const resetAccessibilityPermissions = () => {
-    const message = `🔄 RESET ACCESSIBILITY PERMISSIONS\n\nIf you've rebuilt or reinstalled OpenWispr and automatic inscription isn't functioning, you may have obsolete permissions from the previous version.\n\n📋 STEP-BY-STEP RESTORATION:\n\n1️⃣ Open System Settings (or System Preferences)\n   • macOS Ventura+: Apple Menu → System Settings\n   • Older macOS: Apple Menu → System Preferences\n\n2️⃣ Navigate to Privacy & Security → Accessibility\n\n3️⃣ Look for obsolete OpenWispr entries:\n   • Any entries named "OpenWispr"\n   • Any entries named "Electron"\n   • Any entries with unclear or generic names\n   • Entries pointing to old application locations\n\n4️⃣ Remove ALL obsolete entries:\n   • Select each old entry\n   • Click the minus (-) button\n   • Enter your password if prompted\n\n5️⃣ Add the current OpenWispr:\n   • Click the plus (+) button\n   • Navigate to and select the CURRENT OpenWispr app\n   • Ensure the checkbox is ENABLED\n\n6️⃣ Restart OpenWispr completely\n\n💡 This is very common during development when rebuilding applications!\n\nClick OK when you're ready to open System Settings.`;
+    const message = `🔄 RESET ACCESSIBILITY PERMISSIONS\n\nIf you've rebuilt or reinstalled OpenWhispr and automatic inscription isn't functioning, you may have obsolete permissions from the previous version.\n\n📋 STEP-BY-STEP RESTORATION:\n\n1️⃣ Open System Settings (or System Preferences)\n   • macOS Ventura+: Apple Menu → System Settings\n   • Older macOS: Apple Menu → System Preferences\n\n2️⃣ Navigate to Privacy & Security → Accessibility\n\n3️⃣ Look for obsolete OpenWhispr entries:\n   • Any entries named "OpenWhispr"\n   • Any entries named "Electron"\n   • Any entries with unclear or generic names\n   • Entries pointing to old application locations\n\n4️⃣ Remove ALL obsolete entries:\n   • Select each old entry\n   • Click the minus (-) button\n   • Enter your password if prompted\n\n5️⃣ Add the current OpenWhispr:\n   • Click the plus (+) button\n   • Navigate to and select the CURRENT OpenWhispr app\n   • Ensure the checkbox is ENABLED\n\n6️⃣ Restart OpenWhispr completely\n\n💡 This is very common during development when rebuilding applications!\n\nClick OK when you're ready to open System Settings.`;
 
     showConfirmDialog({
       title: "Reset Accessibility Permissions",
@@ -295,7 +341,7 @@ export default function SettingsPage({
                   App Updates
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Keep OpenWispr up to date with the latest features and
+                  Keep OpenWhispr up to date with the latest features and
                   improvements.
                 </p>
               </div>
@@ -403,7 +449,7 @@ export default function SettingsPage({
                     ) : (
                       <>
                         <Download size={16} className="mr-2" />
-                        Download Update v{updateInfo.version}
+                        Download Update {updateInfo.version ? `v${updateInfo.version}` : ''}
                       </>
                     )}
                   </Button>
@@ -414,7 +460,7 @@ export default function SettingsPage({
                     onClick={async () => {
                       showConfirmDialog({
                         title: "Install Update",
-                        description: `Ready to install update v${updateInfo.version}. The app will restart to complete installation.`,
+                        description: `Ready to install update${updateInfo.version ? ` v${updateInfo.version}` : ''}. The app will restart to complete installation.`,
                         onConfirm: async () => {
                           try {
                             await window.electronAPI?.installUpdate();
@@ -550,10 +596,10 @@ export default function SettingsPage({
             <div className="border-t pt-8">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  About OpenWispr
+                  About OpenWhispr
                 </h3>
                 <p className="text-sm text-gray-600 mb-6">
-                  OpenWispr converts your speech to text using AI. Press your
+                  OpenWhispr converts your speech to text using AI. Press your
                   hotkey, speak, and we'll type what you said wherever your
                   cursor is.
                 </p>
@@ -614,7 +660,7 @@ export default function SettingsPage({
                     showConfirmDialog({
                       title: "⚠️ DANGER: Cleanup App Data",
                       description:
-                        "This will permanently delete ALL OpenWispr data including:\n\n• Database and transcriptions\n• Local storage settings\n• Downloaded Whisper models\n• Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone. Are you sure?",
+                        "This will permanently delete ALL OpenWhispr data including:\n\n• Database and transcriptions\n• Local storage settings\n• Downloaded Whisper models\n• Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone. Are you sure?",
                       onConfirm: () => {
                         window.electronAPI
                           ?.cleanupApp()
@@ -739,152 +785,27 @@ export default function SettingsPage({
                 This handles commands like "scratch that", creates proper lists,
                 and fixes obvious errors while preserving your natural tone.
               </p>
-
-
-              <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
-                <div>
-                  <label className="text-sm font-medium text-green-800">
-                    Enable AI Text Enhancement
-                  </label>
-                  <p className="text-xs text-green-700">
-                    Use AI to automatically improve transcription quality
-                  </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={useReasoningModel}
-                    onChange={(e) => {
-                      const enabled = e.target.checked;
-                      setUseReasoningModel(enabled);
-                      updateReasoningSettings({ useReasoningModel: enabled });
-                    }}
-                  />
-                  <div
-                    className={`w-11 h-6 bg-gray-200 rounded-full transition-colors duration-200 ${
-                      useReasoningModel ? "bg-green-600" : "bg-gray-300"
-                    }`}
-                  >
-                    <div
-                      className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${
-                        useReasoningModel ? "translate-x-5" : "translate-x-0"
-                      }`}
-                    ></div>
-                  </div>
-                </label>
-              </div>
             </div>
 
-            {useReasoningModel && (
-              <>
-                <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                  <h4 className="font-medium text-blue-900">AI Provider</h4>
-                  <select
-                    value={localReasoningProvider}
-                    onChange={async (e) => {
-                      const newProvider = e.target.value;
-                      setLocalReasoningProvider(newProvider);
-                      
-                      // Update the model to the first model of the new provider
-                      const firstModel = REASONING_PROVIDERS[newProvider as keyof typeof REASONING_PROVIDERS]?.models[0];
-                      if (firstModel) {
-                        setReasoningModel(firstModel.value);
-                      }
-                      
-                      // If switching to local, show a warning if llama.cpp is not available
-                      if (newProvider === "local") {
-                        const isAvailable = await window.electronAPI?.checkLocalReasoningAvailable?.();
-                        if (!isAvailable) {
-                          showAlertDialog({
-                            title: "Local AI Setup Required",
-                            description: "To use local AI models, you need to install llama.cpp and download at least one model. Check the Local AI Models section below for setup instructions.",
-                          });
-                        }
-                      }
-                    }}
-                    className="w-full text-sm border border-blue-300 rounded-md p-2 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  >
-                    {Object.entries(REASONING_PROVIDERS).map(
-                      ([id, provider]) => (
-                        <option key={id} value={id}>
-                          {provider.name}
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-
-                <div className="space-y-4 p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
-                  <h4 className="font-medium text-indigo-900">AI Model</h4>
-                  <select
-                    value={reasoningModel}
-                    onChange={(e) => setReasoningModel(e.target.value)}
-                    className="w-full text-sm border border-indigo-300 rounded-md p-2 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                  >
-                    {REASONING_PROVIDERS[
-                      localReasoningProvider as keyof typeof REASONING_PROVIDERS
-                    ]?.models.map((model) => (
-                      <option key={model.value} value={model.value}>
-                        {model.label} - {model.description}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-indigo-600">
-                    Different models offer varying levels of quality and speed
-                  </p>
-                </div>
-
-                {localReasoningProvider === "openai" && (
-                  <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                    <h4 className="font-medium text-blue-900">
-                      OpenAI API Key
-                    </h4>
-                    <ApiKeyInput
-                      apiKey={openaiApiKey}
-                      setApiKey={setOpenaiApiKey}
-                      helpText="Same as your transcription API key"
-                    />
-                  </div>
-                )}
-
-                {localReasoningProvider === "anthropic" && (
-                  <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                    <h4 className="font-medium text-purple-900">
-                      Anthropic API Key
-                    </h4>
-                    <div className="flex gap-2">
-                      <Input
-                        type="password"
-                        placeholder="sk-ant-..."
-                        value={anthropicApiKey}
-                        onChange={(e) => setAnthropicApiKey(e.target.value)}
-                        className="flex-1 text-sm border-purple-300 focus:border-purple-500"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          pasteFromClipboardWithFallback(setAnthropicApiKey)
-                        }
-                        className="border-purple-300 text-purple-700 hover:bg-purple-50"
-                      >
-                        Paste
-                      </Button>
-                    </div>
-                    <p className="text-xs text-purple-600">
-                      Get your API key from console.anthropic.com
-                    </p>
-                  </div>
-                )}
-
-                {localReasoningProvider === "local" && (
-                  <div className="space-y-4">
-                    <LocalModelManager />
-                  </div>
-                )}
-              </>
-            )}
+            <AIModelSelectorEnhanced
+              useReasoningModel={useReasoningModel}
+              setUseReasoningModel={(value) => {
+                setUseReasoningModel(value);
+                updateReasoningSettings({ useReasoningModel: value });
+              }}
+              reasoningModel={reasoningModel}
+              setReasoningModel={setReasoningModel}
+              localReasoningProvider={localReasoningProvider}
+              setLocalReasoningProvider={setLocalReasoningProvider}
+              openaiApiKey={openaiApiKey}
+              setOpenaiApiKey={setOpenaiApiKey}
+              anthropicApiKey={anthropicApiKey}
+              setAnthropicApiKey={setAnthropicApiKey}
+              geminiApiKey={geminiApiKey}
+              setGeminiApiKey={setGeminiApiKey}
+              pasteFromClipboard={pasteFromClipboardWithFallback}
+              showAlertDialog={showAlertDialog}
+            />
 
             <Button onClick={saveReasoningSettings} className="w-full">
               Save AI Model Settings
@@ -988,7 +909,7 @@ export default function SettingsPage({
                 AI Prompt Management
               </h3>
               <p className="text-sm text-gray-600 mb-6">
-                View and customize the prompts that power OpenWispr's AI text processing. 
+                View and customize the prompts that power OpenWhispr's AI text processing. 
                 Adjust these to change how your transcriptions are formatted and enhanced.
               </p>
             </div>

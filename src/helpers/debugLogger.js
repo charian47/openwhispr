@@ -58,6 +58,23 @@ class DebugLogger {
     }
   }
 
+  logReasoning(stage, details) {
+    if (!this.debugMode) return;
+
+    const reasoningInfo = {
+      stage,
+      timestamp: new Date().toISOString(),
+      ...details,
+    };
+
+    // Special formatting for reasoning logs to make them stand out
+    console.log(`\n🤖 === REASONING ${stage.toUpperCase()} ===`);
+    console.log(reasoningInfo);
+    console.log(`================================\n`);
+
+    this.log(`🤖 Reasoning Pipeline - ${stage}`, reasoningInfo);
+  }
+
   error(...args) {
     if (!this.debugMode) return;
 

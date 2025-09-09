@@ -364,6 +364,14 @@ class IPCHandlers {
       return this.environmentManager.getAnthropicKey();
     });
 
+    ipcMain.handle("get-gemini-key", async (event) => {
+      return this.environmentManager.getGeminiKey();
+    });
+
+    ipcMain.handle("save-gemini-key", async (event, key) => {
+      return this.environmentManager.saveGeminiKey(key);
+    });
+
     ipcMain.handle("save-anthropic-key", async (event, key) => {
       return this.environmentManager.saveAnthropicKey(key);
     });
@@ -378,6 +386,58 @@ class IPCHandlers {
         return { success: false, error: error.message };
       }
     });
+
+    // Anthropic reasoning handler
+    ipcMain.handle("process-anthropic-reasoning", async (event, text, modelId, agentName, config) => {
+      try {
+        const apiKey = this.environmentManager.getAnthropicKey();
+        
+        if (!apiKey) {
+          throw new Error("Anthropic API key not configured");
+        }
+
+        const systemPrompt = "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
+        const userPrompt = agentName && text.toLowerCase().includes(agentName.toLowerCase())
+          ? `You are ${agentName}, a helpful AI assistant. Clean up the following dictated text by fixing grammar, punctuation, and formatting. Remove any reference to your name. Output ONLY the cleaned text without explanations or options:\n\n${text}`
+          : `Clean up the following dictated text by fixing grammar, punctuation, and formatting. Output ONLY the cleaned text without any explanations, options, or commentary:\n\n${text}`;
+
+        const requestBody = {
+          model: modelId || "claude-3-5-sonnet-20241022",
+          messages: [{ role: "user", content: userPrompt }],
+          system: systemPrompt,
+          max_tokens: config?.maxTokens || Math.max(100, Math.min(text.length * 2, 4096)),
+          temperature: config?.temperature || 0.3,
+        };
+
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorData = { error: response.statusText };
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText || response.statusText };
+          }
+          throw new Error(errorData.error?.message || errorData.error || `Anthropic API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return { success: true, text: data.content[0].text.trim() };
+      } catch (error) {
+        debugLogger.error("Anthropic reasoning error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
 
     // Check if local reasoning is available
     ipcMain.handle("check-local-reasoning-available", async () => {
@@ -418,6 +478,12 @@ class IPCHandlers {
       } catch (error) {
         return { success: false, error: error.message };
       }
+    });
+
+    // Debug logging handler for reasoning pipeline
+    ipcMain.handle("log-reasoning", async (event, stage, details) => {
+      debugLogger.logReasoning(stage, details);
+      return { success: true };
     });
   }
 }

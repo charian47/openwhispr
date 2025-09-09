@@ -1,6 +1,22 @@
 import TextCleanup from "../utils/textCleanup";
 import ReasoningService from "../services/ReasoningService";
 
+// Debug logger for renderer process
+const debugLogger = {
+  logReasoning: async (stage, details) => {
+    if (window.electronAPI?.logReasoning) {
+      try {
+        await window.electronAPI.logReasoning(stage, details);
+      } catch (error) {
+        console.error('Failed to log reasoning:', error);
+      }
+    } else {
+      // Fallback to console if IPC not available
+      console.log(`🤖 [REASONING ${stage}]`, details);
+    }
+  }
+};
+
 
 class AudioManager {
   constructor() {
@@ -170,8 +186,9 @@ class AudioManager {
 
       if (result.success && result.text) {
         const text = await this.processTranscription(result.text, "local");
-        if (text) {
-          return { success: true, text, source: "local" };
+        // Allow empty strings as valid responses (reasoning service might return cleaned empty text)
+        if (text !== null && text !== undefined) {
+          return { success: true, text: text || result.text, source: "local" };
         } else {
           throw new Error("No text transcribed");
         }
@@ -356,35 +373,153 @@ class AudioManager {
   }
 
   async processWithReasoningModel(text) {
-    const model = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
-    return await ReasoningService.processText(text, model);
-  }
-
-  async isReasoningAvailable() {
-    const useReasoning = localStorage.getItem("useReasoningModel") === "true";
-    if (!useReasoning) return false;
+    const model = (typeof window !== 'undefined' && window.localStorage)
+      ? (localStorage.getItem("reasoningModel") || "gpt-4o-mini")
+      : "gpt-4o-mini";
+    const agentName = (typeof window !== 'undefined' && window.localStorage)
+      ? (localStorage.getItem("agentName") || null)
+      : null;
+    
+    debugLogger.logReasoning("CALLING_REASONING_SERVICE", {
+      model,
+      agentName,
+      textLength: text.length
+    });
+    
+    const startTime = Date.now();
     
     try {
-      return await ReasoningService.isAvailable();
-    } catch {
-      return false;
+      const result = await ReasoningService.processText(text, model, agentName);
+      
+      const processingTime = Date.now() - startTime;
+      
+      debugLogger.logReasoning("REASONING_SERVICE_COMPLETE", {
+        model,
+        processingTimeMs: processingTime,
+        resultLength: result.length,
+        success: true
+      });
+      
+      return result;
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      
+      debugLogger.logReasoning("REASONING_SERVICE_ERROR", {
+        model,
+        processingTimeMs: processingTime,
+        error: error.message,
+        stack: error.stack
+      });
+      
+      throw error;
     }
   }
 
+  async isReasoningAvailable() {
+    // Check if we're in renderer process (has localStorage)
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const storedValue = localStorage.getItem("useReasoningModel");
+      
+      // Debug log the actual stored value
+      debugLogger.logReasoning("REASONING_STORAGE_CHECK", {
+        storedValue,
+        typeOfStoredValue: typeof storedValue,
+        isTrue: storedValue === "true",
+        isTruthy: !!storedValue && storedValue !== "false"
+      });
+      
+      // Check for both "true" string and truthy values (but not "false")
+      const useReasoning = storedValue === "true" || (!!storedValue && storedValue !== "false");
+      
+      if (!useReasoning) return false;
+      
+      try {
+        const isAvailable = await ReasoningService.isAvailable();
+        
+        debugLogger.logReasoning("REASONING_AVAILABILITY", {
+          isAvailable,
+          reasoningEnabled: useReasoning,
+          finalDecision: useReasoning && isAvailable
+        });
+        
+        return isAvailable;
+      } catch (error) {
+        debugLogger.logReasoning("REASONING_AVAILABILITY_ERROR", {
+          error: error.message,
+          stack: error.stack
+        });
+        return false;
+      }
+    }
+    // If not in renderer, reasoning is not available
+    return false;
+  }
+
   async processTranscription(text, source) {
+    
+    // Log incoming transcription
+    debugLogger.logReasoning("TRANSCRIPTION_RECEIVED", {
+      source,
+      textLength: text.length,
+      textPreview: text.substring(0, 100) + (text.length > 100 ? "..." : ""),
+      timestamp: new Date().toISOString()
+    });
+    
     // Check if reasoning should handle cleanup
     const useReasoning = await this.isReasoningAvailable();
+    
+    // Safe localStorage access
+    const reasoningModel = (typeof window !== 'undefined' && window.localStorage) 
+      ? (localStorage.getItem("reasoningModel") || "gpt-4o-mini") 
+      : "gpt-4o-mini";
+    const reasoningProvider = (typeof window !== 'undefined' && window.localStorage)
+      ? (localStorage.getItem("reasoningProvider") || "auto")
+      : "auto";
+    const agentName = (typeof window !== 'undefined' && window.localStorage)
+      ? (localStorage.getItem("agentName") || null)
+      : null;
+    
+    debugLogger.logReasoning("REASONING_CHECK", {
+      useReasoning,
+      reasoningModel,
+      reasoningProvider,
+      agentName
+    });
     
     if (useReasoning) {
       try {
         // Minimal cleanup for reasoning models
         const preparedText = AudioManager.cleanTranscriptionForAPI(text);
-        return await this.processWithReasoningModel(preparedText);
+        
+        debugLogger.logReasoning("SENDING_TO_REASONING", {
+          preparedTextLength: preparedText.length,
+          model: reasoningModel,
+          provider: reasoningProvider
+        });
+        
+        const result = await this.processWithReasoningModel(preparedText);
+        
+        debugLogger.logReasoning("REASONING_SUCCESS", {
+          resultLength: result.length,
+          resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : ""),
+          processingTime: new Date().toISOString()
+        });
+        
+        return result;
       } catch (error) {
+        debugLogger.logReasoning("REASONING_FAILED", {
+          error: error.message,
+          stack: error.stack,
+          fallbackToCleanup: true
+        });
         console.error(`Reasoning failed (${source}):`, error.message);
         // Fall back to standard cleanup
       }
     }
+    
+    debugLogger.logReasoning("USING_STANDARD_CLEANUP", {
+      reason: useReasoning ? "Reasoning failed" : "Reasoning not enabled"
+    });
     
     // Standard cleanup when reasoning is unavailable or fails
     return AudioManager.cleanTranscription(text);

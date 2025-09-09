@@ -190,6 +190,9 @@ declare global {
       processLocalReasoning: (text: string, modelId: string, agentName: string | null, config: any) => Promise<{ success: boolean; text?: string; error?: string }>;
       checkLocalReasoningAvailable: () => Promise<boolean>;
       
+      // Anthropic reasoning
+      processAnthropicReasoning: (text: string, modelId: string, agentName: string | null, config: any) => Promise<{ success: boolean; text?: string; error?: string }>;
+      
       // llama.cpp management
       llamaCppCheck: () => Promise<{ isInstalled: boolean; version?: string }>;
       llamaCppInstall: () => Promise<{ success: boolean; error?: string }>;
@@ -237,6 +240,16 @@ declare global {
 
       // Hotkey management
       updateHotkey: (key: string) => Promise<void>;
+      
+      // Gemini API key management
+      getGeminiKey: () => Promise<string | null>;
+      saveGeminiKey: (key: string) => Promise<void>;
+      
+      // Debug logging
+      logReasoning?: (stage: string, details: any) => Promise<void>;
+      
+      // FFmpeg availability
+      checkFFmpegAvailability: () => Promise<boolean>;
     };
     
     api?: {

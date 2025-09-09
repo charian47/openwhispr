@@ -189,7 +189,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 className="text-2xl font-bold text-stone-900 mb-2"
                 style={{ fontFamily: "Noto Sans, sans-serif" }}
               >
-                Welcome to OpenWispr
+                Welcome to OpenWhispr
               </h2>
               <p
                 className="text-stone-600"
@@ -435,7 +435,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 Grant Permissions
               </h2>
               <p className="text-gray-600">
-                OpenWispr needs a couple of permissions to work properly
+                OpenWhispr needs a couple of permissions to work properly
               </p>
             </div>
 
@@ -464,7 +464,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 🔒 Privacy Note
               </h4>
               <p className="text-sm text-amber-800">
-                OpenWispr only uses these permissions for dictation.
+                OpenWhispr only uses these permissions for dictation.
                 {useLocalWhisper
                   ? " With local processing, your voice never leaves your device."
                   : " Your voice is sent to OpenAI's servers for transcription."}
@@ -528,7 +528,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 className="text-stone-600"
                 style={{ fontFamily: "Noto Sans, sans-serif" }}
               >
-                Let's test your setup and practice using OpenWispr
+                Let's test your setup and practice using OpenWhispr
               </p>
             </div>
 
@@ -596,7 +596,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   className="font-medium text-green-900 mb-2"
                   style={{ fontFamily: "Noto Sans, sans-serif" }}
                 >
-                  💡 How to use OpenWispr:
+                  💡 How to use OpenWhispr:
                 </h4>
                 <ol
                   className="text-sm text-green-800 space-y-1"
@@ -685,7 +685,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 You're All Set!
               </h2>
               <p className="text-gray-600">
-                OpenWispr is now configured and ready to use.
+                OpenWhispr is now configured and ready to use.
               </p>
             </div>
 

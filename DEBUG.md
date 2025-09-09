@@ -1,4 +1,4 @@
-# OpenWispr Debug Mode
+# OpenWhispr Debug Mode
 
 ## Enabling Debug Logging
 
@@ -8,22 +8,22 @@ When experiencing issues like "no audio detected", you can enable verbose debug 
 Run the app with the `--debug` flag:
 ```bash
 # macOS
-/Applications/OpenWispr.app/Contents/MacOS/OpenWispr --debug
+/Applications/OpenWhispr.app/Contents/MacOS/OpenWhispr --debug
 
 # Windows
-OpenWispr.exe --debug
+OpenWhispr.exe --debug
 ```
 
 ### Method 2: Environment Variable
-Set the `OPENWISPR_DEBUG` environment variable:
+Set the `OPENWHISPR_DEBUG` environment variable:
 ```bash
 # macOS/Linux
-export OPENWISPR_DEBUG=true
-open /Applications/OpenWispr.app
+export OPENWhISPR_DEBUG=true
+open /Applications/OpenWhispr.app
 
 # Windows
-set OPENWISPR_DEBUG=true
-OpenWispr.exe
+set OPENWhISPR_DEBUG=true
+OpenWhispr.exe
 ```
 
 ## Finding the Debug Logs
@@ -167,4 +167,4 @@ When reporting issues:
 
 Debug mode is disabled by default. To ensure it's off:
 - Don't use the `--debug` flag
-- Unset the environment variable: `unset OPENWISPR_DEBUG`
+- Unset the environment variable: `unset OPENWHISPR_DEBUG`

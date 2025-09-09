@@ -103,6 +103,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Anthropic API
   getAnthropicKey: () => ipcRenderer.invoke("get-anthropic-key"),
   saveAnthropicKey: (key) => ipcRenderer.invoke("save-anthropic-key", key),
+
+  // Gemini API
+  getGeminiKey: () => ipcRenderer.invoke("get-gemini-key"),
+  saveGeminiKey: (key) => ipcRenderer.invoke("save-gemini-key", key),
   
   // Local reasoning
   processLocalReasoning: (text, modelId, agentName, config) => 
@@ -110,10 +114,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
   checkLocalReasoningAvailable: () => 
     ipcRenderer.invoke("check-local-reasoning-available"),
   
+  // Anthropic reasoning
+  processAnthropicReasoning: (text, modelId, agentName, config) =>
+    ipcRenderer.invoke("process-anthropic-reasoning", text, modelId, agentName, config),
+  
   // llama.cpp
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),
   llamaCppUninstall: () => ipcRenderer.invoke("llama-cpp-uninstall"),
+  
+  // Debug logging for reasoning pipeline
+  logReasoning: (stage, details) => 
+    ipcRenderer.invoke("log-reasoning", stage, details),
   
   // Remove all listeners for a channel
   removeAllListeners: (channel) => {
