@@ -170,24 +170,58 @@ Settings stored in localStorage with these keys:
 - ReasoningService detects "Hey [AgentName]" patterns
 - AI processes command and removes agent reference from output
 - Supports multiple AI providers:
-  - **OpenAI**: 
-    - GPT-5 Series (Nano/Mini/Full)
-    - GPT-4.1 Series (Nano/Mini/Full) with 1M context
-    - o-series reasoning models (o3/o3-pro/o4-mini)
-    - GPT-4o multimodal series (4o/4o-mini) - default
-    - GPT-4 Turbo and GPT-4 classic
-    - GPT-3.5 Turbo legacy
-  - **Anthropic**: Claude Opus 4.1, Claude Sonnet 4, Claude 3.5 Sonnet/Haiku
-  - **Google**: Gemini 2.5 Pro/Flash/Flash-Lite, Gemini 2.0 Flash
-  - **Local**: Community models via LocalReasoningService
+  - **OpenAI** (Now using Responses API as of September 2025):
+    - GPT-5 Series (Nano/Mini/Full) - Latest models with fastest performance
+    - GPT-4.1 Series (Nano/Mini/Full) with 1M context window
+    - o-series reasoning models (o3/o3-pro/o4-mini) for deep reasoning tasks
+    - GPT-4o multimodal series (4o/4o-mini) - default model
+    - Legacy support for GPT-4 Turbo, GPT-4 classic, GPT-3.5 Turbo
+  - **Anthropic** (Via IPC bridge to avoid CORS): 
+    - Claude Opus 4.1 (claude-opus-4-1-20250805) - Frontier intelligence
+    - Claude Sonnet 4 (claude-sonnet-4-20250514) - Latest balanced model
+    - Claude 3.5 Sonnet (claude-3-5-sonnet-20241022) - Balanced performance
+    - Claude 3.5 Haiku (claude-3-5-haiku-20241022) - Fast and efficient
+  - **Google Gemini** (Direct API integration):
+    - Gemini 2.5 Pro (gemini-2.5-pro) - Most intelligent with thinking capability
+    - Gemini 2.5 Flash (gemini-2.5-flash) - High-performance with thinking
+    - Gemini 2.5 Flash Lite (gemini-2.5-flash-lite) - Fast and low-cost
+    - Gemini 2.0 Flash (gemini-2.0-flash) - 1M token context
+  - **Local**: Community models via LocalReasoningService (Qwen, LLaMA, Mistral)
 
-### 8. Debug Mode
+### 8. API Integrations and Updates
+
+**OpenAI Responses API (September 2025)**:
+- Migrated from Chat Completions to new Responses API
+- Endpoint: `https://api.openai.com/v1/responses`
+- Simplified request format with `input` array instead of `messages`
+- New response format with `output` array containing typed items
+- Automatic handling of GPT-5 and o-series model requirements
+- No temperature parameter for newer models (GPT-5, o-series)
+
+**Anthropic Integration**:
+- Routes through IPC handler to avoid CORS issues in renderer process
+- Uses main process for API calls with proper error handling
+- Model names use hyphens (e.g., `claude-3-5-sonnet` not `claude-3.5-sonnet`)
+
+**Gemini Integration**:
+- Direct API calls from renderer process
+- Increased token limits for Gemini 2.5 Pro (2000 minimum)
+- Proper handling of thinking process in responses
+- Error handling for MAX_TOKENS finish reason
+
+**API Key Persistence**:
+- All API keys now properly persist to `.env` file
+- Keys stored in environment variables and reloaded on app start
+- Centralized `saveAllKeysToEnvFile()` method ensures consistency
+
+### 9. Debug Mode
 
 Enable with `--debug` flag or `OPENWHISPR_DEBUG=true`:
 - Logs saved to platform-specific app data directory
 - Comprehensive logging of audio pipeline
 - FFmpeg path resolution details
 - Audio level analysis
+- Complete reasoning pipeline debugging with stage-by-stage logging
 
 ## Development Guidelines
 

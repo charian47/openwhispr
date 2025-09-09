@@ -9,18 +9,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Features
 
 - 🎤 **Global Hotkey**: Customizable hotkey to start/stop dictation from anywhere (default: backtick `)
-- 🤖 **Multi-Provider AI Processing**: Choose between OpenAI GPT-5, Anthropic Claude, Google Gemini, or local models
+- 🤖 **Multi-Provider AI Processing**: Choose between OpenAI, Anthropic Claude, Google Gemini, or local models
 - 🎯 **Agent Naming**: Personalize your AI assistant with a custom name for natural interactions
-- 🧠 **Advanced Reasoning**: Latest AI models including GPT-5, Claude Opus 4.1, and Gemini 2.5 Pro
+- 🧠 **Latest AI Models** (September 2025):
+  - **OpenAI**: GPT-5 Series, GPT-4.1 Series, o-series reasoning models (o3/o4-mini)
+  - **Anthropic**: Claude Opus 4.1, Claude Sonnet 4, Claude 3.5 Sonnet/Haiku
+  - **Google**: Gemini 2.5 Pro/Flash/Flash-Lite with thinking capability, Gemini 2.0 Flash
+  - **Local**: Qwen, LLaMA, Mistral models via llama.cpp
 - 🔒 **Privacy-First**: Local processing keeps your voice data completely private
 - 🎨 **Modern UI**: Built with React 19, TypeScript, and Tailwind CSS v4
 - 🚀 **Fast**: Optimized with Vite and modern tooling
 - 📱 **Control Panel**: Manage settings, view history, and configure API keys
 - 🗄️ **Transcription History**: SQLite database stores all your transcriptions locally
-- 🔧 **Model Management**: Download and manage local Whisper models (tiny, base, small, medium, large)
+- 🔧 **Model Management**: Download and manage local Whisper models (tiny, base, small, medium, large, turbo)
 - 🌐 **Cross-Platform**: Works on macOS, Windows, and Linux
 - ⚡ **Automatic Pasting**: Transcribed text automatically pastes at your cursor location
 - 🖱️ **Draggable Interface**: Move the dictation panel anywhere on your screen
+- 🔄 **OpenAI Responses API**: Using the latest Responses API for improved performance
 
 ## Prerequisites
 
@@ -43,16 +48,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    npm install
    ```
 
-3. **Optional: Set up OpenAI API key** (only needed for cloud processing):
+3. **Optional: Set up API keys** (only needed for cloud processing):
    
    **Method A - Environment file**:
    ```bash
    cp env.example .env
-   # Edit .env and add your OpenAI API key
+   # Edit .env and add your API keys:
+   # OPENAI_API_KEY=your_openai_key
+   # ANTHROPIC_API_KEY=your_anthropic_key  
+   # GEMINI_API_KEY=your_gemini_key
    ```
    
    **Method B - In-app configuration**:
-   - Run the app and configure the API key through the Control Panel
+   - Run the app and configure API keys through the Control Panel
+   - Keys are automatically saved and persist across app restarts
 
 4. **Run the application**:
    ```bash
