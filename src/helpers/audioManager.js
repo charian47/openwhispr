@@ -186,8 +186,9 @@ class AudioManager {
 
       if (result.success && result.text) {
         const text = await this.processTranscription(result.text, "local");
-        if (text) {
-          return { success: true, text, source: "local" };
+        // Allow empty strings as valid responses (reasoning service might return cleaned empty text)
+        if (text !== null && text !== undefined) {
+          return { success: true, text: text || result.text, source: "local" };
         } else {
           throw new Error("No text transcribed");
         }

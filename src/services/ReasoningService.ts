@@ -172,24 +172,28 @@ class ReasoningService extends BaseReasoningService {
       const systemPrompt = "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
       const userPrompt = this.getReasoningPrompt(text, agentName, config);
 
-      const requestBody = {
+      // Build input array for Responses API
+      const input = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ];
+
+      // Build request body for Responses API
+      const requestBody: any = {
         model: model || "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        max_tokens: config.maxTokens || this.calculateMaxTokens(
-          text.length,
-          TOKEN_LIMITS.MIN_TOKENS,
-          TOKEN_LIMITS.MAX_TOKENS,
-          TOKEN_LIMITS.TOKEN_MULTIPLIER
-        ),
-        temperature: config.temperature || 0.3,
+        input: input,
+        store: false, // Don't store responses for privacy
       };
+
+      // Add temperature for older models (GPT-4 and earlier)
+      const isOlderModel = model && (model.startsWith('gpt-4') || model.startsWith('gpt-3'));
+      if (isOlderModel) {
+        requestBody.temperature = config.temperature || 0.3;
+      }
 
       const response = await withRetry(
         async () => {
-          const res = await fetch(`${API_ENDPOINTS.OPENAI}/chat/completions`, {
+          const res = await fetch(API_ENDPOINTS.OPENAI, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -208,14 +212,55 @@ class ReasoningService extends BaseReasoningService {
         createApiRetryStrategy("OpenAI")
       );
 
-      const responseText = response.choices[0].message.content.trim();
+      // Log the raw response for debugging
+      debugLogger.logReasoning("OPENAI_RAW_RESPONSE", {
+        model,
+        hasOutput: !!response.output,
+        outputLength: response.output?.length || 0,
+        outputTypes: response.output?.map((item: any) => item.type),
+        usage: response.usage
+      });
+
+      // Extract text from the Responses API format
+      // Response contains an array of output items, we need to find the message with output_text
+      let responseText = "";
+      
+      if (response.output && Array.isArray(response.output)) {
+        for (const item of response.output) {
+          if (item.type === "message" && item.content) {
+            for (const content of item.content) {
+              if (content.type === "output_text" && content.text) {
+                responseText = content.text.trim();
+                break;
+              }
+            }
+            if (responseText) break;
+          }
+        }
+      }
+      
+      // Fallback to output_text helper if available
+      if (!responseText && response.output_text) {
+        responseText = response.output_text.trim();
+      }
       
       debugLogger.logReasoning("OPENAI_RESPONSE", {
         model,
         responseLength: responseText.length,
         tokensUsed: response.usage?.total_tokens || 0,
-        success: true
+        success: true,
+        isEmpty: responseText.length === 0
       });
+      
+      // If we got an empty response, return the original text as fallback
+      if (!responseText) {
+        debugLogger.logReasoning("OPENAI_EMPTY_RESPONSE_FALLBACK", {
+          model,
+          originalTextLength: text.length,
+          reason: "Empty response from API"
+        });
+        return text; // Return original text if API returns nothing
+      }
       
       return responseText;
     } catch (error) {
@@ -239,80 +284,42 @@ class ReasoningService extends BaseReasoningService {
     debugLogger.logReasoning("ANTHROPIC_START", {
       model,
       agentName,
-      hasApiKey: false // Will update after fetching
+      environment: typeof window !== 'undefined' ? 'browser' : 'node'
     });
     
-    if (this.isProcessing) {
-      throw new Error("Already processing a request");
-    }
-
-    const apiKey = await this.getApiKey('anthropic');
-    
-    debugLogger.logReasoning("ANTHROPIC_API_KEY", {
-      hasApiKey: !!apiKey,
-      keyLength: apiKey?.length || 0
-    });
-
-    this.isProcessing = true;
-
-    try {
-      const systemPrompt = "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-      const userPrompt = this.getReasoningPrompt(text, agentName, config);
-
-      const requestBody = {
-        model: model || "claude-sonnet-4-20250514",
-        messages: [{ role: "user", content: userPrompt }],
-        system: systemPrompt,
-        max_tokens: config.maxTokens || this.calculateMaxTokens(
-          text.length,
-          TOKEN_LIMITS.MIN_TOKENS_ANTHROPIC,
-          TOKEN_LIMITS.MAX_TOKENS_ANTHROPIC,
-          TOKEN_LIMITS.TOKEN_MULTIPLIER
-        ),
-        temperature: config.temperature || 0.3,
-      };
-
-      const response = await withRetry(
-        async () => {
-          const res = await fetch(`${API_ENDPOINTS.ANTHROPIC}/messages`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-API-Key": apiKey!,
-              "anthropic-version": API_VERSIONS.ANTHROPIC,
-            },
-            body: JSON.stringify(requestBody),
-          });
-
-          if (!res.ok) {
-            const errorData = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(errorData.error?.message || `Anthropic API error: ${res.status}`);
-          }
-
-          return res.json();
-        },
-        createApiRetryStrategy("Anthropic")
-      );
-
-      const responseText = response.content[0].text.trim();
+    // Use IPC to communicate with main process for Anthropic API
+    if (typeof window !== 'undefined' && window.electronAPI) {
+      const startTime = Date.now();
       
-      debugLogger.logReasoning("ANTHROPIC_RESPONSE", {
+      debugLogger.logReasoning("ANTHROPIC_IPC_CALL", {
         model,
-        responseLength: responseText.length,
-        tokensUsed: response.usage?.total_tokens || 0,
-        success: true
+        textLength: text.length
       });
       
-      return responseText;
-    } catch (error) {
-      debugLogger.logReasoning("ANTHROPIC_ERROR", {
-        model,
-        error: (error as Error).message,
-        errorType: (error as Error).name
+      const result = await window.electronAPI.processAnthropicReasoning(text, model, agentName, config);
+      
+      const processingTime = Date.now() - startTime;
+      
+      if (result.success) {
+        debugLogger.logReasoning("ANTHROPIC_SUCCESS", {
+          model,
+          processingTimeMs: processingTime,
+          resultLength: result.text.length
+        });
+        return result.text;
+      } else {
+        debugLogger.logReasoning("ANTHROPIC_ERROR", {
+          model,
+          processingTimeMs: processingTime,
+          error: result.error
+        });
+        throw new Error(result.error);
+      }
+    } else {
+      debugLogger.logReasoning("ANTHROPIC_UNAVAILABLE", {
+        reason: 'Not in Electron environment'
       });
-      throw error;
-    } finally {
-      this.isProcessing = false;
+      throw new Error('Anthropic reasoning is not available in this environment');
     }
   }
 
@@ -374,7 +381,7 @@ class ReasoningService extends BaseReasoningService {
     debugLogger.logReasoning("GEMINI_START", {
       model,
       agentName,
-      hasApiKey: false // Will update after fetching
+      hasApiKey: false
     });
     
     if (this.isProcessing) {
@@ -402,69 +409,114 @@ class ReasoningService extends BaseReasoningService {
         }],
         generationConfig: {
           temperature: config.temperature || 0.3,
-          maxOutputTokens: config.maxTokens || this.calculateMaxTokens(
-            text.length,
-            TOKEN_LIMITS.MIN_TOKENS_GEMINI,
-            TOKEN_LIMITS.MAX_TOKENS_GEMINI,
-            TOKEN_LIMITS.TOKEN_MULTIPLIER
+          maxOutputTokens: config.maxTokens || Math.max(
+            2000, // Gemini 2.5 Pro needs more tokens for its thinking process
+            this.calculateMaxTokens(
+              text.length,
+              TOKEN_LIMITS.MIN_TOKENS_GEMINI,
+              TOKEN_LIMITS.MAX_TOKENS_GEMINI,
+              TOKEN_LIMITS.TOKEN_MULTIPLIER
+            )
           ),
         },
       };
 
-      const response = await withRetry(
-        async () => {
-          const res = await fetch(
-            `${API_ENDPOINTS.GEMINI}/models/${model}:generateContent?key=${apiKey}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(requestBody),
-            }
-          );
-
-          if (!res.ok) {
-            const errorText = await res.text();
-            let errorData: any = { error: res.statusText };
-            
-            try {
-              errorData = JSON.parse(errorText);
-            } catch {
-              errorData = { error: errorText || res.statusText };
-            }
-            
-            debugLogger.logReasoning("GEMINI_API_ERROR_DETAIL", {
-              status: res.status,
-              statusText: res.statusText,
-              error: errorData,
-              errorMessage: errorData.error?.message || errorData.message || errorData.error,
-              errorCode: errorData.error?.code,
-              errorStatus: errorData.error?.status,
-              fullResponse: errorText.substring(0, 500),
-              headers: Object.fromEntries(res.headers.entries())
+      let response: any;
+      try {
+        response = await withRetry(
+          async () => {
+            debugLogger.logReasoning("GEMINI_REQUEST", {
+              endpoint: `${API_ENDPOINTS.GEMINI}/models/${model}:generateContent`,
+              model,
+              hasApiKey: !!apiKey,
+              requestBody: JSON.stringify(requestBody).substring(0, 200)
             });
             
-            // Check for common error patterns
-            const errorMessage = errorData.error?.message || errorData.message || errorData.error || `Gemini API error: ${res.status}`;
-            
-            if (res.status === 403 || errorMessage.includes('quota') || errorMessage.includes('billing')) {
-              throw new Error(`Gemini API quota/billing error: ${errorMessage}. Please check your Google Cloud billing account.`);
-            } else if (res.status === 401) {
-              throw new Error(`Gemini API authentication error: Invalid API key`);
-            } else if (res.status === 400) {
-              throw new Error(`Gemini API request error: ${errorMessage}`);
-            } else {
-              throw new Error(`Gemini API error (${res.status}): ${errorMessage}`);
+            const res = await fetch(
+              `${API_ENDPOINTS.GEMINI}/models/${model}:generateContent?key=${apiKey}`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestBody),
+              }
+            );
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              let errorData: any = { error: res.statusText };
+              
+              try {
+                errorData = JSON.parse(errorText);
+              } catch {
+                errorData = { error: errorText || res.statusText };
+              }
+              
+              debugLogger.logReasoning("GEMINI_API_ERROR_DETAIL", {
+                status: res.status,
+                statusText: res.statusText,
+                error: errorData,
+                errorMessage: errorData.error?.message || errorData.message || errorData.error,
+                fullResponse: errorText.substring(0, 500)
+              });
+              
+              const errorMessage = errorData.error?.message || errorData.message || errorData.error || `Gemini API error: ${res.status}`;
+              throw new Error(errorMessage);
             }
-          }
 
-          return res.json();
-        },
-        createApiRetryStrategy("Gemini")
-      );
+            const jsonResponse = await res.json();
+            
+            debugLogger.logReasoning("GEMINI_RAW_RESPONSE", {
+              hasResponse: !!jsonResponse,
+              responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
+              hasCandidates: !!jsonResponse?.candidates,
+              candidatesLength: jsonResponse?.candidates?.length || 0,
+              fullResponse: JSON.stringify(jsonResponse).substring(0, 500)
+            });
+            
+            return jsonResponse;
+          },
+          createApiRetryStrategy("Gemini")
+        );
+      } catch (fetchError) {
+        debugLogger.logReasoning("GEMINI_FETCH_ERROR", {
+          error: (fetchError as Error).message,
+          stack: (fetchError as Error).stack
+        });
+        throw fetchError;
+      }
 
-      const responseText = response.candidates[0].content.parts[0].text.trim();
+      // Check if response has the expected structure
+      if (!response.candidates || !response.candidates[0]) {
+        debugLogger.logReasoning("GEMINI_RESPONSE_ERROR", {
+          model,
+          response: JSON.stringify(response).substring(0, 500),
+          hasCandidate: !!response.candidates,
+          candidateCount: response.candidates?.length || 0
+        });
+        throw new Error("Invalid response structure from Gemini API");
+      }
+      
+      // Check if the response has actual content
+      const candidate = response.candidates[0];
+      if (!candidate.content?.parts?.[0]?.text) {
+        debugLogger.logReasoning("GEMINI_EMPTY_RESPONSE", {
+          model,
+          finishReason: candidate.finishReason,
+          hasContent: !!candidate.content,
+          hasParts: !!candidate.content?.parts,
+          response: JSON.stringify(candidate).substring(0, 500)
+        });
+        
+        // If finish reason is MAX_TOKENS, the model hit its limit
+        if (candidate.finishReason === "MAX_TOKENS") {
+          throw new Error("Gemini reached token limit before generating response. Try a shorter input or increase max tokens.");
+        }
+        throw new Error("Gemini returned empty response");
+      }
+      
+      const responseText = candidate.content.parts[0].text.trim();
       
       debugLogger.logReasoning("GEMINI_RESPONSE", {
         model,
@@ -478,10 +530,7 @@ class ReasoningService extends BaseReasoningService {
       debugLogger.logReasoning("GEMINI_ERROR", {
         model,
         error: (error as Error).message,
-        errorType: (error as Error).name,
-        stack: (error as Error).stack,
-        apiKey: apiKey ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}` : 'missing',
-        endpoint: `${API_ENDPOINTS.GEMINI}/models/${model}:generateContent`
+        errorType: (error as Error).name
       });
       throw error;
     } finally {

@@ -190,6 +190,9 @@ declare global {
       processLocalReasoning: (text: string, modelId: string, agentName: string | null, config: any) => Promise<{ success: boolean; text?: string; error?: string }>;
       checkLocalReasoningAvailable: () => Promise<boolean>;
       
+      // Anthropic reasoning
+      processAnthropicReasoning: (text: string, modelId: string, agentName: string | null, config: any) => Promise<{ success: boolean; text?: string; error?: string }>;
+      
       // llama.cpp management
       llamaCppCheck: () => Promise<{ isInstalled: boolean; version?: string }>;
       llamaCppInstall: () => Promise<{ success: boolean; error?: string }>;

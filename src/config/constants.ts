@@ -1,6 +1,6 @@
 // API Configuration
 export const API_ENDPOINTS = {
-  OPENAI: 'https://api.openai.com/v1/chat/completions',
+  OPENAI: 'https://api.openai.com/v1/responses',
   ANTHROPIC: 'https://api.anthropic.com/v1/messages',
   GEMINI: 'https://generativelanguage.googleapis.com/v1beta',
 } as const;

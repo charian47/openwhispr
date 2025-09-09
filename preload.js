@@ -114,6 +114,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   checkLocalReasoningAvailable: () => 
     ipcRenderer.invoke("check-local-reasoning-available"),
   
+  // Anthropic reasoning
+  processAnthropicReasoning: (text, modelId, agentName, config) =>
+    ipcRenderer.invoke("process-anthropic-reasoning", text, modelId, agentName, config),
+  
   // llama.cpp
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),

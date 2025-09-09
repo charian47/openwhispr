@@ -136,12 +136,12 @@ export const REASONING_PROVIDERS = {
     name: "Anthropic",
     models: [
       {
-        value: "claude-3.5-haiku-20241022",
+        value: "claude-3-5-haiku-20241022",
         label: "Claude 3.5 Haiku",
         description: "Fast and efficient",
       },
       {
-        value: "claude-3.5-sonnet-20241022",
+        value: "claude-3-5-sonnet-20241022",
         label: "Claude 3.5 Sonnet",
         description: "Balanced performance",
       },
@@ -215,5 +215,14 @@ export const getReasoningModelLabel = (modelId: string): string => {
 export const getModelProvider = (modelId: string): string => {
   const allModels = getAllReasoningModels();
   const model = allModels.find((m) => m.value === modelId);
+  
+  // If model not found, try to infer from model name
+  if (!model) {
+    if (modelId.includes("claude")) return "anthropic";
+    if (modelId.includes("gemini")) return "gemini";
+    if (modelId.includes("gpt") || modelId.includes("o3") || modelId.includes("o4") || modelId.includes("o1")) return "openai";
+    if (modelId.includes("qwen") || modelId.includes("llama") || modelId.includes("mistral")) return "local";
+  }
+  
   return model?.provider || "openai";
 };
