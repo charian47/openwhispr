@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2025-09-11
+
+### Changed
+- **Dictation Overlay Placement**: Window now anchors to the active workspace's bottom-right corner with a safety margin, preventing it from sliding off-screen on multi-monitor setups.
+
+### Fixed
+- **macOS Window Lifecycle**: Ensured the dictation panel keeps the app visible in Dock and Command-Tab while retaining floating behaviour across spaces.
+- **Control Panel Stability**: Reworked close/minimize handling so the panel stays interactive when switching apps and reopens cleanly without spawning duplicate windows.
+- **Always-On-Top Enforcement**: Centralised the logic that reapplies floating window levels, eliminating redundant timers and focus quirks.
+
+## [1.0.5] - 2025-09-10
+
+### Fixed
+- **Build System**: Fixed native module signing conflicts on macOS
+  - Added `npmRebuild: true` to force rebuild of native modules during packaging
+  - Added `buildDependenciesFromSource: true` to compile native dependencies from source
+  - Added `better-sqlite3` to `asarUnpack` array to properly unpack SQLite3 native module
+  - Resolves "different Team IDs" error when launching notarized macOS apps
+- **CI/CD Pipeline**: Fixed automated release workflow issues
+  - Removed automatic version update step from release workflow (version should be set before tagging)
+  - Added `contents: write` permission to allow workflow to create GitHub releases
+  - Fixes "Resource not accessible by integration" error during releases
+
+### Technical Details
+- This is a maintenance release focusing on build reliability and deployment infrastructure
+- No feature changes or user-facing functionality updates
+- All changes related to packaging, signing, and automated release processes
+
 ## [1.0.4] - 2025-09-09
 
 ### Added

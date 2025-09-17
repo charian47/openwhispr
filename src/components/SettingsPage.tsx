@@ -149,7 +149,7 @@ export default function SettingsPage({
   const subscribeToUpdates = () => {
     if (window.electronAPI) {
       const handleUpdateAvailable = (event, info) => {
-        setUpdateStatus((prev) => ({ ...prev, updateAvailable: true }));
+        setUpdateStatus((prev) => ({ ...prev, updateAvailable: true, updateDownloaded: false }));
         if (info) {
           setUpdateInfo({
             version: info.version || 'unknown',
@@ -379,17 +379,18 @@ export default function SettingsPage({
                         await window.electronAPI?.checkForUpdates();
                       if (result?.updateAvailable) {
                         setUpdateInfo({
-                          version: result.version,
+                          version: result.version || 'unknown',
                           releaseDate: result.releaseDate,
                           releaseNotes: result.releaseNotes,
                         });
                         setUpdateStatus((prev) => ({
                           ...prev,
                           updateAvailable: true,
+                          updateDownloaded: false,
                         }));
                         showAlertDialog({
                           title: "Update Available",
-                          description: `Update available: v${result.version}`,
+                          description: `Update available: v${result.version || 'new version'}`,
                         });
                       } else {
                         showAlertDialog({
@@ -449,7 +450,7 @@ export default function SettingsPage({
                     ) : (
                       <>
                         <Download size={16} className="mr-2" />
-                        Download Update {updateInfo.version ? `v${updateInfo.version}` : ''}
+                        Download Update{updateInfo.version ? ` v${updateInfo.version}` : ''}
                       </>
                     )}
                   </Button>

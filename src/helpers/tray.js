@@ -28,7 +28,6 @@ class TrayManager {
         return;
       }
 
-      trayIcon.setTemplateImage(true);
       this.tray = new Tray(trayIcon);
 
       this.tray.setIgnoreDoubleClickEvents(true);
@@ -48,35 +47,39 @@ class TrayManager {
         "iconTemplate@3x.png"
       );
       if (fs.existsSync(iconPath)) {
-        return nativeImage.createFromPath(iconPath);
+        const icon = nativeImage.createFromPath(iconPath);
+        icon.setTemplateImage(true);
+        return icon;
       } else {
         console.error("Tray icon not found at:", iconPath);
         return this.createFallbackIcon();
       }
     } else {
+      // In production, the icon should be in extraResources
       const possiblePaths = [
+        // Most likely location: extraResources
+        path.join(process.resourcesPath, "src", "assets", "iconTemplate@3x.png"),
+        // Alternative locations
         path.join(process.resourcesPath, "assets", "iconTemplate@3x.png"),
         path.join(
           process.resourcesPath,
           "app.asar.unpacked",
+          "src",
           "assets",
           "iconTemplate@3x.png"
         ),
-        path.join(__dirname, "..", "..", "assets", "iconTemplate@3x.png"),
-        path.join(
-          process.resourcesPath,
-          "app",
-          "assets",
-          "iconTemplate@3x.png"
-        ),
-        path.join(app.getPath("exe"), "..", "Resources", "assets", "iconTemplate@3x.png"),
-        path.join(app.getAppPath(), "assets", "iconTemplate@3x.png"),
+        path.join(__dirname, "..", "..", "src", "assets", "iconTemplate@3x.png"),
+        path.join(app.getAppPath(), "src", "assets", "iconTemplate@3x.png"),
       ];
       
+      console.log("Looking for tray icon in production...");
       for (const testPath of possiblePaths) {
         try {
           if (fs.existsSync(testPath)) {
-            return nativeImage.createFromPath(testPath);
+            console.log("✅ Found tray icon at:", testPath);
+            const icon = nativeImage.createFromPath(testPath);
+            icon.setTemplateImage(true);
+            return icon;
           }
         } catch (e) {
           console.log("❌ Error checking path:", testPath, e.message);
