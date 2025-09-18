@@ -29,7 +29,8 @@
     "**/node_modules/better-sqlite3/**/*"
   ],
   "extraResources": [
-    "src/assets/**/*"
+    "src/assets/**/*",
+    "resources/macos-globe-listener.swift"
   ],
   "mac": {
     "category": "public.app-category.productivity",

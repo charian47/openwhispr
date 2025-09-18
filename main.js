@@ -30,6 +30,7 @@ const WhisperManager = require("./src/helpers/whisper");
 const TrayManager = require("./src/helpers/tray");
 const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
+const GlobeKeyManager = require("./src/helpers/globeKeyManager");
 
 // Set up PATH for production builds to find system Python
 function setupProductionPath() {
@@ -61,11 +62,13 @@ setupProductionPath();
 // Initialize managers
 const environmentManager = new EnvironmentManager();
 const windowManager = new WindowManager();
+const hotkeyManager = windowManager.hotkeyManager;
 const databaseManager = new DatabaseManager();
 const clipboardManager = new ClipboardManager();
 const whisperManager = new WhisperManager();
 const trayManager = new TrayManager();
 const updateManager = new UpdateManager();
+const globeKeyManager = new GlobeKeyManager();
 
 // Initialize IPC handlers with all managers
 const ipcHandlers = new IPCHandlers({
@@ -125,6 +128,21 @@ async function startApp() {
     windowManager.controlPanelWindow
   );
   updateManager.checkForUpdatesOnStartup();
+
+  if (process.platform === "darwin") {
+    globeKeyManager.on("globe-down", () => {
+      if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
+        if (
+          windowManager.mainWindow &&
+          !windowManager.mainWindow.isDestroyed()
+        ) {
+          windowManager.mainWindow.webContents.send("toggle-dictation");
+        }
+      }
+    });
+
+    globeKeyManager.start();
+  }
 }
 
 // App event handlers
@@ -188,4 +206,5 @@ app.on("activate", () => {
 
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
+  globeKeyManager.stop();
 });

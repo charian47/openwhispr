@@ -26,11 +26,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - ⚡ **Automatic Pasting**: Transcribed text automatically pastes at your cursor location
 - 🖱️ **Draggable Interface**: Move the dictation panel anywhere on your screen
 - 🔄 **OpenAI Responses API**: Using the latest Responses API for improved performance
+- 🌐 **Globe Key Toggle (macOS)**: Optional Fn/Globe key listener for a hardware-level dictation trigger
 
 ## Prerequisites
 
 - **Node.js 18+** and npm (Download from [nodejs.org](https://nodejs.org/))
 - **macOS 10.15+**, **Windows 10+**, or **Linux**
+- On macOS, Globe key support requires the Xcode Command Line Tools (`xcode-select --install`) so the bundled Swift helper can run
 - **Python 3.7+** (Optional - the app can install it automatically for local Whisper processing)
 
 ## Quick Start

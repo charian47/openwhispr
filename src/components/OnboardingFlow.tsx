@@ -37,6 +37,7 @@ import { getLanguageLabel, getReasoningModelLabel } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 import { setAgentName as saveAgentName } from "../utils/agentName";
+import { formatHotkeyLabel } from "../utils/hotkeys";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -73,6 +74,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [apiKey, setApiKey] = useState(openaiApiKey);
   const [hotkey, setHotkey] = useState(dictationKey || "`");
   const [agentName, setAgentName] = useState("Agent");
+  const readableHotkey = formatHotkeyLabel(hotkey);
   const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const practiceTextareaRef = useRef<HTMLInputElement>(null);
 
@@ -115,6 +117,23 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const saveSettings = useCallback(async () => {
     updateTranscriptionSettings({ whisperModel, preferredLanguage });
     setDictationKey(hotkey);
+    try {
+      const result = await window.electronAPI?.updateHotkey?.(hotkey);
+      if (result && !result.success) {
+        showAlertDialog({
+          title: "Hotkey Not Registered",
+          description:
+            result.message ||
+            "We couldn't register that key. Please choose another hotkey.",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to register onboarding hotkey", error);
+      showAlertDialog({
+        title: "Hotkey Error",
+        description: "We couldn't register that key. Please choose another hotkey.",
+      });
+    }
     saveAgentName(agentName);
 
     localStorage.setItem(
@@ -551,13 +570,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <br />
                   <strong>Step 2:</strong> Press{" "}
                   <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
-                    {hotkey}
+                    {readableHotkey}
                   </kbd>{" "}
                   to start recording, then speak something.
                   <br />
                   <strong>Step 3:</strong> Press{" "}
                   <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
-                    {hotkey}
+                    {readableHotkey}
                   </kbd>{" "}
                   again to stop and see your transcribed text appear where your
                   cursor is!
@@ -570,7 +589,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       <span style={{ fontFamily: "Noto Sans, sans-serif" }}>
                         Click in the text area below, then press{" "}
                         <kbd className="bg-white px-1 py-0.5 rounded text-xs font-mono border">
-                          {hotkey}
+                          {readableHotkey}
                         </kbd>{" "}
                         to start dictation
                       </span>
@@ -608,7 +627,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <li>
                     2. Press{" "}
                     <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-green-200">
-                      {hotkey}
+                      {readableHotkey}
                     </kbd>{" "}
                     to start recording
                   </li>
@@ -616,7 +635,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <li>
                     4. Press{" "}
                     <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-green-200">
-                      {hotkey}
+                      {readableHotkey}
                     </kbd>{" "}
                     again to stop
                   </li>

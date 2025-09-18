@@ -13,6 +13,8 @@ import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
 import { REASONING_PROVIDERS } from "../utils/languages";
+import { formatHotkeyLabel } from "../utils/hotkeys";
+import { formatHotkeyLabel } from "../utils/hotkeys";
 import LanguageSelector from "./ui/LanguageSelector";
 import PromptStudio from "./ui/PromptStudio";
 import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
@@ -315,10 +317,21 @@ export default function SettingsPage({
 
   const saveKey = async () => {
     try {
-      await window.electronAPI?.updateHotkey(dictationKey);
+      const result = await window.electronAPI?.updateHotkey(dictationKey);
+
+      if (!result?.success) {
+        showAlertDialog({
+          title: "Hotkey Not Saved",
+          description:
+            result?.message ||
+            "This key could not be registered. Please choose a different key.",
+        });
+        return;
+      }
+
       showAlertDialog({
         title: "Key Saved",
-        description: `Dictation key saved: ${dictationKey}`,
+        description: `Dictation key saved: ${formatHotkeyLabel(dictationKey)}`,
       });
     } catch (error) {
       console.error("Failed to update hotkey:", error);
@@ -614,7 +627,7 @@ export default function SettingsPage({
                     Default Hotkey
                   </p>
                   <p className="text-gray-600 font-mono text-xs">
-                    {dictationKey || "` (backtick)"}
+                    {formatHotkeyLabel(dictationKey)}
                   </p>
                 </div>
                 <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
@@ -946,4 +959,3 @@ export default function SettingsPage({
     </>
   );
 }
-
