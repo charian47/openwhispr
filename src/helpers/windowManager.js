@@ -200,6 +200,28 @@ class WindowManager {
     }
   }
 
+  hideDictationPanel() {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      if (process.platform === "darwin") {
+        this.mainWindow.hide();
+      } else {
+        this.mainWindow.minimize();
+      }
+    }
+  }
+
+  isDictationPanelVisible() {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return false;
+    }
+
+    if (this.mainWindow.isMinimized && this.mainWindow.isMinimized()) {
+      return false;
+    }
+
+    return this.mainWindow.isVisible();
+  }
+
   registerMainWindowEvents() {
     if (!this.mainWindow) {
       return;

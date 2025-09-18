@@ -6,6 +6,8 @@ export interface ConfirmDialogState {
   description?: string;
   onConfirm: () => void;
   variant?: "default" | "destructive";
+  confirmText?: string;
+  cancelText?: string;
 }
 
 export interface AlertDialogState {

@@ -113,10 +113,11 @@ async function startApp() {
   }
 
   // Set up tray
-  trayManager.setWindows(
-    windowManager.mainWindow,
-    windowManager.controlPanelWindow
-  );
+trayManager.setWindows(
+  windowManager.mainWindow,
+  windowManager.controlPanelWindow
+);
+trayManager.setWindowManager(windowManager);
   trayManager.setCreateControlPanelCallback(() =>
     windowManager.createControlPanelWindow()
   );

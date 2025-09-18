@@ -99,6 +99,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   modelCheck: (modelId) => ipcRenderer.invoke("model-check", modelId),
   modelDownload: (modelId) => ipcRenderer.invoke("model-download", modelId),
   modelDelete: (modelId) => ipcRenderer.invoke("model-delete", modelId),
+  modelDeleteAll: () => ipcRenderer.invoke("model-delete-all"),
   modelCheckRuntime: () => ipcRenderer.invoke("model-check-runtime"),
   onModelDownloadProgress: (callback) => ipcRenderer.on("model-download-progress", callback),
   

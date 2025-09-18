@@ -14,7 +14,6 @@ import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
 import { REASONING_PROVIDERS } from "../utils/languages";
 import { formatHotkeyLabel } from "../utils/hotkeys";
-import { formatHotkeyLabel } from "../utils/hotkeys";
 import LanguageSelector from "./ui/LanguageSelector";
 import PromptStudio from "./ui/PromptStudio";
 import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
@@ -91,6 +90,11 @@ export default function SettingsPage({
     releaseDate?: string;
     releaseNotes?: string;
   }>({});
+  const [isRemovingModels, setIsRemovingModels] = useState(false);
+  const cachePathHint =
+    typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent)
+      ? "%USERPROFILE%\\.cache\\openwhispr\\models"
+      : "~/.cache/openwhispr/models";
 
   const whisperHook = useWhisper(showAlertDialog);
   const permissionsHook = usePermissions(showAlertDialog);
@@ -341,6 +345,51 @@ export default function SettingsPage({
       });
     }
   };
+
+  const handleRemoveModels = useCallback(() => {
+    if (isRemovingModels) return;
+
+    showConfirmDialog({
+      title: "Remove downloaded models?",
+      description:
+        `This deletes all locally cached Whisper models (${cachePathHint}) and frees disk space. You can download them again from the model picker.`,
+      confirmText: "Delete Models",
+      variant: "destructive",
+      onConfirm: () => {
+        setIsRemovingModels(true);
+        window.electronAPI
+          ?.modelDeleteAll?.()
+          .then((result) => {
+            if (!result?.success) {
+              showAlertDialog({
+                title: "Unable to Remove Models",
+                description:
+                  result?.error ||
+                  "Something went wrong while deleting the cached models.",
+              });
+              return;
+            }
+
+            window.dispatchEvent(new Event("openwhispr-models-cleared"));
+
+            showAlertDialog({
+              title: "Models Removed",
+              description:
+                "All downloaded Whisper models were deleted. You can re-download any model from the picker when needed.",
+            });
+          })
+          .catch((error) => {
+            showAlertDialog({
+              title: "Unable to Remove Models",
+              description: error?.message || "An unknown error occurred.",
+            });
+          })
+          .finally(() => {
+            setIsRemovingModels(false);
+          });
+      },
+    });
+  }, [isRemovingModels, cachePathHint, showConfirmDialog, showAlertDialog]);
 
   const renderSectionContent = () => {
     switch (activeSection) {
@@ -705,6 +754,24 @@ export default function SettingsPage({
                   Clean Up All App Data
                 </Button>
               </div>
+
+              <div className="space-y-3 mt-6 p-4 bg-rose-50 border border-rose-200 rounded-xl">
+                <h4 className="font-medium text-rose-900">Local Model Storage</h4>
+                <p className="text-sm text-rose-800">
+                  Remove all downloaded Whisper models from your cache directory to reclaim disk space. You can re-download any model later.
+                </p>
+                <Button
+                  variant="destructive"
+                  onClick={handleRemoveModels}
+                  disabled={isRemovingModels}
+                  className="w-full"
+                >
+                  {isRemovingModels ? "Removing models..." : "Remove Downloaded Models"}
+                </Button>
+                <p className="text-xs text-rose-700">
+                  Current cache location: <code>{cachePathHint}</code>
+                </p>
+              </div>
             </div>
           </div>
         );
@@ -737,55 +804,55 @@ export default function SettingsPage({
             )}
 
             {useLocalWhisper && whisperHook.whisperInstalled && (
-              <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                <h4 className="font-medium text-purple-900">
-                  Local Whisper Model
-                </h4>
-                <WhisperModelPicker
-                  selectedModel={whisperModel}
-                  onModelSelect={setWhisperModel}
-                  variant="settings"
-                />
-              </div>
-            )}
-
-            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <h4 className="font-medium text-gray-900">Preferred Language</h4>
-              <LanguageSelector
-                value={preferredLanguage}
-                onChange={(value) => {
-                  setPreferredLanguage(value);
-                  updateTranscriptionSettings({ preferredLanguage: value });
-                }}
-                className="w-full"
+            <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+              <h4 className="font-medium text-purple-900">
+                Local Whisper Model
+              </h4>
+              <WhisperModelPicker
+                selectedModel={whisperModel}
+                onModelSelect={setWhisperModel}
+                variant="settings"
               />
             </div>
+          )}
 
-            <Button
-              onClick={() => {
-                updateTranscriptionSettings({
-                  useLocalWhisper,
-                  whisperModel,
-                  preferredLanguage,
-                });
-
-                if (!useLocalWhisper && openaiApiKey.trim()) {
-                  updateApiKeys({ openaiApiKey });
-                }
-
-                showAlertDialog({
-                  title: "Settings Saved",
-                  description: `Transcription mode: ${
-                    useLocalWhisper ? "Local Whisper" : "OpenAI API"
-                  }. Language: ${preferredLanguage}.`,
-                });
+          <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+            <h4 className="font-medium text-gray-900">Preferred Language</h4>
+            <LanguageSelector
+              value={preferredLanguage}
+              onChange={(value) => {
+                setPreferredLanguage(value);
+                updateTranscriptionSettings({ preferredLanguage: value });
               }}
               className="w-full"
-            >
-              Save Transcription Settings
-            </Button>
+            />
           </div>
-        );
+
+          <Button
+            onClick={() => {
+              updateTranscriptionSettings({
+                useLocalWhisper,
+                whisperModel,
+                preferredLanguage,
+              });
+
+              if (!useLocalWhisper && openaiApiKey.trim()) {
+                updateApiKeys({ openaiApiKey });
+              }
+
+              showAlertDialog({
+                title: "Settings Saved",
+                description: `Transcription mode: ${
+                  useLocalWhisper ? "Local Whisper" : "OpenAI API"
+                }. Language: ${preferredLanguage}.`,
+              });
+            }}
+            className="w-full"
+          >
+            Save Transcription Settings
+          </Button>
+        </div>
+      );
 
       case "aiModels":
         return (
@@ -945,6 +1012,8 @@ export default function SettingsPage({
         description={confirmDialog.description}
         onConfirm={confirmDialog.onConfirm}
         variant={confirmDialog.variant}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
       />
 
       <AlertDialog

@@ -46,10 +46,10 @@ class IPCHandlers {
 
     ipcMain.handle("hide-window", () => {
       if (process.platform === "darwin") {
-        this.windowManager.mainWindow.minimize();
+        this.windowManager.hideDictationPanel();
         if (app.dock) app.dock.show();
       } else {
-        this.windowManager.mainWindow.hide();
+        this.windowManager.hideDictationPanel();
       }
     });
 
@@ -346,6 +346,21 @@ class IPCHandlers {
           error: error.message,
           code: error.code,
           details: error.details 
+        };
+      }
+    });
+
+    ipcMain.handle("model-delete-all", async () => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        await modelManager.deleteAllModels();
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error.message,
+          code: error.code,
+          details: error.details,
         };
       }
     });

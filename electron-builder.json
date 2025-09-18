@@ -63,13 +63,15 @@
       "deb"
     ],
     "icon": "src/assets/icon.png",
-    "category": "Utility"
+    "category": "Utility",
+    "afterInstall": "resources/linux/after-install.sh"
   },
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
-    "createStartMenuShortcut": true
+    "createStartMenuShortcut": true,
+    "include": "resources/nsis/cleanup-models.nsh"
   },
   "dmg": {
     "title": "OpenWhispr",

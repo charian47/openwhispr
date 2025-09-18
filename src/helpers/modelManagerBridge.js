@@ -312,6 +312,32 @@ class ModelManager {
     }
   }
 
+  async deleteAllModels() {
+    try {
+      if (fsPromises.rm) {
+        await fsPromises.rm(this.modelsDir, { recursive: true, force: true });
+      } else {
+        const entries = await fsPromises.readdir(this.modelsDir, { withFileTypes: true }).catch(() => []);
+        for (const entry of entries) {
+          const fullPath = path.join(this.modelsDir, entry.name);
+          if (entry.isDirectory()) {
+            await fsPromises.rmdir(fullPath, { recursive: true }).catch(() => {});
+          } else {
+            await fsPromises.unlink(fullPath).catch(() => {});
+          }
+        }
+      }
+    } catch (error) {
+      throw new ModelError(
+        `Failed to delete models directory: ${error.message}`,
+        "DELETE_ALL_ERROR",
+        { error: error.message }
+      );
+    } finally {
+      await this.ensureModelsDirExists();
+    }
+  }
+
   async ensureLlamaCpp() {
     // Simplify - isInstalled already checks system installation
     const llamaCppInstaller = require("./llamaCppInstaller").default;
