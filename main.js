@@ -1,5 +1,10 @@
 const { app, globalShortcut, BrowserWindow } = require("electron");
 
+// Ensure macOS menus use the proper casing for the app name
+if (process.platform === "darwin" && app.getName() !== "OpenWhispr") {
+  app.setName("OpenWhispr");
+}
+
 // Add global error handling for uncaught exceptions
 process.on("uncaughtException", (error) => {
   console.error("Uncaught Exception:", error);

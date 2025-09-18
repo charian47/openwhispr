@@ -205,6 +205,7 @@ declare global {
       windowIsMaximized: () => Promise<boolean>;
       startWindowDrag: () => Promise<void>;
       stopWindowDrag: () => Promise<void>;
+      setMainWindowInteractivity: (interactive: boolean) => Promise<void>;
 
       // App management
       cleanupApp: () => Promise<{ success: boolean; message: string }>;

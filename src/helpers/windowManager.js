@@ -17,6 +17,7 @@ class WindowManager {
     this.hotkeyManager = new HotkeyManager();
     this.dragManager = new DragManager();
     this.isQuitting = false;
+    this.isMainWindowInteractive = false;
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -36,6 +37,7 @@ class WindowManager {
       this.mainWindow.setSkipTaskbar(false);
     }
 
+    this.setMainWindowInteractivity(false);
     this.registerMainWindowEvents();
 
     await this.loadMainWindow();
@@ -74,6 +76,20 @@ class WindowManager {
         this.enforceMainWindowOnTop();
       }
     );
+  }
+
+  setMainWindowInteractivity(shouldCapture) {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return;
+    }
+
+    if (shouldCapture) {
+      this.mainWindow.setIgnoreMouseEvents(false);
+    } else {
+      this.mainWindow.setIgnoreMouseEvents(true, { forward: true });
+    }
+
+    this.isMainWindowInteractive = shouldCapture;
   }
 
   async loadMainWindow() {
@@ -217,6 +233,7 @@ class WindowManager {
     this.mainWindow.on("closed", () => {
       this.dragManager.cleanup();
       this.mainWindow = null;
+      this.isMainWindowInteractive = false;
     });
   }
 

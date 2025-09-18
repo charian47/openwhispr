@@ -57,6 +57,11 @@ class IPCHandlers {
       this.windowManager.showDictationPanel();
     });
 
+    ipcMain.handle("set-main-window-interactivity", (event, shouldCapture) => {
+      this.windowManager.setMainWindowInteractivity(Boolean(shouldCapture));
+      return { success: true };
+    });
+
     // Environment handlers
     ipcMain.handle("get-openai-key", async (event) => {
       return this.environmentManager.getOpenAIKey();

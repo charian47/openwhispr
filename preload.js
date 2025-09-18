@@ -67,6 +67,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   updateHotkey: (hotkey) => ipcRenderer.invoke("update-hotkey", hotkey),
   startWindowDrag: () => ipcRenderer.invoke("start-window-drag"),
   stopWindowDrag: () => ipcRenderer.invoke("stop-window-drag"),
+  setMainWindowInteractivity: (interactive) =>
+    ipcRenderer.invoke("set-main-window-interactivity", interactive),
 
   // Update functions
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
