@@ -7,11 +7,25 @@ class TrayManager {
     this.tray = null;
     this.mainWindow = null;
     this.controlPanelWindow = null;
+    this.windowManager = null;
   }
 
   setWindows(mainWindow, controlPanelWindow) {
     this.mainWindow = mainWindow;
     this.controlPanelWindow = controlPanelWindow;
+
+    if (this.mainWindow) {
+      this.mainWindow.on("show", () => this.updateTrayMenu?.());
+      this.mainWindow.on("hide", () => this.updateTrayMenu?.());
+      this.mainWindow.on("minimize", () => this.updateTrayMenu?.());
+      this.mainWindow.on("restore", () => this.updateTrayMenu?.());
+    }
+
+    this.updateTrayMenu?.();
+  }
+
+  setWindowManager(windowManager) {
+    this.windowManager = windowManager;
   }
 
   setCreateControlPanelCallback(callback) {
@@ -28,11 +42,10 @@ class TrayManager {
         return;
       }
 
-      trayIcon.setTemplateImage(true);
       this.tray = new Tray(trayIcon);
 
       this.tray.setIgnoreDoubleClickEvents(true);
-      this.setupTrayMenu();
+      this.updateTrayMenu();
       this.setupTrayEventHandlers();
     } catch (error) {
       console.error("Error creating tray icon:", error.message);
@@ -48,35 +61,39 @@ class TrayManager {
         "iconTemplate@3x.png"
       );
       if (fs.existsSync(iconPath)) {
-        return nativeImage.createFromPath(iconPath);
+        const icon = nativeImage.createFromPath(iconPath);
+        icon.setTemplateImage(true);
+        return icon;
       } else {
         console.error("Tray icon not found at:", iconPath);
         return this.createFallbackIcon();
       }
     } else {
+      // In production, the icon should be in extraResources
       const possiblePaths = [
+        // Most likely location: extraResources
+        path.join(process.resourcesPath, "src", "assets", "iconTemplate@3x.png"),
+        // Alternative locations
         path.join(process.resourcesPath, "assets", "iconTemplate@3x.png"),
         path.join(
           process.resourcesPath,
           "app.asar.unpacked",
+          "src",
           "assets",
           "iconTemplate@3x.png"
         ),
-        path.join(__dirname, "..", "..", "assets", "iconTemplate@3x.png"),
-        path.join(
-          process.resourcesPath,
-          "app",
-          "assets",
-          "iconTemplate@3x.png"
-        ),
-        path.join(app.getPath("exe"), "..", "Resources", "assets", "iconTemplate@3x.png"),
-        path.join(app.getAppPath(), "assets", "iconTemplate@3x.png"),
+        path.join(__dirname, "..", "..", "src", "assets", "iconTemplate@3x.png"),
+        path.join(app.getAppPath(), "src", "assets", "iconTemplate@3x.png"),
       ];
       
+      console.log("Looking for tray icon in production...");
       for (const testPath of possiblePaths) {
         try {
           if (fs.existsSync(testPath)) {
-            return nativeImage.createFromPath(testPath);
+            console.log("✅ Found tray icon at:", testPath);
+            const icon = nativeImage.createFromPath(testPath);
+            icon.setTemplateImage(true);
+            return icon;
           }
         } catch (e) {
           console.log("❌ Error checking path:", testPath, e.message);
@@ -124,15 +141,20 @@ class TrayManager {
     }
   }
 
-  setupTrayMenu() {
-    const contextMenu = Menu.buildFromTemplate([
+  buildContextMenuTemplate() {
+    const dictationVisible = this.windowManager?.isDictationPanelVisible?.() ?? false;
+
+    return [
       {
-        label: "Show Dictation Panel",
+        label: dictationVisible ? "Hide Dictation Panel" : "Show Dictation Panel",
         click: () => {
-          if (!this.mainWindow.isVisible()) {
-            this.mainWindow.show();
+          if (!this.windowManager) return;
+          if (this.windowManager.isDictationPanelVisible()) {
+            this.windowManager.hideDictationPanel();
+          } else {
+            this.windowManager.showDictationPanel();
           }
-          this.mainWindow.focus();
+          this.updateTrayMenu();
         },
       },
       {
@@ -182,18 +204,20 @@ class TrayManager {
           app.quit();
         },
       },
-    ]);
+    ];
+  }
 
+  updateTrayMenu() {
+    if (!this.tray) return;
+
+    const contextMenu = Menu.buildFromTemplate(this.buildContextMenuTemplate());
     this.tray.setToolTip("OpenWhispr - Voice Dictation");
     this.tray.setContextMenu(contextMenu);
   }
 
   setupTrayEventHandlers() {
     this.tray.on("click", () => {
-      if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
-      }
-      this.mainWindow.focus();
+      this.tray?.popUpContextMenu();
     });
 
     this.tray.on("destroyed", () => {

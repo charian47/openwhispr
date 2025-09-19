@@ -11,10 +11,22 @@ class HotkeyManager {
       throw new Error("Callback function is required for hotkey setup");
     }
 
-    // Unregister all existing shortcuts
-    globalShortcut.unregisterAll();
+    if (this.currentHotkey && this.currentHotkey !== "GLOBE") {
+      globalShortcut.unregister(this.currentHotkey);
+    }
 
     try {
+      if (hotkey === "GLOBE") {
+        if (process.platform !== "darwin") {
+          return {
+            success: false,
+            error: "The Globe key is only available on macOS.",
+          };
+        }
+        this.currentHotkey = hotkey;
+        return { success: true, hotkey };
+      }
+
       // Register the new hotkey
       const success = globalShortcut.register(hotkey, callback);
 

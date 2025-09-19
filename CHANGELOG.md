@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2025-09-11
+
+### Added
+- **Dictation Panel Command Menu**: Clicking the floating panel reveals quick actions, including a one-click "Hide this for now" option.
+- **macOS Globe Key Support**: Added a lightweight Swift listener so the Globe/Fn key can toggle dictation across the system.
+- **Globe Key Selection UI**: Settings and onboarding keyboards now include a dedicated Globe key option.
+- **Hotkey Validation**: Settings and onboarding now verify shortcut registration immediately, alerting users when a key can’t be bound.
+- **Model Cache Cleanup**: Added an in-app command (and installer/uninstaller hooks) to delete all cached Whisper models.
+- **Tray Controls**: macOS tray menu gained quick actions to show or hide the dictation panel.
+
+### Changed
+- **Dictation Overlay Placement**: Window now anchors to the active workspace's bottom-right corner with a safety margin, preventing it from sliding off-screen on multi-monitor setups.
+- **Dictation Overlay Canvas**: Enlarged the floating window so tooltips, menus, and error states render without being clipped while keeping click-through behaviour outside interactive elements.
+- **Keyboard UX**: Virtual keyboard hides macOS-exclusive keys on Windows/Linux and standardises hotkey labels.
+
+### Fixed
+- **macOS Window Lifecycle**: Ensured the dictation panel keeps the app visible in Dock and Command-Tab while retaining floating behaviour across spaces.
+- **Control Panel Stability**: Reworked close/minimize handling so the panel stays interactive when switching apps and reopens cleanly without spawning duplicate windows.
+- **Always-On-Top Enforcement**: Centralised the logic that reapplies floating window levels, eliminating redundant timers and focus quirks.
+- **Menu Labelling**: macOS application menu items now display the correct OpenWhispr casing instead of "open-whispr".
+- **Non-mac Hotkey Guard**: Prevented the mac-only Globe shortcut from being saved on Windows/Linux.
+
+## [1.0.5] - 2025-09-10
+
+### Fixed
+- **Build System**: Fixed native module signing conflicts on macOS
+  - Added `npmRebuild: true` to force rebuild of native modules during packaging
+  - Added `buildDependenciesFromSource: true` to compile native dependencies from source
+  - Added `better-sqlite3` to `asarUnpack` array to properly unpack SQLite3 native module
+  - Resolves "different Team IDs" error when launching notarized macOS apps
+- **CI/CD Pipeline**: Fixed automated release workflow issues
+  - Removed automatic version update step from release workflow (version should be set before tagging)
+  - Added `contents: write` permission to allow workflow to create GitHub releases
+  - Fixes "Resource not accessible by integration" error during releases
+
+### Technical Details
+- This is a maintenance release focusing on build reliability and deployment infrastructure
+- No feature changes or user-facing functionality updates
+- All changes related to packaging, signing, and automated release processes
+
 ## [1.0.4] - 2025-09-09
 
 ### Added

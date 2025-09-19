@@ -183,6 +183,7 @@ declare global {
       modelCheck: (modelId: string) => Promise<boolean>;
       modelDownload: (modelId: string) => Promise<void>;
       modelDelete: (modelId: string) => Promise<void>;
+      modelDeleteAll: () => Promise<{ success: boolean; error?: string; code?: string }>;
       modelCheckRuntime: () => Promise<boolean>;
       onModelDownloadProgress: (callback: (event: any, data: any) => void) => void;
       
@@ -205,6 +206,7 @@ declare global {
       windowIsMaximized: () => Promise<boolean>;
       startWindowDrag: () => Promise<void>;
       stopWindowDrag: () => Promise<void>;
+      setMainWindowInteractivity: (interactive: boolean) => Promise<void>;
 
       // App management
       cleanupApp: () => Promise<{ success: boolean; message: string }>;

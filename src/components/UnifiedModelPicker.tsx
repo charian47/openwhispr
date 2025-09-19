@@ -248,6 +248,17 @@ export default function UnifiedModelPicker({
     loadModels();
   }, [loadModels]);
 
+  useEffect(() => {
+    const handleModelsCleared = () => {
+      loadModels();
+    };
+
+    window.addEventListener("openwhispr-models-cleared", handleModelsCleared);
+    return () => {
+      window.removeEventListener("openwhispr-models-cleared", handleModelsCleared);
+    };
+  }, [loadModels]);
+
   const handleDownloadProgress = useCallback((_event: any, data: any) => {
     if (modelType === 'whisper') {
       // Whisper progress format

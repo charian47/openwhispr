@@ -151,6 +151,20 @@ class ModelManager {
     }
   }
 
+  async deleteAllModels(): Promise<void> {
+    try {
+      await fsPromises.rm(this.modelsDir, { recursive: true, force: true });
+    } catch (error: any) {
+      throw new ModelError(
+        `Failed to delete models directory: ${error.message}`,
+        "DELETE_ALL_ERROR",
+        { error: error.message }
+      );
+    } finally {
+      await this.ensureModelsDir();
+    }
+  }
+
   getDownloadProgress(modelId: string): DownloadProgress | undefined {
     return this.downloadProgress.get(modelId);
   }

@@ -1,4 +1,4 @@
-const { screen, BrowserWindow } = require("electron");
+const { app, screen, BrowserWindow } = require("electron");
 const HotkeyManager = require("./hotkeyManager");
 const DragManager = require("./dragManager");
 const MenuManager = require("./menuManager");
@@ -16,6 +16,12 @@ class WindowManager {
     this.tray = null;
     this.hotkeyManager = new HotkeyManager();
     this.dragManager = new DragManager();
+    this.isQuitting = false;
+    this.isMainWindowInteractive = false;
+
+    app.on("before-quit", () => {
+      this.isQuitting = true;
+    });
   }
 
   async createMainWindow() {
@@ -26,6 +32,13 @@ class WindowManager {
       ...MAIN_WINDOW_CONFIG,
       ...position,
     });
+
+    if (process.platform === "darwin") {
+      this.mainWindow.setSkipTaskbar(false);
+    }
+
+    this.setMainWindowInteractivity(false);
+    this.registerMainWindowEvents();
 
     await this.loadMainWindow();
     await this.initializeHotkey();
@@ -57,21 +70,26 @@ class WindowManager {
       }
     );
 
-    this.mainWindow.webContents.on("did-finish-load", () => {
-      // Ensure window is visible after loading
-      setTimeout(() => {
-        if (!this.mainWindow.isVisible()) {
-          this.mainWindow.show();
-          this.mainWindow.focus();
-        }
-      }, 1000);
-    });
+    this.mainWindow.webContents.on(
+      "did-finish-load",
+      () => {
+        this.enforceMainWindowOnTop();
+      }
+    );
+  }
 
-    // Ensure window is always on top, even above fullscreen apps
-    WindowPositionUtil.setupAlwaysOnTop(this.mainWindow);
-    this.mainWindow.on("show", () => {
-      WindowPositionUtil.setupAlwaysOnTop(this.mainWindow);
-    });
+  setMainWindowInteractivity(shouldCapture) {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return;
+    }
+
+    if (shouldCapture) {
+      this.mainWindow.setIgnoreMouseEvents(false);
+    } else {
+      this.mainWindow.setIgnoreMouseEvents(true, { forward: true });
+    }
+
+    this.isMainWindowInteractive = shouldCapture;
   }
 
   async loadMainWindow() {
@@ -117,6 +135,9 @@ class WindowManager {
 
   async createControlPanelWindow() {
     if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
+      if (this.controlPanelWindow.isMinimized()) {
+        this.controlPanelWindow.restore();
+      }
       if (!this.controlPanelWindow.isVisible()) {
         this.controlPanelWindow.show();
       }
@@ -126,18 +147,31 @@ class WindowManager {
 
     this.controlPanelWindow = new BrowserWindow(CONTROL_PANEL_CONFIG);
 
-    console.log("📱 Loading control panel content...");
-    await this.loadControlPanel();
+    this.controlPanelWindow.once("ready-to-show", () => {
+      this.controlPanelWindow.show();
+      this.controlPanelWindow.focus();
+    });
 
-    // Set up menu for control panel to ensure text input works
-    MenuManager.setupControlPanelMenu(this.controlPanelWindow);
-
-    this.controlPanelWindow.show();
-    this.controlPanelWindow.focus();
+    this.controlPanelWindow.on("close", (event) => {
+      if (!this.isQuitting) {
+        event.preventDefault();
+        if (process.platform === "darwin") {
+          this.controlPanelWindow.minimize();
+        } else {
+          this.controlPanelWindow.hide();
+        }
+      }
+    });
 
     this.controlPanelWindow.on("closed", () => {
       this.controlPanelWindow = null;
     });
+
+    // Set up menu for control panel to ensure text input works
+    MenuManager.setupControlPanelMenu(this.controlPanelWindow);
+
+    console.log("📱 Loading control panel content...");
+    await this.loadControlPanel();
   }
 
   async loadControlPanel() {
@@ -156,9 +190,78 @@ class WindowManager {
   showDictationPanel() {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
+        if (typeof this.mainWindow.showInactive === "function") {
+          this.mainWindow.showInactive();
+        } else {
+          this.mainWindow.show();
+        }
       }
       this.mainWindow.focus();
+    }
+  }
+
+  hideDictationPanel() {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      if (process.platform === "darwin") {
+        this.mainWindow.hide();
+      } else {
+        this.mainWindow.minimize();
+      }
+    }
+  }
+
+  isDictationPanelVisible() {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return false;
+    }
+
+    if (this.mainWindow.isMinimized && this.mainWindow.isMinimized()) {
+      return false;
+    }
+
+    return this.mainWindow.isVisible();
+  }
+
+  registerMainWindowEvents() {
+    if (!this.mainWindow) {
+      return;
+    }
+
+    this.mainWindow.once("ready-to-show", () => {
+      this.enforceMainWindowOnTop();
+      if (!this.mainWindow.isVisible()) {
+        if (typeof this.mainWindow.showInactive === "function") {
+          this.mainWindow.showInactive();
+        } else {
+          this.mainWindow.show();
+        }
+      }
+    });
+
+    this.mainWindow.on("show", () => {
+      this.enforceMainWindowOnTop();
+    });
+
+    this.mainWindow.on("focus", () => {
+      this.enforceMainWindowOnTop();
+    });
+
+    this.mainWindow.on("blur", () => {
+      setTimeout(() => {
+        this.enforceMainWindowOnTop();
+      }, 100);
+    });
+
+    this.mainWindow.on("closed", () => {
+      this.dragManager.cleanup();
+      this.mainWindow = null;
+      this.isMainWindowInteractive = false;
+    });
+  }
+
+  enforceMainWindowOnTop() {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      WindowPositionUtil.setupAlwaysOnTop(this.mainWindow);
     }
   }
 }

@@ -29,7 +29,8 @@
     "**/node_modules/better-sqlite3/**/*"
   ],
   "extraResources": [
-    "src/assets/**/*"
+    "src/assets/**/*",
+    "resources/macos-globe-listener.swift"
   ],
   "mac": {
     "category": "public.app-category.productivity",
@@ -44,7 +45,7 @@
     "entitlementsInherit": "resources/mac/entitlements.mac.plist",
     "identity": "HeroTools Inc. (9R85XFMH59)",
     "extendInfo": {
-      "LSUIElement": true,
+      "LSUIElement": false,
       "NSMicrophoneUsageDescription": "OpenWhispr needs microphone access for speech-to-text transcription.",
       "NSAccessibilityUsageDescription": "OpenWhispr needs accessibility permissions to paste transcribed text into other applications."
     }
@@ -64,11 +65,15 @@
     "icon": "src/assets/icon.png",
     "category": "Utility"
   },
+  "deb": {
+    "afterRemove": "resources/linux/after-remove.sh"
+  },
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
-    "createStartMenuShortcut": true
+    "createStartMenuShortcut": true,
+    "include": "resources/nsis/cleanup-models.nsh"
   },
   "dmg": {
     "title": "OpenWhispr",

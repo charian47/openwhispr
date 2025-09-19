@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { formatHotkeyLabel } from "../../utils/hotkeys";
 
 interface KeyboardProps {
   selectedKey?: string;
@@ -11,9 +12,10 @@ interface KeyProps {
   onClick: () => void;
   width?: string;
   disabled?: boolean;
+  displayValue?: React.ReactNode;
 }
 
-const Key: React.FC<KeyProps> = ({ keyValue, isSelected, onClick, width = "w-12", disabled = false }) => {
+const Key: React.FC<KeyProps> = ({ keyValue, isSelected, onClick, width = "w-12", disabled = false, displayValue }) => {
   const [isPressed, setIsPressed] = useState(false);
 
   const handleClick = () => {
@@ -44,12 +46,14 @@ const Key: React.FC<KeyProps> = ({ keyValue, isSelected, onClick, width = "w-12"
         ${isPressed ? 'bg-gray-100' : ''}
       `}
     >
-      {keyValue === 'Space' ? '' : keyValue}
+      {displayValue ?? (keyValue === 'Space' ? '' : keyValue)}
     </button>
   );
 };
 
 export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps) {
+  const isMac = typeof navigator !== "undefined" && /Mac|Darwin/.test(navigator.platform);
+  const canUseGlobe = isMac;
   const functionKeys = ['Esc', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'];
   
   const numberRow = ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
@@ -63,6 +67,12 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
   const handleKeyClick = (key: string) => {
     setSelectedKey(key);
   };
+
+  useEffect(() => {
+    if (!canUseGlobe && selectedKey === "GLOBE") {
+      setSelectedKey('`');
+    }
+  }, [canUseGlobe, selectedKey, setSelectedKey]);
 
   return (
     <div className="p-6 bg-gradient-to-b from-gray-100 to-gray-200 rounded-2xl shadow-2xl border border-gray-300">
@@ -178,6 +188,24 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
           width="w-16"
           disabled
         />
+        {canUseGlobe ? (
+          <Key
+            keyValue="GLOBE"
+            displayValue={<span role="img" aria-label="Globe">🌐</span>}
+            isSelected={selectedKey === 'GLOBE'}
+            onClick={() => handleKeyClick('GLOBE')}
+            width="w-16"
+          />
+        ) : (
+          <Key
+            keyValue="Globe"
+            displayValue={<span role="img" aria-label="Globe">🌐</span>}
+            isSelected={false}
+            onClick={() => {}}
+            width="w-16"
+            disabled
+          />
+        )}
         <Key
           keyValue="Alt"
           isSelected={selectedKey === 'Alt'}
@@ -213,7 +241,7 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
           <div className="inline-flex items-center px-4 py-2 bg-indigo-100 border-2 border-indigo-300 rounded-lg">
             <span className="text-sm text-indigo-700 mr-2">Selected:</span>
             <kbd className="px-3 py-1 bg-white border border-indigo-200 rounded font-mono text-lg font-semibold text-indigo-900">
-              {selectedKey}
+              {formatHotkeyLabel(selectedKey)}
             </kbd>
           </div>
         </div>

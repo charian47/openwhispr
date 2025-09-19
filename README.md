@@ -22,15 +22,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📱 **Control Panel**: Manage settings, view history, and configure API keys
 - 🗄️ **Transcription History**: SQLite database stores all your transcriptions locally
 - 🔧 **Model Management**: Download and manage local Whisper models (tiny, base, small, medium, large, turbo)
+- 🧹 **Model Cleanup**: One-click removal of cached Whisper models with uninstall hooks to keep disks tidy
 - 🌐 **Cross-Platform**: Works on macOS, Windows, and Linux
 - ⚡ **Automatic Pasting**: Transcribed text automatically pastes at your cursor location
 - 🖱️ **Draggable Interface**: Move the dictation panel anywhere on your screen
 - 🔄 **OpenAI Responses API**: Using the latest Responses API for improved performance
+- 🌐 **Globe Key Toggle (macOS)**: Optional Fn/Globe key listener for a hardware-level dictation trigger
 
 ## Prerequisites
 
 - **Node.js 18+** and npm (Download from [nodejs.org](https://nodejs.org/))
 - **macOS 10.15+**, **Windows 10+**, or **Linux**
+- On macOS, Globe key support requires the Xcode Command Line Tools (`xcode-select --install`) so the bundled Swift helper can run
 - **Python 3.7+** (Optional - the app can install it automatically for local Whisper processing)
 
 ## Quick Start
@@ -127,7 +130,14 @@ npm run build:linux  # Linux
 - **Configure**: Choose between local and cloud processing
 - **History**: View, copy, and delete past transcriptions
 - **Models**: Download and manage local Whisper models
+- **Storage Cleanup**: Remove downloaded Whisper models from cache to reclaim space
 - **Settings**: Configure API keys, customize hotkeys, and manage permissions
+
+### Uninstall & Cache Cleanup
+- **In-App**: Use *Settings → Speech to Text Processing → Local Model Storage → Remove Downloaded Models* to clear `~/.cache/openwhispr/models` (or `%USERPROFILE%\.cache\openwhispr\models` on Windows).
+- **Windows Uninstall**: The NSIS uninstaller automatically deletes the same cache directory.
+- **Linux Packages**: `deb`/`rpm` post-uninstall scripts also remove cached models.
+- **macOS**: If you uninstall manually, remove `~/Library/Caches` or `~/.cache/openwhispr/models` if desired.
 
 ### Agent Naming & AI Processing
 Once you've named your agent during setup, you can interact with it using multiple AI providers:
