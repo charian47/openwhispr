@@ -181,7 +181,8 @@ class ReasoningService extends BaseReasoningService {
       // Build request body for Responses API
       const requestBody: any = {
         model: model || "gpt-4o-mini",
-        input: input,
+        input,
+        messages: input, // include both for Responses and Chat Completions compatibility
         store: false, // Don't store responses for privacy
       };
 
@@ -212,20 +213,26 @@ class ReasoningService extends BaseReasoningService {
         createApiRetryStrategy("OpenAI")
       );
 
+      // Detect the API response format (Responses API vs Chat Completions)
+      const isResponsesApi = Array.isArray(response?.output);
+      const isChatCompletions = Array.isArray(response?.choices);
+      
       // Log the raw response for debugging
       debugLogger.logReasoning("OPENAI_RAW_RESPONSE", {
         model,
-        hasOutput: !!response.output,
-        outputLength: response.output?.length || 0,
-        outputTypes: response.output?.map((item: any) => item.type),
+        format: isResponsesApi ? "responses" : isChatCompletions ? "chat_completions" : "unknown",
+        hasOutput: isResponsesApi,
+        outputLength: isResponsesApi ? response.output.length : 0,
+        outputTypes: isResponsesApi ? response.output.map((item: any) => item.type) : undefined,
+        hasChoices: isChatCompletions,
+        choicesLength: isChatCompletions ? response.choices.length : 0,
         usage: response.usage
       });
 
-      // Extract text from the Responses API format
-      // Response contains an array of output items, we need to find the message with output_text
+      // Extract text from the Responses API or Chat Completions formats
       let responseText = "";
-      
-      if (response.output && Array.isArray(response.output)) {
+
+      if (isResponsesApi) {
         for (const item of response.output) {
           if (item.type === "message" && item.content) {
             for (const content of item.content) {
@@ -238,10 +245,37 @@ class ReasoningService extends BaseReasoningService {
           }
         }
       }
-      
-      // Fallback to output_text helper if available
-      if (!responseText && response.output_text) {
+
+      if (!responseText && typeof response?.output_text === "string") {
         responseText = response.output_text.trim();
+      }
+
+      if (!responseText && isChatCompletions) {
+        for (const choice of response.choices) {
+          const message = choice?.message ?? choice?.delta;
+          const content = message?.content;
+
+          if (typeof content === "string" && content.trim()) {
+            responseText = content.trim();
+            break;
+          }
+
+          if (Array.isArray(content)) {
+            for (const part of content) {
+              if (typeof part?.text === "string" && part.text.trim()) {
+                responseText = part.text.trim();
+                break;
+              }
+            }
+          }
+
+          if (responseText) break;
+
+          if (typeof choice?.text === "string" && choice.text.trim()) {
+            responseText = choice.text.trim();
+            break;
+          }
+        }
       }
       
       debugLogger.logReasoning("OPENAI_RESPONSE", {
