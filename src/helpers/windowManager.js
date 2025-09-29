@@ -35,6 +35,8 @@ class WindowManager {
 
     if (process.platform === "darwin") {
       this.mainWindow.setSkipTaskbar(false);
+    } else if (process.platform === "win32") {
+      this.mainWindow.setSkipTaskbar(true);
     }
 
     this.setMainWindowInteractivity(false);
@@ -148,8 +150,17 @@ class WindowManager {
     this.controlPanelWindow = new BrowserWindow(CONTROL_PANEL_CONFIG);
 
     this.controlPanelWindow.once("ready-to-show", () => {
+      if (process.platform === "win32") {
+        this.controlPanelWindow.setSkipTaskbar(false);
+      }
       this.controlPanelWindow.show();
       this.controlPanelWindow.focus();
+    });
+
+    this.controlPanelWindow.on("show", () => {
+      if (process.platform === "win32") {
+        this.controlPanelWindow.setSkipTaskbar(false);
+      }
     });
 
     this.controlPanelWindow.on("close", (event) => {
@@ -158,7 +169,7 @@ class WindowManager {
         if (process.platform === "darwin") {
           this.controlPanelWindow.minimize();
         } else {
-          this.controlPanelWindow.hide();
+          this.hideControlPanelToTray();
         }
       }
     });
@@ -198,6 +209,18 @@ class WindowManager {
       }
       this.mainWindow.focus();
     }
+  }
+
+  hideControlPanelToTray() {
+    if (!this.controlPanelWindow || this.controlPanelWindow.isDestroyed()) {
+      return;
+    }
+
+    if (process.platform === "win32") {
+      this.controlPanelWindow.setSkipTaskbar(true);
+    }
+
+    this.controlPanelWindow.hide();
   }
 
   hideDictationPanel() {
