@@ -40,7 +40,11 @@ class UpdateManager {
 
     // Disable auto-download - let user control when to download
     autoUpdater.autoDownload = false;
-    autoUpdater.autoInstallOnAppQuit = false;
+
+    // Enable auto-install on quit - if user ignores update and quits normally,
+    // the update will install automatically (best UX)
+    // User can also manually trigger install with "Install & Restart" button
+    autoUpdater.autoInstallOnAppQuit = true;
 
     // Enable logging in production for debugging (logs are user-accessible)
     autoUpdater.logger = console;
@@ -79,9 +83,11 @@ class UpdateManager {
         this.notifyRenderers("update-error", err);
       },
       "download-progress": (progressObj) => {
+        console.log(`📥 Download progress: ${progressObj.percent.toFixed(2)}% (${(progressObj.transferred / 1024 / 1024).toFixed(2)}MB / ${(progressObj.total / 1024 / 1024).toFixed(2)}MB)`);
         this.notifyRenderers("update-download-progress", progressObj);
       },
       "update-downloaded": (info) => {
+        console.log("✅ Update downloaded successfully:", info?.version);
         this.updateDownloaded = true;
         this.isDownloading = false;
         if (info) {
@@ -125,10 +131,12 @@ class UpdateManager {
               };
             }
 
+            console.log("🔍 Checking for updates...");
             const result = await autoUpdater.checkForUpdates();
 
             if (result && result.updateInfo) {
-              console.log("📋 Update check result:", result.updateInfo);
+              console.log("📋 Update available:", result.updateInfo.version);
+              console.log("📦 Download size:", result.updateInfo.files?.map(f => `${(f.size / 1024 / 1024).toFixed(2)}MB`).join(", "));
               return {
                 updateAvailable: true,
                 version: result.updateInfo.version,
@@ -137,6 +145,7 @@ class UpdateManager {
                 releaseNotes: result.updateInfo.releaseNotes,
               };
             } else {
+              console.log("✅ Already on latest version");
               return {
                 updateAvailable: false,
                 message: "You are running the latest version",
@@ -174,7 +183,9 @@ class UpdateManager {
             }
 
             this.isDownloading = true;
+            console.log("📥 Starting update download...");
             await autoUpdater.downloadUpdate();
+            console.log("📥 Download initiated successfully");
 
             return { success: true, message: "Update download started" };
           } catch (error) {
@@ -213,7 +224,23 @@ class UpdateManager {
             console.log("🔄 Installing update and restarting...");
 
             this.installTimeout = setTimeout(() => {
-              autoUpdater.quitAndInstall(false, false);
+              console.log("🔄 Calling quitAndInstall(false, true)...");
+              console.log("📊 Platform:", process.platform);
+              console.log("📊 Update downloaded:", this.updateDownloaded);
+
+              // CRITICAL: Emit before-quit BEFORE quitAndInstall closes windows
+              // This sets isQuitting=true in windowManager, allowing windows to close
+              const { app } = require("electron");
+              app.emit("before-quit");
+
+              // Now quitAndInstall will:
+              // 1. Close all windows (now allowed because isQuitting = true)
+              // 2. Emit 'before-quit' event again (harmless)
+              // 3. Call app.quit()
+              // 4. Install update and restart (if isForceRunAfter = true)
+              autoUpdater.quitAndInstall(false, true);
+
+              console.log("✅ quitAndInstall() called - app should be quitting...");
             }, 100);
 
             return { success: true, message: "Update installation started" };
