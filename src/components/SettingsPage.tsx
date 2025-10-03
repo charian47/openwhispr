@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { RefreshCw, Download, Keyboard, Mic, Shield } from "lucide-react";
@@ -17,6 +17,7 @@ import { formatHotkeyLabel } from "../utils/hotkeys";
 import LanguageSelector from "./ui/LanguageSelector";
 import PromptStudio from "./ui/PromptStudio";
 import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
+import type { UpdateInfoResult } from "../types/electron";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 
 export type SettingsSectionType =
@@ -84,6 +85,7 @@ export default function SettingsPage({
   }>({ updateAvailable: false, updateDownloaded: false, isDevelopment: false });
   const [checkingForUpdates, setCheckingForUpdates] = useState(false);
   const [downloadingUpdate, setDownloadingUpdate] = useState(false);
+  const [installInitiated, setInstallInitiated] = useState(false);
   const [updateDownloadProgress, setUpdateDownloadProgress] = useState(0);
   const [updateInfo, setUpdateInfo] = useState<{
     version?: string;
@@ -96,10 +98,69 @@ export default function SettingsPage({
       ? "%USERPROFILE%\\.cache\\openwhispr\\models"
       : "~/.cache/openwhispr/models";
 
+  const isUpdateAvailable =
+    !updateStatus.isDevelopment &&
+    (updateStatus.updateAvailable || updateStatus.updateDownloaded);
+
   const whisperHook = useWhisper(showAlertDialog);
   const permissionsHook = usePermissions(showAlertDialog);
   const { pasteFromClipboardWithFallback } = useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
+  const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const subscribeToUpdates = useCallback(() => {
+    if (!window.electronAPI) return;
+
+    window.electronAPI.onUpdateAvailable?.((_event, info) => {
+      setUpdateStatus((prev) => ({ ...prev, updateAvailable: true, updateDownloaded: false }));
+      if (info) {
+        setUpdateInfo({
+          version: info.version || "unknown",
+          releaseDate: info.releaseDate,
+          releaseNotes: info.releaseNotes ?? undefined,
+        });
+      }
+    });
+
+    window.electronAPI.onUpdateNotAvailable?.(() => {
+      setUpdateStatus((prev) => ({ ...prev, updateAvailable: false, updateDownloaded: false }));
+      setUpdateInfo({});
+      setDownloadingUpdate(false);
+      setInstallInitiated(false);
+      setUpdateDownloadProgress(0);
+    });
+
+    window.electronAPI.onUpdateDownloaded?.((_event, info) => {
+      setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
+      setDownloadingUpdate(false);
+      setInstallInitiated(false);
+      if (info) {
+        setUpdateInfo({
+          version: info.version || "unknown",
+          releaseDate: info.releaseDate,
+          releaseNotes: info.releaseNotes ?? undefined,
+        });
+      }
+    });
+
+    window.electronAPI.onUpdateDownloadProgress?.((_event, progressObj) => {
+      setUpdateDownloadProgress(progressObj.percent || 0);
+    });
+
+    window.electronAPI.onUpdateError?.((_event, error) => {
+      setCheckingForUpdates(false);
+      setDownloadingUpdate(false);
+      setInstallInitiated(false);
+      console.error("Update error:", error);
+      showAlertDialog({
+        title: "Update Error",
+        description:
+          typeof error?.message === "string"
+            ? error.message
+            : "The updater encountered a problem. Please try again or download the latest release manually.",
+      });
+    });
+  }, [showAlertDialog]);
 
   // Local state for provider selection (overrides computed value)
   const [localReasoningProvider, setLocalReasoningProvider] = useState(() => {
@@ -113,25 +174,31 @@ export default function SettingsPage({
     // Defer version and update checks to improve initial render
     const timer = setTimeout(async () => {
       if (!mounted) return;
-      
+
       const versionResult = await window.electronAPI?.getAppVersion();
       if (versionResult && mounted) setCurrentVersion(versionResult.version);
 
       const statusResult = await window.electronAPI?.getUpdateStatus();
       if (statusResult && mounted) {
-        setUpdateStatus(statusResult);
-        if (statusResult.updateAvailable) {
-          const updateInfoResult = await window.electronAPI?.getUpdateInfo?.();
-          if (updateInfoResult) {
+        setUpdateStatus((prev) => ({
+          ...prev,
+          ...statusResult,
+          updateAvailable: prev.updateAvailable || statusResult.updateAvailable,
+          updateDownloaded: prev.updateDownloaded || statusResult.updateDownloaded,
+        }));
+        if ((statusResult.updateAvailable || statusResult.updateDownloaded) && window.electronAPI?.getUpdateInfo) {
+          const info = await window.electronAPI.getUpdateInfo();
+          if (info) {
             setUpdateInfo({
-              version: updateInfoResult.version || 'unknown',
-              releaseDate: updateInfoResult.releaseDate,
-              releaseNotes: updateInfoResult.releaseNotes,
+              version: info.version || "unknown",
+              releaseDate: info.releaseDate,
+              releaseNotes: info.releaseNotes ?? undefined,
             });
           }
         }
-        subscribeToUpdates();
       }
+
+      subscribeToUpdates();
 
       // Check whisper after initial render
       if (mounted) {
@@ -145,47 +212,39 @@ export default function SettingsPage({
       // Always clean up update listeners if they exist
       if (window.electronAPI) {
         window.electronAPI.removeAllListeners?.("update-available");
+        window.electronAPI.removeAllListeners?.("update-not-available");
         window.electronAPI.removeAllListeners?.("update-downloaded");
         window.electronAPI.removeAllListeners?.("update-error");
         window.electronAPI.removeAllListeners?.("update-download-progress");
       }
     };
-  }, [whisperHook]);
+  }, [whisperHook, subscribeToUpdates]);
 
-  const subscribeToUpdates = () => {
-    if (window.electronAPI) {
-      const handleUpdateAvailable = (event, info) => {
-        setUpdateStatus((prev) => ({ ...prev, updateAvailable: true, updateDownloaded: false }));
-        if (info) {
-          setUpdateInfo({
-            version: info.version || 'unknown',
-            releaseDate: info.releaseDate,
-            releaseNotes: info.releaseNotes,
-          });
-        }
-      };
-
-      const handleUpdateDownloaded = (event, info) => {
-        setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
-        setDownloadingUpdate(false);
-      };
-
-      const handleUpdateProgress = (event, progressObj) => {
-        setUpdateDownloadProgress(progressObj.percent || 0);
-      };
-
-      const handleUpdateError = (event, error) => {
-        setCheckingForUpdates(false);
-        setDownloadingUpdate(false);
-        console.error("Update error:", error);
-      };
-
-      window.electronAPI.onUpdateAvailable?.(handleUpdateAvailable);
-      window.electronAPI.onUpdateDownloaded?.(handleUpdateDownloaded);
-      window.electronAPI.onUpdateDownloadProgress?.(handleUpdateProgress);
-      window.electronAPI.onUpdateError?.(handleUpdateError);
+  useEffect(() => {
+    if (installInitiated) {
+      if (installTimeoutRef.current) {
+        clearTimeout(installTimeoutRef.current);
+      }
+      installTimeoutRef.current = setTimeout(() => {
+        setInstallInitiated(false);
+        showAlertDialog({
+          title: "Still Running",
+          description:
+            "OpenWhispr didn't restart automatically. Please quit the app manually to finish installing the update.",
+        });
+      }, 10000);
+    } else if (installTimeoutRef.current) {
+      clearTimeout(installTimeoutRef.current);
+      installTimeoutRef.current = null;
     }
-  };
+
+    return () => {
+      if (installTimeoutRef.current) {
+        clearTimeout(installTimeoutRef.current);
+        installTimeoutRef.current = null;
+      }
+    };
+  }, [installInitiated, showAlertDialog]);
 
   const saveReasoningSettings = useCallback(async () => {
     // Update reasoning settings
@@ -486,48 +545,83 @@ export default function SettingsPage({
                   )}
                 </Button>
 
-                {updateStatus.updateAvailable && !updateStatus.updateDownloaded && (
-                  <Button
-                    onClick={async () => {
-                      setDownloadingUpdate(true);
-                      setUpdateDownloadProgress(0);
-                      try {
-                        await window.electronAPI?.downloadUpdate();
-                      } catch (error: any) {
-                        setDownloadingUpdate(false);
-                        showAlertDialog({
-                          title: "Download Failed",
-                          description: `Failed to download update: ${error.message}`,
-                        });
-                      }
-                    }}
-                    disabled={downloadingUpdate}
-                    className="w-full bg-green-600 hover:bg-green-700"
-                  >
-                    {downloadingUpdate ? (
-                      <>
-                        <Download size={16} className="animate-pulse mr-2" />
-                        Downloading... {Math.round(updateDownloadProgress)}%
-                      </>
-                    ) : (
-                      <>
-                        <Download size={16} className="mr-2" />
-                        Download Update{updateInfo.version ? ` v${updateInfo.version}` : ''}
-                      </>
+                {isUpdateAvailable && !updateStatus.updateDownloaded && (
+                  <div className="space-y-2">
+                    <Button
+                      onClick={async () => {
+                        setDownloadingUpdate(true);
+                        setUpdateDownloadProgress(0);
+                        try {
+                          await window.electronAPI?.downloadUpdate();
+                        } catch (error: any) {
+                          setDownloadingUpdate(false);
+                          showAlertDialog({
+                            title: "Download Failed",
+                            description: `Failed to download update: ${error.message}`,
+                          });
+                        }
+                      }}
+                      disabled={downloadingUpdate}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      {downloadingUpdate ? (
+                        <>
+                          <Download size={16} className="animate-pulse mr-2" />
+                          Downloading... {Math.round(updateDownloadProgress)}%
+                        </>
+                      ) : (
+                        <>
+                          <Download size={16} className="mr-2" />
+                          Download Update{updateInfo.version ? ` v${updateInfo.version}` : ''}
+                        </>
+                      )}
+                    </Button>
+
+                    {downloadingUpdate && (
+                      <div className="space-y-1">
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200">
+                          <div
+                            className="h-full bg-green-600 transition-all duration-200"
+                            style={{ width: `${Math.min(100, Math.max(0, updateDownloadProgress))}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-neutral-600 text-right">
+                          {Math.round(updateDownloadProgress)}% downloaded
+                        </p>
+                      </div>
                     )}
-                  </Button>
+                  </div>
                 )}
 
                 {updateStatus.updateDownloaded && (
                   <Button
-                    onClick={async () => {
+                    onClick={() => {
                       showConfirmDialog({
                         title: "Install Update",
                         description: `Ready to install update${updateInfo.version ? ` v${updateInfo.version}` : ''}. The app will restart to complete installation.`,
+                        confirmText: "Install & Restart",
                         onConfirm: async () => {
                           try {
-                            await window.electronAPI?.installUpdate();
+                            setInstallInitiated(true);
+                            const result = await window.electronAPI?.installUpdate?.();
+                            if (!result?.success) {
+                              setInstallInitiated(false);
+                              showAlertDialog({
+                                title: "Install Failed",
+                                description:
+                                  result?.message ||
+                                  "Failed to start the installer. Please try again.",
+                              });
+                              return;
+                            }
+
+                            showAlertDialog({
+                              title: "Installing Update",
+                              description:
+                                "OpenWhispr will restart automatically to finish installing the newest version.",
+                            });
                           } catch (error: any) {
+                            setInstallInitiated(false);
                             showAlertDialog({
                               title: "Install Failed",
                               description: `Failed to install update: ${error.message}`,
@@ -536,10 +630,20 @@ export default function SettingsPage({
                         },
                       });
                     }}
+                    disabled={installInitiated}
                     className="w-full bg-blue-600 hover:bg-blue-700"
                   >
-                    <span className="mr-2">🚀</span>
-                    Install Update & Restart
+                    {installInitiated ? (
+                      <>
+                        <RefreshCw size={16} className="animate-spin mr-2" />
+                        Restarting to Finish Update...
+                      </>
+                    ) : (
+                      <>
+                        <span className="mr-2">🚀</span>
+                        Quit & Install Update
+                      </>
+                    )}
                   </Button>
                 )}
 
