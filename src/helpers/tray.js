@@ -152,7 +152,7 @@ class TrayManager {
           if (this.windowManager.isDictationPanelVisible()) {
             this.windowManager.hideDictationPanel();
           } else {
-            this.windowManager.showDictationPanel();
+            this.windowManager.showDictationPanel({ focus: true });
           }
           this.updateTrayMenu();
         },
