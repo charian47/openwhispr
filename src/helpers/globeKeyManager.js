@@ -43,6 +43,12 @@ class GlobeKeyManager extends EventEmitter {
       console.error("GlobeKeyManager error:", data.trim());
     });
 
+    this.process.on("error", (error) => {
+      console.error("GlobeKeyManager failed to start:", error);
+      this.process = null;
+      this.emit("error", error);
+    });
+
     this.process.on("exit", (code, signal) => {
       this.process = null;
       if (code !== 0) {

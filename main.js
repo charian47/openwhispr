@@ -137,6 +137,7 @@ trayManager.setWindowManager(windowManager);
           windowManager.mainWindow &&
           !windowManager.mainWindow.isDestroyed()
         ) {
+          windowManager.showDictationPanel();
           windowManager.mainWindow.webContents.send("toggle-dictation");
         }
       }

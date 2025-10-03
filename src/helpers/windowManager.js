@@ -187,7 +187,8 @@ class WindowManager {
     this.controlPanelWindow.loadURL(appUrl);
   }
 
-  showDictationPanel() {
+  showDictationPanel(options = {}) {
+    const { focus = false } = options;
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       if (!this.mainWindow.isVisible()) {
         if (typeof this.mainWindow.showInactive === "function") {
@@ -196,7 +197,9 @@ class WindowManager {
           this.mainWindow.show();
         }
       }
-      this.mainWindow.focus();
+      if (focus) {
+        this.mainWindow.focus();
+      }
     }
   }
 
