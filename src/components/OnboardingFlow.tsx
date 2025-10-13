@@ -156,6 +156,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       setCustomModelsLoading(true);
       setCustomModelsError(null);
       try {
+        // Security: Only allow HTTPS endpoints (except localhost for development)
+        const isLocalhost = normalizedReasoningBaseUrl.includes('://localhost') ||
+                           normalizedReasoningBaseUrl.includes('://127.0.0.1');
+        if (!normalizedReasoningBaseUrl.startsWith('https://') && !isLocalhost) {
+          throw new Error('Only HTTPS endpoints are allowed (except localhost for testing).');
+        }
+
         const headers: Record<string, string> = {};
         const trimmedKey = apiKey.trim();
         if (trimmedKey) {

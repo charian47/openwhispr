@@ -224,6 +224,16 @@ export default function AIModelSelectorEnhanced({
           return;
         }
 
+        // Security: Only allow HTTPS endpoints (except localhost for development)
+        const isLocalhost = normalizedBase.includes('://localhost') || normalizedBase.includes('://127.0.0.1');
+        if (!normalizedBase.startsWith('https://') && !isLocalhost) {
+          if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
+            setCustomModelsError('Only HTTPS endpoints are allowed (except localhost for testing).');
+            setCustomModelsLoading(false);
+          }
+          return;
+        }
+
         const headers: Record<string, string> = {};
         if (apiKey) {
           headers.Authorization = `Bearer ${apiKey}`;

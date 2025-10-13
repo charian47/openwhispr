@@ -1,4 +1,4 @@
-﻿import TextCleanup from "../utils/textCleanup";
+import TextCleanup from "../utils/textCleanup";
 import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 
@@ -623,6 +623,13 @@ class AudioManager {
       const normalizedBase = normalizeBaseUrl(base);
 
       if (!normalizedBase) {
+        return API_ENDPOINTS.TRANSCRIPTION;
+      }
+
+      // Security: Only allow HTTPS endpoints (except localhost for development)
+      const isLocalhost = normalizedBase.includes('://localhost') || normalizedBase.includes('://127.0.0.1');
+      if (!normalizedBase.startsWith('https://') && !isLocalhost) {
+        console.warn('Non-HTTPS endpoint rejected for security. Using default.');
         return API_ENDPOINTS.TRANSCRIPTION;
       }
 

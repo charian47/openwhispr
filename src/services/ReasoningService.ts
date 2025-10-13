@@ -1,4 +1,4 @@
-﻿import { getModelProvider } from "../utils/languages";
+import { getModelProvider } from "../utils/languages";
 import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
@@ -39,7 +39,19 @@ class ReasoningService extends BaseReasoningService {
       const stored = window.localStorage.getItem('cloudReasoningBaseUrl') || '';
       const trimmed = stored.trim();
       const candidate = trimmed || API_ENDPOINTS.OPENAI_BASE;
-      return normalizeBaseUrl(candidate) || API_ENDPOINTS.OPENAI_BASE;
+      const normalized = normalizeBaseUrl(candidate) || API_ENDPOINTS.OPENAI_BASE;
+
+      // Security: Only allow HTTPS endpoints (except localhost for development)
+      const isLocalhost = normalized.includes('://localhost') || normalized.includes('://127.0.0.1');
+      if (!normalized.startsWith('https://') && !isLocalhost) {
+        debugLogger.logReasoning('OPENAI_BASE_REJECTED', {
+          reason: 'Non-HTTPS endpoint rejected for security',
+          attempted: normalized
+        });
+        return API_ENDPOINTS.OPENAI_BASE;
+      }
+
+      return normalized;
     } catch {
       return API_ENDPOINTS.OPENAI_BASE;
     }
