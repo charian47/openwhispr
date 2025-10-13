@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -33,15 +33,25 @@ import { usePython } from "../hooks/usePython";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
 import { useSettings } from "../hooks/useSettings";
-import { getLanguageLabel, getReasoningModelLabel } from "../utils/languages";
+import { getLanguageLabel, REASONING_PROVIDERS } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
+import { UnifiedModelPickerCompact } from "./UnifiedModelPicker";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel } from "../utils/hotkeys";
+import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
 }
+
+
+type ReasoningModelOption = {
+  value: string;
+  label: string;
+  description?: string;
+  icon?: string;
+};
 
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [currentStep, setCurrentStep, removeCurrentStep] = useLocalStorage(
@@ -57,6 +67,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     useLocalWhisper,
     whisperModel,
     preferredLanguage,
+    cloudTranscriptionBaseUrl,
+    cloudReasoningBaseUrl,
     useReasoningModel,
     reasoningModel,
     openaiApiKey,
@@ -64,6 +76,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setUseLocalWhisper,
     setWhisperModel,
     setPreferredLanguage,
+    setCloudTranscriptionBaseUrl,
+    setCloudReasoningBaseUrl,
     setOpenaiApiKey,
     setDictationKey,
     updateTranscriptionSettings,
@@ -73,10 +87,178 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const [apiKey, setApiKey] = useState(openaiApiKey);
   const [hotkey, setHotkey] = useState(dictationKey || "`");
+  const [transcriptionBaseUrl, setTranscriptionBaseUrl] = useState(cloudTranscriptionBaseUrl);
+  const [reasoningBaseUrl, setReasoningBaseUrl] = useState(cloudReasoningBaseUrl);
   const [agentName, setAgentName] = useState("Agent");
   const readableHotkey = formatHotkeyLabel(hotkey);
   const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const practiceTextareaRef = useRef<HTMLInputElement>(null);
+
+  const trimmedReasoningBase = (reasoningBaseUrl || "").trim();
+  const normalizedReasoningBaseUrl = useMemo(
+    () => normalizeBaseUrl(trimmedReasoningBase),
+    [trimmedReasoningBase]
+  );
+  const hasEnteredReasoningBase = trimmedReasoningBase.length > 0;
+  const isValidReasoningBase = Boolean(
+    normalizedReasoningBaseUrl && normalizedReasoningBaseUrl.includes("://")
+  );
+  const usingCustomReasoningBase = hasEnteredReasoningBase && isValidReasoningBase;
+
+  const [customReasoningModels, setCustomReasoningModels] = useState<ReasoningModelOption[]>([]);
+  const [customModelsLoading, setCustomModelsLoading] = useState(false);
+  const [customModelsError, setCustomModelsError] = useState<string | null>(null);
+
+  const defaultReasoningModels = useMemo<ReasoningModelOption[]>(() => {
+    const provider = REASONING_PROVIDERS.openai;
+    return (
+      provider?.models?.map((model) => ({
+        value: model.value,
+        label: model.label,
+        description: model.description,
+      })) ?? []
+    );
+  }, []);
+
+  const displayedReasoningModels = usingCustomReasoningBase
+    ? customReasoningModels
+    : defaultReasoningModels;
+
+  const reasoningModelsEndpoint = useMemo(() => {
+    const base =
+      usingCustomReasoningBase && normalizedReasoningBaseUrl
+        ? normalizedReasoningBaseUrl
+        : API_ENDPOINTS.OPENAI_BASE;
+    return buildApiUrl(base, "/models");
+  }, [usingCustomReasoningBase, normalizedReasoningBaseUrl]);
+
+  const reasoningModelRef = useRef(reasoningModel);
+  useEffect(() => {
+    reasoningModelRef.current = reasoningModel;
+  }, [reasoningModel]);
+
+  useEffect(() => {
+    if (!usingCustomReasoningBase) {
+      setCustomModelsLoading(false);
+      setCustomReasoningModels([]);
+      setCustomModelsError(null);
+      return;
+    }
+
+    if (!normalizedReasoningBaseUrl) {
+      return;
+    }
+
+    let isCancelled = false;
+    const controller = new AbortController();
+
+    const loadModels = async () => {
+      setCustomModelsLoading(true);
+      setCustomModelsError(null);
+      try {
+        // Security: Only allow HTTPS endpoints (except localhost for development)
+        const isLocalhost = normalizedReasoningBaseUrl.includes('://localhost') ||
+                           normalizedReasoningBaseUrl.includes('://127.0.0.1');
+        if (!normalizedReasoningBaseUrl.startsWith('https://') && !isLocalhost) {
+          throw new Error('Only HTTPS endpoints are allowed (except localhost for testing).');
+        }
+
+        const headers: Record<string, string> = {};
+        const trimmedKey = apiKey.trim();
+        if (trimmedKey) {
+          headers.Authorization = `Bearer ${trimmedKey}`;
+        }
+
+        const response = await fetch(buildApiUrl(normalizedReasoningBaseUrl, "/models"), {
+          method: "GET",
+          headers,
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => "");
+          throw new Error(
+            errorText
+              ? `${response.status} ${errorText.slice(0, 200)}`
+              : `${response.status} ${response.statusText}`
+          );
+        }
+
+        const payload = await response.json().catch(() => ({}));
+        const rawModels = Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.models)
+          ? payload.models
+          : [];
+
+        const mappedModels = (rawModels as Array<any>)
+          .map((item) => {
+            const value = item?.id || item?.name;
+            if (!value) {
+              return null;
+            }
+
+            const description =
+              typeof item?.description === "string" && item.description.trim()
+                ? item.description.trim()
+                : undefined;
+            const ownedBy = typeof item?.owned_by === "string" ? item.owned_by : undefined;
+
+            return {
+              value,
+              label: item?.id || item?.name || value,
+              description: description || (ownedBy ? `Owner: ${ownedBy}` : undefined),
+            } as ReasoningModelOption;
+          })
+          .filter(Boolean) as ReasoningModelOption[];
+
+        if (isCancelled) {
+          return;
+        }
+
+        setCustomReasoningModels(mappedModels);
+
+        if (mappedModels.length === 0) {
+          setCustomModelsError("No models returned by this endpoint.");
+        } else if (!mappedModels.some((model) => model.value === reasoningModelRef.current)) {
+          updateReasoningSettings({ reasoningModel: mappedModels[0].value });
+        }
+      } catch (error) {
+        if (isCancelled) {
+          return;
+        }
+        if ((error as Error).name === "AbortError") {
+          return;
+        }
+        setCustomModelsError((error as Error).message || "Unable to load models from endpoint.");
+        setCustomReasoningModels([]);
+      } finally {
+        if (!isCancelled) {
+          setCustomModelsLoading(false);
+        }
+      }
+    };
+
+    loadModels();
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
+  }, [usingCustomReasoningBase, normalizedReasoningBaseUrl, apiKey, updateReasoningSettings]);
+
+  useEffect(() => {
+    if (!usingCustomReasoningBase && defaultReasoningModels.length > 0) {
+      if (!defaultReasoningModels.some((model) => model.value === reasoningModel)) {
+        updateReasoningSettings({ reasoningModel: defaultReasoningModels[0].value });
+      }
+    }
+  }, [usingCustomReasoningBase, defaultReasoningModels, reasoningModel, updateReasoningSettings]);
+
+  const activeReasoningModelLabel = useMemo(() => {
+    const match = displayedReasoningModels.find((model) => model.value === reasoningModel);
+    return match?.label || reasoningModel;
+  }, [displayedReasoningModels, reasoningModel]);
 
   const whisperHook = useWhisper(showAlertDialog);
   const pythonHook = usePython(showAlertDialog);
@@ -115,7 +297,22 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }, [currentStep]);
 
   const saveSettings = useCallback(async () => {
-    updateTranscriptionSettings({ whisperModel, preferredLanguage });
+    const normalizedTranscriptionBase = (transcriptionBaseUrl || '').trim();
+    const normalizedReasoningBaseValue = (reasoningBaseUrl || '').trim();
+
+    setCloudTranscriptionBaseUrl(normalizedTranscriptionBase);
+    setCloudReasoningBaseUrl(normalizedReasoningBaseValue);
+
+    updateTranscriptionSettings({
+      whisperModel,
+      preferredLanguage,
+      cloudTranscriptionBaseUrl: normalizedTranscriptionBase,
+    });
+    updateReasoningSettings({
+      useReasoningModel,
+      reasoningModel,
+      cloudReasoningBaseUrl: normalizedReasoningBaseValue,
+    });
     setDictationKey(hotkey);
     try {
       const result = await window.electronAPI?.updateHotkey?.(hotkey);
@@ -159,8 +356,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     permissionsHook.accessibilityPermissionGranted,
     useLocalWhisper,
     apiKey,
+    transcriptionBaseUrl,
+    reasoningBaseUrl,
     updateTranscriptionSettings,
+    updateReasoningSettings,
     updateApiKeys,
+    setCloudTranscriptionBaseUrl,
+    setCloudReasoningBaseUrl,
     setDictationKey,
   ]);
 
@@ -406,6 +608,70 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   label="OpenAI API Key"
                   helpText="Get your API key from platform.openai.com"
                 />
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-blue-900">Custom transcription base URL (optional)</label>
+                  <Input
+                    value={transcriptionBaseUrl}
+                    onChange={(event) => setTranscriptionBaseUrl(event.target.value)}
+                    placeholder="https://api.openai.com/v1"
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-blue-800">Cloud transcription requests default to <code>{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>. Enter an OpenAI-compatible base URL to override.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-blue-900">Custom reasoning base URL (optional)</label>
+                  <Input
+                    value={reasoningBaseUrl}
+                    onChange={(event) => setReasoningBaseUrl(event.target.value)}
+                    placeholder="https://api.openai.com/v1"
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-blue-800">We'll load AI models from this endpoint's /v1/models route during setup. Leave empty to use the default OpenAI endpoint.</p>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-blue-100">
+                  <h4 className="font-medium text-blue-900">Reasoning Model</h4>
+                  {hasEnteredReasoningBase ? (
+                    <>
+                      {isValidReasoningBase ? (
+                        <p className="text-xs text-blue-800 break-all">
+                          Models load from <code>{reasoningModelsEndpoint}</code>.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-amber-600">
+                          Enter a full base URL including protocol (e.g. https://server/v1).
+                        </p>
+                      )}
+                      {isValidReasoningBase && customModelsLoading && (
+                        <p className="text-xs text-blue-600">Fetching models...</p>
+                      )}
+                      {isValidReasoningBase && customModelsError && (
+                        <p className="text-xs text-red-600">{customModelsError}</p>
+                      )}
+                      {isValidReasoningBase &&
+                        !customModelsLoading &&
+                        !customModelsError &&
+                        displayedReasoningModels.length === 0 && (
+                          <p className="text-xs text-amber-600">
+                            No models returned by this endpoint.
+                          </p>
+                        )}
+                    </>
+                  ) : (
+                    <p className="text-xs text-blue-800">
+                      Using OpenAI defaults from <code>{reasoningModelsEndpoint}</code>.
+                    </p>
+                  )}
+                  <UnifiedModelPickerCompact
+                    models={displayedReasoningModels}
+                    selectedModel={reasoningModel}
+                    onModelSelect={(modelId) =>
+                      updateReasoningSettings({ reasoningModel: modelId })
+                    }
+                  />
+                </div>
 
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h4 className="font-medium text-blue-900 mb-2">
@@ -723,6 +989,20 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       : "OpenAI Cloud"}
                   </span>
                 </div>
+                {!useLocalWhisper && (
+                  <div className="flex justify-between">
+                    <span>Reasoning Model:</span>
+                    <span className="font-medium">{activeReasoningModelLabel}</span>
+                  </div>
+                )}
+                {!useLocalWhisper && hasEnteredReasoningBase && (
+                  <div className="flex justify-between">
+                    <span>Custom Endpoint:</span>
+                    <span className="font-medium break-all">
+                      {normalizedReasoningBaseUrl || trimmedReasoningBase}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Hotkey:</span>
                   <kbd className="bg-white px-2 py-1 rounded text-xs font-mono">
@@ -775,7 +1055,21 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         if (useLocalWhisper) {
           return pythonHook.pythonInstalled && whisperHook.whisperInstalled;
         } else {
-          return apiKey.trim() !== "";
+          const trimmedKey = apiKey.trim();
+          if (!trimmedKey) {
+            return false;
+          }
+          if (!hasEnteredReasoningBase) {
+            return true;
+          }
+          if (!isValidReasoningBase) {
+            return false;
+          }
+          return (
+            customReasoningModels.length > 0 &&
+            !customModelsLoading &&
+            !customModelsError
+          );
         }
       case 3:
         return (

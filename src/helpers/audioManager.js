@@ -1,5 +1,6 @@
 import TextCleanup from "../utils/textCleanup";
 import ReasoningService from "../services/ReasoningService";
+import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 
 // Debug logger for renderer process
 const debugLogger = {
@@ -544,7 +545,7 @@ class AudioManager {
       }
 
       const response = await fetch(
-        "https://api.openai.com/v1/audio/transcriptions",
+        this.getTranscriptionEndpoint(),
         {
           method: "POST",
           headers: {
@@ -609,6 +610,37 @@ class AudioManager {
       }
 
       throw error;
+    }
+  }
+
+  getTranscriptionEndpoint() {
+    try {
+      const stored = typeof localStorage !== "undefined"
+        ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
+        : "";
+      const trimmed = stored.trim();
+      const base = trimmed ? trimmed : API_ENDPOINTS.TRANSCRIPTION_BASE;
+      const normalizedBase = normalizeBaseUrl(base);
+
+      if (!normalizedBase) {
+        return API_ENDPOINTS.TRANSCRIPTION;
+      }
+
+      // Security: Only allow HTTPS endpoints (except localhost for development)
+      const isLocalhost = normalizedBase.includes('://localhost') || normalizedBase.includes('://127.0.0.1');
+      if (!normalizedBase.startsWith('https://') && !isLocalhost) {
+        console.warn('Non-HTTPS endpoint rejected for security. Using default.');
+        return API_ENDPOINTS.TRANSCRIPTION;
+      }
+
+      if (/\/audio\/(transcriptions|translations)$/i.test(normalizedBase)) {
+        return normalizedBase;
+      }
+
+      return buildApiUrl(normalizedBase, '/audio/transcriptions');
+    } catch (error) {
+      console.warn('Failed to resolve transcription endpoint:', error);
+      return API_ENDPOINTS.TRANSCRIPTION;
     }
   }
 

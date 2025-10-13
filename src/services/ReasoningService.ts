@@ -2,7 +2,7 @@ import { getModelProvider } from "../utils/languages";
 import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
-import { API_ENDPOINTS, API_VERSIONS, TOKEN_LIMITS } from "../config/constants";
+import { API_ENDPOINTS, API_VERSIONS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 
 // Import debugLogger for comprehensive logging
 const debugLogger = typeof window !== 'undefined' && window.electronAPI 
@@ -20,12 +20,119 @@ export const DEFAULT_PROMPTS = {
 
 class ReasoningService extends BaseReasoningService {
   private apiKeyCache: SecureCache<string>;
+  private openAiEndpointPreference = new Map<string, "responses" | "chat">();
+  private static readonly OPENAI_ENDPOINT_PREF_STORAGE_KEY = 'openAiEndpointPreference';
   private cacheCleanupStop: (() => void) | undefined;
 
   constructor() {
     super();
     this.apiKeyCache = new SecureCache();
     this.cacheCleanupStop = this.apiKeyCache.startAutoCleanup();
+  }
+
+  private getConfiguredOpenAIBase(): string {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return API_ENDPOINTS.OPENAI_BASE;
+    }
+
+    try {
+      const stored = window.localStorage.getItem('cloudReasoningBaseUrl') || '';
+      const trimmed = stored.trim();
+      const candidate = trimmed || API_ENDPOINTS.OPENAI_BASE;
+      const normalized = normalizeBaseUrl(candidate) || API_ENDPOINTS.OPENAI_BASE;
+
+      // Security: Only allow HTTPS endpoints (except localhost for development)
+      const isLocalhost = normalized.includes('://localhost') || normalized.includes('://127.0.0.1');
+      if (!normalized.startsWith('https://') && !isLocalhost) {
+        debugLogger.logReasoning('OPENAI_BASE_REJECTED', {
+          reason: 'Non-HTTPS endpoint rejected for security',
+          attempted: normalized
+        });
+        return API_ENDPOINTS.OPENAI_BASE;
+      }
+
+      return normalized;
+    } catch {
+      return API_ENDPOINTS.OPENAI_BASE;
+    }
+  }
+
+  private getOpenAIEndpointCandidates(base: string): Array<{ url: string; type: 'responses' | 'chat' }> {
+    const lower = base.toLowerCase();
+
+    if (lower.endsWith('/responses') || lower.endsWith('/chat/completions')) {
+      const type = lower.endsWith('/responses') ? 'responses' : 'chat';
+      return [{ url: base, type }];
+    }
+
+    const preference = this.getStoredOpenAiPreference(base);
+    if (preference === 'chat') {
+      return [{ url: buildApiUrl(base, '/chat/completions'), type: 'chat' }];
+    }
+
+    const candidates: Array<{ url: string; type: 'responses' | 'chat' }> = [
+      { url: buildApiUrl(base, '/responses'), type: 'responses' },
+      { url: buildApiUrl(base, '/chat/completions'), type: 'chat' },
+    ];
+
+    return candidates;
+  }
+
+  private getOpenAIModelsEndpoint(): string {
+    const base = this.getConfiguredOpenAIBase();
+    const lower = base.toLowerCase();
+    if (lower.endsWith('/models')) {
+      return base;
+    }
+    return buildApiUrl(base, '/models');
+  }
+
+  private getStoredOpenAiPreference(base: string): 'responses' | 'chat' | undefined {
+    if (this.openAiEndpointPreference.has(base)) {
+      return this.openAiEndpointPreference.get(base);
+    }
+
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return undefined;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(ReasoningService.OPENAI_ENDPOINT_PREF_STORAGE_KEY);
+      if (!raw) {
+        return undefined;
+      }
+      const parsed = JSON.parse(raw);
+      if (typeof parsed !== 'object' || parsed === null) {
+        return undefined;
+      }
+      const value = parsed[base];
+      if (value === 'responses' || value === 'chat') {
+        this.openAiEndpointPreference.set(base, value);
+        return value;
+      }
+    } catch {
+      return undefined;
+    }
+
+    return undefined;
+  }
+
+  private rememberOpenAiPreference(base: string, preference: 'responses' | 'chat'): void {
+    this.openAiEndpointPreference.set(base, preference);
+
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(ReasoningService.OPENAI_ENDPOINT_PREF_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const data = typeof parsed === 'object' && parsed !== null ? parsed : {};
+      data[base] = preference;
+      window.localStorage.setItem(ReasoningService.OPENAI_ENDPOINT_PREF_STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      // Ignore storage errors
+    }
   }
 
   private async getApiKey(provider: 'openai' | 'anthropic' | 'gemini'): Promise<string> {
@@ -181,7 +288,8 @@ class ReasoningService extends BaseReasoningService {
       // Build request body for Responses API
       const requestBody: any = {
         model: model || "gpt-4o-mini",
-        input: input,
+        input,
+        messages: input, // include both for Responses and Chat Completions compatibility
         store: false, // Don't store responses for privacy
       };
 
@@ -191,41 +299,94 @@ class ReasoningService extends BaseReasoningService {
         requestBody.temperature = config.temperature || 0.3;
       }
 
+      const openAiBase = this.getConfiguredOpenAIBase();
+      const endpointCandidates = this.getOpenAIEndpointCandidates(openAiBase);
+
+      debugLogger.logReasoning("OPENAI_ENDPOINTS", {
+        base: openAiBase,
+        candidates: endpointCandidates.map((candidate) => candidate.url),
+        preference: this.getStoredOpenAiPreference(openAiBase) || null,
+      });
+
       const response = await withRetry(
         async () => {
-          const res = await fetch(API_ENDPOINTS.OPENAI, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify(requestBody),
-          });
+          let lastError: Error | null = null;
 
-          if (!res.ok) {
-            const errorData = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(errorData.error?.message || `OpenAI API error: ${res.status}`);
+          for (const { url: endpoint, type } of endpointCandidates) {
+            try {
+              const res = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify(requestBody),
+              });
+
+              if (!res.ok) {
+                const errorData = await res.json().catch(() => ({ error: res.statusText }));
+                const errorMessage =
+                  errorData.error?.message ||
+                  errorData.message ||
+                  `OpenAI API error: ${res.status}`;
+
+                const isUnsupportedEndpoint =
+                  (res.status === 404 || res.status === 405) &&
+                  type === 'responses';
+
+                if (isUnsupportedEndpoint) {
+                  lastError = new Error(errorMessage);
+                  this.rememberOpenAiPreference(openAiBase, 'chat');
+                  debugLogger.logReasoning('OPENAI_ENDPOINT_FALLBACK', {
+                    attemptedEndpoint: endpoint,
+                    error: errorMessage,
+                  });
+                  continue;
+                }
+
+                throw new Error(errorMessage);
+              }
+
+              this.rememberOpenAiPreference(openAiBase, type);
+              return res.json();
+            } catch (error) {
+              lastError = error as Error;
+              if (type === 'responses') {
+                debugLogger.logReasoning('OPENAI_ENDPOINT_FALLBACK', {
+                  attemptedEndpoint: endpoint,
+                  error: (error as Error).message,
+                });
+                continue;
+              }
+              throw error;
+            }
           }
 
-          return res.json();
+          throw lastError || new Error('No OpenAI endpoint responded');
         },
         createApiRetryStrategy("OpenAI")
       );
 
+      // Detect the API response format (Responses API vs Chat Completions)
+      const isResponsesApi = Array.isArray(response?.output);
+      const isChatCompletions = Array.isArray(response?.choices);
+      
       // Log the raw response for debugging
       debugLogger.logReasoning("OPENAI_RAW_RESPONSE", {
         model,
-        hasOutput: !!response.output,
-        outputLength: response.output?.length || 0,
-        outputTypes: response.output?.map((item: any) => item.type),
+        format: isResponsesApi ? "responses" : isChatCompletions ? "chat_completions" : "unknown",
+        hasOutput: isResponsesApi,
+        outputLength: isResponsesApi ? response.output.length : 0,
+        outputTypes: isResponsesApi ? response.output.map((item: any) => item.type) : undefined,
+        hasChoices: isChatCompletions,
+        choicesLength: isChatCompletions ? response.choices.length : 0,
         usage: response.usage
       });
 
-      // Extract text from the Responses API format
-      // Response contains an array of output items, we need to find the message with output_text
+      // Extract text from the Responses API or Chat Completions formats
       let responseText = "";
-      
-      if (response.output && Array.isArray(response.output)) {
+
+      if (isResponsesApi) {
         for (const item of response.output) {
           if (item.type === "message" && item.content) {
             for (const content of item.content) {
@@ -238,10 +399,37 @@ class ReasoningService extends BaseReasoningService {
           }
         }
       }
-      
-      // Fallback to output_text helper if available
-      if (!responseText && response.output_text) {
+
+      if (!responseText && typeof response?.output_text === "string") {
         responseText = response.output_text.trim();
+      }
+
+      if (!responseText && isChatCompletions) {
+        for (const choice of response.choices) {
+          const message = choice?.message ?? choice?.delta;
+          const content = message?.content;
+
+          if (typeof content === "string" && content.trim()) {
+            responseText = content.trim();
+            break;
+          }
+
+          if (Array.isArray(content)) {
+            for (const part of content) {
+              if (typeof part?.text === "string" && part.text.trim()) {
+                responseText = part.text.trim();
+                break;
+              }
+            }
+          }
+
+          if (responseText) break;
+
+          if (typeof choice?.text === "string" && choice.text.trim()) {
+            responseText = choice.text.trim();
+            break;
+          }
+        }
       }
       
       debugLogger.logReasoning("OPENAI_RESPONSE", {
