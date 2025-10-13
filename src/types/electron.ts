@@ -54,6 +54,13 @@ export interface UpdateStatusResult {
   isDevelopment: boolean;
 }
 
+export interface UpdateInfoResult {
+  version?: string;
+  releaseDate?: string;
+  releaseNotes?: string | null;
+  files?: any[];
+}
+
 export interface UpdateResult {
   success: boolean;
   message: string;
@@ -220,6 +227,7 @@ declare global {
       installUpdate: () => Promise<UpdateResult>;
       getAppVersion: () => Promise<AppVersionResult>;
       getUpdateStatus: () => Promise<UpdateStatusResult>;
+      getUpdateInfo: () => Promise<UpdateInfoResult | null>;
 
       // Update event listeners
       onUpdateAvailable: (callback: (event: any, info: any) => void) => void;

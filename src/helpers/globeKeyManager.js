@@ -8,6 +8,7 @@ class GlobeKeyManager extends EventEmitter {
     super();
     this.process = null;
     this.isSupported = process.platform === "darwin";
+    this.hasReportedError = false;
   }
 
   start() {
@@ -15,13 +16,27 @@ class GlobeKeyManager extends EventEmitter {
       return;
     }
 
-    const scriptPath = this.resolveScriptPath();
-    if (!scriptPath) {
-      console.error("GlobeKeyManager: Swift listener script not found");
+    const listenerPath = this.resolveListenerBinary();
+    if (!listenerPath) {
+      this.reportError(
+        new Error(
+          "macOS Globe listener binary not found. Run `npm run compile:globe` before packaging."
+        )
+      );
       return;
     }
 
-    this.process = spawn("swift", [scriptPath]);
+    try {
+      fs.accessSync(listenerPath, fs.constants.X_OK);
+    } catch (accessError) {
+      this.reportError(
+        new Error(`macOS Globe listener is not executable: ${listenerPath}`)
+      );
+      return;
+    }
+
+    this.hasReportedError = false;
+    this.process = spawn(listenerPath);
 
     this.process.stdout.setEncoding("utf8");
     this.process.stdout.on("data", (chunk) => {
@@ -40,15 +55,25 @@ class GlobeKeyManager extends EventEmitter {
 
     this.process.stderr.setEncoding("utf8");
     this.process.stderr.on("data", (data) => {
-      console.error("GlobeKeyManager error:", data.trim());
+      const message = data.toString().trim();
+      if (message.length > 0) {
+        console.error("GlobeKeyManager stderr:", message);
+        this.reportError(new Error(message));
+      }
+    });
+
+    this.process.on("error", (error) => {
+      this.reportError(error);
+      this.process = null;
     });
 
     this.process.on("exit", (code, signal) => {
       this.process = null;
       if (code !== 0) {
-        console.error(
-          `GlobeKeyManager exited with code ${code ?? "null"} signal ${signal ?? "null"}`
+        const error = new Error(
+          `Globe key listener exited with code ${code ?? "null"} signal ${signal ?? "null"}`
         );
+        this.reportError(error);
       }
     });
   }
@@ -60,16 +85,64 @@ class GlobeKeyManager extends EventEmitter {
     }
   }
 
-  resolveScriptPath() {
+  reportError(error) {
+    if (this.hasReportedError) {
+      return;
+    }
+    this.hasReportedError = true;
+    if (this.process) {
+      try {
+        this.process.kill();
+      } catch {
+        // ignore
+      } finally {
+        this.process = null;
+      }
+    }
+    console.error("GlobeKeyManager error:", error);
+    this.emit("error", error);
+  }
+
+  resolveListenerBinary() {
+    const candidates = new Set([
+      path.join(__dirname, "..", "..", "resources", "bin", "macos-globe-listener"),
+      path.join(__dirname, "..", "..", "resources", "macos-globe-listener"),
+    ]);
+
+    if (process.resourcesPath) {
+      [
+        path.join(process.resourcesPath, "macos-globe-listener"),
+        path.join(process.resourcesPath, "bin", "macos-globe-listener"),
+        path.join(process.resourcesPath, "resources", "macos-globe-listener"),
+        path.join(process.resourcesPath, "resources", "bin", "macos-globe-listener"),
+        path.join(
+          process.resourcesPath,
+          "app.asar.unpacked",
+          "resources",
+          "macos-globe-listener"
+        ),
+        path.join(
+          process.resourcesPath,
+          "app.asar.unpacked",
+          "resources",
+          "bin",
+          "macos-globe-listener"
+        ),
+      ].forEach((candidate) => candidates.add(candidate));
+    }
+
     const candidatePaths = [
-      path.join(__dirname, "..", "..", "resources", "macos-globe-listener.swift"),
-      path.join(process.resourcesPath, "macos-globe-listener.swift"),
-      path.join(process.resourcesPath, "app.asar.unpacked", "resources", "macos-globe-listener.swift"),
+      ...candidates,
     ];
 
     for (const candidate of candidatePaths) {
-      if (fs.existsSync(candidate)) {
-        return candidate;
+      try {
+        const stats = fs.statSync(candidate);
+        if (stats.isFile()) {
+          return candidate;
+        }
+      } catch {
+        continue;
       }
     }
 

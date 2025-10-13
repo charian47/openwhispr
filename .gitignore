@@ -188,6 +188,9 @@ build/
 *.AppImage
 *.snap
 
+# Generated Globe listener binary
+resources/bin/
+
 # macOS
 .DS_Store
 .AppleDouble

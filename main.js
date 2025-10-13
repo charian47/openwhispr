@@ -1,4 +1,4 @@
-const { app, globalShortcut, BrowserWindow } = require("electron");
+const { app, globalShortcut, BrowserWindow, dialog } = require("electron");
 
 // Ensure macOS menus use the proper casing for the app name
 if (process.platform === "darwin" && app.getName() !== "OpenWhispr") {
@@ -69,6 +69,34 @@ const whisperManager = new WhisperManager();
 const trayManager = new TrayManager();
 const updateManager = new UpdateManager();
 const globeKeyManager = new GlobeKeyManager();
+let globeKeyAlertShown = false;
+
+if (process.platform === "darwin") {
+  globeKeyManager.on("error", (error) => {
+    if (globeKeyAlertShown) {
+      return;
+    }
+    globeKeyAlertShown = true;
+
+    const detailLines = [
+      error?.message || "Unknown error occurred while starting the Globe listener.",
+      "The Globe key shortcut will remain disabled; existing keyboard shortcuts continue to work.",
+    ];
+
+    if (process.env.NODE_ENV === "development") {
+      detailLines.push("Run `npm run compile:globe` and rebuild the app to regenerate the listener binary.");
+    } else {
+      detailLines.push("Try reinstalling OpenWhispr or contact support if the issue persists.");
+    }
+
+    dialog.showMessageBox({
+      type: "warning",
+      title: "Globe Hotkey Unavailable",
+      message: "OpenWhispr could not activate the Globe key hotkey.",
+      detail: detailLines.join("\n\n"),
+    });
+  });
+}
 
 // Initialize IPC handlers with all managers
 const ipcHandlers = new IPCHandlers({
@@ -137,6 +165,7 @@ trayManager.setWindowManager(windowManager);
           windowManager.mainWindow &&
           !windowManager.mainWindow.isDestroyed()
         ) {
+          windowManager.showDictationPanel();
           windowManager.mainWindow.webContents.send("toggle-dictation");
         }
       }
@@ -208,4 +237,5 @@ app.on("activate", () => {
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   globeKeyManager.stop();
+  updateManager.cleanup();
 });

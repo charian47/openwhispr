@@ -30,7 +30,8 @@
   ],
   "extraResources": [
     "src/assets/**/*",
-    "resources/macos-globe-listener.swift"
+    "resources/macos-globe-listener.swift",
+    "resources/bin/macos-globe-listener"
   ],
   "mac": {
     "category": "public.app-category.productivity",
@@ -89,6 +90,6 @@
     "owner": "HeroTools",
     "repo": "open-whispr",
     "private": false,
-    "releaseType": "release"
+    "releaseType": "draft"
   }
 }

@@ -15,56 +15,7 @@ permissions:
   contents: write  # Required for creating releases
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      version: ${{ steps.get_version.outputs.version }}
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      
-    - name: Get version
-      id: get_version
-      run: |
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          VERSION="v${{ github.event.inputs.version }}"
-        else
-          VERSION="${{ github.ref_name }}"
-        fi
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        
-    - name: Create Draft Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.get_version.outputs.version }}
-        release_name: OpenWhispr ${{ steps.get_version.outputs.version }}
-        draft: true  # Creates as draft - you manually publish when ready
-        prerelease: false
-        body: |
-          ## What's New
-          - 
-          
-          ## Bug Fixes
-          - 
-          
-          ## Downloads
-          Download the appropriate version for your platform below.
-          
-          ### Installation Instructions
-          
-          **macOS**: Download the .dmg file, open it, and drag OpenWhispr to Applications
-          **Windows**: Download and run the .exe installer
-          **Linux**: Download the .AppImage and make it executable
-          
-          ---
-          *Note: macOS builds are signed and notarized by Apple*
-
   build-and-release:
-    needs: create-release
     runs-on: ${{ matrix.os }}
     
     strategy:
