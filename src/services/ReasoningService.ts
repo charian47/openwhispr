@@ -1,8 +1,8 @@
-import { getModelProvider } from "../utils/languages";
+﻿import { getModelProvider } from "../utils/languages";
 import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
-import { API_ENDPOINTS, API_VERSIONS, TOKEN_LIMITS } from "../config/constants";
+import { API_ENDPOINTS, API_VERSIONS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 
 // Import debugLogger for comprehensive logging
 const debugLogger = typeof window !== 'undefined' && window.electronAPI 
@@ -26,6 +26,44 @@ class ReasoningService extends BaseReasoningService {
     super();
     this.apiKeyCache = new SecureCache();
     this.cacheCleanupStop = this.apiKeyCache.startAutoCleanup();
+  }
+
+  private getConfiguredOpenAIBase(): string {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return API_ENDPOINTS.OPENAI_BASE;
+    }
+
+    try {
+      const stored = window.localStorage.getItem('cloudReasoningBaseUrl') || '';
+      const trimmed = stored.trim();
+      const candidate = trimmed || API_ENDPOINTS.OPENAI_BASE;
+      return normalizeBaseUrl(candidate) || API_ENDPOINTS.OPENAI_BASE;
+    } catch {
+      return API_ENDPOINTS.OPENAI_BASE;
+    }
+  }
+
+  private getOpenAIEndpointCandidates(): string[] {
+    const base = this.getConfiguredOpenAIBase();
+    const lower = base.toLowerCase();
+
+    if (lower.endsWith('/responses') || lower.endsWith('/chat/completions')) {
+      return [base];
+    }
+
+    return [
+      buildApiUrl(base, '/responses'),
+      buildApiUrl(base, '/chat/completions'),
+    ];
+  }
+
+  private getOpenAIModelsEndpoint(): string {
+    const base = this.getConfiguredOpenAIBase();
+    const lower = base.toLowerCase();
+    if (lower.endsWith('/models')) {
+      return base;
+    }
+    return buildApiUrl(base, '/models');
   }
 
   private async getApiKey(provider: 'openai' | 'anthropic' | 'gemini'): Promise<string> {
@@ -192,23 +230,62 @@ class ReasoningService extends BaseReasoningService {
         requestBody.temperature = config.temperature || 0.3;
       }
 
+      const endpointCandidates = this.getOpenAIEndpointCandidates();
+
+      debugLogger.logReasoning("OPENAI_ENDPOINTS", {
+        base: this.getConfiguredOpenAIBase(),
+        candidates: endpointCandidates,
+      });
+
       const response = await withRetry(
         async () => {
-          const res = await fetch(API_ENDPOINTS.OPENAI, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify(requestBody),
-          });
+          let lastError: Error | null = null;
 
-          if (!res.ok) {
-            const errorData = await res.json().catch(() => ({ error: res.statusText }));
-            throw new Error(errorData.error?.message || `OpenAI API error: ${res.status}`);
+          for (const endpoint of endpointCandidates) {
+            try {
+              const res = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify(requestBody),
+              });
+
+              if (!res.ok) {
+                const errorData = await res.json().catch(() => ({ error: res.statusText }));
+                const errorMessage =
+                  errorData.error?.message ||
+                  errorData.message ||
+                  `OpenAI API error: ${res.status}`;
+
+                const isUnsupportedEndpoint =
+                  (res.status === 404 || res.status === 405) &&
+                  endpoint.toLowerCase().endsWith('/responses');
+
+                if (isUnsupportedEndpoint) {
+                  lastError = new Error(errorMessage);
+                  continue;
+                }
+
+                throw new Error(errorMessage);
+              }
+
+              return res.json();
+            } catch (error) {
+              lastError = error as Error;
+              if (endpoint.toLowerCase().endsWith('/responses')) {
+                debugLogger.logReasoning('OPENAI_ENDPOINT_FALLBACK', {
+                  attemptedEndpoint: endpoint,
+                  error: (error as Error).message,
+                });
+                continue;
+              }
+              throw error;
+            }
           }
 
-          return res.json();
+          throw lastError || new Error('No OpenAI endpoint responded');
         },
         createApiRetryStrategy("OpenAI")
       );

@@ -16,6 +16,7 @@ import { REASONING_PROVIDERS } from "../utils/languages";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import LanguageSelector from "./ui/LanguageSelector";
 import PromptStudio from "./ui/PromptStudio";
+import { API_ENDPOINTS } from "../config/constants";
 import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 
@@ -50,6 +51,8 @@ export default function SettingsPage({
     allowLocalFallback,
     fallbackWhisperModel,
     preferredLanguage,
+    cloudTranscriptionBaseUrl,
+    cloudReasoningBaseUrl,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
@@ -63,6 +66,8 @@ export default function SettingsPage({
     setAllowLocalFallback,
     setFallbackWhisperModel,
     setPreferredLanguage,
+    setCloudTranscriptionBaseUrl,
+    setCloudReasoningBaseUrl,
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider,
@@ -188,10 +193,14 @@ export default function SettingsPage({
   };
 
   const saveReasoningSettings = useCallback(async () => {
+    const normalizedReasoningBase = (cloudReasoningBaseUrl || '').trim();
+    setCloudReasoningBaseUrl(normalizedReasoningBase);
+
     // Update reasoning settings
     updateReasoningSettings({ 
       useReasoningModel, 
-      reasoningModel
+      reasoningModel,
+      cloudReasoningBaseUrl: normalizedReasoningBase
     });
     
     // Save API keys to backend based on provider
@@ -217,14 +226,19 @@ export default function SettingsPage({
     // Save the provider separately since it's computed from the model
     localStorage.setItem("reasoningProvider", localReasoningProvider);
 
+    const providerLabel =
+      localReasoningProvider === 'custom'
+        ? 'Custom'
+        : REASONING_PROVIDERS[
+            localReasoningProvider as keyof typeof REASONING_PROVIDERS
+          ]?.name || localReasoningProvider;
+
     showAlertDialog({
       title: "Reasoning Settings Saved",
       description: `AI text enhancement ${
         useReasoningModel ? "enabled" : "disabled"
       } with ${
-        REASONING_PROVIDERS[
-          localReasoningProvider as keyof typeof REASONING_PROVIDERS
-        ]?.name || localReasoningProvider
+        providerLabel
       } ${reasoningModel}`,
     });
   }, [
@@ -794,12 +808,37 @@ export default function SettingsPage({
 
             {!useLocalWhisper && (
               <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <h4 className="font-medium text-blue-900">OpenAI API Setup</h4>
+                <h4 className="font-medium text-blue-900">OpenAI-Compatible Cloud Setup</h4>
                 <ApiKeyInput
                   apiKey={openaiApiKey}
                   setApiKey={setOpenaiApiKey}
-                  helpText="Get your API key from platform.openai.com"
+                  helpText="Supports OpenAI or compatible endpoints"
                 />
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-blue-900">
+                    Custom Base URL (optional)
+                  </label>
+                  <Input
+                    value={cloudTranscriptionBaseUrl}
+                    onChange={(event) => setCloudTranscriptionBaseUrl(event.target.value)}
+                    placeholder="https://api.openai.com/v1"
+                    className="text-sm"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCloudTranscriptionBaseUrl(API_ENDPOINTS.TRANSCRIPTION_BASE)}
+                    >
+                      Reset to Default
+                    </Button>
+                  </div>
+                  <p className="text-xs text-blue-800">
+                    Requests for cloud transcription use this OpenAI-compatible base URL. Leave empty to fall back to
+                    <code className="ml-1">{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -830,21 +869,33 @@ export default function SettingsPage({
 
           <Button
             onClick={() => {
+              const normalizedTranscriptionBase = (cloudTranscriptionBaseUrl || '').trim();
+              setCloudTranscriptionBaseUrl(normalizedTranscriptionBase);
+
               updateTranscriptionSettings({
                 useLocalWhisper,
                 whisperModel,
                 preferredLanguage,
+                cloudTranscriptionBaseUrl: normalizedTranscriptionBase,
               });
 
               if (!useLocalWhisper && openaiApiKey.trim()) {
                 updateApiKeys({ openaiApiKey });
               }
 
+              const descriptionParts = [
+                `Transcription mode: ${useLocalWhisper ? 'Local Whisper' : 'Cloud'}.`,
+                `Language: ${preferredLanguage}.`,
+              ];
+
+              if (!useLocalWhisper) {
+                const baseLabel = normalizedTranscriptionBase || API_ENDPOINTS.TRANSCRIPTION_BASE;
+                descriptionParts.push(`Endpoint: ${baseLabel}.`);
+              }
+
               showAlertDialog({
                 title: "Settings Saved",
-                description: `Transcription mode: ${
-                  useLocalWhisper ? "Local Whisper" : "OpenAI API"
-                }. Language: ${preferredLanguage}.`,
+                description: descriptionParts.join(' '),
               });
             }}
             className="w-full"
@@ -874,6 +925,8 @@ export default function SettingsPage({
                 setUseReasoningModel(value);
                 updateReasoningSettings({ useReasoningModel: value });
               }}
+              setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+              cloudReasoningBaseUrl={cloudReasoningBaseUrl}
               reasoningModel={reasoningModel}
               setReasoningModel={setReasoningModel}
               localReasoningProvider={localReasoningProvider}
