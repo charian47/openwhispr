@@ -20,6 +20,8 @@ export const DEFAULT_PROMPTS = {
 
 class ReasoningService extends BaseReasoningService {
   private apiKeyCache: SecureCache<string>;
+  private openAiEndpointPreference = new Map<string, "responses" | "chat">();
+  private static readonly OPENAI_ENDPOINT_PREF_STORAGE_KEY = 'openAiEndpointPreference';
   private cacheCleanupStop: (() => void) | undefined;
 
   constructor() {
@@ -43,18 +45,25 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
-  private getOpenAIEndpointCandidates(): string[] {
-    const base = this.getConfiguredOpenAIBase();
+  private getOpenAIEndpointCandidates(base: string): Array<{ url: string; type: 'responses' | 'chat' }> {
     const lower = base.toLowerCase();
 
     if (lower.endsWith('/responses') || lower.endsWith('/chat/completions')) {
-      return [base];
+      const type = lower.endsWith('/responses') ? 'responses' : 'chat';
+      return [{ url: base, type }];
     }
 
-    return [
-      buildApiUrl(base, '/responses'),
-      buildApiUrl(base, '/chat/completions'),
+    const preference = this.getStoredOpenAiPreference(base);
+    if (preference === 'chat') {
+      return [{ url: buildApiUrl(base, '/chat/completions'), type: 'chat' }];
+    }
+
+    const candidates: Array<{ url: string; type: 'responses' | 'chat' }> = [
+      { url: buildApiUrl(base, '/responses'), type: 'responses' },
+      { url: buildApiUrl(base, '/chat/completions'), type: 'chat' },
     ];
+
+    return candidates;
   }
 
   private getOpenAIModelsEndpoint(): string {
@@ -64,6 +73,54 @@ class ReasoningService extends BaseReasoningService {
       return base;
     }
     return buildApiUrl(base, '/models');
+  }
+
+  private getStoredOpenAiPreference(base: string): 'responses' | 'chat' | undefined {
+    if (this.openAiEndpointPreference.has(base)) {
+      return this.openAiEndpointPreference.get(base);
+    }
+
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return undefined;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(ReasoningService.OPENAI_ENDPOINT_PREF_STORAGE_KEY);
+      if (!raw) {
+        return undefined;
+      }
+      const parsed = JSON.parse(raw);
+      if (typeof parsed !== 'object' || parsed === null) {
+        return undefined;
+      }
+      const value = parsed[base];
+      if (value === 'responses' || value === 'chat') {
+        this.openAiEndpointPreference.set(base, value);
+        return value;
+      }
+    } catch {
+      return undefined;
+    }
+
+    return undefined;
+  }
+
+  private rememberOpenAiPreference(base: string, preference: 'responses' | 'chat'): void {
+    this.openAiEndpointPreference.set(base, preference);
+
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(ReasoningService.OPENAI_ENDPOINT_PREF_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const data = typeof parsed === 'object' && parsed !== null ? parsed : {};
+      data[base] = preference;
+      window.localStorage.setItem(ReasoningService.OPENAI_ENDPOINT_PREF_STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      // Ignore storage errors
+    }
   }
 
   private async getApiKey(provider: 'openai' | 'anthropic' | 'gemini'): Promise<string> {
@@ -230,18 +287,20 @@ class ReasoningService extends BaseReasoningService {
         requestBody.temperature = config.temperature || 0.3;
       }
 
-      const endpointCandidates = this.getOpenAIEndpointCandidates();
+      const openAiBase = this.getConfiguredOpenAIBase();
+      const endpointCandidates = this.getOpenAIEndpointCandidates(openAiBase);
 
       debugLogger.logReasoning("OPENAI_ENDPOINTS", {
-        base: this.getConfiguredOpenAIBase(),
-        candidates: endpointCandidates,
+        base: openAiBase,
+        candidates: endpointCandidates.map((candidate) => candidate.url),
+        preference: this.getStoredOpenAiPreference(openAiBase) || null,
       });
 
       const response = await withRetry(
         async () => {
           let lastError: Error | null = null;
 
-          for (const endpoint of endpointCandidates) {
+          for (const { url: endpoint, type } of endpointCandidates) {
             try {
               const res = await fetch(endpoint, {
                 method: "POST",
@@ -261,20 +320,26 @@ class ReasoningService extends BaseReasoningService {
 
                 const isUnsupportedEndpoint =
                   (res.status === 404 || res.status === 405) &&
-                  endpoint.toLowerCase().endsWith('/responses');
+                  type === 'responses';
 
                 if (isUnsupportedEndpoint) {
                   lastError = new Error(errorMessage);
+                  this.rememberOpenAiPreference(openAiBase, 'chat');
+                  debugLogger.logReasoning('OPENAI_ENDPOINT_FALLBACK', {
+                    attemptedEndpoint: endpoint,
+                    error: errorMessage,
+                  });
                   continue;
                 }
 
                 throw new Error(errorMessage);
               }
 
+              this.rememberOpenAiPreference(openAiBase, type);
               return res.json();
             } catch (error) {
               lastError = error as Error;
-              if (endpoint.toLowerCase().endsWith('/responses')) {
+              if (type === 'responses') {
                 debugLogger.logReasoning('OPENAI_ENDPOINT_FALLBACK', {
                   attemptedEndpoint: endpoint,
                   error: (error as Error).message,
