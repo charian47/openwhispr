@@ -828,7 +828,7 @@ export default function TranscriptionModelPicker({
                           openai: "https://platform.openai.com/api-keys",
                         }[selectedCloudProvider] || "https://platform.openai.com/api-keys"
                       )}
-                      className="text-xs text-white/70 hover:text-white transition-colors cursor-pointer"
+                      className="text-xs text-primary/70 hover:text-primary transition-colors cursor-pointer"
                     >
                       {t("transcription.getKey")}
                     </button>

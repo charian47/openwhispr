@@ -159,7 +159,7 @@ export default function ControlPanelSidebar({
                 setUpgradeDismissed(true);
                 localStorage.setItem("upgradeProDismissed", "true");
               }}
-              aria-label="Dismiss"
+              aria-label={t("common.dismiss")}
               className="absolute top-1.5 right-1.5 p-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
             >
               <X size={12} />

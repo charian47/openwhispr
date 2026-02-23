@@ -14,6 +14,7 @@ import {
 } from "../ui/dropdown-menu";
 import { cn } from "../lib/utils";
 import type { NoteItem, FolderItem } from "../../types/electron";
+import { normalizeDbDate } from "../../utils/dateFormatting";
 
 const RE_HEADING = /#{1,6}\s+/g;
 const RE_EMPHASIS = /[*_~`]+/g;
@@ -54,8 +55,7 @@ function relativeTime(
   dateStr: string,
   t: (key: string, options?: Record<string, unknown>) => string
 ): string {
-  const source = dateStr.endsWith("Z") ? dateStr : `${dateStr}Z`;
-  const date = new Date(source);
+  const date = normalizeDbDate(dateStr);
   if (Number.isNaN(date.getTime())) return dateStr;
 
   const diff = Date.now() - date.getTime();
@@ -115,8 +115,8 @@ export default function NoteListItem({
         <div className="flex items-center justify-between gap-2">
           <p
             className={cn(
-              "text-xs truncate transition-colors duration-150",
-              isActive ? "text-foreground font-medium" : "text-foreground"
+              "text-xs truncate transition-colors duration-150 text-foreground",
+              isActive && "font-medium"
             )}
           >
             {note.title || t("notes.list.untitled")}

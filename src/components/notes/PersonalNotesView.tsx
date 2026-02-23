@@ -17,14 +17,12 @@ import ActionManagerDialog from "./ActionManagerDialog";
 import AddNotesToFolderDialog from "./AddNotesToFolderDialog";
 import { useNoteRecording } from "../../hooks/useNoteRecording";
 import { useActionProcessing } from "../../hooks/useActionProcessing";
-import {
-  useSettingsStore,
-  selectEffectiveReasoningModel,
-  selectIsCloudReasoningMode,
-} from "../../stores/settingsStore";
+import { useSettingsStore, selectIsCloudReasoningMode } from "../../stores/settingsStore";
 import { useFolderManagement } from "../../hooks/useFolderManagement";
 import { useNoteDragAndDrop } from "../../hooks/useNoteDragAndDrop";
 import { cn } from "../lib/utils";
+import { MEETINGS_FOLDER_NAME } from "./shared";
+import logger from "../../utils/logger";
 import {
   useNotes,
   useActiveNoteId,
@@ -39,6 +37,10 @@ import RealtimeTranscriptionBanner from "./RealtimeTranscriptionBanner";
 
 const FOLDER_INPUT_CLASS =
   "w-full h-6 bg-foreground/5 dark:bg-white/5 rounded px-2 text-xs text-foreground outline-none border border-primary/30 focus:border-primary/50";
+
+function makeContentHash(content: string): string {
+  return String(content.length) + "-" + content.slice(0, 50);
+}
 
 interface PersonalNotesViewProps {
   onOpenSettings?: (section: string) => void;
@@ -64,7 +66,7 @@ export default function PersonalNotesView({ onOpenSettings }: PersonalNotesViewP
   localTitleRef.current = localTitle;
   const { toast } = useToast();
   const isCloudMode = useSettingsStore(selectIsCloudReasoningMode);
-  const effectiveModelId = useSettingsStore(selectEffectiveReasoningModel);
+  const effectiveModelId = useSettingsStore((s) => s.reasoningModel);
   const {
     isComplete: isOnboardingComplete,
     isProUser,
@@ -96,7 +98,7 @@ export default function PersonalNotesView({ onOpenSettings }: PersonalNotesViewP
 
   const activeNote = notes.find((n) => n.id === activeNoteId) ?? null;
   const isMeetingsFolder = useMemo(
-    () => folders.find((f) => f.id === activeFolderId)?.name === "Meetings",
+    () => folders.find((f) => f.id === activeFolderId)?.name === MEETINGS_FOLDER_NAME,
     [folders, activeFolderId]
   );
 
@@ -120,6 +122,8 @@ export default function PersonalNotesView({ onOpenSettings }: PersonalNotesViewP
     ),
   });
 
+  const handleFinalTranscriptConsumed = useCallback(() => setFinalTranscript(null), []);
+
   useEffect(() => {
     if (activeNote && activeNote.id !== activeNoteRef.current) {
       activeNoteRef.current = activeNote.id;
@@ -138,6 +142,8 @@ export default function PersonalNotesView({ onOpenSettings }: PersonalNotesViewP
       setIsSaving(true);
       try {
         await window.electronAPI.updateNote(noteId, { title, content });
+      } catch (err) {
+        logger.warn("Failed to save note", { error: (err as Error).message }, "notes");
       } finally {
         setIsSaving(false);
       }
@@ -255,8 +261,7 @@ export default function PersonalNotesView({ onOpenSettings }: PersonalNotesViewP
     async (enhancedContent: string, prompt: string) => {
       if (!activeNoteId) return;
       setLocalEnhancedContent(enhancedContent);
-      const hash =
-        String(localContentRef.current.length) + "-" + localContentRef.current.slice(0, 50);
+      const hash = makeContentHash(localContentRef.current);
       setIsSaving(true);
       try {
         await window.electronAPI.updateNote(activeNoteId, {
@@ -301,7 +306,7 @@ export default function PersonalNotesView({ onOpenSettings }: PersonalNotesViewP
 
   const isEnhancementStale = useMemo(() => {
     if (!activeNote?.enhanced_content || !activeNote?.enhanced_at_content_hash) return false;
-    const currentHash = String(localContent.length) + "-" + localContent.slice(0, 50);
+    const currentHash = makeContentHash(localContent);
     return currentHash !== activeNote.enhanced_at_content_hash;
   }, [activeNote?.enhanced_content, activeNote?.enhanced_at_content_hash, localContent]);
 
@@ -343,7 +348,7 @@ export default function PersonalNotesView({ onOpenSettings }: PersonalNotesViewP
         <div className="px-1.5 space-y-px">
           {folders.map((folder) => {
             const isActive = folder.id === activeFolderId;
-            const isMeetings = folder.name === "Meetings";
+            const isMeetings = folder.name === MEETINGS_FOLDER_NAME;
             const count = folderCounts[folder.id] || 0;
             const isRenaming = renamingFolderId === folder.id;
 
@@ -747,7 +752,7 @@ export default function PersonalNotesView({ onOpenSettings }: PersonalNotesViewP
               isProcessing={isProcessing}
               partialTranscript={partialTranscript}
               finalTranscript={finalTranscript}
-              onFinalTranscriptConsumed={() => setFinalTranscript(null)}
+              onFinalTranscriptConsumed={handleFinalTranscriptConsumed}
               streamingCommit={streamingCommit}
               onStreamingCommitConsumed={consumeStreamingCommit}
               onStartRecording={startRecording}

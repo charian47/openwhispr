@@ -6,19 +6,7 @@
       "uiLabel": "Язык интерфейса",
       "uiDescription": "Выберите язык интерфейса OpenWhispr",
       "transcriptionLabel": "Язык транскрипции",
-      "transcriptionDescription": "Выберите язык, на котором вы говорите, для более точной транскрипции",
-      "uiOption": {
-        "en": "English",
-        "es": "Espanol",
-        "fr": "Francais",
-        "de": "Deutsch",
-        "pt": "Portugues",
-        "it": "Italiano",
-        "zh-CN": "简体中文",
-        "zh-TW": "繁體中文",
-        "ru": "Русский",
-        "ja": "日本語"
-      }
+      "transcriptionDescription": "Выберите язык, на котором вы говорите, для более точной транскрипции"
     }
   },
   "tray": {
@@ -758,7 +746,8 @@
       "processing": "Обработка...",
       "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "Провайдер",
-      "run": "Запустить тест"
+      "run": "Запустить тест",
+      "customEndpoint": "Пользовательская конечная точка"
     },
     "view": {
       "customPrompt": "Пользовательский промпт",
@@ -977,7 +966,12 @@
       "instructionMode": "Инструкция",
       "placeholder": "например, Джарвис, Нова, Атлас...",
       "save": "Сохранить",
-      "title": "Голосовой агент"
+      "title": "Голосовой агент",
+      "examples": {
+        "formalEmail": "Hey {{agentName}}, напиши официальное письмо о бюджете",
+        "professional": "Hey {{agentName}}, сделай это более профессиональным",
+        "bulletPoints": "Hey {{agentName}}, преобразуй это в маркированный список"
+      }
     },
     "aiModels": {
       "customSetup": "Пользовательская настройка",
@@ -1405,6 +1399,10 @@
           "name": "Очистить заметки",
           "description": "Исправить грамматику, структуру и форматирование"
         }
+      },
+      "errors": {
+        "noModel": "Модель ИИ не выбрана. Настройте её в разделе Настройки.",
+        "actionFailed": "Действие не выполнено"
       }
     },
     "empty": {
@@ -1421,9 +1419,7 @@
       "addExisting": "Добавить существующие",
       "addCount": "Добавить: {{count}}",
       "noResults": "Не найдено",
-      "noNotesAvailable": "Нет доступных заметок",
-      "today": "Сегодня",
-      "yesterday": "Вчера"
+      "noNotesAvailable": "Нет доступных заметок"
     },
     "onboarding": {
       "llm": {

@@ -193,7 +193,7 @@ export default function ControlPanel() {
                 description: t("controlPanel.history.couldNotDeleteDescription"),
               });
             }
-          } catch (error) {
+          } catch {
             showAlertDialog({
               title: t("controlPanel.history.couldNotDeleteTitle"),
               description: t("controlPanel.history.couldNotDeleteDescriptionGeneric"),
@@ -337,7 +337,7 @@ export default function ControlPanel() {
           userImage={user?.image}
           isSignedIn={isSignedIn}
           authLoaded={authLoaded}
-          isProUser={usage?.isSubscribed || usage?.isTrial}
+          isProUser={!!(usage?.isSubscribed || usage?.isTrial)}
           usageLoaded={usage?.hasLoaded ?? false}
           updateAction={
             !updateStatus.isDevelopment &&

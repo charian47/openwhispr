@@ -489,7 +489,7 @@ export function ReferralDashboard() {
             </div>
 
             {/* Friends section — actual signups with word progress */}
-            {stats.referrals && stats.referrals.length > 0 && (
+            {stats.referrals.length > 0 && (
               <div className="mt-5">
                 <h4 className="text-xs font-medium text-foreground/25 uppercase tracking-wider mb-2">
                   {t("referral.friends.title")}

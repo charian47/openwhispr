@@ -135,7 +135,6 @@ class DatabaseManager {
           );
       }
 
-      // Back-fill translation_key for existing installs
       this.db
         .prepare(
           "UPDATE actions SET translation_key = ? WHERE is_builtin = 1 AND name = ? AND translation_key IS NULL"

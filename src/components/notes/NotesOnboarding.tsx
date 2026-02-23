@@ -11,7 +11,7 @@ import {
   getActionName,
   getActionDescription,
 } from "../../stores/actionStore";
-import { notesInputClass } from "./shared";
+import { notesInputClass, notesTextareaClass } from "./shared";
 import { useDialogs } from "../../hooks/useDialogs";
 import { AlertDialog } from "../ui/dialog";
 import ReasoningModelSelector from "../ReasoningModelSelector";
@@ -49,7 +49,7 @@ export default function NotesOnboarding({ onComplete }: NotesOnboardingProps) {
   const customReasoningApiKey = useSettingsStore((s) => s.customReasoningApiKey);
   const setCustomReasoningApiKey = useSettingsStore((s) => s.setCustomReasoningApiKey);
 
-  const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
+  const { alertDialog, hideAlertDialog } = useDialogs();
 
   useEffect(() => {
     initializeActions();
@@ -162,7 +162,6 @@ export default function NotesOnboarding({ onComplete }: NotesOnboardingProps) {
                   setGroqApiKey={setGroqApiKey}
                   customReasoningApiKey={customReasoningApiKey}
                   setCustomReasoningApiKey={setCustomReasoningApiKey}
-                  showAlertDialog={showAlertDialog}
                 />
               </div>
             )}
@@ -281,13 +280,7 @@ export default function NotesOnboarding({ onComplete }: NotesOnboardingProps) {
                 aria-label={t("notes.actions.promptPlaceholder")}
                 rows={3}
                 disabled={isSaving}
-                className={cn(
-                  "w-full px-3 py-2 rounded-md text-xs leading-relaxed resize-none",
-                  "bg-foreground/3 dark:bg-white/4 border border-border/30 dark:border-white/6",
-                  "text-foreground/80 placeholder:text-foreground/20 outline-none",
-                  "focus:border-primary/30 transition-colors duration-150",
-                  "disabled:opacity-40"
-                )}
+                className={cn(notesTextareaClass, "disabled:opacity-40")}
               />
               <div className="flex justify-end">
                 <Button

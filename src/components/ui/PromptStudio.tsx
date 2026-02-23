@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./button";
 import { Textarea } from "./textarea";
@@ -20,11 +20,7 @@ import ReasoningService from "../../services/ReasoningService";
 import { getModelProvider } from "../../models/ModelRegistry";
 import logger from "../../utils/logger";
 import { UNIFIED_SYSTEM_PROMPT } from "../../config/prompts";
-import {
-  useSettingsStore,
-  selectEffectiveReasoningModel,
-  selectIsCloudReasoningMode,
-} from "../../stores/settingsStore";
+import { useSettingsStore, selectIsCloudReasoningMode } from "../../stores/settingsStore";
 
 interface PromptStudioProps {
   className?: string;
@@ -74,7 +70,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
   const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const { agentName } = useAgentName();
 
-  const effectiveModel = useSettingsStore(selectEffectiveReasoningModel);
+  const effectiveModel = useSettingsStore((s) => s.reasoningModel);
   const isCloudMode = useSettingsStore(selectIsCloudReasoningMode);
   const useReasoningModel = useSettingsStore((s) => s.useReasoningModel);
   const reasoningModel = useSettingsStore((s) => s.reasoningModel);
@@ -172,7 +168,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
           if (!baseUrl) {
             setTestResult(
               t("promptStudio.test.baseUrlMissing", {
-                provider: providerConfig.label,
+                provider:
+                  reasoningProvider === "custom"
+                    ? t("promptStudio.test.customEndpoint")
+                    : providerConfig.label,
               })
             );
             return;
@@ -372,7 +371,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
             const displayModel = isCloudMode
               ? t("promptStudio.test.openwhisprCloud")
               : reasoningModel || t("promptStudio.test.none");
-            const displayProvider = providerConfig.label;
+            const displayProvider =
+              reasoningProvider === "custom"
+                ? t("promptStudio.test.customEndpoint")
+                : providerConfig.label;
 
             return (
               <div className="divide-y divide-border/40 dark:divide-border-subtle">

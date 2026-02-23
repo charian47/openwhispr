@@ -6,19 +6,7 @@
       "uiLabel": "Lingua dell'interfaccia",
       "uiDescription": "Scegli la lingua usata nell'interfaccia di OpenWhispr",
       "transcriptionLabel": "Lingua di trascrizione",
-      "transcriptionDescription": "Scegli la lingua che parli per una trascrizione più accurata",
-      "uiOption": {
-        "en": "English",
-        "es": "Espanol",
-        "fr": "Francais",
-        "de": "Deutsch",
-        "pt": "Portugues",
-        "it": "Italiano",
-        "zh-CN": "简体中文",
-        "zh-TW": "繁體中文",
-        "ru": "Русский",
-        "ja": "日本語"
-      }
+      "transcriptionDescription": "Scegli la lingua che parli per una trascrizione più accurata"
     }
   },
   "tray": {
@@ -758,7 +746,8 @@
       "processing": "Elaborazione...",
       "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "Provider",
-      "run": "Esegui test"
+      "run": "Esegui test",
+      "customEndpoint": "Endpoint personalizzato"
     },
     "view": {
       "customPrompt": "Prompt personalizzato",
@@ -977,7 +966,12 @@
       "instructionMode": "Istruzione",
       "placeholder": "es. Jarvis, Nova, Atlas...",
       "save": "Salva",
-      "title": "Agente vocale"
+      "title": "Agente vocale",
+      "examples": {
+        "formalEmail": "Hey {{agentName}}, scrivi un'email formale sul budget",
+        "professional": "Hey {{agentName}}, rendi questo più professionale",
+        "bulletPoints": "Hey {{agentName}}, converti questo in elenco puntato"
+      }
     },
     "aiModels": {
       "customSetup": "Configurazione personalizzata",
@@ -1405,6 +1399,10 @@
           "name": "Pulisci note",
           "description": "Correggere grammatica, struttura e formattazione"
         }
+      },
+      "errors": {
+        "noModel": "Nessun modello IA selezionato. Configurane uno nelle Impostazioni.",
+        "actionFailed": "Azione non riuscita"
       }
     },
     "empty": {
@@ -1421,9 +1419,7 @@
       "addExisting": "Aggiungi esistenti",
       "addCount": "Aggiungi {{count}} note",
       "noResults": "Nessuna nota corrispondente",
-      "noNotesAvailable": "Nessun'altra nota disponibile",
-      "today": "Oggi",
-      "yesterday": "Ieri"
+      "noNotesAvailable": "Nessun'altra nota disponibile"
     },
     "onboarding": {
       "llm": {

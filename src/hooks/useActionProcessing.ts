@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import reasoningService from "../services/ReasoningService";
 import type { ActionItem } from "../types/electron";
 import { getEffectiveReasoningModel } from "../stores/settingsStore";
@@ -14,6 +15,7 @@ interface UseActionProcessingOptions {
 }
 
 export function useActionProcessing({ onSuccess, onError }: UseActionProcessingOptions) {
+  const { t } = useTranslation();
   const [state, setState] = useState<ActionProcessingState>("idle");
   const [actionName, setActionName] = useState<string | null>(null);
   const cancelledRef = useRef(false);
@@ -37,7 +39,7 @@ export function useActionProcessing({ onSuccess, onError }: UseActionProcessingO
       const modelId = getEffectiveReasoningModel() || options.modelId;
 
       if (!modelId && !options.isCloudMode) {
-        onError("No AI model selected. Configure one in Settings.");
+        onError(t("notes.actions.errors.noModel"));
         return;
       }
 
@@ -68,10 +70,10 @@ export function useActionProcessing({ onSuccess, onError }: UseActionProcessingO
         processingRef.current = false;
         setState("idle");
         setActionName(null);
-        onError(err instanceof Error ? err.message : "Action failed");
+        onError(err instanceof Error ? err.message : t("notes.actions.errors.actionFailed"));
       }
     },
-    [onSuccess, onError]
+    [onSuccess, onError, t]
   );
 
   const cancel = useCallback(() => {

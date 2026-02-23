@@ -25,13 +25,14 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
 import { Input } from "../ui/input";
 import type { FolderItem } from "../../types/electron";
+import { findDefaultFolder, MEETINGS_FOLDER_NAME } from "./shared";
 import { useAuth } from "../../hooks/useAuth";
 import { useUsage } from "../../hooks/useUsage";
 import { useSettings } from "../../hooks/useSettings";
 import { withSessionRefresh } from "../../lib/neonAuth";
 import reasoningService from "../../services/ReasoningService";
 import { getAllReasoningModels } from "../../models/ModelRegistry";
-import { useSettingsStore, selectEffectiveReasoningModel } from "../../stores/settingsStore";
+import { useSettingsStore } from "../../stores/settingsStore";
 
 const TranscriptionModelPicker = React.lazy(() => import("../TranscriptionModelPicker"));
 
@@ -109,7 +110,7 @@ export default function UploadAudioView({ onNoteCreated, onOpenSettings }: Uploa
     updateTranscriptionSettings,
   } = useSettings();
 
-  const effectiveReasoningModel = useSettingsStore(selectEffectiveReasoningModel);
+  const effectiveReasoningModel = useSettingsStore((s) => s.reasoningModel);
   const useReasoningModel = useSettingsStore((s) => s.useReasoningModel);
 
   const isOpenWhisprCloud =
@@ -128,7 +129,7 @@ export default function UploadAudioView({ onNoteCreated, onOpenSettings }: Uploa
   useEffect(() => {
     window.electronAPI.getFolders?.().then((f) => {
       setFolders(f);
-      const personal = f.find((x) => x.name === "Personal" && x.is_default);
+      const personal = findDefaultFolder(f);
       if (personal) setSelectedFolderId(String(personal.id));
     });
   }, []);
@@ -259,7 +260,7 @@ export default function UploadAudioView({ onNoteCreated, onOpenSettings }: Uploa
     setNoteId(null);
     setError(null);
     setProgress(0);
-    const personal = folders.find((f) => f.name === "Personal" && f.is_default);
+    const personal = findDefaultFolder(folders);
     if (personal) setSelectedFolderId(String(personal.id));
   };
 
@@ -286,9 +287,9 @@ export default function UploadAudioView({ onNoteCreated, onOpenSettings }: Uploa
         res = await withSessionRefresh(async () => {
           const r = await window.electronAPI.transcribeAudioFileCloud!(file.path);
           if (!r.success && r.code) {
-            const err = new Error(r.error || "Cloud transcription failed");
-            (err as any).code = r.code;
-            throw err;
+            throw Object.assign(new Error(r.error || "Cloud transcription failed"), {
+              code: r.code,
+            });
           }
           return r;
         });
@@ -462,7 +463,7 @@ export default function UploadAudioView({ onNoteCreated, onOpenSettings }: Uploa
         {showSetup && (
           <div className="mb-6" style={{ animation: "float-up 0.3s ease-out" }}>
             <div className="flex flex-col items-center mb-5">
-              <div className="w-10 h-10 rounded-[10px] bg-gradient-to-b from-primary/10 to-primary/[0.03] dark:from-primary/15 dark:to-primary/5 border border-primary/15 dark:border-primary/20 flex items-center justify-center mb-3">
+              <div className="w-10 h-10 rounded-[10px] bg-linear-to-b from-primary/10 to-primary/[0.03] dark:from-primary/15 dark:to-primary/5 border border-primary/15 dark:border-primary/20 flex items-center justify-center mb-3">
                 <Upload size={17} strokeWidth={1.5} className="text-primary/50" />
               </div>
               <h2 className="text-xs font-semibold text-foreground mb-1">
@@ -686,7 +687,7 @@ function IdleView({
   return (
     <>
       <div className="flex flex-col items-center mb-5">
-        <div className="w-10 h-10 rounded-[10px] bg-gradient-to-b from-foreground/5 to-foreground/[0.02] dark:from-white/8 dark:to-white/3 border border-foreground/8 dark:border-white/8 flex items-center justify-center mb-4">
+        <div className="w-10 h-10 rounded-[10px] bg-linear-to-b from-foreground/5 to-foreground/[0.02] dark:from-white/8 dark:to-white/3 border border-foreground/8 dark:border-white/8 flex items-center justify-center mb-4">
           <Upload
             size={17}
             strokeWidth={1.5}
@@ -936,7 +937,7 @@ function CompleteView({
             </SelectTrigger>
             <SelectContent>
               {folders.map((f) => {
-                const isMeetings = f.name === "Meetings" && !!f.is_default;
+                const isMeetings = f.name === MEETINGS_FOLDER_NAME && !!f.is_default;
                 return (
                   <SelectItem
                     key={f.id}

@@ -6,19 +6,7 @@
       "uiLabel": "インターフェース言語",
       "uiDescription": "OpenWhispr のインターフェースで使用する言語を選択",
       "transcriptionLabel": "文字起こし言語",
-      "transcriptionDescription": "より正確な文字起こしのために話す言語を選択",
-      "uiOption": {
-        "en": "English",
-        "es": "Español",
-        "fr": "Français",
-        "de": "Deutsch",
-        "pt": "Português",
-        "it": "Italiano",
-        "zh-CN": "简体中文",
-        "zh-TW": "繁體中文",
-        "ru": "Русский",
-        "ja": "日本語"
-      }
+      "transcriptionDescription": "より正確な文字起こしのために話す言語を選択"
     }
   },
   "tray": {
@@ -758,7 +746,8 @@
       "processing": "処理中...",
       "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "プロバイダー",
-      "run": "テスト実行"
+      "run": "テスト実行",
+      "customEndpoint": "カスタムエンドポイント"
     },
     "view": {
       "customPrompt": "カスタムプロンプト",
@@ -973,7 +962,12 @@
       "instructionMode": "指示",
       "placeholder": "例: ジャービス、ノヴァ、アトラス...",
       "save": "保存",
-      "title": "音声エージェント"
+      "title": "音声エージェント",
+      "examples": {
+        "formalEmail": "Hey {{agentName}}、予算についてフォーマルなメールを書いて",
+        "professional": "Hey {{agentName}}、これをもっとプロフェッショナルにして",
+        "bulletPoints": "Hey {{agentName}}、これを箇条書きに変換して"
+      }
     },
     "aiModels": {
       "customSetup": "カスタム設定",
@@ -1274,6 +1268,10 @@
           "name": "ノートを整理",
           "description": "文法、構成、書式を修正する"
         }
+      },
+      "errors": {
+        "noModel": "AIモデルが選択されていません。設定で構成してください。",
+        "actionFailed": "アクションに失敗しました"
       }
     },
     "empty": {
@@ -1290,9 +1288,7 @@
       "addExisting": "既存を追加",
       "addCount": "{{count}}件のノートを追加",
       "noResults": "一致するノートがありません",
-      "noNotesAvailable": "他のノートはありません",
-      "today": "今日",
-      "yesterday": "昨日"
+      "noNotesAvailable": "他のノートはありません"
     },
     "folders": {
       "title": "フォルダ",

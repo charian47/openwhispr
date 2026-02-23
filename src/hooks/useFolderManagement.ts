@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useToast } from "../components/ui/Toast";
+import logger from "../utils/logger";
 import type { FolderItem } from "../types/electron";
+import { findDefaultFolder } from "../components/notes/shared";
 import {
   useActiveFolderId,
   setActiveFolderId,
@@ -66,13 +68,15 @@ export function useFolderManagement(): UseFolderManagementReturn {
       });
       setFolderCounts(countMap);
       return items;
-    } catch {
+    } catch (err) {
+      logger.warn("Failed to load folders", { error: (err as Error).message }, "notes");
       return [];
     }
   }, []);
 
   // Load folders on mount, determine initial active folder
   useEffect(() => {
+    isMountedRef.current = true;
     const load = async () => {
       try {
         setIsLoading(true);
@@ -85,7 +89,7 @@ export function useFolderManagement(): UseFolderManagementReturn {
 
         const initialFolderId = isPresetValid
           ? presetFolderId
-          : (items.find((f) => f.name === "Personal" && f.is_default)?.id ?? items[0]?.id ?? null);
+          : (findDefaultFolder(items)?.id ?? items[0]?.id ?? null);
 
         if (initialFolderId !== presetFolderId) {
           setActiveFolderId(initialFolderId);
@@ -185,7 +189,7 @@ export function useFolderManagement(): UseFolderManagementReturn {
     async (folderId: number) => {
       const result = await window.electronAPI.deleteFolder(folderId);
       if (result.success) {
-        const personalFolder = folders.find((f) => f.name === "Personal" && f.is_default);
+        const personalFolder = findDefaultFolder(folders);
         if (activeFolderId === folderId && personalFolder) {
           setActiveFolderId(personalFolder.id);
         }

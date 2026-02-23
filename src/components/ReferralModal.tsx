@@ -24,7 +24,7 @@ export default function ReferralModal({ open, onOpenChange }: ReferralModalProps
         />
         <DialogPrimitive.Content
           className={cn(
-            "fixed left-[50%] top-[50%] z-50 w-full max-w-[500px] min-h-130",
+            "fixed left-[50%] top-[50%] z-50 w-full max-w-[500px] min-h-[520px]",
             "translate-x-[-50%] translate-y-[-50%]",
             "rounded-xl border overflow-hidden shadow-2xl duration-200",
             "bg-card border-border",
@@ -42,7 +42,7 @@ export default function ReferralModal({ open, onOpenChange }: ReferralModalProps
 
           <DialogPrimitive.Close className="absolute right-3 top-3 z-20 rounded-full p-1.5 opacity-40 transition-[opacity,background-color] hover:opacity-80 hover:bg-foreground/10 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:ring-offset-0">
             <X className="h-4 w-4 text-foreground" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{t("common.close")}</span>
           </DialogPrimitive.Close>
 
           <ReferralDashboard />

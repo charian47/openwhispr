@@ -1,3 +1,8 @@
+export function normalizeDbDate(dateStr: string): Date {
+  const source = dateStr.endsWith("Z") ? dateStr : `${dateStr}Z`;
+  return new Date(source);
+}
+
 export function formatDateGroup(date: Date | string, t: (key: string) => string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const now = new Date();

@@ -13,10 +13,10 @@ import type { NoteItem } from "../../types/electron";
 import type { ActionProcessingState } from "../../hooks/useActionProcessing";
 import ActionProcessingOverlay from "./ActionProcessingOverlay";
 import DictationWidget from "./DictationWidget";
+import { normalizeDbDate } from "../../utils/dateFormatting";
 
 function formatNoteDate(dateStr: string): string {
-  const source = dateStr.endsWith("Z") ? dateStr : `${dateStr}Z`;
-  const date = new Date(source);
+  const date = normalizeDbDate(dateStr);
   if (Number.isNaN(date.getTime())) return "";
   const datePart = date.toLocaleDateString(undefined, {
     month: "short",
@@ -409,8 +409,6 @@ export default function NoteEditor({
     const text = e.clipboardData.getData("text/plain").replace(/\n/g, " ");
     document.execCommand("insertText", false, text);
   }, []);
-
-  // --- Dictation lifecycle ---
 
   const handleStartRecording = useCallback(() => {
     if (textareaRef.current) {

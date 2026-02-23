@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -47,7 +47,7 @@ import { HotkeyInput } from "./ui/HotkeyInput";
 import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { getValidationMessage } from "../utils/hotkeyValidator";
-import { getPlatform } from "../utils/platform";
+import { getPlatform, getCachedPlatform } from "../utils/platform";
 import { getDefaultHotkey, formatHotkeyLabel } from "../utils/hotkeys";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
@@ -594,7 +594,6 @@ function AiModelsSection({
               setGroqApiKey={setGroqApiKey}
               customReasoningApiKey={customReasoningApiKey}
               setCustomReasoningApiKey={setCustomReasoningApiKey}
-              showAlertDialog={showAlertDialog}
             />
           )}
         </>
@@ -746,12 +745,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
 
-  const platform = useMemo(() => {
-    if (typeof window !== "undefined" && window.electronAPI?.getPlatform) {
-      return window.electronAPI.getPlatform();
-    }
-    return "linux";
-  }, []);
+  const platform = getCachedPlatform();
 
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
   const [autoStartLoading, setAutoStartLoading] = useState(true);
@@ -809,7 +803,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       mounted = false;
       clearTimeout(timer);
     };
-  }, [whisperHook, getAppVersion]);
+  }, [whisperHook.checkWhisperInstallation, getAppVersion]);
 
   useEffect(() => {
     const checkHotkeyMode = async () => {
@@ -1810,7 +1804,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setCloudReasoningMode={setCloudReasoningMode}
               useReasoningModel={useReasoningModel}
               setUseReasoningModel={(value) => {
-                setUseReasoningModel(value);
                 updateReasoningSettings({ useReasoningModel: value });
               }}
               reasoningModel={reasoningModel}
@@ -1906,15 +1899,21 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       <div className="space-y-2.5">
                         {[
                           {
-                            input: `Hey ${agentName}, write a formal email about the budget`,
+                            input: t("settingsPage.agentConfig.examples.formalEmail", {
+                              agentName,
+                            }),
                             mode: t("settingsPage.agentConfig.instructionMode"),
                           },
                           {
-                            input: `Hey ${agentName}, make this more professional`,
+                            input: t("settingsPage.agentConfig.examples.professional", {
+                              agentName,
+                            }),
                             mode: t("settingsPage.agentConfig.instructionMode"),
                           },
                           {
-                            input: `Hey ${agentName}, convert this to bullet points`,
+                            input: t("settingsPage.agentConfig.examples.bulletPoints", {
+                              agentName,
+                            }),
                             mode: t("settingsPage.agentConfig.instructionMode"),
                           },
                           {
@@ -2135,7 +2134,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                                 t("settingsPage.general.updates.dialogs.noUpdates.description"),
                             });
                           }
-                        } catch (error: any) {
+                        } catch {
                           showAlertDialog({
                             title: t("settingsPage.general.updates.dialogs.checkFailed.title"),
                             description: t(
@@ -2164,7 +2163,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           onClick={async () => {
                             try {
                               await downloadUpdate();
-                            } catch (error: any) {
+                            } catch {
                               showAlertDialog({
                                 title: t(
                                   "settingsPage.general.updates.dialogs.downloadFailed.title"
@@ -2221,7 +2220,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                             onConfirm: async () => {
                               try {
                                 await installUpdateAction();
-                              } catch (error: any) {
+                              } catch {
                                 showAlertDialog({
                                   title: t(
                                     "settingsPage.general.updates.dialogs.installFailed.title"

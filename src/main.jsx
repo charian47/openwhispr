@@ -391,7 +391,7 @@ function AppRouter() {
 
 function LoadingFallback({ message }) {
   const { t } = useTranslation();
-  const fallbackMessage = message || t("app.loading");
+  const fallbackMessage = message || t("common.loading");
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">

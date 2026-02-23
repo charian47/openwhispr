@@ -25,7 +25,7 @@ export default function ActionProcessingOverlay({
     }
   }, [state]);
 
-  if (!visible && state === "idle") return null;
+  if (!visible) return null;
 
   const isSuccess = state === "success";
   const isFadingOut = state === "idle";
@@ -56,8 +56,8 @@ export default function ActionProcessingOverlay({
         style={{
           animation: isSuccess ? "none" : "scanner-sweep 2.5s ease-in-out infinite",
           boxShadow: isSuccess
-            ? "0 0 24px 8px oklch(0.7 0.18 145 / 0.2)"
-            : "0 0 24px 8px oklch(0.55 0.22 285 / 0.15)",
+            ? "0 0 24px 8px color-mix(in oklch, var(--color-success) 20%, transparent)"
+            : "0 0 24px 8px color-mix(in oklch, var(--color-accent) 15%, transparent)",
           ...(isSuccess ? { top: "50%" } : {}),
         }}
       />

@@ -405,10 +405,31 @@ declare global {
       // Local AI model management
       modelGetAll: () => Promise<any[]>;
       modelCheck: (modelId: string) => Promise<boolean>;
-      modelDownload: (modelId: string) => Promise<void>;
-      modelDelete: (modelId: string) => Promise<void>;
-      modelDeleteAll: () => Promise<{ success: boolean; error?: string; code?: string }>;
-      modelCheckRuntime: () => Promise<boolean>;
+      modelDownload: (modelId: string) => Promise<{
+        success: boolean;
+        path?: string;
+        error?: string;
+        code?: string;
+        details?: string;
+      }>;
+      modelDelete: (modelId: string) => Promise<{
+        success: boolean;
+        error?: string;
+        code?: string;
+        details?: string;
+      }>;
+      modelDeleteAll: () => Promise<{
+        success: boolean;
+        error?: string;
+        code?: string;
+        details?: string;
+      }>;
+      modelCheckRuntime: () => Promise<{
+        available: boolean;
+        error?: string;
+        code?: string;
+        details?: string;
+      }>;
       modelCancelDownload: (modelId: string) => Promise<{ success: boolean; error?: string }>;
       onModelDownloadProgress: (callback: (event: any, data: any) => void) => () => void;
 
@@ -665,10 +686,7 @@ declare global {
         error?: string;
         code?: string;
       }>;
-      assemblyAiStreamingSend?: (audioBuffer: ArrayBuffer) => Promise<{
-        success: boolean;
-        error?: string;
-      }>;
+      assemblyAiStreamingSend?: (audioBuffer: ArrayBuffer) => void;
       assemblyAiStreamingForceEndpoint?: () => void;
       assemblyAiStreamingStop?: () => Promise<{
         success: boolean;

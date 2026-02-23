@@ -6,19 +6,7 @@
       "uiLabel": "介面語言",
       "uiDescription": "選擇 OpenWhispr 介面使用的語言",
       "transcriptionLabel": "轉錄語言",
-      "transcriptionDescription": "選擇你說話的語言，以提高轉錄準確度",
-      "uiOption": {
-        "en": "English",
-        "es": "Espanol",
-        "fr": "Francais",
-        "de": "Deutsch",
-        "pt": "Portugues",
-        "it": "Italiano",
-        "zh-CN": "简体中文",
-        "zh-TW": "繁體中文",
-        "ru": "Русский",
-        "ja": "日本語"
-      }
+      "transcriptionDescription": "選擇你說話的語言，以提高轉錄準確度"
     }
   },
   "tray": {
@@ -758,7 +746,8 @@
       "processing": "處理中...",
       "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "供應商",
-      "run": "執行測試"
+      "run": "執行測試",
+      "customEndpoint": "自訂端點"
     },
     "view": {
       "customPrompt": "自訂提示詞",
@@ -973,7 +962,12 @@
       "instructionMode": "指令",
       "placeholder": "例如 Jarvis、Nova、Atlas...",
       "save": "儲存",
-      "title": "語音助理"
+      "title": "語音助理",
+      "examples": {
+        "formalEmail": "Hey {{agentName}}，撰寫一封關於預算的正式郵件",
+        "professional": "Hey {{agentName}}，讓這個更專業",
+        "bulletPoints": "Hey {{agentName}}，將這個轉換成要點列表"
+      }
     },
     "aiModels": {
       "customSetup": "自訂設定",
@@ -1401,6 +1395,10 @@
           "name": "整理筆記",
           "description": "修正文法、結構和格式"
         }
+      },
+      "errors": {
+        "noModel": "未選擇 AI 模型。請在設定中進行配置。",
+        "actionFailed": "操作失敗"
       }
     },
     "empty": {
@@ -1417,9 +1415,7 @@
       "addExisting": "新增現有筆記",
       "addCount": "新增 {{count}} 則筆記",
       "noResults": "沒有符合的筆記",
-      "noNotesAvailable": "沒有其他可用的筆記",
-      "today": "今天",
-      "yesterday": "昨天"
+      "noNotesAvailable": "沒有其他可用的筆記"
     },
     "onboarding": {
       "llm": {

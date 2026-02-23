@@ -66,7 +66,6 @@ interface ReasoningModelSelectorProps {
   setGroqApiKey: (key: string) => void;
   customReasoningApiKey?: string;
   setCustomReasoningApiKey?: (key: string) => void;
-  showAlertDialog: (dialog: { title: string; description: string }) => void;
 }
 
 export default function ReasoningModelSelector({
@@ -524,7 +523,6 @@ export default function ReasoningModelSelector({
             <div className="p-3">
               {selectedCloudProvider === "custom" ? (
                 <>
-                  {/* 1. Endpoint URL - TOP */}
                   <div className="space-y-2">
                     <h4 className="font-medium text-foreground">
                       {t("reasoning.custom.endpointTitle")}
@@ -545,7 +543,6 @@ export default function ReasoningModelSelector({
                     </p>
                   </div>
 
-                  {/* 2. API Key - SECOND */}
                   <div className="space-y-2 pt-3">
                     <h4 className="font-medium text-foreground">
                       {t("reasoning.custom.apiKeyOptional")}
@@ -558,7 +555,6 @@ export default function ReasoningModelSelector({
                     />
                   </div>
 
-                  {/* 3. Model Selection - THIRD */}
                   <div className="space-y-2 pt-3">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium text-foreground">
@@ -635,7 +631,6 @@ export default function ReasoningModelSelector({
                 </>
               ) : (
                 <>
-                  {/* 1. API Key - TOP */}
                   {selectedCloudProvider === "openai" && (
                     <div className="space-y-2">
                       <div className="flex items-baseline justify-between">
@@ -734,7 +729,6 @@ export default function ReasoningModelSelector({
                     </div>
                   )}
 
-                  {/* 2. Model Selection - BOTTOM */}
                   <div className="pt-3 space-y-2">
                     <h4 className="text-sm font-medium text-foreground">
                       {t("reasoning.selectModel")}

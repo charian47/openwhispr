@@ -6,19 +6,7 @@
       "uiLabel": "界面语言",
       "uiDescription": "选择 OpenWhispr 界面使用的语言",
       "transcriptionLabel": "转录语言",
-      "transcriptionDescription": "选择你说话的语言，以提高转录准确率",
-      "uiOption": {
-        "en": "English",
-        "es": "Espanol",
-        "fr": "Francais",
-        "de": "Deutsch",
-        "pt": "Portugues",
-        "it": "Italiano",
-        "zh-CN": "简体中文",
-        "zh-TW": "繁體中文",
-        "ru": "Русский",
-        "ja": "日本語"
-      }
+      "transcriptionDescription": "选择你说话的语言，以提高转录准确率"
     }
   },
   "tray": {
@@ -758,7 +746,8 @@
       "processing": "处理中...",
       "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "服务商",
-      "run": "运行测试"
+      "run": "运行测试",
+      "customEndpoint": "自定义端点"
     },
     "view": {
       "customPrompt": "自定义提示词",
@@ -973,7 +962,12 @@
       "instructionMode": "指令",
       "placeholder": "例如 Jarvis、Nova、Atlas...",
       "save": "保存",
-      "title": "语音助手"
+      "title": "语音助手",
+      "examples": {
+        "formalEmail": "Hey {{agentName}}，写一封关于预算的正式邮件",
+        "professional": "Hey {{agentName}}，让这个更专业",
+        "bulletPoints": "Hey {{agentName}}，把这个转换成要点列表"
+      }
     },
     "aiModels": {
       "customSetup": "自定义设置",
@@ -1401,6 +1395,10 @@
           "name": "整理笔记",
           "description": "修正语法、结构和格式"
         }
+      },
+      "errors": {
+        "noModel": "未选择 AI 模型。请在设置中配置。",
+        "actionFailed": "操作失败"
       }
     },
     "empty": {
@@ -1417,9 +1415,7 @@
       "addExisting": "添加已有笔记",
       "addCount": "添加 {{count}} 条笔记",
       "noResults": "没有匹配的笔记",
-      "noNotesAvailable": "没有其他可用笔记",
-      "today": "今天",
-      "yesterday": "昨天"
+      "noNotesAvailable": "没有其他可用笔记"
     },
     "onboarding": {
       "llm": {

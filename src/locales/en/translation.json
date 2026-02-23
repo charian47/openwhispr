@@ -6,19 +6,7 @@
       "uiLabel": "Interface language",
       "uiDescription": "Choose the language used throughout OpenWhispr's interface",
       "transcriptionLabel": "Transcription language",
-      "transcriptionDescription": "Choose the language you speak for more accurate transcription",
-      "uiOption": {
-        "en": "English",
-        "es": "Espanol",
-        "fr": "Francais",
-        "de": "Deutsch",
-        "pt": "Portugues",
-        "it": "Italiano",
-        "zh-CN": "简体中文",
-        "zh-TW": "繁體中文",
-        "ru": "Русский",
-        "ja": "日本語"
-      }
+      "transcriptionDescription": "Choose the language you speak for more accurate transcription"
     }
   },
   "tray": {
@@ -758,7 +746,8 @@
       "processing": "Processing...",
       "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "Provider",
-      "run": "Run Test"
+      "run": "Run Test",
+      "customEndpoint": "Custom endpoint"
     },
     "view": {
       "customPrompt": "Custom prompt",
@@ -973,7 +962,12 @@
       "instructionMode": "Instruction",
       "placeholder": "e.g. Jarvis, Nova, Atlas...",
       "save": "Save",
-      "title": "Voice Agent"
+      "title": "Voice Agent",
+      "examples": {
+        "formalEmail": "Hey {{agentName}}, write a formal email about the budget",
+        "professional": "Hey {{agentName}}, make this more professional",
+        "bulletPoints": "Hey {{agentName}}, convert this to bullet points"
+      }
     },
     "aiModels": {
       "customSetup": "Custom Setup",
@@ -1422,9 +1416,7 @@
       "addExisting": "Add existing",
       "addCount": "Add {{count}} notes",
       "noResults": "No matching notes",
-      "noNotesAvailable": "No other notes available",
-      "today": "Today",
-      "yesterday": "Yesterday"
+      "noNotesAvailable": "No other notes available"
     },
     "context": {
       "moveToFolder": "Move to folder",
@@ -1455,6 +1447,10 @@
           "name": "Clean Up Notes",
           "description": "Fix grammar, structure, and formatting"
         }
+      },
+      "errors": {
+        "noModel": "No AI model selected. Configure one in Settings.",
+        "actionFailed": "Action failed"
       }
     },
     "onboarding": {

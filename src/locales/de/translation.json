@@ -6,19 +6,7 @@
       "uiLabel": "Sprache der Oberfläche",
       "uiDescription": "Wählen Sie die Sprache für die OpenWhispr-Oberfläche",
       "transcriptionLabel": "Transkriptionssprache",
-      "transcriptionDescription": "Wählen Sie die Sprache, die Sie sprechen, für genauere Transkription",
-      "uiOption": {
-        "en": "English",
-        "es": "Espanol",
-        "fr": "Francais",
-        "de": "Deutsch",
-        "pt": "Portugues",
-        "it": "Italiano",
-        "zh-CN": "简体中文",
-        "zh-TW": "繁體中文",
-        "ru": "Русский",
-        "ja": "日本語"
-      }
+      "transcriptionDescription": "Wählen Sie die Sprache, die Sie sprechen, für genauere Transkription"
     }
   },
   "tray": {
@@ -346,7 +334,7 @@
         "rateLimited": "Download-Server begrenzt Anfragen. Bitte warten Sie einige Minuten und versuchen Sie es erneut.",
         "server": "Serverfehler ({{error}}). Bitte versuchen Sie es später erneut.",
         "generic": "Download fehlgeschlagen: {{error}}",
-        "extractionFailed": "Modell heruntergeladen, aber Installation fehlgeschlagen. Klicken Sie auf \u201EHerunterladen\u201C, um die Installation ohne erneuten Download zu wiederholen.",
+        "extractionFailed": "Modell heruntergeladen, aber Installation fehlgeschlagen. Klicken Sie auf „Herunterladen“, um die Installation ohne erneuten Download zu wiederholen.",
         "unknown": "Unbekannter Fehler"
       },
       "downloadFailed": {
@@ -758,7 +746,8 @@
       "processing": "Verarbeitung...",
       "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "Anbieter",
-      "run": "Test ausführen"
+      "run": "Test ausführen",
+      "customEndpoint": "Benutzerdefinierter Endpoint"
     },
     "view": {
       "customPrompt": "Benutzerdefinierter Prompt",
@@ -973,7 +962,12 @@
       "instructionMode": "Anweisung",
       "placeholder": "z. B. Jarvis, Nova, Atlas...",
       "save": "Speichern",
-      "title": "Sprachagent"
+      "title": "Sprachagent",
+      "examples": {
+        "formalEmail": "Hey {{agentName}}, schreibe eine formelle E-Mail zum Thema Budget",
+        "professional": "Hey {{agentName}}, mach das professioneller",
+        "bulletPoints": "Hey {{agentName}}, wandle das in Stichpunkte um"
+      }
     },
     "aiModels": {
       "customSetup": "Benutzerdefinierte Einrichtung",
@@ -1401,6 +1395,10 @@
           "name": "Notizen bereinigen",
           "description": "Grammatik, Struktur und Formatierung verbessern"
         }
+      },
+      "errors": {
+        "noModel": "Kein KI-Modell ausgewählt. Konfigurieren Sie eins in den Einstellungen.",
+        "actionFailed": "Aktion fehlgeschlagen"
       }
     },
     "empty": {
@@ -1417,9 +1415,7 @@
       "addExisting": "Vorhandene hinzufügen",
       "addCount": "{{count}} Notizen hinzufügen",
       "noResults": "Keine passenden Notizen",
-      "noNotesAvailable": "Keine weiteren Notizen verfügbar",
-      "today": "Heute",
-      "yesterday": "Gestern"
+      "noNotesAvailable": "Keine weiteren Notizen verfügbar"
     },
     "onboarding": {
       "llm": {

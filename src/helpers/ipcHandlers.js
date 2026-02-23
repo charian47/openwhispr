@@ -124,7 +124,6 @@ class IPCHandlers {
   }
 
   setupHandlers() {
-    // Window control handlers
     ipcMain.handle("window-minimize", () => {
       if (this.windowManager.controlPanelWindow) {
         this.windowManager.controlPanelWindow.minimize();
@@ -187,7 +186,6 @@ class IPCHandlers {
       return this.windowManager.resizeMainWindow(sizeKey);
     });
 
-    // Environment handlers
     ipcMain.handle("get-openai-key", async (event) => {
       return this.environmentManager.getOpenAIKey();
     });
@@ -236,7 +234,6 @@ class IPCHandlers {
       return result;
     });
 
-    // Dictionary handlers
     ipcMain.handle("db-get-dictionary", async () => {
       return this.databaseManager.getDictionary();
     });
@@ -248,7 +245,6 @@ class IPCHandlers {
       return this.databaseManager.setDictionary(words);
     });
 
-    // Note handlers
     ipcMain.handle(
       "db-save-note",
       async (event, title, content, noteType, sourceFile, audioDuration, folderId) => {
@@ -297,7 +293,6 @@ class IPCHandlers {
       return result;
     });
 
-    // Folder handlers
     ipcMain.handle("db-get-folders", async () => {
       return this.databaseManager.getFolders();
     });
@@ -336,7 +331,6 @@ class IPCHandlers {
       return this.databaseManager.getFolderNoteCounts();
     });
 
-    // Action handlers
     ipcMain.handle("db-get-actions", async () => {
       return this.databaseManager.getActions();
     });
@@ -446,7 +440,6 @@ class IPCHandlers {
       }
     });
 
-    // Clipboard handlers
     ipcMain.handle("paste-text", async (event, text, options) => {
       // If the floating dictation panel currently has focus, blur it first so the
       // paste keystroke lands in the user's target app instead of the overlay.
@@ -470,7 +463,6 @@ class IPCHandlers {
       return this.clipboardManager.checkPasteTools();
     });
 
-    // Whisper handlers
     ipcMain.handle("transcribe-local-whisper", async (event, audioBlob, options = {}) => {
       debugLogger.log("transcribe-local-whisper called", {
         audioBlobType: typeof audioBlob,
@@ -602,7 +594,6 @@ class IPCHandlers {
       return this.whisperManager.cancelDownload();
     });
 
-    // Whisper server handlers (for faster repeated transcriptions)
     ipcMain.handle("whisper-server-start", async (event, modelName) => {
       return this.whisperManager.startServer(modelName);
     });
@@ -619,7 +610,6 @@ class IPCHandlers {
       return this.whisperManager.checkFFmpegAvailability();
     });
 
-    // Parakeet (NVIDIA) handlers
     ipcMain.handle("transcribe-local-parakeet", async (event, audioBlob, options = {}) => {
       debugLogger.log("transcribe-local-parakeet called", {
         audioBlobType: typeof audioBlob,
@@ -722,7 +712,6 @@ class IPCHandlers {
       return this.parakeetManager.getDiagnostics();
     });
 
-    // Parakeet server handlers (for faster repeated transcriptions)
     ipcMain.handle("parakeet-server-start", async (event, modelName) => {
       const result = await this.parakeetManager.startServer(modelName);
       process.env.LOCAL_TRANSCRIPTION_PROVIDER = "nvidia";
@@ -743,7 +732,6 @@ class IPCHandlers {
       return this.parakeetManager.getServerStatus();
     });
 
-    // Utility handlers
     ipcMain.handle("cleanup-app", async (event) => {
       AppUtils.cleanup(this.windowManager.mainWindow);
       return { success: true, message: "Cleanup completed successfully" };
@@ -857,7 +845,6 @@ class IPCHandlers {
       return await this.windowManager.stopWindowDrag();
     });
 
-    // External link handler
     ipcMain.handle("open-external", async (event, url) => {
       try {
         await shell.openExternal(url);
@@ -867,7 +854,6 @@ class IPCHandlers {
       }
     });
 
-    // Auto-start handlers
     ipcMain.handle("get-auto-start-enabled", async () => {
       try {
         const loginSettings = app.getLoginItemSettings();
@@ -892,7 +878,6 @@ class IPCHandlers {
       }
     });
 
-    // Model management handlers
     ipcMain.handle("model-get-all", async () => {
       try {
         debugLogger.debug("model-get-all called", undefined, "ipc");
@@ -1024,7 +1009,6 @@ class IPCHandlers {
       return this.environmentManager.saveMistralKey(key);
     });
 
-    // Proxy Mistral transcription through main process to avoid CORS
     ipcMain.handle(
       "proxy-mistral-transcription",
       async (event, { audioBuffer, model, language, contextBias }) => {
@@ -1079,7 +1063,6 @@ class IPCHandlers {
       return this.environmentManager.saveCustomReasoningKey(key);
     });
 
-    // Dictation key handlers for reliable persistence across restarts
     ipcMain.handle("get-dictation-key", async () => {
       return this.environmentManager.getDictationKey();
     });
@@ -1153,7 +1136,6 @@ class IPCHandlers {
       this._syncStartupEnv(setVars, clearVars);
     });
 
-    // Local reasoning handler
     ipcMain.handle("process-local-reasoning", async (event, text, modelId, _agentName, config) => {
       try {
         const LocalReasoningService = require("../services/localReasoningBridge").default;
@@ -1164,7 +1146,6 @@ class IPCHandlers {
       }
     });
 
-    // Anthropic reasoning handler
     ipcMain.handle(
       "process-anthropic-reasoning",
       async (event, text, modelId, _agentName, config) => {
@@ -1224,7 +1205,6 @@ class IPCHandlers {
       }
     );
 
-    // Check if local reasoning is available
     ipcMain.handle("check-local-reasoning-available", async () => {
       try {
         const LocalReasoningService = require("../services/localReasoningBridge").default;
@@ -1234,7 +1214,6 @@ class IPCHandlers {
       }
     });
 
-    // llama.cpp installation handlers
     ipcMain.handle("llama-cpp-check", async () => {
       try {
         const llamaCppInstaller = require("./llamaCppInstaller").default;
@@ -1266,7 +1245,6 @@ class IPCHandlers {
       }
     });
 
-    // llama-server management handlers
     ipcMain.handle("llama-server-start", async (event, modelId) => {
       try {
         const modelManager = require("./modelManagerBridge").default;
@@ -1388,8 +1366,6 @@ class IPCHandlers {
         return { success: false, error: error.message };
       }
     });
-
-    // --- OpenWhispr Cloud API handlers ---
 
     // In production, VITE_* env vars aren't available in the main process because
     // Vite only inlines them into the renderer bundle at build time. Load the
@@ -1759,7 +1735,6 @@ class IPCHandlers {
       }
     );
 
-    // Referral stats handler
     ipcMain.handle("get-referral-stats", async (event) => {
       try {
         const apiUrl = getApiUrl();
@@ -1775,7 +1750,6 @@ class IPCHandlers {
         const response = await fetch(`${apiUrl}/api/referrals/stats`, {
           headers: {
             Cookie: cookieHeader,
-            "Content-Type": "application/json",
           },
         });
 
@@ -1815,12 +1789,16 @@ class IPCHandlers {
           body: JSON.stringify({ email }),
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-          throw new Error(data.error || `Failed to send invite: ${response.status}`);
+          let errorMessage = `Failed to send invite: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            if (errorData.error) errorMessage = errorData.error;
+          } catch (_) {}
+          throw new Error(errorMessage);
         }
 
+        const data = await response.json();
         return data;
       } catch (error) {
         debugLogger.error("Error sending referral invite:", error);
@@ -1843,7 +1821,6 @@ class IPCHandlers {
         const response = await fetch(`${apiUrl}/api/referrals/invites`, {
           headers: {
             Cookie: cookieHeader,
-            "Content-Type": "application/json",
           },
         });
 
@@ -1873,7 +1850,6 @@ class IPCHandlers {
       }
     });
 
-    // Debug logging handlers
     ipcMain.handle("get-debug-state", async () => {
       try {
         return {
@@ -1955,7 +1931,6 @@ class IPCHandlers {
       }
     });
 
-    // Update handlers
     ipcMain.handle("check-for-updates", async () => {
       return this.updateManager.checkForUpdates();
     });
@@ -1980,9 +1955,6 @@ class IPCHandlers {
       return this.updateManager.getUpdateInfo();
     });
 
-    // --- Assembly AI Streaming handlers ---
-
-    // Helper to fetch streaming token
     const fetchStreamingToken = async (event) => {
       const apiUrl = getApiUrl();
       if (!apiUrl) {
@@ -2182,8 +2154,6 @@ class IPCHandlers {
       }
       return this.assemblyAiStreaming.getStatus();
     });
-
-    // --- Deepgram Streaming handlers ---
 
     let deepgramTokenWindowId = null;
 

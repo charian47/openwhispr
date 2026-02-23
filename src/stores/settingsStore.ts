@@ -431,8 +431,6 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
 export const selectIsCloudReasoningMode = (state: SettingsState) =>
   state.isSignedIn && state.cloudReasoningMode === "openwhispr";
 
-export const selectEffectiveReasoningModel = (state: SettingsState) => state.reasoningModel;
-
 export const selectEffectiveReasoningProvider = (state: SettingsState) =>
   selectIsCloudReasoningMode(state) ? "openwhispr" : state.reasoningProvider;
 
@@ -443,7 +441,7 @@ export function getSettings() {
 }
 
 export function getEffectiveReasoningModel() {
-  return selectEffectiveReasoningModel(useSettingsStore.getState());
+  return useSettingsStore.getState().reasoningModel;
 }
 
 export function isCloudReasoningMode() {
@@ -507,8 +505,12 @@ export async function initializeSettings(): Promise<void> {
       if (envKey && envKey !== state.dictationKey) {
         createStringSetter("dictationKey")(envKey);
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      logger.warn(
+        "Failed to sync dictation key on startup",
+        { error: (err as Error).message },
+        "settings"
+      );
     }
 
     // Sync activation mode from main process
@@ -518,8 +520,12 @@ export async function initializeSettings(): Promise<void> {
         if (isBrowser) localStorage.setItem("activationMode", envMode);
         useSettingsStore.setState({ activationMode: envMode });
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      logger.warn(
+        "Failed to sync activation mode on startup",
+        { error: (err as Error).message },
+        "settings"
+      );
     }
 
     // Sync UI language from main process
@@ -540,8 +546,6 @@ export async function initializeSettings(): Promise<void> {
       void i18n.changeLanguage(normalizeUiLanguage(state.uiLanguage));
     }
 
-    // Migrate preferred language
-    migratePreferredLanguage();
     const migratedLang = isBrowser ? localStorage.getItem("preferredLanguage") : null;
     if (migratedLang && migratedLang !== state.preferredLanguage) {
       useSettingsStore.setState({ preferredLanguage: migratedLang });

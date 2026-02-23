@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, X, KeyRound } from "lucide-react";
 import { Input } from "./input";
+import logger from "../../utils/logger";
 
 interface ApiKeyInputProps {
   apiKey: string;
@@ -56,8 +57,8 @@ export default function ApiKeyInput({
   const save = () => {
     try {
       setApiKey(draft.trim());
-    } catch {
-      // Store setter may throw (e.g. cache invalidation in renderer)
+    } catch (err) {
+      logger.warn("Failed to save API key", { error: (err as Error).message }, "settings");
     }
     setIsEditing(false);
   };

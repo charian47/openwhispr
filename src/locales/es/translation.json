@@ -6,19 +6,7 @@
       "uiLabel": "Idioma de la interfaz",
       "uiDescription": "Elige el idioma usado en la interfaz de OpenWhispr",
       "transcriptionLabel": "Idioma de transcripción",
-      "transcriptionDescription": "Elige el idioma que hablas para mejorar la precisión",
-      "uiOption": {
-        "en": "English",
-        "es": "Español",
-        "fr": "Français",
-        "de": "Deutsch",
-        "pt": "Português",
-        "it": "Italiano",
-        "zh-CN": "简体中文",
-        "zh-TW": "繁體中文",
-        "ru": "Русский",
-        "ja": "日本語"
-      }
+      "transcriptionDescription": "Elige el idioma que hablas para mejorar la precisión"
     }
   },
   "tray": {
@@ -758,7 +746,8 @@
       "processing": "Procesando...",
       "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "Proveedor",
-      "run": "Ejecutar prueba"
+      "run": "Ejecutar prueba",
+      "customEndpoint": "Endpoint personalizado"
     },
     "view": {
       "customPrompt": "Prompt personalizado",
@@ -977,7 +966,12 @@
       "instructionMode": "Instrucción",
       "placeholder": "p. ej. Jarvis, Nova, Atlas...",
       "save": "Guardar",
-      "title": "Agente de voz"
+      "title": "Agente de voz",
+      "examples": {
+        "formalEmail": "Hey {{agentName}}, escribe un correo formal sobre el presupuesto",
+        "professional": "Hey {{agentName}}, hazlo más profesional",
+        "bulletPoints": "Hey {{agentName}}, convierte esto en viñetas"
+      }
     },
     "aiModels": {
       "customSetup": "Configuración personalizada",
@@ -1405,6 +1399,10 @@
           "name": "Limpiar notas",
           "description": "Corregir gramática, estructura y formato"
         }
+      },
+      "errors": {
+        "noModel": "No hay modelo de IA seleccionado. Configura uno en Ajustes.",
+        "actionFailed": "La acción falló"
       }
     },
     "empty": {
@@ -1421,9 +1419,7 @@
       "addExisting": "Añadir existentes",
       "addCount": "Añadir {{count}} notas",
       "noResults": "No hay notas coincidentes",
-      "noNotesAvailable": "No hay otras notas disponibles",
-      "today": "Hoy",
-      "yesterday": "Ayer"
+      "noNotesAvailable": "No hay otras notas disponibles"
     },
     "onboarding": {
       "llm": {

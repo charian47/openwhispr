@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { MEETINGS_FOLDER_NAME } from "../components/notes/shared";
 
 interface DragState {
   draggingNoteId: number | null;
@@ -40,12 +41,12 @@ export function useNoteDragAndDrop({ onMoveToFolder, currentFolderId }: UseNoteD
         ghost.style.cssText = `
           position: fixed; top: -200px; left: -200px;
           padding: 4px 12px;
-          background: oklch(0.27 0.008 260 / 0.95);
-          color: oklch(0.9 0 0);
+          background: color-mix(in oklch, var(--color-popover) 95%, transparent);
+          color: var(--color-popover-foreground);
           font-size: 11px;
           font-weight: 500;
           border-radius: 6px;
-          border: 1px solid oklch(0.38 0.008 260);
+          border: 1px solid var(--color-border);
           white-space: nowrap;
           pointer-events: none;
         `;
@@ -70,7 +71,7 @@ export function useNoteDragAndDrop({ onMoveToFolder, currentFolderId }: UseNoteD
 
   const folderDropHandlers = useCallback(
     (folderId: number, folderName: string) => {
-      const isMeetings = folderName === "Meetings";
+      const isMeetings = folderName === MEETINGS_FOLDER_NAME;
       const isSameFolder = folderId === currentFolderId;
       const canDrop = !isMeetings && !isSameFolder;
 

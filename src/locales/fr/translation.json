@@ -6,19 +6,7 @@
       "uiLabel": "Langue de l'interface",
       "uiDescription": "Choisissez la langue utilisée dans l'interface OpenWhispr",
       "transcriptionLabel": "Langue de transcription",
-      "transcriptionDescription": "Choisissez la langue que vous parlez pour une transcription plus précise",
-      "uiOption": {
-        "en": "English",
-        "es": "Espanol",
-        "fr": "Francais",
-        "de": "Deutsch",
-        "pt": "Portugues",
-        "it": "Italiano",
-        "zh-CN": "简体中文",
-        "zh-TW": "繁體中文",
-        "ru": "Русский",
-        "ja": "日本語"
-      }
+      "transcriptionDescription": "Choisissez la langue que vous parlez pour une transcription plus précise"
     }
   },
   "tray": {
@@ -758,7 +746,8 @@
       "processing": "Traitement...",
       "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "Fournisseur",
-      "run": "Lancer le test"
+      "run": "Lancer le test",
+      "customEndpoint": "Endpoint personnalisé"
     },
     "view": {
       "customPrompt": "Prompt personnalisé",
@@ -977,7 +966,12 @@
       "instructionMode": "Instruction",
       "placeholder": "ex. Jarvis, Nova, Atlas...",
       "save": "Enregistrer",
-      "title": "Agent vocal"
+      "title": "Agent vocal",
+      "examples": {
+        "formalEmail": "Hey {{agentName}}, rédige un e-mail formel sur le budget",
+        "professional": "Hey {{agentName}}, rends ça plus professionnel",
+        "bulletPoints": "Hey {{agentName}}, convertis ça en liste à puces"
+      }
     },
     "aiModels": {
       "customSetup": "Configuration personnalisée",
@@ -1426,9 +1420,7 @@
       "addExisting": "Ajouter des notes existantes",
       "addCount": "Ajouter {{count}} notes",
       "noResults": "Aucune note correspondante",
-      "noNotesAvailable": "Aucune autre note disponible",
-      "today": "Aujourd'hui",
-      "yesterday": "Hier"
+      "noNotesAvailable": "Aucune autre note disponible"
     },
     "context": {
       "moveToFolder": "Déplacer vers un dossier",
@@ -1459,6 +1451,10 @@
           "name": "Nettoyer les notes",
           "description": "Corriger la grammaire, la structure et la mise en forme"
         }
+      },
+      "errors": {
+        "noModel": "Aucun modèle IA sélectionné. Configurez-en un dans les Paramètres.",
+        "actionFailed": "L'action a échoué"
       }
     },
     "onboarding": {
