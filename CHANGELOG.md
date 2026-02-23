@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-02-23
+
+### Added
+
+- **Notes System**: Full-featured note-taking built into the control panel
+  - Create, edit, and organize notes with a rich Markdown editor
+  - Organize notes into custom folders with a default Personal folder
+  - Upload audio files for transcription directly into notes
+  - Real-time dictation widget for transcribing directly into a note
+  - Drag-and-drop to reorder notes and move between folders
+  - Guided onboarding flow for first-time notes users
+- **AI Actions on Notes**: Apply AI-powered actions to note content
+  - Action picker with customizable processing prompts
+  - Action manager dialog for creating and editing action templates
+  - Processing overlay with live progress feedback
+- **Sidebar Navigation**: Redesigned control panel with persistent sidebar
+  - New `ControlPanelSidebar` replaces the old tab-based layout
+  - Dedicated views for History, Notes, Dictionary, and Settings
+  - Collapsible sidebar for more content space
+- **Referral Program**: Invite friends to earn free Pro months
+  - Referral dashboard with invite tracking and status badges
+  - Email invitation flow
+  - Animated spectrogram share card with unique referral code
+- **New AI Models**: Added Claude 4.6 (Opus), Gemini 3 Flash, and Gemini 3.1 Pro to the model registry
+- **Settings Store**: Migrated settings state management to Zustand store for better performance and shared access across components
+- **Note Store & Action Store**: New Zustand stores for notes and AI action state
+
+### Changed
+
+- **Control Panel Architecture**: Extracted History, Dictionary, and Settings into standalone views, reducing ControlPanel complexity
+- **Settings Refactor**: Extracted bulk of `useSettings` hook logic into `settingsStore.ts` for cleaner separation of concerns
+- **UI Polish**: Updated numerous components with improved dark mode support, consistent spacing, and refined typography
+- **Locale Updates**: Extended all 10 language files with notes, referral, and sidebar translation keys
+
+### Fixed
+
+- **Linux GTK Crash**: Force GTK3 on Linux startup to avoid GTK symbol crash on systems with GTK4 installed (#291)
+- **CI Pipeline**: Added Windows paste binary and key listener download steps to the build workflow (#298)
+- **Buy Me a Coffee**: Updated funding link username
+
 ## [1.4.11] - 2026-02-13
 
 ### Added
