@@ -1,5 +1,5 @@
 import modelDataRaw from "./modelRegistryData.json";
-import { isCloudReasoningMode } from "../stores/settingsStore";
+import { isCloudReasoningMode, getSettings } from "../stores/settingsStore";
 
 export interface ModelDefinition {
   id: string;
@@ -259,6 +259,7 @@ export function getModelProvider(modelId: string): string {
   const model = getAllReasoningModels().find((m) => m.value === modelId);
 
   if (!model) {
+    if (getSettings().reasoningProvider === "custom") return "custom";
     if (modelId.includes("claude")) return "anthropic";
     if (modelId.includes("gemini") && !modelId.includes("gemma")) return "gemini";
     if ((modelId.includes("gpt-4") || modelId.includes("gpt-5")) && !modelId.includes("gpt-oss"))
