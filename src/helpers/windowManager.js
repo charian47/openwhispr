@@ -42,11 +42,6 @@ class WindowManager {
       ...position,
     });
 
-    // Main window (dictation overlay) should never appear in dock/taskbar
-    // On macOS, users access the app via the menu bar tray icon
-    // On Windows/Linux, the control panel stays in the taskbar when minimized
-    this.mainWindow.setSkipTaskbar(true);
-
     this.setMainWindowInteractivity(false);
     this.registerMainWindowEvents();
 
