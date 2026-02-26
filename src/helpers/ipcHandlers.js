@@ -12,6 +12,9 @@ const DeepgramStreaming = require("./deepgramStreaming");
 
 const MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions";
 
+// Debounce delay: wait for user to stop typing before processing corrections
+const AUTO_LEARN_DEBOUNCE_MS = 1500;
+
 const AUDIO_MIME_TYPES = {
   mp3: "audio/mpeg",
   wav: "audio/wav",
@@ -93,17 +96,119 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.windowsKeyManager = managers.windowsKeyManager;
+    this.textEditMonitor = managers.textEditMonitor;
     this.getTrayManager = managers.getTrayManager;
     this.whisperCudaManager = managers.whisperCudaManager;
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
     this.deepgramStreaming = null;
+    this._autoLearnEnabled = true; // Default on, synced from renderer
+    this._autoLearnDebounceTimer = null;
+    this._autoLearnLatestData = null;
+    this._textEditHandler = null;
+    this._setupTextEditMonitor();
     this.setupHandlers();
 
     if (this.whisperManager?.serverManager) {
       this.whisperManager.serverManager.on("cuda-fallback", () => {
         this.broadcastToWindows("cuda-fallback-notification", {});
       });
+    }
+  }
+
+  _getDictionarySafe() {
+    try {
+      return this.databaseManager.getDictionary();
+    } catch {
+      return [];
+    }
+  }
+
+  _cleanupTextEditMonitor() {
+    if (this._autoLearnDebounceTimer) {
+      clearTimeout(this._autoLearnDebounceTimer);
+      this._autoLearnDebounceTimer = null;
+    }
+    this._autoLearnLatestData = null;
+    if (this.textEditMonitor && this._textEditHandler) {
+      this.textEditMonitor.removeListener("text-edited", this._textEditHandler);
+      this._textEditHandler = null;
+    }
+  }
+
+  _setupTextEditMonitor() {
+    if (!this.textEditMonitor) return;
+
+    this._textEditHandler = (data) => {
+      if (
+        !data ||
+        typeof data.originalText !== "string" ||
+        typeof data.newFieldValue !== "string"
+      ) {
+        debugLogger.debug("[AutoLearn] Invalid event payload, skipping");
+        return;
+      }
+
+      const { originalText, newFieldValue } = data;
+
+      debugLogger.debug("[AutoLearn] text-edited event", {
+        originalPreview: originalText.substring(0, 80),
+        newValuePreview: newFieldValue.substring(0, 80),
+      });
+
+      this._autoLearnLatestData = { originalText, newFieldValue };
+
+      if (this._autoLearnDebounceTimer) {
+        clearTimeout(this._autoLearnDebounceTimer);
+      }
+
+      this._autoLearnDebounceTimer = setTimeout(() => {
+        this._processCorrections();
+      }, AUTO_LEARN_DEBOUNCE_MS);
+    };
+
+    this.textEditMonitor.on("text-edited", this._textEditHandler);
+  }
+
+  _processCorrections() {
+    this._autoLearnDebounceTimer = null;
+    if (!this._autoLearnLatestData) return;
+    if (!this._autoLearnEnabled) {
+      debugLogger.debug("[AutoLearn] Disabled, skipping correction processing");
+      this._autoLearnLatestData = null;
+      return;
+    }
+
+    const { originalText, newFieldValue } = this._autoLearnLatestData;
+    this._autoLearnLatestData = null;
+
+    try {
+      const { extractCorrections } = require("../utils/correctionLearner");
+      const currentDict = this._getDictionarySafe();
+      const corrections = extractCorrections(originalText, newFieldValue, currentDict);
+      debugLogger.debug("[AutoLearn] Corrections result", {
+        corrections,
+        dictSize: currentDict.length,
+      });
+
+      if (corrections.length > 0) {
+        const updatedDict = [...currentDict, ...corrections];
+        const saveResult = this.databaseManager.setDictionary(updatedDict);
+
+        if (saveResult?.success === false) {
+          debugLogger.debug("[AutoLearn] Failed to save dictionary", { error: saveResult.error });
+          return;
+        }
+
+        this.broadcastToWindows("dictionary-updated", updatedDict);
+
+        // Show the overlay so the toast is visible (it may have been hidden after dictation)
+        this.windowManager.showDictationPanel();
+        this.broadcastToWindows("corrections-learned", corrections);
+        debugLogger.debug("[AutoLearn] Saved corrections", { corrections });
+      }
+    } catch (error) {
+      debugLogger.debug("[AutoLearn] Error processing corrections", { error: error.message });
     }
   }
 
@@ -241,6 +346,19 @@ class IPCHandlers {
       return result;
     });
 
+    // Dictionary handlers
+    ipcMain.on("auto-learn-changed", (_event, enabled) => {
+      this._autoLearnEnabled = !!enabled;
+      if (!this._autoLearnEnabled) {
+        if (this._autoLearnDebounceTimer) {
+          clearTimeout(this._autoLearnDebounceTimer);
+          this._autoLearnDebounceTimer = null;
+        }
+        this._autoLearnLatestData = null;
+      }
+      debugLogger.debug("[AutoLearn] Setting changed", { enabled: this._autoLearnEnabled });
+    });
+
     ipcMain.handle("db-get-dictionary", async () => {
       return this.databaseManager.getDictionary();
     });
@@ -250,6 +368,34 @@ class IPCHandlers {
         throw new Error("words must be an array");
       }
       return this.databaseManager.setDictionary(words);
+    });
+
+    ipcMain.handle("undo-learned-corrections", async (_event, words) => {
+      try {
+        if (!Array.isArray(words) || words.length === 0) {
+          return { success: false };
+        }
+        const validWords = words.filter((w) => typeof w === "string" && w.trim().length > 0);
+        if (validWords.length === 0) {
+          return { success: false };
+        }
+        const currentDict = this._getDictionarySafe();
+        const removeSet = new Set(validWords.map((w) => w.toLowerCase()));
+        const updatedDict = currentDict.filter((w) => !removeSet.has(w.toLowerCase()));
+        const saveResult = this.databaseManager.setDictionary(updatedDict);
+        if (saveResult?.success === false) {
+          debugLogger.debug("[AutoLearn] Undo failed to save dictionary", {
+            error: saveResult.error,
+          });
+          return { success: false };
+        }
+        this.broadcastToWindows("dictionary-updated", updatedDict);
+        debugLogger.debug("[AutoLearn] Undo: removed words", { words: validWords });
+        return { success: true };
+      } catch (err) {
+        debugLogger.debug("[AutoLearn] Undo failed", { error: err.message });
+        return { success: false };
+      }
     });
 
     ipcMain.handle(
@@ -463,7 +609,29 @@ class IPCHandlers {
           await new Promise((resolve) => setTimeout(resolve, 80));
         }
       }
-      return this.clipboardManager.pasteText(text, { ...options, webContents: event.sender });
+      const result = await this.clipboardManager.pasteText(text, {
+        ...options,
+        webContents: event.sender,
+      });
+      const targetPid = this.textEditMonitor?.lastTargetPid || null;
+      debugLogger.debug("[AutoLearn] Paste completed", {
+        autoLearnEnabled: this._autoLearnEnabled,
+        hasMonitor: !!this.textEditMonitor,
+        targetPid,
+      });
+      if (this.textEditMonitor && this._autoLearnEnabled) {
+        setTimeout(() => {
+          try {
+            debugLogger.debug("[AutoLearn] Starting monitoring", {
+              textPreview: text.substring(0, 80),
+            });
+            this.textEditMonitor.startMonitoring(text, 30000, { targetPid });
+          } catch (err) {
+            debugLogger.debug("[AutoLearn] Failed to start monitoring", { error: err.message });
+          }
+        }, 500);
+      }
+      return result;
     });
 
     ipcMain.handle("check-accessibility-permission", async () => {
