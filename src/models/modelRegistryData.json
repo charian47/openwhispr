@@ -134,6 +134,12 @@
       "baseUrl": "https://api.groq.com/openai/v1",
       "models": [
         {
+          "id": "whisper-large-v3",
+          "name": "Whisper Large v3",
+          "description": "High accuracy speech recognition",
+          "descriptionKey": "models.descriptions.transcription.groq_whisper_large_v3"
+        },
+        {
           "id": "whisper-large-v3-turbo",
           "name": "Whisper Large v3 Turbo",
           "description": "216x real-time speed",
@@ -282,16 +288,40 @@
           "descriptionKey": "models.descriptions.cloud.groq_llama_3_1_8b_instant"
         },
         {
-          "id": "mixtral-8x7b-32768",
-          "name": "Mixtral 8x7B",
-          "description": "32K context, mixture of experts",
-          "descriptionKey": "models.descriptions.cloud.groq_mixtral_8x7b_32768"
+          "id": "meta-llama/llama-4-maverick-17b-128e-instruct",
+          "name": "Llama 4 Maverick",
+          "description": "17Bx128E multimodal MoE, 128K context",
+          "descriptionKey": "models.descriptions.cloud.groq_llama_4_maverick"
         },
         {
-          "id": "gemma2-9b-it",
-          "name": "Gemma 2 9B",
-          "description": "Google's efficient model",
-          "descriptionKey": "models.descriptions.cloud.groq_gemma2_9b_it"
+          "id": "meta-llama/llama-4-scout-17b-16e-instruct",
+          "name": "Llama 4 Scout",
+          "description": "17Bx16E multimodal MoE, 750 T/sec",
+          "descriptionKey": "models.descriptions.cloud.groq_llama_4_scout"
+        },
+        {
+          "id": "groq/compound",
+          "name": "Compound",
+          "description": "Agentic AI system with built-in tools",
+          "descriptionKey": "models.descriptions.cloud.groq_compound"
+        },
+        {
+          "id": "groq/compound-mini",
+          "name": "Compound Mini",
+          "description": "Lightweight agentic AI system",
+          "descriptionKey": "models.descriptions.cloud.groq_compound_mini"
+        },
+        {
+          "id": "moonshotai/kimi-k2-instruct",
+          "name": "Kimi K2 Instruct",
+          "description": "Moonshot AI's 1T MoE, 32B active",
+          "descriptionKey": "models.descriptions.cloud.groq_kimi_k2_instruct"
+        },
+        {
+          "id": "moonshotai/kimi-k2-instruct-0905",
+          "name": "Kimi K2",
+          "description": "Moonshot AI's flagship MoE model",
+          "descriptionKey": "models.descriptions.cloud.groq_kimi_k2"
         }
       ]
     }

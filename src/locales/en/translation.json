@@ -921,7 +921,11 @@
         "enterprise": {
           "name": "Enterprise",
           "price": "Custom",
-          "features": ["Cloud sync", "Team features (coming soon)", "SSO & compliance"],
+          "features": [
+            "Cloud sync",
+            "Team features (coming soon)",
+            "SSO & compliance"
+          ],
           "cta": "Contact Us"
         },
         "currentPlan": "Current plan"
@@ -1205,6 +1209,7 @@
         "openai_gpt_4o_mini_transcribe": "Fast and accurate transcription",
         "openai_gpt_4o_transcribe": "Most accurate transcription",
         "openai_whisper_1": "Original Whisper model",
+        "groq_whisper_large_v3": "High accuracy speech recognition",
         "groq_whisper_large_v3_turbo": "216x real-time speed",
         "mistral_voxtral_mini_latest": "Fast multilingual transcription"
       },
@@ -1226,8 +1231,12 @@
         "groq_openai_gpt_oss_20b": "Fast open-source model, 1000 T/sec",
         "groq_llama_3_3_70b_versatile": "Meta's versatile model, 280 T/sec",
         "groq_llama_3_1_8b_instant": "Ultra-fast 560 T/sec, 131K context",
-        "groq_mixtral_8x7b_32768": "32K context, mixture of experts",
-        "groq_gemma2_9b_it": "Google's efficient model"
+        "groq_llama_4_maverick": "17Bx128E multimodal MoE, 128K context",
+        "groq_llama_4_scout": "17Bx16E multimodal MoE, 750 T/sec",
+        "groq_compound": "Agentic AI system with built-in tools",
+        "groq_compound_mini": "Lightweight agentic AI system",
+        "groq_kimi_k2_instruct": "Moonshot AI's 1T MoE, 32B active",
+        "groq_kimi_k2": "Moonshot AI's flagship MoE model"
       },
       "local": {
         "qwen_qwen3_8b_q4_k_m": "Latest Qwen3 with thinking mode support",

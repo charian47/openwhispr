@@ -1182,6 +1182,7 @@
         "openai_gpt_4o_transcribe": "Transcrição mais precisa",
         "openai_whisper_1": "Modelo Whisper original",
         "groq_whisper_large_v3_turbo": "Velocidade 216x em tempo real",
+        "groq_whisper_large_v3": "Large v3 model, fast and accurate",
         "mistral_voxtral_mini_latest": "Transcrição multilíngue rápida"
       },
       "cloud": {
@@ -1202,8 +1203,12 @@
         "groq_openai_gpt_oss_20b": "Modelo open source rápido, 1000 T/seg",
         "groq_llama_3_3_70b_versatile": "Modelo versátil da Meta, 280 T/seg",
         "groq_llama_3_1_8b_instant": "Ultrarápido 560 T/seg, contexto de 131K",
-        "groq_mixtral_8x7b_32768": "Contexto de 32K, mistura de especialistas",
-        "groq_gemma2_9b_it": "Modelo eficiente do Google"
+        "groq_llama_4_maverick": "Llama 4 Maverick",
+        "groq_llama_4_scout": "Llama 4 Scout",
+        "groq_compound": "Groq Compound",
+        "groq_compound_mini": "Groq Compound Mini",
+        "groq_kimi_k2_instruct": "Kimi K2 Instruct",
+        "groq_kimi_k2": "Kimi K2"
       },
       "local": {
         "qwen_qwen3_8b_q4_k_m": "Qwen3 mais recente com suporte ao modo de pensamento",
