@@ -1206,7 +1206,7 @@
         "openai_gpt_4o_transcribe": "最高準確度的轉錄",
         "openai_whisper_1": "原始 Whisper 模型",
         "groq_whisper_large_v3_turbo": "216 倍即時速度",
-        "groq_whisper_large_v3": "Large v3 model, fast and accurate",
+        "groq_whisper_large_v3": "Large v3 模型，快速且精準",
         "mistral_voxtral_mini_latest": "快速多語言轉錄"
       },
       "cloud": {
