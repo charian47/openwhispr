@@ -1231,12 +1231,12 @@
         "groq_openai_gpt_oss_20b": "Modèle open source rapide, 1000 T/s",
         "groq_llama_3_3_70b_versatile": "Modèle polyvalent de Meta, 280 T/s",
         "groq_llama_3_1_8b_instant": "Ultra-rapide 560 T/s, contexte 131K",
-        "groq_llama_4_maverick": "MoE multimodal 17Bx128E, contexte 128K",
-        "groq_llama_4_scout": "MoE multimodal 17Bx16E, 750 T/s",
-        "groq_compound": "Système IA agentique avec outils intégrés",
-        "groq_compound_mini": "Système IA agentique léger",
-        "groq_kimi_k2_instruct": "Moonshot AI MoE 1T, 32B actifs",
-        "groq_kimi_k2": "Modèle MoE phare de Moonshot AI"
+        "groq_llama_4_maverick": "Modèle multimodal de Meta, 600 T/s",
+        "groq_llama_4_scout": "Multimodal efficace de Meta, 750 T/s",
+        "groq_compound": "Système compound de Groq, 450 T/s",
+        "groq_compound_mini": "Système compound rapide, 3x latence réduite",
+        "groq_kimi_k2_instruct": "Moonshot AI MoE 1T, 200 T/s",
+        "groq_kimi_k2": "Kimi K2 amélioré, contexte 256K"
       },
       "local": {
         "qwen_qwen3_8b_q4_k_m": "Dernier Qwen3 avec prise en charge du mode réflexion",

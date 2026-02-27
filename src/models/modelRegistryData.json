@@ -290,37 +290,37 @@
         {
           "id": "meta-llama/llama-4-maverick-17b-128e-instruct",
           "name": "Llama 4 Maverick",
-          "description": "17Bx128E multimodal MoE, 128K context",
+          "description": "Meta's multimodal model, 600 T/sec",
           "descriptionKey": "models.descriptions.cloud.groq_llama_4_maverick"
         },
         {
           "id": "meta-llama/llama-4-scout-17b-16e-instruct",
           "name": "Llama 4 Scout",
-          "description": "17Bx16E multimodal MoE, 750 T/sec",
+          "description": "Meta's efficient multimodal, 750 T/sec",
           "descriptionKey": "models.descriptions.cloud.groq_llama_4_scout"
         },
         {
           "id": "groq/compound",
           "name": "Compound",
-          "description": "Agentic AI system with built-in tools",
+          "description": "Groq's compound system, 450 T/sec",
           "descriptionKey": "models.descriptions.cloud.groq_compound"
         },
         {
           "id": "groq/compound-mini",
           "name": "Compound Mini",
-          "description": "Lightweight agentic AI system",
+          "description": "Fast compound system, 3x lower latency",
           "descriptionKey": "models.descriptions.cloud.groq_compound_mini"
         },
         {
           "id": "moonshotai/kimi-k2-instruct",
           "name": "Kimi K2 Instruct",
-          "description": "Moonshot AI's 1T MoE, 32B active",
+          "description": "Moonshot AI's 1T MoE, 200 T/sec",
           "descriptionKey": "models.descriptions.cloud.groq_kimi_k2_instruct"
         },
         {
           "id": "moonshotai/kimi-k2-instruct-0905",
           "name": "Kimi K2",
-          "description": "Moonshot AI's flagship MoE model",
+          "description": "Improved Kimi K2, 256K context",
           "descriptionKey": "models.descriptions.cloud.groq_kimi_k2"
         }
       ]
