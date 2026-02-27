@@ -921,7 +921,11 @@
         "enterprise": {
           "name": "Enterprise",
           "price": "カスタム",
-          "features": ["クラウド同期", "チーム機能（近日公開）", "SSO & コンプライアンス"],
+          "features": [
+            "クラウド同期",
+            "チーム機能（近日公開）",
+            "SSO & コンプライアンス"
+          ],
           "cta": "お問い合わせ"
         },
         "currentPlan": "現在のプラン"
@@ -1206,6 +1210,7 @@
         "openai_gpt_4o_transcribe": "最も正確な文字起こし",
         "openai_whisper_1": "オリジナル Whisper モデル",
         "groq_whisper_large_v3_turbo": "リアルタイムの 216 倍速",
+        "groq_whisper_large_v3": "Large v3 モデル、高速かつ高精度",
         "mistral_voxtral_mini_latest": "高速多言語文字起こし"
       },
       "cloud": {
@@ -1226,8 +1231,10 @@
         "groq_openai_gpt_oss_20b": "高速オープンソースモデル、1000 T/秒",
         "groq_llama_3_3_70b_versatile": "Meta の汎用モデル、280 T/秒",
         "groq_llama_3_1_8b_instant": "超高速 560 T/秒、131K コンテキスト",
-        "groq_mixtral_8x7b_32768": "32K コンテキスト、Mixture of Experts",
-        "groq_gemma2_9b_it": "Google の高効率モデル"
+        "groq_llama_4_scout": "Meta の効率的マルチモーダル、750 T/秒",
+        "groq_compound": "Groq の Compound システム、450 T/秒",
+        "groq_compound_mini": "高速 Compound システム、3x 低レイテンシー",
+        "groq_kimi_k2_0905": "Moonshot AI 1T MoE、256K コンテキスト"
       },
       "local": {
         "qwen_qwen3_8b_q4_k_m": "思考モード対応の最新 Qwen3",

@@ -1210,6 +1210,7 @@
         "openai_gpt_4o_transcribe": "Trascrizione più accurata",
         "openai_whisper_1": "Modello Whisper originale",
         "groq_whisper_large_v3_turbo": "Velocità 216x in tempo reale",
+        "groq_whisper_large_v3": "Modello Large v3, veloce e preciso",
         "mistral_voxtral_mini_latest": "Trascrizione multilingue veloce"
       },
       "cloud": {
@@ -1230,8 +1231,10 @@
         "groq_openai_gpt_oss_20b": "Modello open source veloce, 1000 T/sec",
         "groq_llama_3_3_70b_versatile": "Modello versatile di Meta, 280 T/sec",
         "groq_llama_3_1_8b_instant": "Ultra-veloce 560 T/sec, contesto 131K",
-        "groq_mixtral_8x7b_32768": "Contesto 32K, miscela di esperti",
-        "groq_gemma2_9b_it": "Modello efficiente di Google"
+        "groq_llama_4_scout": "Multimodale efficiente di Meta, 750 T/sec",
+        "groq_compound": "Sistema compound di Groq, 450 T/sec",
+        "groq_compound_mini": "Sistema compound veloce, 3x latenza ridotta",
+        "groq_kimi_k2_0905": "Moonshot AI 1T MoE, contesto 256K"
       },
       "local": {
         "qwen_qwen3_8b_q4_k_m": "Ultimo Qwen3 con supporto alla modalità pensiero",

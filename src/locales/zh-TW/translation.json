@@ -1206,6 +1206,7 @@
         "openai_gpt_4o_transcribe": "最高準確度的轉錄",
         "openai_whisper_1": "原始 Whisper 模型",
         "groq_whisper_large_v3_turbo": "216 倍即時速度",
+        "groq_whisper_large_v3": "Large v3 模型，快速且精準",
         "mistral_voxtral_mini_latest": "快速多語言轉錄"
       },
       "cloud": {
@@ -1226,8 +1227,10 @@
         "groq_openai_gpt_oss_20b": "快速開源模型，1000 T/sec",
         "groq_llama_3_3_70b_versatile": "Meta 多功能模型，280 T/sec",
         "groq_llama_3_1_8b_instant": "超快速 560 T/sec，131K 上下文",
-        "groq_mixtral_8x7b_32768": "32K 上下文，混合專家架構",
-        "groq_gemma2_9b_it": "Google 高效模型"
+        "groq_llama_4_scout": "Meta 高效多模態，750 T/sec",
+        "groq_compound": "Groq Compound 系統，450 T/sec",
+        "groq_compound_mini": "快速 Compound 系統，3x 更低延遲",
+        "groq_kimi_k2_0905": "Moonshot AI 1T MoE，256K 上下文"
       },
       "local": {
         "qwen_qwen3_8b_q4_k_m": "最新 Qwen3，支援思考模式",

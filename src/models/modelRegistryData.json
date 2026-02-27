@@ -134,6 +134,12 @@
       "baseUrl": "https://api.groq.com/openai/v1",
       "models": [
         {
+          "id": "whisper-large-v3",
+          "name": "Whisper Large v3",
+          "description": "High accuracy speech recognition",
+          "descriptionKey": "models.descriptions.transcription.groq_whisper_large_v3"
+        },
+        {
           "id": "whisper-large-v3-turbo",
           "name": "Whisper Large v3 Turbo",
           "description": "216x real-time speed",
@@ -282,16 +288,28 @@
           "descriptionKey": "models.descriptions.cloud.groq_llama_3_1_8b_instant"
         },
         {
-          "id": "mixtral-8x7b-32768",
-          "name": "Mixtral 8x7B",
-          "description": "32K context, mixture of experts",
-          "descriptionKey": "models.descriptions.cloud.groq_mixtral_8x7b_32768"
+          "id": "meta-llama/llama-4-scout-17b-16e-instruct",
+          "name": "Llama 4 Scout",
+          "description": "Meta's efficient multimodal, 750 T/sec",
+          "descriptionKey": "models.descriptions.cloud.groq_llama_4_scout"
         },
         {
-          "id": "gemma2-9b-it",
-          "name": "Gemma 2 9B",
-          "description": "Google's efficient model",
-          "descriptionKey": "models.descriptions.cloud.groq_gemma2_9b_it"
+          "id": "groq/compound",
+          "name": "Compound",
+          "description": "Groq's compound system, 450 T/sec",
+          "descriptionKey": "models.descriptions.cloud.groq_compound"
+        },
+        {
+          "id": "groq/compound-mini",
+          "name": "Compound Mini",
+          "description": "Fast compound system, 3x lower latency",
+          "descriptionKey": "models.descriptions.cloud.groq_compound_mini"
+        },
+        {
+          "id": "moonshotai/kimi-k2-instruct-0905",
+          "name": "Kimi K2 0905",
+          "description": "Moonshot AI's 1T MoE, 256K context",
+          "descriptionKey": "models.descriptions.cloud.groq_kimi_k2_0905"
         }
       ]
     }
