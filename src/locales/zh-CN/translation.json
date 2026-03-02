@@ -1605,7 +1605,11 @@
       "modelDescription": "用于助手对话的AI模型",
       "systemPrompt": "系统提示词",
       "systemPromptDescription": "助手的自定义指令",
-      "systemPromptPlaceholder": "输入自定义系统提示词..."
+      "systemPromptPlaceholder": "输入自定义系统提示词...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "使用 OpenWhispr 的云端 AI 进行助手对话",
+      "customSetup": "自定义配置 (BYOK)",
+      "customSetupDescription": "使用自己的 API 密钥并选择偏好的模型"
     },
     "chat": {
       "placeholder": "按 {{hotkey}} 开始说话",

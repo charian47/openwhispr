@@ -1993,6 +1993,88 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("cloud-agent-stream", async (event, messages, opts = {}) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        debugLogger.debug(
+          "Cloud agent stream request",
+          { messageCount: messages?.length || 0 },
+          "cloud-api"
+        );
+
+        const response = await fetch(`${apiUrl}/api/agent/stream`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: cookieHeader,
+          },
+          body: JSON.stringify({
+            messages,
+            systemPrompt: opts.systemPrompt,
+            sessionId: this.sessionId,
+            clientType: "desktop",
+            appVersion: app.getVersion(),
+          }),
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          const errorData = await response.json().catch(() => ({}));
+          return {
+            success: false,
+            error: errorData.error || `API error: ${response.status}`,
+          };
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+
+              // Handle Vercel AI SDK data stream format
+              // Text chunks are prefixed with "0:" followed by a JSON string
+              if (trimmed.startsWith("0:")) {
+                try {
+                  const text = JSON.parse(trimmed.slice(2));
+                  if (text) event.sender.send("agent-stream-chunk", text);
+                } catch {
+                  // skip malformed chunks
+                }
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+
+        event.sender.send("agent-stream-done");
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Cloud agent stream error:", error);
+        event.sender.send("agent-stream-done");
+        return { success: false, error: error.message };
+      }
+    });
+
     ipcMain.handle(
       "cloud-streaming-usage",
       async (event, text, audioDurationSeconds, opts = {}) => {

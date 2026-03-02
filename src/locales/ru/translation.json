@@ -1605,7 +1605,11 @@
       "modelDescription": "Модель ИИ для разговоров с агентом",
       "systemPrompt": "Системный промпт",
       "systemPromptDescription": "Пользовательские инструкции для агента",
-      "systemPromptPlaceholder": "Введите пользовательский системный промпт..."
+      "systemPromptPlaceholder": "Введите пользовательский системный промпт...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "Использовать облачный ИИ OpenWhispr для разговоров с агентом",
+      "customSetup": "Своя настройка (BYOK)",
+      "customSetupDescription": "Используйте собственные API-ключи и выберите предпочтительную модель"
     },
     "chat": {
       "placeholder": "Нажмите {{hotkey}} чтобы говорить",

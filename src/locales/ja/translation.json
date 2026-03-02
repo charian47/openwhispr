@@ -1605,7 +1605,11 @@
       "modelDescription": "エージェント会話に使用するAIモデル",
       "systemPrompt": "システムプロンプト",
       "systemPromptDescription": "エージェントへのカスタム指示",
-      "systemPromptPlaceholder": "カスタムシステムプロンプトを入力..."
+      "systemPromptPlaceholder": "カスタムシステムプロンプトを入力...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "OpenWhisprのクラウドAIをエージェント会話に使用する",
+      "customSetup": "カスタム設定 (BYOK)",
+      "customSetupDescription": "自分のAPIキーを使用してお好みのモデルを選択する"
     },
     "chat": {
       "placeholder": "{{hotkey}}を押して話す",

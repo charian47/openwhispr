@@ -135,6 +135,7 @@ export interface SettingsState
   setAgentKey: (key: string) => void;
   setAgentSystemPrompt: (value: string) => void;
   setAgentEnabled: (value: boolean) => void;
+  setCloudAgentMode: (value: string) => void;
 
   updateTranscriptionSettings: (settings: Partial<TranscriptionSettings>) => void;
   updateReasoningSettings: (settings: Partial<ReasoningSettings>) => void;
@@ -253,6 +254,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   agentKey: readString("agentKey", ""),
   agentSystemPrompt: readString("agentSystemPrompt", ""),
   agentEnabled: readBoolean("agentEnabled", true),
+  cloudAgentMode: readString("cloudAgentMode", "openwhispr"),
 
   setUseLocalWhisper: createBooleanSetter("useLocalWhisper"),
   setWhisperModel: createStringSetter("whisperModel"),
@@ -402,6 +404,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
   setAgentSystemPrompt: createStringSetter("agentSystemPrompt"),
   setAgentEnabled: createBooleanSetter("agentEnabled"),
+  setCloudAgentMode: createStringSetter("cloudAgentMode"),
 
   updateTranscriptionSettings: (settings: Partial<TranscriptionSettings>) => {
     const s = useSettingsStore.getState();
@@ -466,6 +469,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     if (settings.agentSystemPrompt !== undefined)
       s.setAgentSystemPrompt(settings.agentSystemPrompt);
     if (settings.agentEnabled !== undefined) s.setAgentEnabled(settings.agentEnabled);
+    if (settings.cloudAgentMode !== undefined) s.setCloudAgentMode(settings.cloudAgentMode);
   },
 }));
 
@@ -476,6 +480,13 @@ export const selectIsCloudReasoningMode = (state: SettingsState) =>
 
 export const selectEffectiveReasoningProvider = (state: SettingsState) =>
   selectIsCloudReasoningMode(state) ? "openwhispr" : state.reasoningProvider;
+
+export const selectIsCloudAgentMode = (state: SettingsState) =>
+  state.isSignedIn && state.cloudAgentMode === "openwhispr";
+
+export function isCloudAgentMode() {
+  return selectIsCloudAgentMode(useSettingsStore.getState());
+}
 
 // --- Convenience getters for non-React code ---
 

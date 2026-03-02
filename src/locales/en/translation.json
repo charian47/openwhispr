@@ -1605,7 +1605,11 @@
       "modelDescription": "AI model used for agent conversations",
       "systemPrompt": "System Prompt",
       "systemPromptDescription": "Custom instructions for the agent",
-      "systemPromptPlaceholder": "Enter custom system prompt..."
+      "systemPromptPlaceholder": "Enter custom system prompt...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "Use OpenWhispr's cloud AI for agent conversations",
+      "customSetup": "Custom Setup (BYOK)",
+      "customSetupDescription": "Use your own API keys and choose your preferred model"
     },
     "chat": {
       "placeholder": "Press {{hotkey}} to speak",

@@ -86,15 +86,21 @@ export default function AgentOverlay() {
     setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "", isStreaming: true }]);
     setAgentState("streaming");
 
+    const isCloudAgent = settings.isSignedIn && settings.cloudAgentMode === "openwhispr";
+
     try {
       let fullContent = "";
 
-      for await (const chunk of ReasoningService.processTextStreaming(
-        llmMessages,
-        settings.agentModel,
-        settings.agentProvider,
-        { systemPrompt }
-      )) {
+      const streamSource = isCloudAgent
+        ? ReasoningService.processTextStreamingCloud(llmMessages, { systemPrompt })
+        : ReasoningService.processTextStreaming(
+            llmMessages,
+            settings.agentModel,
+            settings.agentProvider,
+            { systemPrompt }
+          );
+
+      for await (const chunk of streamSource) {
         fullContent += chunk;
         setMessages((prev) =>
           prev.map((m) => (m.id === assistantId ? { ...m, content: fullContent } : m))

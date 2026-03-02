@@ -1605,7 +1605,11 @@
       "modelDescription": "KI-Modell für Agent-Unterhaltungen",
       "systemPrompt": "System-Prompt",
       "systemPromptDescription": "Benutzerdefinierte Anweisungen für den Agenten",
-      "systemPromptPlaceholder": "Benutzerdefinierten System-Prompt eingeben..."
+      "systemPromptPlaceholder": "Benutzerdefinierten System-Prompt eingeben...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "OpenWhisprs Cloud-KI für Agent-Unterhaltungen verwenden",
+      "customSetup": "Eigene Konfiguration (BYOK)",
+      "customSetupDescription": "Eigene API-Schlüssel verwenden und bevorzugtes Modell auswählen"
     },
     "chat": {
       "placeholder": "Drücke {{hotkey}} zum Sprechen",

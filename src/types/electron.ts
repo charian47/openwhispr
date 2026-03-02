@@ -958,6 +958,14 @@ declare global {
       onAgentStartRecording?: (callback: () => void) => () => void;
       onAgentStopRecording?: (callback: () => void) => () => void;
       onAgentToggleRecording?: (callback: () => void) => () => void;
+
+      // Agent cloud streaming
+      cloudAgentStream?: (
+        messages: Array<{ role: string; content: string }>,
+        opts?: { systemPrompt?: string }
+      ) => Promise<{ success: boolean; error?: string; code?: string }>;
+      onAgentStreamChunk?: (callback: (chunk: string) => void) => () => void;
+      onAgentStreamDone?: (callback: () => void) => () => void;
     };
 
     api?: {

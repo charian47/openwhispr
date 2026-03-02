@@ -1184,6 +1184,46 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
+  async *processTextStreamingCloud(
+    messages: Array<{ role: string; content: string }>,
+    config: { systemPrompt: string }
+  ): AsyncGenerator<string, void, unknown> {
+    const chunks: string[] = [];
+    let done = false;
+    let waiting: (() => void) | null = null;
+
+    const unsubChunk = window.electronAPI?.onAgentStreamChunk?.((chunk: string) => {
+      chunks.push(chunk);
+      waiting?.();
+    });
+    const unsubDone = window.electronAPI?.onAgentStreamDone?.(() => {
+      done = true;
+      waiting?.();
+    });
+
+    try {
+      const result = await window.electronAPI?.cloudAgentStream?.(messages, {
+        systemPrompt: config.systemPrompt,
+      });
+
+      if (result && !result.success) {
+        throw new Error(result.error || "Cloud agent streaming failed");
+      }
+
+      while (!done || chunks.length > 0) {
+        if (chunks.length > 0) {
+          yield chunks.shift()!;
+        } else if (!done) {
+          await new Promise<void>((r) => { waiting = r; });
+          waiting = null;
+        }
+      }
+    } finally {
+      unsubChunk?.();
+      unsubDone?.();
+    }
+  }
+
   async isAvailable(): Promise<boolean> {
     try {
       if (isCloudReasoningMode()) {

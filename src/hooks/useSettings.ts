@@ -65,6 +65,7 @@ export interface AgentModeSettings {
   agentKey: string;
   agentSystemPrompt: string;
   agentEnabled: boolean;
+  cloudAgentMode: string;
 }
 
 function useSettingsInternal() {

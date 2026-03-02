@@ -1,12 +1,10 @@
 import { useTranslation } from "react-i18next";
+import { Cloud, Key } from "lucide-react";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { HotkeyInput } from "../ui/HotkeyInput";
 import { Toggle } from "../ui/toggle";
 import { SettingsRow, SettingsPanel, SettingsPanelRow, SectionHeader } from "../ui/SettingsSection";
-import { ProviderTabs } from "../ui/ProviderTabs";
-import { REASONING_PROVIDERS } from "../../models/ModelRegistry";
-import { getProviderIcon, isMonochromeProvider } from "../../utils/providerIcons";
-import { cn } from "../lib/utils";
+import ReasoningModelSelector from "../ReasoningModelSelector";
 
 export default function AgentModeSettings() {
   const { t } = useTranslation();
@@ -21,16 +19,25 @@ export default function AgentModeSettings() {
     setAgentProvider,
     agentSystemPrompt,
     setAgentSystemPrompt,
+    cloudAgentMode,
+    setCloudAgentMode,
+    isSignedIn,
+    openaiApiKey,
+    setOpenaiApiKey,
+    anthropicApiKey,
+    setAnthropicApiKey,
+    geminiApiKey,
+    setGeminiApiKey,
+    groqApiKey,
+    setGroqApiKey,
+    customReasoningApiKey,
+    setCustomReasoningApiKey,
+    cloudReasoningBaseUrl,
+    setCloudReasoningBaseUrl,
   } = useSettingsStore();
 
-  const providerTabs = Object.entries(REASONING_PROVIDERS)
-    .filter(([id]) => id !== "local")
-    .map(([id, provider]) => ({
-      id,
-      name: provider.name,
-    }));
-
-  const currentProviderModels = REASONING_PROVIDERS[agentProvider]?.models ?? [];
+  const isCloudMode = isSignedIn && cloudAgentMode === "openwhispr";
+  const isCustomMode = cloudAgentMode === "byok";
 
   return (
     <div className="space-y-6">
@@ -62,67 +69,139 @@ export default function AgentModeSettings() {
             <HotkeyInput value={agentKey} onChange={setAgentKey} />
           </div>
 
-          {/* Agent Model */}
-          <div>
-            <SectionHeader
-              title={t("agentMode.settings.model")}
-              description={t("agentMode.settings.modelDescription")}
-            />
-
-            <div className="space-y-3">
-              <ProviderTabs
-                providers={providerTabs}
-                selectedId={agentProvider}
-                onSelect={(id) => {
-                  setAgentProvider(id);
-                  const models = REASONING_PROVIDERS[id]?.models;
-                  if (models && models.length > 0) {
-                    setAgentModel(models[0].value);
-                  }
-                }}
-                renderIcon={(providerId) => {
-                  const icon = getProviderIcon(providerId);
-                  if (!icon) return null;
-                  return (
-                    <img
-                      src={icon}
-                      alt=""
-                      className={cn(
-                        "w-3.5 h-3.5",
-                        isMonochromeProvider(providerId) && "dark:invert"
-                      )}
+          {/* Cloud / BYOK toggle */}
+          {isSignedIn && (
+            <SettingsPanel>
+              <SettingsPanelRow>
+                <button
+                  onClick={() => {
+                    if (!isCloudMode) setCloudAgentMode("openwhispr");
+                  }}
+                  className="w-full flex items-center gap-3 text-left cursor-pointer group"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                      isCloudMode
+                        ? "bg-primary/10 dark:bg-primary/15"
+                        : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                    }`}
+                  >
+                    <Cloud
+                      className={`w-4 h-4 transition-colors ${
+                        isCloudMode ? "text-primary" : "text-muted-foreground"
+                      }`}
                     />
-                  );
-                }}
-                colorScheme="dynamic"
-                scrollable
-              />
-
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <div className="space-y-1.5">
-                    {currentProviderModels.map((model) => (
-                      <button
-                        key={model.value}
-                        onClick={() => setAgentModel(model.value)}
-                        className={cn(
-                          "w-full text-left px-3 py-2 rounded-md text-xs transition-colors",
-                          agentModel === model.value
-                            ? "bg-primary/10 dark:bg-primary/15 text-primary border border-primary/20"
-                            : "hover:bg-muted/60 dark:hover:bg-surface-raised text-foreground border border-transparent"
-                        )}
-                      >
-                        <span className="font-medium">{model.label}</span>
-                        {model.description && (
-                          <span className="text-muted-foreground ml-1.5">{model.description}</span>
-                        )}
-                      </button>
-                    ))}
                   </div>
-                </SettingsPanelRow>
-              </SettingsPanel>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-foreground">
+                        {t("agentMode.settings.openwhisprCloud")}
+                      </span>
+                      {isCloudMode && (
+                        <span className="text-xs font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
+                          {t("common.active")}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground/80 mt-0.5">
+                      {t("agentMode.settings.openwhisprCloudDescription")}
+                    </p>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                      isCloudMode
+                        ? "border-primary bg-primary"
+                        : "border-border-hover dark:border-border-subtle"
+                    }`}
+                  >
+                    {isCloudMode && (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </SettingsPanelRow>
+              <SettingsPanelRow>
+                <button
+                  onClick={() => {
+                    if (!isCustomMode) setCloudAgentMode("byok");
+                  }}
+                  className="w-full flex items-center gap-3 text-left cursor-pointer group"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                      isCustomMode
+                        ? "bg-accent/10 dark:bg-accent/15"
+                        : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                    }`}
+                  >
+                    <Key
+                      className={`w-4 h-4 transition-colors ${
+                        isCustomMode ? "text-accent" : "text-muted-foreground"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-foreground">
+                        {t("agentMode.settings.customSetup")}
+                      </span>
+                      {isCustomMode && (
+                        <span className="text-xs font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
+                          {t("common.active")}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground/80 mt-0.5">
+                      {t("agentMode.settings.customSetupDescription")}
+                    </p>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                      isCustomMode
+                        ? "border-accent bg-accent"
+                        : "border-border-hover dark:border-border-subtle"
+                    }`}
+                  >
+                    {isCustomMode && (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </SettingsPanelRow>
+            </SettingsPanel>
+          )}
+
+          {/* Model selector — shown when Custom Setup is active or not signed in */}
+          {(isCustomMode || !isSignedIn) && (
+            <div>
+              <SectionHeader
+                title={t("agentMode.settings.model")}
+                description={t("agentMode.settings.modelDescription")}
+              />
+              <ReasoningModelSelector
+                reasoningModel={agentModel}
+                setReasoningModel={setAgentModel}
+                localReasoningProvider={agentProvider}
+                setLocalReasoningProvider={setAgentProvider}
+                cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+                setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+                openaiApiKey={openaiApiKey}
+                setOpenaiApiKey={setOpenaiApiKey}
+                anthropicApiKey={anthropicApiKey}
+                setAnthropicApiKey={setAnthropicApiKey}
+                geminiApiKey={geminiApiKey}
+                setGeminiApiKey={setGeminiApiKey}
+                groqApiKey={groqApiKey}
+                setGroqApiKey={setGroqApiKey}
+                customReasoningApiKey={customReasoningApiKey}
+                setCustomReasoningApiKey={setCustomReasoningApiKey}
+              />
             </div>
-          </div>
+          )}
 
           {/* Custom System Prompt */}
           <div>
