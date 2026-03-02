@@ -362,6 +362,7 @@ declare global {
 
       // Audio file operations
       selectAudioFile: () => Promise<{ canceled: boolean; filePath?: string }>;
+      getFileSize?: (filePath: string) => Promise<number>;
       transcribeAudioFile: (
         filePath: string,
         options?: {
@@ -769,6 +770,10 @@ declare global {
         error?: string;
         code?: string;
       }>;
+
+      onUploadTranscriptionProgress?: (
+        callback: (data: { stage: string; chunksTotal: number; chunksCompleted: number }) => void
+      ) => () => void;
 
       // BYOK audio file transcription
       transcribeAudioFileByok?: (options: {

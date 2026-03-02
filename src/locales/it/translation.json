@@ -1396,7 +1396,10 @@
       "errorOccurred": "Si è verificato un errore",
       "noProviderTitle": "Nessun provider di trascrizione configurato",
       "noProviderDescription": "Aggiungi una chiave API o scarica un modello locale per iniziare a trascrivere.",
-      "noProviderAction": "Apri impostazioni di trascrizione"
+      "noProviderAction": "Apri impostazioni di trascrizione",
+      "fileTooLarge": "Questo file supera il limite di 500 MB.",
+      "largeFileNote": "I file di grandi dimensioni vengono suddivisi e trascritti in parallelo.",
+      "chunkProgress": "Trascrizione parte {{completed}} di {{total}}..."
     },
     "meeting": {
       "title": "Note delle riunioni",

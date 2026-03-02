@@ -1371,7 +1371,10 @@
       "errorOccurred": "エラーが発生しました",
       "noProviderTitle": "文字起こしプロバイダーが設定されていません",
       "noProviderDescription": "API キーを追加するか、ローカルモデルをダウンロードして文字起こしを開始してください。",
-      "noProviderAction": "文字起こし設定を開く"
+      "noProviderAction": "文字起こし設定を開く",
+      "fileTooLarge": "このファイルは 500 MB の制限を超えています。",
+      "largeFileNote": "大容量ファイルは分割され、並列で文字起こしされます。",
+      "chunkProgress": "パート {{completed}} / {{total}} を文字起こし中..."
     },
     "meeting": {
       "title": "議事録",

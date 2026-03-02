@@ -1396,7 +1396,10 @@
       "errorOccurred": "Se produjo un error",
       "noProviderTitle": "No se ha configurado un proveedor de transcripción",
       "noProviderDescription": "Agrega una clave API o descarga un modelo local para comenzar a transcribir.",
-      "noProviderAction": "Abrir configuración de transcripción"
+      "noProviderAction": "Abrir configuración de transcripción",
+      "fileTooLarge": "Este archivo supera el límite de 500 MB.",
+      "largeFileNote": "Los archivos grandes se dividen y transcriben en paralelo.",
+      "chunkProgress": "Transcribiendo parte {{completed}} de {{total}}..."
     },
     "meeting": {
       "title": "Notas de reunión",

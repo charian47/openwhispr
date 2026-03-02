@@ -1392,7 +1392,10 @@
       "errorOccurred": "發生錯誤",
       "noProviderTitle": "尚未設定轉錄服務供應商",
       "noProviderDescription": "新增 API Key 或下載本機模型以開始轉錄。",
-      "noProviderAction": "開啟轉錄設定"
+      "noProviderAction": "開啟轉錄設定",
+      "fileTooLarge": "此檔案超過 500 MB 的大小限制。",
+      "largeFileNote": "大型檔案將被分割並平行轉錄。",
+      "chunkProgress": "正在轉錄第 {{completed}} 部分，共 {{total}} 部分..."
     },
     "meeting": {
       "title": "會議筆記",
