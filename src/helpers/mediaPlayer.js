@@ -9,6 +9,8 @@ class MediaPlayer {
     this._linuxBinaryPath = null;
     this._nircmdChecked = false;
     this._nircmdPath = null;
+    this._pausedPlayers = []; // MPRIS players we paused (Linux)
+    this._didPause = false; // Whether we sent a pause on macOS/Windows
   }
 
   _resolveLinuxFastPaste() {
@@ -60,6 +62,36 @@ class MediaPlayer {
     return null;
   }
 
+  pauseMedia() {
+    try {
+      if (process.platform === "linux") {
+        return this._pauseLinux();
+      } else if (process.platform === "darwin") {
+        return this._pauseMacOS();
+      } else if (process.platform === "win32") {
+        return this._pauseWindows();
+      }
+    } catch (err) {
+      debugLogger.warn("Media pause failed", { error: err.message }, "media");
+    }
+    return false;
+  }
+
+  resumeMedia() {
+    try {
+      if (process.platform === "linux") {
+        return this._resumeLinux();
+      } else if (process.platform === "darwin") {
+        return this._resumeMacOS();
+      } else if (process.platform === "win32") {
+        return this._resumeWindows();
+      }
+    } catch (err) {
+      debugLogger.warn("Media resume failed", { error: err.message }, "media");
+    }
+    return false;
+  }
+
   toggleMedia() {
     try {
       if (process.platform === "linux") {
@@ -75,8 +107,123 @@ class MediaPlayer {
     return false;
   }
 
+  // --- Linux: MPRIS-aware pause/resume ---
+
+  _pauseLinux() {
+    this._pausedPlayers = [];
+    if (this._pauseMpris()) return true;
+
+    // Fallback: playerctl pause (not play-pause)
+    const result = spawnSync("playerctl", ["pause"], {
+      stdio: "pipe",
+      timeout: 3000,
+    });
+    if (result.status === 0) {
+      debugLogger.debug("Media paused via playerctl", {}, "media");
+      this._pausedPlayers = ["playerctl"];
+      return true;
+    }
+
+    return false;
+  }
+
+  _resumeLinux() {
+    if (this._pausedPlayers.length === 0) return false;
+
+    // If we used playerctl fallback
+    if (this._pausedPlayers.length === 1 && this._pausedPlayers[0] === "playerctl") {
+      this._pausedPlayers = [];
+      const result = spawnSync("playerctl", ["play"], {
+        stdio: "pipe",
+        timeout: 3000,
+      });
+      if (result.status === 0) {
+        debugLogger.debug("Media resumed via playerctl", {}, "media");
+        return true;
+      }
+      return false;
+    }
+
+    const resumed = this._resumeMpris();
+    this._pausedPlayers = [];
+    return resumed;
+  }
+
+  _pauseMpris() {
+    const players = this._listMprisPlayers();
+    if (!players || players.length === 0) return false;
+
+    for (const dest of players) {
+      const status = this._getMprisPlaybackStatus(dest);
+      if (status !== "Playing") continue;
+
+      const result = spawnSync("dbus-send", [
+        "--session", "--type=method_call", `--dest=${dest}`,
+        "/org/mpris/MediaPlayer2",
+        "org.mpris.MediaPlayer2.Player.Pause",
+      ], { stdio: "pipe", timeout: 2000 });
+
+      if (result.status === 0) {
+        debugLogger.debug("Media paused via MPRIS", { player: dest }, "media");
+        this._pausedPlayers.push(dest);
+      }
+    }
+    return this._pausedPlayers.length > 0;
+  }
+
+  _resumeMpris() {
+    let resumed = false;
+    for (const dest of this._pausedPlayers) {
+      if (dest === "playerctl") continue;
+      const result = spawnSync("dbus-send", [
+        "--session", "--type=method_call", `--dest=${dest}`,
+        "/org/mpris/MediaPlayer2",
+        "org.mpris.MediaPlayer2.Player.Play",
+      ], { stdio: "pipe", timeout: 2000 });
+
+      if (result.status === 0) {
+        debugLogger.debug("Media resumed via MPRIS", { player: dest }, "media");
+        resumed = true;
+      }
+    }
+    return resumed;
+  }
+
+  _getMprisPlaybackStatus(dest) {
+    const result = spawnSync("dbus-send", [
+      "--session", "--print-reply", `--dest=${dest}`,
+      "/org/mpris/MediaPlayer2",
+      "org.freedesktop.DBus.Properties.Get",
+      "string:org.mpris.MediaPlayer2.Player",
+      "string:PlaybackStatus",
+    ], { stdio: "pipe", timeout: 2000 });
+
+    if (result.status !== 0) return null;
+
+    const output = result.stdout?.toString() || "";
+    const match = output.match(/string "([A-Za-z]+)"/);
+    return match ? match[1] : null;
+  }
+
+  _listMprisPlayers() {
+    const listResult = spawnSync("dbus-send", [
+      "--session", "--dest=org.freedesktop.DBus", "--type=method_call",
+      "--print-reply", "/org/freedesktop/DBus",
+      "org.freedesktop.DBus.ListNames",
+    ], { stdio: "pipe", timeout: 2000 });
+
+    if (listResult.status !== 0) return [];
+
+    const output = listResult.stdout?.toString() || "";
+    const matches = output.match(/string "org\.mpris\.MediaPlayer2\.[A-Za-z0-9_.\-]+"/g);
+    if (!matches || matches.length === 0) return [];
+
+    return matches.map(m => m.replace(/^string "/, "").replace(/"$/, ""));
+  }
+
+  // --- Linux toggle (legacy, used by toggleMedia) ---
+
   _toggleLinux() {
-    // Try MPRIS D-Bus first — works reliably on both X11 and Wayland
     if (this._toggleMpris()) return true;
 
     const binary = this._resolveLinuxFastPaste();
@@ -91,7 +238,6 @@ class MediaPlayer {
       }
     }
 
-    // Fallback to playerctl
     const result = spawnSync("playerctl", ["play-pause"], {
       stdio: "pipe",
       timeout: 3000,
@@ -106,21 +252,11 @@ class MediaPlayer {
   }
 
   _toggleMpris() {
-    const listResult = spawnSync("dbus-send", [
-      "--session", "--dest=org.freedesktop.DBus", "--type=method_call",
-      "--print-reply", "/org/freedesktop/DBus",
-      "org.freedesktop.DBus.ListNames",
-    ], { stdio: "pipe", timeout: 2000 });
-
-    if (listResult.status !== 0) return false;
-
-    const output = listResult.stdout?.toString() || "";
-    const players = output.match(/string "org\.mpris\.MediaPlayer2\.[^"]+"/g);
+    const players = this._listMprisPlayers();
     if (!players || players.length === 0) return false;
 
     let toggled = false;
-    for (const match of players) {
-      const dest = match.replace(/^string "/, "").replace(/"$/, "");
+    for (const dest of players) {
       const result = spawnSync("dbus-send", [
         "--session", "--type=method_call", `--dest=${dest}`,
         "/org/mpris/MediaPlayer2",
@@ -133,6 +269,42 @@ class MediaPlayer {
       }
     }
     return toggled;
+  }
+
+  // --- macOS ---
+
+  _pauseMacOS() {
+    this._didPause = false;
+    const result = spawnSync("osascript", [
+      "-e",
+      'tell application "System Events" to key code 100',
+    ], {
+      stdio: "pipe",
+      timeout: 3000,
+    });
+    if (result.status === 0) {
+      debugLogger.debug("Media paused via osascript", {}, "media");
+      this._didPause = true;
+      return true;
+    }
+    return false;
+  }
+
+  _resumeMacOS() {
+    if (!this._didPause) return false;
+    this._didPause = false;
+    const result = spawnSync("osascript", [
+      "-e",
+      'tell application "System Events" to key code 100',
+    ], {
+      stdio: "pipe",
+      timeout: 3000,
+    });
+    if (result.status === 0) {
+      debugLogger.debug("Media resumed via osascript", {}, "media");
+      return true;
+    }
+    return false;
   }
 
   _toggleMacOS() {
@@ -150,20 +322,18 @@ class MediaPlayer {
     return false;
   }
 
-  _toggleWindows() {
+  // --- Windows ---
+
+  _sendWindowsMediaKey() {
     const nircmd = this._resolveNircmd();
     if (nircmd) {
       const result = spawnSync(nircmd, ["sendkeypress", "0xB3"], {
         stdio: "pipe",
         timeout: 3000,
       });
-      if (result.status === 0) {
-        debugLogger.debug("Media toggled via nircmd", {}, "media");
-        return true;
-      }
+      if (result.status === 0) return true;
     }
 
-    // Fallback to PowerShell using keybd_event for VK_MEDIA_PLAY_PAUSE
     const result = spawnSync("powershell", [
       "-NoProfile", "-NonInteractive", "-Command",
       "Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public class KB { [DllImport(\"user32.dll\")] public static extern void keybd_event(byte bVk, byte bScan, int dwFlags, int dwExtraInfo); }'; [KB]::keybd_event(0xB3, 0, 1, 0); [KB]::keybd_event(0xB3, 0, 3, 0)",
@@ -171,11 +341,34 @@ class MediaPlayer {
       stdio: "pipe",
       timeout: 5000,
     });
-    if (result.status === 0) {
-      debugLogger.debug("Media toggled via PowerShell", {}, "media");
+    return result.status === 0;
+  }
+
+  _pauseWindows() {
+    this._didPause = false;
+    if (this._sendWindowsMediaKey()) {
+      debugLogger.debug("Media paused via Windows media key", {}, "media");
+      this._didPause = true;
       return true;
     }
+    return false;
+  }
 
+  _resumeWindows() {
+    if (!this._didPause) return false;
+    this._didPause = false;
+    if (this._sendWindowsMediaKey()) {
+      debugLogger.debug("Media resumed via Windows media key", {}, "media");
+      return true;
+    }
+    return false;
+  }
+
+  _toggleWindows() {
+    if (this._sendWindowsMediaKey()) {
+      debugLogger.debug("Media toggled via Windows media key", {}, "media");
+      return true;
+    }
     return false;
   }
 }

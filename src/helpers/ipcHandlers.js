@@ -1731,6 +1731,16 @@ class IPCHandlers {
       return mediaPlayer.toggleMedia();
     });
 
+    ipcMain.handle("pause-media-playback", () => {
+      const mediaPlayer = require("./mediaPlayer");
+      return mediaPlayer.pauseMedia();
+    });
+
+    ipcMain.handle("resume-media-playback", () => {
+      const mediaPlayer = require("./mediaPlayer");
+      return mediaPlayer.resumeMedia();
+    });
+
     ipcMain.handle("request-microphone-access", async () => {
       if (process.platform !== "darwin") {
         return { granted: true };
