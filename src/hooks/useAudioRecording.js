@@ -33,6 +33,9 @@ export const useAudioRecording = (toast, options = {}) => {
 
       if (didStart) {
         void playStartCue();
+        if (getSettings().pauseMediaOnDictation) {
+          window.electronAPI?.toggleMediaPlayback?.();
+        }
       }
 
       return didStart;
@@ -112,6 +115,10 @@ export const useAudioRecording = (toast, options = {}) => {
           );
 
           audioManagerRef.current.saveTranscription(result.text);
+
+          if (getSettings().pauseMediaOnDictation) {
+            window.electronAPI?.toggleMediaPlayback?.();
+          }
 
           if (result.source === "openai" && getSettings().useLocalWhisper) {
             toast({
@@ -217,6 +224,9 @@ export const useAudioRecording = (toast, options = {}) => {
   const cancelRecording = async () => {
     if (audioManagerRef.current) {
       const state = audioManagerRef.current.getState();
+      if (getSettings().pauseMediaOnDictation) {
+        window.electronAPI?.toggleMediaPlayback?.();
+      }
       if (state.isStreaming) {
         return await audioManagerRef.current.stopStreamingRecording();
       }

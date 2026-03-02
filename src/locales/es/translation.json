@@ -1078,6 +1078,8 @@
       "soundEffects": {
         "dictationSounds": "Sonidos de dictado",
         "dictationSoundsDescription": "Reproduce un tono al iniciar y detener la grabación",
+        "pauseMedia": "Pausar multimedia",
+        "pauseMediaDescription": "Pausar la música automáticamente al iniciar el dictado",
         "title": "Efectos de sonido"
       },
       "startup": {
