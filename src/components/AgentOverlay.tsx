@@ -28,11 +28,16 @@ export default function AgentOverlay() {
   const containerRef = useRef<HTMLDivElement>(null);
   const audioManagerRef = useRef<InstanceType<typeof AudioManager> | null>(null);
   const messagesRef = useRef<Message[]>([]);
+  const agentStateRef = useRef<AgentState>("idle");
   const conversationIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  useEffect(() => {
+    agentStateRef.current = agentState;
+  }, [agentState]);
 
   const addSystemMessage = useCallback((content: string) => {
     setMessages((prev) => [
@@ -183,9 +188,19 @@ export default function AgentOverlay() {
       audioManagerRef.current?.stopRecording();
     });
 
+    const unsubToggle = window.electronAPI?.onAgentToggleRecording?.(() => {
+      const state = agentStateRef.current;
+      if (state === "listening") {
+        audioManagerRef.current?.stopRecording();
+      } else if (state === "idle") {
+        audioManagerRef.current?.startRecording();
+      }
+    });
+
     return () => {
       unsubStart?.();
       unsubStop?.();
+      unsubToggle?.();
     };
   }, []);
 

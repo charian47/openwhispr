@@ -458,6 +458,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   saveAgentKey: (key) => ipcRenderer.invoke("save-agent-key", key),
   onAgentStartRecording: registerListener("agent-start-recording", (callback) => () => callback()),
   onAgentStopRecording: registerListener("agent-stop-recording", (callback) => () => callback()),
+  onAgentToggleRecording: registerListener("agent-toggle-recording", (callback) => () => callback()),
   toggleAgentOverlay: () => ipcRenderer.invoke("toggle-agent-overlay"),
   hideAgentOverlay: () => ipcRenderer.invoke("hide-agent-overlay"),
   resizeAgentWindow: (width, height) => ipcRenderer.invoke("resize-agent-window", width, height),

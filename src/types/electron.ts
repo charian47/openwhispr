@@ -957,6 +957,7 @@ declare global {
       hideAgentOverlay?: () => Promise<void>;
       onAgentStartRecording?: (callback: () => void) => () => void;
       onAgentStopRecording?: (callback: () => void) => () => void;
+      onAgentToggleRecording?: (callback: () => void) => () => void;
     };
 
     api?: {
