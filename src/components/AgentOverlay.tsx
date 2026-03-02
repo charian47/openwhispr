@@ -131,7 +131,8 @@ export default function AgentOverlay() {
         else if (isProcessing) setAgentState("transcribing");
       },
       onError: (error: { message?: string }) => {
-        addSystemMessage(`Error: ${error.message || String(error)}`);
+        const msg = error?.message || (typeof error === "string" ? error : "Transcription failed");
+        addSystemMessage(`Error: ${msg}`);
         setAgentState("idle");
       },
       onTranscriptionComplete: (result: { text: string }) => {
