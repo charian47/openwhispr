@@ -831,6 +831,10 @@
       "system": {
         "description": "更新、儲存與開發者工具",
         "label": "系統"
+      },
+      "agentMode": {
+        "label": "智慧助手模式",
+        "description": "語音聊天助手"
       }
     },
     "title": "設定"
@@ -941,7 +945,11 @@
         "enterprise": {
           "name": "企業版",
           "price": "自訂",
-          "features": ["雲端同步", "團隊功能（即將推出）", "SSO 與合規"],
+          "features": [
+            "雲端同步",
+            "團隊功能（即將推出）",
+            "SSO 與合規"
+          ],
           "cta": "聯絡我們"
         },
         "currentPlan": "目前方案"
@@ -1583,6 +1591,43 @@
     "oauth": {
       "redirectTitle": "正在跳轉到應用程式...",
       "closeTab": "您可以關閉此分頁。"
+    }
+  },
+  "agentMode": {
+    "settings": {
+      "title": "智慧助手模式",
+      "description": "使用獨立AI模型的語音聊天助手",
+      "enabled": "啟用智慧助手模式",
+      "enabledDescription": "使用獨立熱鍵開啟語音聊天覆蓋層",
+      "hotkey": "助手熱鍵",
+      "hotkeyDescription": "切換助手覆蓋層的熱鍵",
+      "model": "助手模型",
+      "modelDescription": "用於助手對話的AI模型",
+      "systemPrompt": "系統提示詞",
+      "systemPromptDescription": "助手的自訂指令",
+      "systemPromptPlaceholder": "輸入自訂系統提示詞..."
+    },
+    "chat": {
+      "placeholder": "按 {{hotkey}} 開始說話",
+      "thinking": "思考中...",
+      "transcribing": "轉錄中...",
+      "listening": "正在聆聽...",
+      "newConversation": "新建",
+      "copyToClipboard": "複製到剪貼簿",
+      "copied": "已複製！",
+      "emptyState": "按下助手熱鍵開始對話",
+      "errorPrefix": "錯誤"
+    },
+    "titleBar": {
+      "label": "助手",
+      "newChat": "新對話",
+      "close": "關閉"
+    },
+    "input": {
+      "idle": "按住快捷鍵說話",
+      "listening": "正在聆聽...",
+      "transcribing": "正在轉錄...",
+      "thinking": "正在思考..."
     }
   }
 }

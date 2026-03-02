@@ -106,6 +106,7 @@ class IPCHandlers {
     this._autoLearnDebounceTimer = null;
     this._autoLearnLatestData = null;
     this._textEditHandler = null;
+    this._activeRecordingPipeline = null;
     this._setupTextEditMonitor();
     this.setupHandlers();
 
@@ -520,6 +521,35 @@ class IPCHandlers {
         });
       }
       return result;
+    });
+
+    // Agent conversation handlers
+    ipcMain.handle("db-create-agent-conversation", async (event, title) => {
+      return this.databaseManager.createAgentConversation(title);
+    });
+
+    ipcMain.handle("db-get-agent-conversations", async (event, limit) => {
+      return this.databaseManager.getAgentConversations(limit);
+    });
+
+    ipcMain.handle("db-get-agent-conversation", async (event, id) => {
+      return this.databaseManager.getAgentConversation(id);
+    });
+
+    ipcMain.handle("db-delete-agent-conversation", async (event, id) => {
+      return this.databaseManager.deleteAgentConversation(id);
+    });
+
+    ipcMain.handle("db-update-agent-conversation-title", async (event, id, title) => {
+      return this.databaseManager.updateAgentConversationTitle(id, title);
+    });
+
+    ipcMain.handle("db-add-agent-message", async (event, conversationId, role, content) => {
+      return this.databaseManager.addAgentMessage(conversationId, role, content);
+    });
+
+    ipcMain.handle("db-get-agent-messages", async (event, conversationId) => {
+      return this.databaseManager.getAgentMessages(conversationId);
     });
 
     ipcMain.handle("export-note", async (event, noteId, format) => {
@@ -2868,6 +2898,54 @@ class IPCHandlers {
         return { isConnected: false, sessionId: null };
       }
       return this.deepgramStreaming.getStatus();
+    });
+
+    // Agent mode handlers
+    ipcMain.handle("update-agent-hotkey", async (_event, hotkey) => {
+      const hotkeyManager = this.windowManager.hotkeyManager;
+      const agentCallback = this.windowManager._agentHotkeyCallback;
+      if (!agentCallback) {
+        return { success: false, message: "Agent hotkey callback not initialized" };
+      }
+      return hotkeyManager.registerSlot("agent", hotkey, agentCallback);
+    });
+
+    ipcMain.handle("get-agent-key", async () => {
+      return this.environmentManager.getAgentKey?.() || "";
+    });
+
+    ipcMain.handle("save-agent-key", async (_event, key) => {
+      return this.environmentManager.saveAgentKey?.(key) || { success: true };
+    });
+
+    ipcMain.handle("toggle-agent-overlay", async () => {
+      this.windowManager.toggleAgentOverlay();
+      return { success: true };
+    });
+
+    ipcMain.handle("hide-agent-overlay", async () => {
+      this.windowManager.hideAgentOverlay();
+      return { success: true };
+    });
+
+    ipcMain.handle("resize-agent-window", async (_event, width, height) => {
+      this.windowManager.resizeAgentWindow(width, height);
+      return { success: true };
+    });
+
+    ipcMain.handle("acquire-recording-lock", async (_event, pipeline) => {
+      if (this._activeRecordingPipeline && this._activeRecordingPipeline !== pipeline) {
+        return { success: false, holder: this._activeRecordingPipeline };
+      }
+      this._activeRecordingPipeline = pipeline;
+      return { success: true };
+    });
+
+    ipcMain.handle("release-recording-lock", async (_event, pipeline) => {
+      if (this._activeRecordingPipeline === pipeline) {
+        this._activeRecordingPipeline = null;
+      }
+      return { success: true };
     });
   }
 

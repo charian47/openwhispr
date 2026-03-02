@@ -120,6 +120,29 @@ class DatabaseManager {
         if (!err.message.includes("duplicate column")) throw err;
       }
 
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS agent_conversations (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL DEFAULT 'Untitled',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS agent_messages (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          conversation_id INTEGER NOT NULL REFERENCES agent_conversations(id) ON DELETE CASCADE,
+          role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
+          content TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      this.db.exec(
+        "CREATE INDEX IF NOT EXISTS idx_agent_messages_conversation ON agent_messages(conversation_id)"
+      );
+
       const actionCount = this.db.prepare("SELECT COUNT(*) as count FROM actions").get();
       if (actionCount.count === 0) {
         this.db
@@ -526,6 +549,141 @@ class DatabaseManager {
       return { success: result.changes > 0, id };
     } catch (error) {
       debugLogger.error("Error deleting note", { error: error.message }, "notes");
+      throw error;
+    }
+  }
+
+  createAgentConversation(title = "Untitled") {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const result = this.db
+        .prepare("INSERT INTO agent_conversations (title) VALUES (?)")
+        .run(title);
+      return this.db
+        .prepare("SELECT * FROM agent_conversations WHERE id = ?")
+        .get(result.lastInsertRowid);
+    } catch (error) {
+      debugLogger.error(
+        "Error creating agent conversation",
+        { error: error.message },
+        "database"
+      );
+      throw error;
+    }
+  }
+
+  getAgentConversations(limit = 50) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db
+        .prepare("SELECT * FROM agent_conversations ORDER BY updated_at DESC LIMIT ?")
+        .all(limit);
+    } catch (error) {
+      debugLogger.error(
+        "Error getting agent conversations",
+        { error: error.message },
+        "database"
+      );
+      throw error;
+    }
+  }
+
+  getAgentConversation(id) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const conversation = this.db
+        .prepare("SELECT * FROM agent_conversations WHERE id = ?")
+        .get(id);
+      if (!conversation) return null;
+      const messages = this.db
+        .prepare("SELECT * FROM agent_messages WHERE conversation_id = ? ORDER BY created_at ASC")
+        .all(id);
+      return { ...conversation, messages };
+    } catch (error) {
+      debugLogger.error(
+        "Error getting agent conversation",
+        { error: error.message },
+        "database"
+      );
+      throw error;
+    }
+  }
+
+  deleteAgentConversation(id) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      this.db.prepare("DELETE FROM agent_messages WHERE conversation_id = ?").run(id);
+      const result = this.db
+        .prepare("DELETE FROM agent_conversations WHERE id = ?")
+        .run(id);
+      return { success: result.changes > 0 };
+    } catch (error) {
+      debugLogger.error(
+        "Error deleting agent conversation",
+        { error: error.message },
+        "database"
+      );
+      throw error;
+    }
+  }
+
+  updateAgentConversationTitle(id, title) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      this.db
+        .prepare(
+          "UPDATE agent_conversations SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        )
+        .run(title, id);
+      return { success: true };
+    } catch (error) {
+      debugLogger.error(
+        "Error updating agent conversation title",
+        { error: error.message },
+        "database"
+      );
+      throw error;
+    }
+  }
+
+  addAgentMessage(conversationId, role, content) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const result = this.db
+        .prepare(
+          "INSERT INTO agent_messages (conversation_id, role, content) VALUES (?, ?, ?)"
+        )
+        .run(conversationId, role, content);
+      this.db
+        .prepare(
+          "UPDATE agent_conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        )
+        .run(conversationId);
+      return this.db
+        .prepare("SELECT * FROM agent_messages WHERE id = ?")
+        .get(result.lastInsertRowid);
+    } catch (error) {
+      debugLogger.error(
+        "Error adding agent message",
+        { error: error.message },
+        "database"
+      );
+      throw error;
+    }
+  }
+
+  getAgentMessages(conversationId) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db
+        .prepare("SELECT * FROM agent_messages WHERE conversation_id = ? ORDER BY created_at ASC")
+        .all(conversationId);
+    } catch (error) {
+      debugLogger.error(
+        "Error getting agent messages",
+        { error: error.message },
+        "database"
+      );
       throw error;
     }
   }

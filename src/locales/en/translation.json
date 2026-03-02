@@ -831,6 +831,10 @@
       "system": {
         "description": "Updates, storage & developer tools",
         "label": "System"
+      },
+      "agentMode": {
+        "label": "Agent Mode",
+        "description": "Voice chat assistant"
       }
     },
     "title": "Settings"
@@ -1587,6 +1591,43 @@
     "oauth": {
       "redirectTitle": "Redirecting to app...",
       "closeTab": "You can close this tab."
+    }
+  },
+  "agentMode": {
+    "settings": {
+      "title": "Agent Mode",
+      "description": "Voice chat assistant with a separate AI model",
+      "enabled": "Enable Agent Mode",
+      "enabledDescription": "Use a separate hotkey to open a voice chat overlay",
+      "hotkey": "Agent Hotkey",
+      "hotkeyDescription": "Hotkey to toggle the agent overlay",
+      "model": "Agent Model",
+      "modelDescription": "AI model used for agent conversations",
+      "systemPrompt": "System Prompt",
+      "systemPromptDescription": "Custom instructions for the agent",
+      "systemPromptPlaceholder": "Enter custom system prompt..."
+    },
+    "chat": {
+      "placeholder": "Press {{hotkey}} to speak",
+      "thinking": "Thinking...",
+      "transcribing": "Transcribing...",
+      "listening": "Listening...",
+      "newConversation": "New",
+      "copyToClipboard": "Copy to clipboard",
+      "copied": "Copied!",
+      "emptyState": "Press your agent hotkey to start a conversation",
+      "errorPrefix": "Error"
+    },
+    "titleBar": {
+      "label": "Agent",
+      "newChat": "New conversation",
+      "close": "Close"
+    },
+    "input": {
+      "idle": "Hold hotkey to speak",
+      "listening": "Listening...",
+      "transcribing": "Transcribing...",
+      "thinking": "Thinking..."
     }
   }
 }

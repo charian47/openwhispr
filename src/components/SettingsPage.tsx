@@ -52,6 +52,7 @@ import { getDefaultHotkey, formatHotkeyLabel } from "../utils/hotkeys";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
+import AgentModeSettings from "./settings/AgentModeSettings";
 import LanguageSelector from "./ui/LanguageSelector";
 import { Skeleton } from "./ui/skeleton";
 import { Progress } from "./ui/progress";
@@ -75,7 +76,8 @@ export type SettingsSectionType =
   | "dictionary"
   | "aiModels"
   | "agentConfig"
-  | "prompts";
+  | "prompts"
+  | "agentMode";
 
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;
@@ -2737,6 +2739,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             </div>
           </div>
         );
+
+      case "agentMode":
+        return <AgentModeSettings />;
 
       default:
         return null;

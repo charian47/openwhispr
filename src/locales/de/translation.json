@@ -831,6 +831,10 @@
       "system": {
         "description": "Updates, Speicher & Entwicklertools",
         "label": "System"
+      },
+      "agentMode": {
+        "label": "Agent-Modus",
+        "description": "Sprach-Chat-Assistent"
       }
     },
     "title": "Einstellungen"
@@ -1587,6 +1591,43 @@
     "oauth": {
       "redirectTitle": "Weiterleitung zur App...",
       "closeTab": "Du kannst diesen Tab schließen."
+    }
+  },
+  "agentMode": {
+    "settings": {
+      "title": "Agent-Modus",
+      "description": "Sprach-Chat-Assistent mit separatem KI-Modell",
+      "enabled": "Agent-Modus aktivieren",
+      "enabledDescription": "Verwende eine separate Tastenkombination, um ein Sprach-Chat-Overlay zu öffnen",
+      "hotkey": "Agent-Tastenkombination",
+      "hotkeyDescription": "Tastenkombination zum Umschalten des Agent-Overlays",
+      "model": "Agent-Modell",
+      "modelDescription": "KI-Modell für Agent-Unterhaltungen",
+      "systemPrompt": "System-Prompt",
+      "systemPromptDescription": "Benutzerdefinierte Anweisungen für den Agenten",
+      "systemPromptPlaceholder": "Benutzerdefinierten System-Prompt eingeben..."
+    },
+    "chat": {
+      "placeholder": "Drücke {{hotkey}} zum Sprechen",
+      "thinking": "Denkt nach...",
+      "transcribing": "Transkribiert...",
+      "listening": "Hört zu...",
+      "newConversation": "Neu",
+      "copyToClipboard": "In Zwischenablage kopieren",
+      "copied": "Kopiert!",
+      "emptyState": "Drücke die Agent-Tastenkombination, um eine Unterhaltung zu starten",
+      "errorPrefix": "Fehler"
+    },
+    "titleBar": {
+      "label": "Agent",
+      "newChat": "Neues Gespräch",
+      "close": "Schließen"
+    },
+    "input": {
+      "idle": "Taste gedrückt halten zum Sprechen",
+      "listening": "Hört zu...",
+      "transcribing": "Transkribiert...",
+      "thinking": "Denkt nach..."
     }
   }
 }

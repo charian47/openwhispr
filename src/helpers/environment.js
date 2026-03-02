@@ -131,6 +131,16 @@ class EnvironmentManager {
     return result;
   }
 
+  getAgentKey() {
+    return this._getKey("AGENT_KEY");
+  }
+
+  saveAgentKey(key) {
+    const result = this._saveKey("AGENT_KEY", key);
+    this.saveAllKeysToEnvFile().catch(() => {});
+    return result;
+  }
+
   getActivationMode() {
     const mode = this._getKey("ACTIVATION_MODE");
     return mode === "push" ? "push" : "tap";

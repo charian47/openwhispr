@@ -831,6 +831,10 @@
       "system": {
         "description": "更新、存储与开发者工具",
         "label": "系统"
+      },
+      "agentMode": {
+        "label": "智能助手模式",
+        "description": "语音聊天助手"
       }
     },
     "title": "设置"
@@ -1587,6 +1591,43 @@
     "oauth": {
       "redirectTitle": "正在跳转到应用...",
       "closeTab": "您可以关闭此标签页。"
+    }
+  },
+  "agentMode": {
+    "settings": {
+      "title": "智能助手模式",
+      "description": "使用独立AI模型的语音聊天助手",
+      "enabled": "启用智能助手模式",
+      "enabledDescription": "使用独立热键打开语音聊天覆盖层",
+      "hotkey": "助手热键",
+      "hotkeyDescription": "切换助手覆盖层的热键",
+      "model": "助手模型",
+      "modelDescription": "用于助手对话的AI模型",
+      "systemPrompt": "系统提示词",
+      "systemPromptDescription": "助手的自定义指令",
+      "systemPromptPlaceholder": "输入自定义系统提示词..."
+    },
+    "chat": {
+      "placeholder": "按 {{hotkey}} 开始说话",
+      "thinking": "思考中...",
+      "transcribing": "转录中...",
+      "listening": "正在聆听...",
+      "newConversation": "新建",
+      "copyToClipboard": "复制到剪贴板",
+      "copied": "已复制！",
+      "emptyState": "按下助手热键开始对话",
+      "errorPrefix": "错误"
+    },
+    "titleBar": {
+      "label": "助手",
+      "newChat": "新对话",
+      "close": "关闭"
+    },
+    "input": {
+      "idle": "按住快捷键说话",
+      "listening": "正在聆听...",
+      "transcribing": "正在转录...",
+      "thinking": "正在思考..."
     }
   }
 }

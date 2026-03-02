@@ -492,6 +492,28 @@ async function startApp() {
   await windowManager.createMainWindow();
   await windowManager.createControlPanelWindow();
 
+  // Create agent window (hidden) and set up agent hotkey
+  await windowManager.createAgentWindow();
+
+  const agentHotkeyCallback = () => {
+    if (hotkeyManager.isInListeningMode()) return;
+    windowManager.toggleAgentOverlay();
+  };
+  windowManager._agentHotkeyCallback = agentHotkeyCallback;
+
+  const savedAgentKey = environmentManager.getAgentKey?.() || "";
+  if (savedAgentKey) {
+    hotkeyManager.registerSlot("agent", savedAgentKey, agentHotkeyCallback);
+  }
+
+  ipcMain.on("agent-hotkey-changed", (_event, hotkey) => {
+    if (hotkey) {
+      hotkeyManager.registerSlot("agent", hotkey, agentHotkeyCallback);
+    } else {
+      hotkeyManager.unregisterSlot("agent");
+    }
+  });
+
   // Phase 2: Initialize remaining managers after windows are visible
   initializeDeferredManagers();
 
@@ -585,7 +607,13 @@ async function startApp() {
         } else {
           debugLogger?.debug("[Globe] Ignored — mainWindow not live");
         }
-      } else {
+      }
+
+      // Check agent slot for Globe/Fn key
+      const agentHotkey = hotkeyManager.getSlotHotkey("agent");
+      if (agentHotkey && isGlobeLikeHotkey(agentHotkey)) {
+        windowManager.toggleAgentOverlay();
+      } else if (!isGlobeLikeHotkey(currentHotkey)) {
         debugLogger?.debug("[Globe] Ignored — hotkey is not GLOBE", { currentHotkey });
       }
     });
@@ -628,6 +656,13 @@ async function startApp() {
 
     globeKeyManager.on("right-modifier-down", async (modifier) => {
       const currentHotkey = hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey();
+
+      // Check agent slot for right-modifier
+      const agentHotkey = hotkeyManager.getSlotHotkey("agent");
+      if (agentHotkey === modifier) {
+        windowManager.toggleAgentOverlay();
+      }
+
       if (currentHotkey !== modifier) return;
       if (!isLiveWindow(windowManager.mainWindow)) return;
 
@@ -915,6 +950,9 @@ if (gotSingleInstanceLock) {
     if (authBridgeServer) {
       authBridgeServer.close();
       authBridgeServer = null;
+    }
+    if (windowManager && isLiveWindow(windowManager.agentWindow)) {
+      windowManager.agentWindow.destroy();
     }
     if (hotkeyManager) {
       hotkeyManager.unregisterAll();

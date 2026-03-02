@@ -10,6 +10,7 @@ const { DEV_SERVER_PORT } = DevServerManager;
 const {
   MAIN_WINDOW_CONFIG,
   CONTROL_PANEL_CONFIG,
+  AGENT_OVERLAY_CONFIG,
   WINDOW_SIZES,
   WindowPositionUtil,
 } = require("./windowConfig");
@@ -18,6 +19,7 @@ class WindowManager {
   constructor() {
     this.mainWindow = null;
     this.controlPanelWindow = null;
+    this.agentWindow = null;
     this.tray = null;
     this.hotkeyManager = new HotkeyManager();
     this.dragManager = new DragManager();
@@ -124,16 +126,22 @@ class WindowManager {
     return { success: true, bounds: { x: newX, y: newY, ...newSize } };
   }
 
-  async loadWindowContent(window, isControlPanel = false) {
+  async loadWindowContent(window, isControlPanel = false, isAgent = false) {
     if (process.env.NODE_ENV === "development") {
-      const appUrl = DevServerManager.getAppUrl(isControlPanel);
+      let appUrl = DevServerManager.getAppUrl(isControlPanel);
+      if (isAgent) {
+        appUrl = `${DevServerManager.getAppUrl(false)}?agent=true`;
+      }
       await DevServerManager.waitForDevServer();
       await window.loadURL(appUrl);
     } else {
-      // Production: use loadFile() for better compatibility with Electron 36+
       const fileInfo = DevServerManager.getAppFilePath(isControlPanel);
       if (!fileInfo) {
         throw new Error("Failed to get app file path");
+      }
+
+      if (isAgent) {
+        fileInfo.query = { agent: "true" };
       }
 
       const fs = require("fs");
@@ -559,6 +567,95 @@ class WindowManager {
 
   async loadControlPanel() {
     await this.loadWindowContent(this.controlPanelWindow, true);
+  }
+
+  async createAgentWindow() {
+    if (this.agentWindow && !this.agentWindow.isDestroyed()) {
+      return;
+    }
+
+    this.agentWindow = new BrowserWindow(AGENT_OVERLAY_CONFIG);
+
+    this.agentWindow.once("ready-to-show", () => {
+      WindowPositionUtil.setupAlwaysOnTop(this.agentWindow);
+    });
+
+    this.agentWindow.on("closed", () => {
+      this.agentWindow = null;
+    });
+
+    await this.loadWindowContent(this.agentWindow, false, true);
+  }
+
+  toggleAgentOverlay() {
+    if (!this.agentWindow || this.agentWindow.isDestroyed()) return;
+
+    if (this.agentWindow.isVisible()) {
+      this.hideAgentOverlay();
+    } else {
+      this.showAgentOverlay();
+    }
+  }
+
+  showAgentOverlay() {
+    if (!this.agentWindow || this.agentWindow.isDestroyed()) return;
+
+    this._positionAgentWindow();
+    WindowPositionUtil.setupAlwaysOnTop(this.agentWindow);
+
+    if (typeof this.agentWindow.showInactive === "function") {
+      this.agentWindow.showInactive();
+    } else {
+      this.agentWindow.show();
+    }
+
+    this.agentWindow.webContents.send("agent-start-recording");
+  }
+
+  hideAgentOverlay() {
+    if (!this.agentWindow || this.agentWindow.isDestroyed()) return;
+
+    this.agentWindow.webContents.send("agent-stop-recording");
+    this.agentWindow.hide();
+  }
+
+  resizeAgentWindow(width, height) {
+    if (!this.agentWindow || this.agentWindow.isDestroyed()) return;
+
+    const clamped = {
+      width: Math.max(AGENT_OVERLAY_CONFIG.minWidth, Math.min(width, AGENT_OVERLAY_CONFIG.maxWidth)),
+      height: Math.max(AGENT_OVERLAY_CONFIG.minHeight, Math.min(height, AGENT_OVERLAY_CONFIG.maxHeight)),
+    };
+
+    const bounds = this.agentWindow.getBounds();
+    this.agentWindow.setBounds({
+      x: bounds.x,
+      y: bounds.y,
+      width: clamped.width,
+      height: clamped.height,
+    });
+  }
+
+  _positionAgentWindow() {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
+    if (!this.agentWindow || this.agentWindow.isDestroyed()) return;
+
+    const mainBounds = this.mainWindow.getBounds();
+    const agentBounds = this.agentWindow.getBounds();
+    const MARGIN = 8;
+
+    const x = mainBounds.x + Math.round((mainBounds.width - agentBounds.width) / 2);
+    const y = mainBounds.y - agentBounds.height - MARGIN;
+
+    const display = screen.getDisplayNearestPoint({ x: mainBounds.x, y: mainBounds.y });
+    const workArea = display.workArea || display.bounds;
+
+    this.agentWindow.setBounds({
+      x: Math.max(workArea.x, Math.min(x, workArea.x + workArea.width - agentBounds.width)),
+      y: Math.max(workArea.y, y),
+      width: agentBounds.width,
+      height: agentBounds.height,
+    });
   }
 
   showDictationPanel(options = {}) {

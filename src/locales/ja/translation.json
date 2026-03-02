@@ -831,6 +831,10 @@
       "system": {
         "description": "更新、ストレージ、開発者ツール",
         "label": "システム"
+      },
+      "agentMode": {
+        "label": "エージェントモード",
+        "description": "音声チャットアシスタント"
       }
     },
     "title": "設定"
@@ -1587,6 +1591,43 @@
     "oauth": {
       "redirectTitle": "アプリにリダイレクト中...",
       "closeTab": "このタブを閉じてください。"
+    }
+  },
+  "agentMode": {
+    "settings": {
+      "title": "エージェントモード",
+      "description": "別のAIモデルを使用する音声チャットアシスタント",
+      "enabled": "エージェントモードを有効にする",
+      "enabledDescription": "別のホットキーを使用して音声チャットオーバーレイを開く",
+      "hotkey": "エージェントホットキー",
+      "hotkeyDescription": "エージェントオーバーレイを切り替えるホットキー",
+      "model": "エージェントモデル",
+      "modelDescription": "エージェント会話に使用するAIモデル",
+      "systemPrompt": "システムプロンプト",
+      "systemPromptDescription": "エージェントへのカスタム指示",
+      "systemPromptPlaceholder": "カスタムシステムプロンプトを入力..."
+    },
+    "chat": {
+      "placeholder": "{{hotkey}}を押して話す",
+      "thinking": "考え中...",
+      "transcribing": "文字起こし中...",
+      "listening": "聞いています...",
+      "newConversation": "新規",
+      "copyToClipboard": "クリップボードにコピー",
+      "copied": "コピーしました！",
+      "emptyState": "エージェントホットキーを押して会話を開始",
+      "errorPrefix": "エラー"
+    },
+    "titleBar": {
+      "label": "エージェント",
+      "newChat": "新しい会話",
+      "close": "閉じる"
+    },
+    "input": {
+      "idle": "ホットキーを押し続けて話す",
+      "listening": "聞いています...",
+      "transcribing": "文字起こし中...",
+      "thinking": "考え中..."
     }
   }
 }

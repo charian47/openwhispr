@@ -451,4 +451,32 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Auto-start management
   getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),
   setAutoStartEnabled: (enabled) => ipcRenderer.invoke("set-auto-start-enabled", enabled),
+
+  // Agent mode
+  notifyAgentHotkeyChanged: (hotkey) => ipcRenderer.send("agent-hotkey-changed", hotkey),
+  getAgentKey: () => ipcRenderer.invoke("get-agent-key"),
+  saveAgentKey: (key) => ipcRenderer.invoke("save-agent-key", key),
+  onAgentStartRecording: registerListener("agent-start-recording", (callback) => () => callback()),
+  onAgentStopRecording: registerListener("agent-stop-recording", (callback) => () => callback()),
+  toggleAgentOverlay: () => ipcRenderer.invoke("toggle-agent-overlay"),
+  hideAgentOverlay: () => ipcRenderer.invoke("hide-agent-overlay"),
+  resizeAgentWindow: (width, height) => ipcRenderer.invoke("resize-agent-window", width, height),
+  acquireRecordingLock: (pipeline) => ipcRenderer.invoke("acquire-recording-lock", pipeline),
+  releaseRecordingLock: (pipeline) => ipcRenderer.invoke("release-recording-lock", pipeline),
+
+  // Agent conversation persistence
+  createAgentConversation: (title) =>
+    ipcRenderer.invoke("db-create-agent-conversation", title),
+  getAgentConversations: (limit) =>
+    ipcRenderer.invoke("db-get-agent-conversations", limit),
+  getAgentConversation: (id) =>
+    ipcRenderer.invoke("db-get-agent-conversation", id),
+  deleteAgentConversation: (id) =>
+    ipcRenderer.invoke("db-delete-agent-conversation", id),
+  updateAgentConversationTitle: (id, title) =>
+    ipcRenderer.invoke("db-update-agent-conversation-title", id, title),
+  addAgentMessage: (conversationId, role, content) =>
+    ipcRenderer.invoke("db-add-agent-message", conversationId, role, content),
+  getAgentMessages: (conversationId) =>
+    ipcRenderer.invoke("db-get-agent-messages", conversationId),
 });

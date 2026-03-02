@@ -59,6 +59,14 @@ export interface ThemeSettings {
   theme: "light" | "dark" | "auto";
 }
 
+export interface AgentModeSettings {
+  agentModel: string;
+  agentProvider: string;
+  agentKey: string;
+  agentSystemPrompt: string;
+  agentEnabled: boolean;
+}
+
 function useSettingsInternal() {
   const store = useSettingsStore();
 

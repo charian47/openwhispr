@@ -13,6 +13,7 @@ import type {
   ApiKeySettings,
   PrivacySettings,
   ThemeSettings,
+  AgentModeSettings,
 } from "../hooks/useSettings";
 
 let _ReasoningService: typeof import("../services/ReasoningService").default | null = null;
@@ -56,6 +57,7 @@ const BOOLEAN_SETTINGS = new Set([
   "audioCuesEnabled",
   "floatingIconAutoHide",
   "isSignedIn",
+  "agentEnabled",
 ]);
 
 const ARRAY_SETTINGS = new Set(["customDictionary"]);
@@ -80,7 +82,8 @@ export interface SettingsState
     MicrophoneSettings,
     ApiKeySettings,
     PrivacySettings,
-    ThemeSettings {
+    ThemeSettings,
+    AgentModeSettings {
   isSignedIn: boolean;
   audioCuesEnabled: boolean;
   floatingIconAutoHide: boolean;
@@ -127,9 +130,16 @@ export interface SettingsState
   setFloatingIconAutoHide: (enabled: boolean) => void;
   setIsSignedIn: (value: boolean) => void;
 
+  setAgentModel: (value: string) => void;
+  setAgentProvider: (value: string) => void;
+  setAgentKey: (key: string) => void;
+  setAgentSystemPrompt: (value: string) => void;
+  setAgentEnabled: (value: boolean) => void;
+
   updateTranscriptionSettings: (settings: Partial<TranscriptionSettings>) => void;
   updateReasoningSettings: (settings: Partial<ReasoningSettings>) => void;
   updateApiKeys: (keys: Partial<ApiKeySettings>) => void;
+  updateAgentModeSettings: (settings: Partial<AgentModeSettings>) => void;
 }
 
 function createStringSetter(key: string) {
@@ -237,6 +247,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   audioCuesEnabled: readBoolean("audioCuesEnabled", true),
   floatingIconAutoHide: readBoolean("floatingIconAutoHide", false),
   isSignedIn: readBoolean("isSignedIn", false),
+
+  agentModel: readString("agentModel", "openai/gpt-oss-120b"),
+  agentProvider: readString("agentProvider", "groq"),
+  agentKey: readString("agentKey", ""),
+  agentSystemPrompt: readString("agentSystemPrompt", ""),
+  agentEnabled: readBoolean("agentEnabled", true),
 
   setUseLocalWhisper: createBooleanSetter("useLocalWhisper"),
   setWhisperModel: createStringSetter("whisperModel"),
@@ -374,6 +390,18 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     set({ isSignedIn: value });
   },
 
+  setAgentModel: createStringSetter("agentModel"),
+  setAgentProvider: createStringSetter("agentProvider"),
+  setAgentKey: (key: string) => {
+    if (isBrowser) localStorage.setItem("agentKey", key);
+    useSettingsStore.setState({ agentKey: key });
+    if (isBrowser) {
+      window.electronAPI?.notifyAgentHotkeyChanged?.(key);
+    }
+  },
+  setAgentSystemPrompt: createStringSetter("agentSystemPrompt"),
+  setAgentEnabled: createBooleanSetter("agentEnabled"),
+
   updateTranscriptionSettings: (settings: Partial<TranscriptionSettings>) => {
     const s = useSettingsStore.getState();
     if (settings.useLocalWhisper !== undefined) s.setUseLocalWhisper(settings.useLocalWhisper);
@@ -427,6 +455,16 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       s.setCustomTranscriptionApiKey(keys.customTranscriptionApiKey);
     if (keys.customReasoningApiKey !== undefined)
       s.setCustomReasoningApiKey(keys.customReasoningApiKey);
+  },
+
+  updateAgentModeSettings: (settings: Partial<AgentModeSettings>) => {
+    const s = useSettingsStore.getState();
+    if (settings.agentModel !== undefined) s.setAgentModel(settings.agentModel);
+    if (settings.agentProvider !== undefined) s.setAgentProvider(settings.agentProvider);
+    if (settings.agentKey !== undefined) s.setAgentKey(settings.agentKey);
+    if (settings.agentSystemPrompt !== undefined)
+      s.setAgentSystemPrompt(settings.agentSystemPrompt);
+    if (settings.agentEnabled !== undefined) s.setAgentEnabled(settings.agentEnabled);
   },
 }));
 

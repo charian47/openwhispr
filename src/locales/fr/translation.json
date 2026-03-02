@@ -831,6 +831,10 @@
       "system": {
         "description": "Mises à jour, stockage & outils de développement",
         "label": "Système"
+      },
+      "agentMode": {
+        "label": "Mode Agent",
+        "description": "Assistant vocal de chat"
       }
     },
     "title": "Paramètres"
@@ -1587,6 +1591,43 @@
     "oauth": {
       "redirectTitle": "Redirection vers l'app...",
       "closeTab": "Vous pouvez fermer cet onglet."
+    }
+  },
+  "agentMode": {
+    "settings": {
+      "title": "Mode Agent",
+      "description": "Assistant vocal de chat avec un modèle IA séparé",
+      "enabled": "Activer le Mode Agent",
+      "enabledDescription": "Utiliser un raccourci clavier séparé pour ouvrir une fenêtre de chat vocal",
+      "hotkey": "Raccourci Agent",
+      "hotkeyDescription": "Raccourci clavier pour basculer la fenêtre agent",
+      "model": "Modèle Agent",
+      "modelDescription": "Modèle IA utilisé pour les conversations agent",
+      "systemPrompt": "Prompt système",
+      "systemPromptDescription": "Instructions personnalisées pour l'agent",
+      "systemPromptPlaceholder": "Entrez un prompt système personnalisé..."
+    },
+    "chat": {
+      "placeholder": "Appuyez sur {{hotkey}} pour parler",
+      "thinking": "Réflexion...",
+      "transcribing": "Transcription...",
+      "listening": "Écoute...",
+      "newConversation": "Nouveau",
+      "copyToClipboard": "Copier dans le presse-papiers",
+      "copied": "Copié !",
+      "emptyState": "Appuyez sur le raccourci agent pour démarrer une conversation",
+      "errorPrefix": "Erreur"
+    },
+    "titleBar": {
+      "label": "Agent",
+      "newChat": "Nouvelle conversation",
+      "close": "Fermer"
+    },
+    "input": {
+      "idle": "Maintenez la touche pour parler",
+      "listening": "Écoute...",
+      "transcribing": "Transcription...",
+      "thinking": "Réflexion..."
     }
   }
 }

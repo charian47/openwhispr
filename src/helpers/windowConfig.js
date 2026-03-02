@@ -104,9 +104,41 @@ class WindowPositionUtil {
   }
 }
 
+const AGENT_OVERLAY_CONFIG = {
+  width: 420,
+  height: 300,
+  minWidth: 360,
+  minHeight: 200,
+  maxWidth: 600,
+  maxHeight: 700,
+  frame: false,
+  alwaysOnTop: true,
+  transparent: true,
+  show: false,
+  skipTaskbar: true,
+  hasShadow: false,
+  focusable: true,
+  resizable: false,
+  fullScreenable: false,
+  acceptsFirstMouse: true,
+  type:
+    process.platform === "darwin" ? "panel" : process.platform === "linux" ? "toolbar" : "normal",
+  visibleOnAllWorkspaces: process.platform !== "win32",
+  webPreferences: {
+    preload: path.join(__dirname, "..", "..", "preload.js"),
+    nodeIntegration: false,
+    contextIsolation: true,
+    sandbox: false,
+    webSecurity: false,
+    spellcheck: false,
+    backgroundThrottling: false,
+  },
+};
+
 module.exports = {
   MAIN_WINDOW_CONFIG,
   CONTROL_PANEL_CONFIG,
+  AGENT_OVERLAY_CONFIG,
   WINDOW_SIZES,
   WindowPositionUtil,
 };

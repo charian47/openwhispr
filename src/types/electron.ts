@@ -862,6 +862,65 @@ declare global {
         }>;
       }>;
 
+      // Agent Mode
+      notifyAgentHotkeyChanged?: (hotkey: string) => void;
+      getAgentKey?: () => Promise<string>;
+      saveAgentKey?: (key: string) => Promise<void>;
+      createAgentConversation?: (title: string) => Promise<{
+        id: number;
+        title: string;
+        created_at: string;
+        updated_at: string;
+      }>;
+      getAgentConversations?: (limit?: number) => Promise<
+        Array<{
+          id: number;
+          title: string;
+          created_at: string;
+          updated_at: string;
+        }>
+      >;
+      getAgentConversation?: (id: number) => Promise<{
+        id: number;
+        title: string;
+        created_at: string;
+        updated_at: string;
+        messages: Array<{
+          id: number;
+          conversation_id: number;
+          role: "user" | "assistant" | "system";
+          content: string;
+          created_at: string;
+        }>;
+      } | null>;
+      deleteAgentConversation?: (id: number) => Promise<{ success: boolean }>;
+      updateAgentConversationTitle?: (
+        id: number,
+        title: string
+      ) => Promise<{ success: boolean }>;
+      addAgentMessage?: (
+        conversationId: number,
+        role: "user" | "assistant" | "system",
+        content: string
+      ) => Promise<{
+        id: number;
+        conversation_id: number;
+        role: string;
+        content: string;
+        created_at: string;
+      }>;
+      getAgentMessages?: (
+        conversationId: number
+      ) => Promise<
+        Array<{
+          id: number;
+          conversation_id: number;
+          role: "user" | "assistant" | "system";
+          content: string;
+          created_at: string;
+        }>
+      >;
+
       // Deepgram Streaming
       deepgramStreamingWarmup?: (options?: { sampleRate?: number; language?: string }) => Promise<{
         success: boolean;
@@ -892,6 +951,12 @@ declare global {
       onDeepgramSessionEnd?: (
         callback: (data: { audioDuration?: number; text?: string }) => void
       ) => () => void;
+
+      // Agent overlay
+      resizeAgentWindow?: (width: number, height: number) => Promise<void>;
+      hideAgentOverlay?: () => Promise<void>;
+      onAgentStartRecording?: (callback: () => void) => () => void;
+      onAgentStopRecording?: (callback: () => void) => () => void;
     };
 
     api?: {

@@ -1085,6 +1085,105 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
+  async *processTextStreaming(
+    messages: Array<{ role: string; content: string }>,
+    model: string,
+    provider: string,
+    config: ReasoningConfig & { systemPrompt: string }
+  ): AsyncGenerator<string, void, unknown> {
+    const providerKey = provider as "openai" | "groq" | "gemini" | "anthropic" | "custom";
+    const apiKey = await this.getApiKey(providerKey);
+
+    let endpoint: string;
+    switch (providerKey) {
+      case "groq":
+        endpoint = buildApiUrl(API_ENDPOINTS.GROQ_BASE, "/chat/completions");
+        break;
+      case "openai":
+      case "custom":
+        endpoint = buildApiUrl(this.getConfiguredOpenAIBase(), "/chat/completions");
+        break;
+      default:
+        endpoint = buildApiUrl(API_ENDPOINTS.OPENAI_BASE, "/chat/completions");
+        break;
+    }
+
+    const requestBody: Record<string, unknown> = {
+      model,
+      messages,
+      stream: true,
+      temperature: config.temperature ?? 0.3,
+      max_tokens:
+        config.maxTokens ||
+        Math.max(4096, TOKEN_LIMITS.MAX_TOKENS),
+    };
+
+    logger.logReasoning("AGENT_STREAM_REQUEST", {
+      endpoint,
+      model,
+      provider,
+      messageCount: messages.length,
+    });
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage: string;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage =
+          errorData.error?.message || errorData.message || errorData.error || `API error: ${response.status}`;
+      } catch {
+        errorMessage = errorText || `API error: ${response.status}`;
+      }
+      logger.logReasoning("AGENT_STREAM_ERROR", { status: response.status, errorMessage });
+      throw new Error(errorMessage);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("No response body");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith("data: ")) continue;
+
+          const data = trimmed.slice(6);
+          if (data === "[DONE]") return;
+
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) yield content;
+          } catch {
+            // skip malformed SSE chunks
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
   async isAvailable(): Promise<boolean> {
     try {
       if (isCloudReasoningMode()) {
