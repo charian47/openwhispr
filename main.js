@@ -167,6 +167,7 @@ const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
 const TextEditMonitor = require("./src/helpers/textEditMonitor");
 const WhisperCudaManager = require("./src/helpers/whisperCudaManager");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
+const { ensureYdotool } = require("./src/helpers/ensureYdotool");
 
 // Manager instances - initialized after app.whenReady()
 let debugLogger = null;
@@ -269,6 +270,9 @@ function initializeCoreManagers() {
 
 // Phase 2: Non-critical setup after windows are visible
 function initializeDeferredManagers() {
+  ensureYdotool().catch((err) => {
+    require("./src/helpers/debugLogger").warn("ydotool setup error", { error: err?.message }, "clipboard");
+  });
   clipboardManager.preWarmAccessibility();
   trayManager = new TrayManager();
   globeKeyManager = new GlobeKeyManager();
