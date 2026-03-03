@@ -56,16 +56,13 @@ class AudioStorageManager {
   }
 
   getAudioPath(transcriptionId) {
-    // Match any file containing the transcription ID
     try {
       const files = fs.readdirSync(this.audioDir);
       const match = files.find(
         (f) => f.endsWith(`-${transcriptionId}.webm`) || f === `${transcriptionId}.webm`
       );
       if (match) return path.join(this.audioDir, match);
-    } catch {
-      // Fall through
-    }
+    } catch {}
     return null;
   }
 

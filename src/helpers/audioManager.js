@@ -325,7 +325,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         this.onStateChange?.({ isRecording: false, isProcessing: true });
 
         const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
-        this.lastAudioBlob = audioBlob; // preserve for audio retention
+        this.lastAudioBlob = audioBlob;
 
         logger.info(
           "Recording stopped",
@@ -2259,7 +2259,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       });
     }
     if (fallbackBlob) {
-      this.lastAudioBlob = fallbackBlob; // preserve for audio retention
+      this.lastAudioBlob = fallbackBlob;
     }
     this.streamingFallbackRecorder = null;
     this.streamingFallbackChunks = [];

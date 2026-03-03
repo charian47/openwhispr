@@ -165,13 +165,6 @@ class IPCHandlers {
     }, SIX_HOURS_MS);
   }
 
-  _cleanupAudioInterval() {
-    if (this._audioCleanupInterval) {
-      clearInterval(this._audioCleanupInterval);
-      this._audioCleanupInterval = null;
-    }
-  }
-
   _setupTextEditMonitor() {
     if (!this.textEditMonitor) return;
 
@@ -2150,10 +2143,19 @@ class IPCHandlers {
             model: data.model,
             provider: data.provider,
             resultLength: data.text?.length || 0,
+            promptMode: data.promptMode,
+            matchType: data.matchType,
           },
           "cloud-api"
         );
-        return { success: true, text: data.text, model: data.model, provider: data.provider };
+        return {
+          success: true,
+          text: data.text,
+          model: data.model,
+          provider: data.provider,
+          promptMode: data.promptMode,
+          matchType: data.matchType,
+        };
       } catch (error) {
         debugLogger.error("Cloud reasoning error:", error);
         return { success: false, error: error.message };

@@ -275,18 +275,24 @@ export default function ControlPanel() {
           // Apply AI reasoning if enabled
           if (useReasoningModel) {
             try {
-              const [{ default: ReasoningService }, { getEffectiveReasoningModel, isCloudReasoningMode }] =
-                await Promise.all([
-                  import("../services/ReasoningService"),
-                  import("../stores/settingsStore"),
-                ]);
+              const [
+                { default: ReasoningService },
+                { getEffectiveReasoningModel, isCloudReasoningMode },
+              ] = await Promise.all([
+                import("../services/ReasoningService"),
+                import("../stores/settingsStore"),
+              ]);
               const model = getEffectiveReasoningModel();
               const isCloud = isCloudReasoningMode();
               if (model || isCloud) {
                 const agentName = localStorage.getItem("agentName") || null;
                 const reasonedText = await ReasoningService.processText(rawText, model, agentName);
                 if (reasonedText && reasonedText !== rawText) {
-                  const updated = await window.electronAPI.updateTranscriptionText(id, reasonedText, rawText);
+                  const updated = await window.electronAPI.updateTranscriptionText(
+                    id,
+                    reasonedText,
+                    rawText
+                  );
                   if (updated.success && updated.transcription) {
                     finalTranscription = updated.transcription;
                   }
