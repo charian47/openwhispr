@@ -308,6 +308,11 @@ declare global {
       retryTranscription: (
         id: number
       ) => Promise<{ success: boolean; transcription?: TranscriptionItem; error?: string }>;
+      updateTranscriptionText: (
+        id: number,
+        text: string,
+        rawText: string
+      ) => Promise<{ success: boolean; transcription?: TranscriptionItem; error?: string }>;
 
       // Dictionary operations
       getDictionary: () => Promise<string[]>;

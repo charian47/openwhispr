@@ -2071,6 +2071,21 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("update-transcription-text", async (_event, id, text, rawText) => {
+      try {
+        this.databaseManager.updateTranscriptionText(id, text, rawText);
+        const updated = this.databaseManager.getTranscriptionById(id);
+        return { success: true, transcription: updated };
+      } catch (error) {
+        debugLogger.error(
+          "Failed to update transcription text",
+          { id, error: error.message },
+          "audio-storage"
+        );
+        return { success: false, error: error.message };
+      }
+    });
+
     ipcMain.handle("cloud-reason", async (event, text, opts = {}) => {
       try {
         const apiUrl = getApiUrl();

@@ -269,7 +269,35 @@ export default function ControlPanel() {
       try {
         const result = await window.electronAPI.retryTranscription(id);
         if (result.success && result.transcription) {
-          updateInStore(result.transcription);
+          const rawText = result.transcription.text;
+          let finalTranscription = result.transcription;
+
+          // Apply AI reasoning if enabled
+          if (useReasoningModel) {
+            try {
+              const [{ default: ReasoningService }, { getEffectiveReasoningModel, isCloudReasoningMode }] =
+                await Promise.all([
+                  import("../services/ReasoningService"),
+                  import("../stores/settingsStore"),
+                ]);
+              const model = getEffectiveReasoningModel();
+              const isCloud = isCloudReasoningMode();
+              if (model || isCloud) {
+                const agentName = localStorage.getItem("agentName") || null;
+                const reasonedText = await ReasoningService.processText(rawText, model, agentName);
+                if (reasonedText && reasonedText !== rawText) {
+                  const updated = await window.electronAPI.updateTranscriptionText(id, reasonedText, rawText);
+                  if (updated.success && updated.transcription) {
+                    finalTranscription = updated.transcription;
+                  }
+                }
+              }
+            } catch {
+              // Reasoning failed — keep the raw STT result
+            }
+          }
+
+          updateInStore(finalTranscription);
           toast({ title: t("controlPanel.history.retrySuccess") });
         } else {
           toast({
@@ -285,7 +313,7 @@ export default function ControlPanel() {
         });
       }
     },
-    [toast, t]
+    [toast, t, useReasoningModel]
   );
 
   const handleUpdateClick = async () => {

@@ -46,6 +46,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getAudioStorageUsage: () => ipcRenderer.invoke("get-audio-storage-usage"),
   deleteAllAudio: () => ipcRenderer.invoke("delete-all-audio"),
   retryTranscription: (id) => ipcRenderer.invoke("retry-transcription", id),
+  updateTranscriptionText: (id, text, rawText) =>
+    ipcRenderer.invoke("update-transcription-text", id, text, rawText),
   getTranscriptionById: (id) => ipcRenderer.invoke("get-transcription-by-id", id),
 
   // Dictionary functions
