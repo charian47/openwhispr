@@ -62,6 +62,7 @@ import logger from "../utils/logger";
 import { SettingsRow } from "./ui/SettingsSection";
 import { useUsage } from "../hooks/useUsage";
 import { cn } from "./lib/utils";
+import { formatBytes } from "../utils/formatBytes";
 
 export type SettingsSectionType =
   | "account"
@@ -681,6 +682,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setCloudBackupEnabled,
     telemetryEnabled,
     setTelemetryEnabled,
+    audioRetentionDays,
+    setAudioRetentionDays,
     customDictionary,
     setCustomDictionary,
   } = useSettings();
@@ -718,6 +721,31 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const { agentName, setAgentName } = useAgentName();
   const [agentNameInput, setAgentNameInput] = useState(agentName);
   const [newDictionaryWord, setNewDictionaryWord] = useState("");
+  const [audioStorageUsage, setAudioStorageUsage] = useState<{
+    fileCount: number;
+    totalBytes: number;
+  }>({ fileCount: 0, totalBytes: 0 });
+
+  useEffect(() => {
+    if (activeSection !== "privacyData") return;
+    window.electronAPI
+      ?.getAudioStorageUsage?.()
+      .then((usage: { fileCount: number; totalBytes: number }) => {
+        if (usage) setAudioStorageUsage(usage);
+      })
+      .catch(() => {});
+  }, [activeSection]);
+
+  const handleClearAllAudio = async () => {
+    if (!window.electronAPI?.deleteAllAudio) return;
+    try {
+      await window.electronAPI.deleteAllAudio();
+      setAudioStorageUsage({ fileCount: 0, totalBytes: 0 });
+      toast({ title: t("settingsPage.privacy.clearAllAudio"), variant: "default" });
+    } catch {
+      // silent fail
+    }
+  };
 
   const handleAddDictionaryWord = useCallback(() => {
     const existingWords = new Set(customDictionary.map((w) => w.toLowerCase()));
@@ -2362,6 +2390,69 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     description={t("settingsPage.privacy.usageAnalyticsDescription")}
                   >
                     <Toggle checked={telemetryEnabled} onChange={setTelemetryEnabled} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Audio Retention */}
+            <div className="border-t border-border/40 pt-6">
+              <SectionHeader
+                title={t("settingsPage.privacy.audioRetention")}
+                description={t("settingsPage.privacy.audioRetentionDescription")}
+              />
+
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.privacy.audioRetention")}
+                    description={t("settingsPage.privacy.audioRetentionDescription")}
+                  >
+                    <select
+                      value={audioRetentionDays}
+                      onChange={(e) => setAudioRetentionDays(parseInt(e.target.value, 10))}
+                      className="h-7 rounded border border-border/70 bg-surface-1/80 px-2.5 text-xs font-medium text-foreground shadow-sm backdrop-blur-sm hover:border-border-hover hover:bg-surface-2/70 focus:outline-none focus:ring-2 focus:ring-ring/30 focus:ring-offset-1 transition-colors duration-200"
+                    >
+                      <option value={0}>{t("settingsPage.privacy.audioRetentionDisabled")}</option>
+                      <option value={7}>
+                        {t("settingsPage.privacy.audioRetentionDays", { count: 7 })}
+                      </option>
+                      <option value={14}>
+                        {t("settingsPage.privacy.audioRetentionDays", { count: 14 })}
+                      </option>
+                      <option value={30}>
+                        {t("settingsPage.privacy.audioRetentionDays", { count: 30 })}
+                      </option>
+                      <option value={60}>
+                        {t("settingsPage.privacy.audioRetentionDays", { count: 60 })}
+                      </option>
+                      <option value={90}>
+                        {t("settingsPage.privacy.audioRetentionDays", { count: 90 })}
+                      </option>
+                    </select>
+                  </SettingsRow>
+                </SettingsPanelRow>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.privacy.audioStorageUsage")}
+                    description={
+                      audioStorageUsage.fileCount > 0
+                        ? t("settingsPage.privacy.audioStorageFiles", {
+                            count: audioStorageUsage.fileCount,
+                            size: formatBytes(audioStorageUsage.totalBytes),
+                          })
+                        : t("settingsPage.privacy.audioStorageEmpty")
+                    }
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={audioStorageUsage.fileCount === 0}
+                      onClick={handleClearAllAudio}
+                    >
+                      {t("settingsPage.privacy.clearAllAudio")}
+                    </Button>
                   </SettingsRow>
                 </SettingsPanelRow>
               </SettingsPanel>

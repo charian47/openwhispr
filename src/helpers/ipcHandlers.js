@@ -9,6 +9,7 @@ const GnomeShortcutManager = require("./gnomeShortcut");
 const AssemblyAiStreaming = require("./assemblyAiStreaming");
 const { i18nMain, changeLanguage } = require("./i18nMain");
 const DeepgramStreaming = require("./deepgramStreaming");
+const AudioStorageManager = require("./audioStorage");
 
 const MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions";
 
@@ -106,7 +107,10 @@ class IPCHandlers {
     this._autoLearnDebounceTimer = null;
     this._autoLearnLatestData = null;
     this._textEditHandler = null;
+    this.audioStorageManager = new AudioStorageManager();
+    this._audioCleanupInterval = null;
     this._setupTextEditMonitor();
+    this._setupAudioCleanup();
     this.setupHandlers();
 
     if (this.whisperManager?.serverManager) {
@@ -133,6 +137,38 @@ class IPCHandlers {
     if (this.textEditMonitor && this._textEditHandler) {
       this.textEditMonitor.removeListener("text-edited", this._textEditHandler);
       this._textEditHandler = null;
+    }
+  }
+
+  _setupAudioCleanup() {
+    const DEFAULT_RETENTION_DAYS = 30;
+    const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
+    // Run initial cleanup with default retention
+    try {
+      this.audioStorageManager.cleanupExpiredAudio(DEFAULT_RETENTION_DAYS, this.databaseManager);
+    } catch (error) {
+      debugLogger.error("Initial audio cleanup failed", { error: error.message }, "audio-storage");
+    }
+
+    // Set up periodic cleanup every 6 hours
+    this._audioCleanupInterval = setInterval(() => {
+      try {
+        this.audioStorageManager.cleanupExpiredAudio(DEFAULT_RETENTION_DAYS, this.databaseManager);
+      } catch (error) {
+        debugLogger.error(
+          "Periodic audio cleanup failed",
+          { error: error.message },
+          "audio-storage"
+        );
+      }
+    }, SIX_HOURS_MS);
+  }
+
+  _cleanupAudioInterval() {
+    if (this._audioCleanupInterval) {
+      clearInterval(this._audioCleanupInterval);
+      this._audioCleanupInterval = null;
     }
   }
 
@@ -310,8 +346,8 @@ class IPCHandlers {
       return this.environmentManager.createProductionEnvFile(apiKey);
     });
 
-    ipcMain.handle("db-save-transcription", async (event, text) => {
-      const result = this.databaseManager.saveTranscription(text);
+    ipcMain.handle("db-save-transcription", async (event, text, rawText) => {
+      const result = this.databaseManager.saveTranscription(text, rawText);
       if (result?.success && result?.transcription) {
         setImmediate(() => {
           this.broadcastToWindows("transcription-added", result.transcription);
@@ -325,6 +361,7 @@ class IPCHandlers {
     });
 
     ipcMain.handle("db-clear-transcriptions", async (event) => {
+      this.audioStorageManager.deleteAllAudio();
       const result = this.databaseManager.clearTranscriptions();
       if (result?.success) {
         setImmediate(() => {
@@ -337,6 +374,7 @@ class IPCHandlers {
     });
 
     ipcMain.handle("db-delete-transcription", async (event, id) => {
+      this.audioStorageManager.deleteAudio(id);
       const result = this.databaseManager.deleteTranscription(id);
       if (result?.success) {
         setImmediate(() => {
@@ -344,6 +382,105 @@ class IPCHandlers {
         });
       }
       return result;
+    });
+
+    // Audio storage handlers
+    ipcMain.handle("save-transcription-audio", async (event, id, audioBuffer, metadata) => {
+      const result = this.audioStorageManager.saveAudio(id, Buffer.from(audioBuffer));
+      if (result.success) {
+        this.databaseManager.updateTranscriptionAudio(id, {
+          hasAudio: 1,
+          audioDurationMs: metadata?.durationMs || null,
+          provider: metadata?.provider || null,
+          model: metadata?.model || null,
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("get-audio-path", async (event, id) => {
+      return this.audioStorageManager.getAudioPath(id);
+    });
+
+    ipcMain.handle("get-audio-buffer", async (event, id) => {
+      const buffer = this.audioStorageManager.getAudioBuffer(id);
+      return buffer ? buffer.buffer : null;
+    });
+
+    ipcMain.handle("delete-transcription-audio", async (event, id) => {
+      const result = this.audioStorageManager.deleteAudio(id);
+      if (result.success) {
+        this.databaseManager.updateTranscriptionAudio(id, {
+          hasAudio: 0,
+          audioDurationMs: null,
+          provider: null,
+          model: null,
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("get-audio-storage-usage", async () => {
+      return this.audioStorageManager.getStorageUsage();
+    });
+
+    ipcMain.handle("delete-all-audio", async () => {
+      const result = this.audioStorageManager.deleteAllAudio();
+      try {
+        const rows = this.databaseManager.db
+          .prepare("SELECT id FROM transcriptions WHERE has_audio = 1")
+          .all();
+        if (rows.length > 0) {
+          this.databaseManager.clearAudioFlags(rows.map((r) => r.id));
+        }
+      } catch (error) {
+        debugLogger.error(
+          "Failed to clear audio flags after delete-all",
+          { error: error.message },
+          "audio-storage"
+        );
+      }
+      return result;
+    });
+
+    ipcMain.handle("retry-transcription", async (event, id) => {
+      const buffer = this.audioStorageManager.getAudioBuffer(id);
+      if (!buffer) return { success: false, error: "Audio file not found" };
+      try {
+        let result;
+        if (this.parakeetManager?.isReady?.()) {
+          result = await this.parakeetManager.transcribeLocalParakeet(buffer, {});
+        } else if (this.whisperManager?.serverManager?.isReady?.()) {
+          result = await this.whisperManager.transcribeLocalWhisper(buffer, {});
+        } else {
+          return { success: false, error: "No transcription engine available" };
+        }
+        if (result?.text) {
+          this.databaseManager.updateTranscriptionText(id, result.text, result.text);
+          const provider = result.source || "local";
+          const model = result.model || null;
+          this.databaseManager.updateTranscriptionAudio(id, {
+            hasAudio: 1,
+            audioDurationMs: null,
+            provider,
+            model,
+          });
+          const updated = this.databaseManager.getTranscriptionById(id);
+          return { success: true, transcription: updated };
+        }
+        return { success: false, error: "Transcription returned empty" };
+      } catch (error) {
+        debugLogger.error(
+          "Retry transcription failed",
+          { id, error: error.message },
+          "audio-storage"
+        );
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("get-transcription-by-id", async (event, id) => {
+      return this.databaseManager.getTranscriptionById(id);
     });
 
     // Dictionary handlers

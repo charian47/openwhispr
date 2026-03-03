@@ -15,6 +15,7 @@ import {
   useTranscriptions,
   initializeTranscriptions,
   removeTranscription as removeFromStore,
+  updateTranscription as updateInStore,
 } from "../stores/transcriptionStore";
 import ControlPanelSidebar, { type ControlPanelView } from "./ControlPanelSidebar";
 import WindowControls from "./WindowControls";
@@ -241,6 +242,59 @@ export default function ControlPanel() {
       });
     },
     [showConfirmDialog, showAlertDialog, t]
+  );
+
+  const downloadAudio = useCallback(
+    async (id: number) => {
+      try {
+        const buffer = await window.electronAPI.getAudioBuffer(id);
+        if (!buffer) {
+          toast({
+            title: t("controlPanel.history.audioNotFound"),
+            variant: "destructive",
+          });
+          return;
+        }
+        const blob = new Blob([buffer], { type: "audio/webm" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `openwhispr-${id}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast({ title: t("controlPanel.history.audioSaved") });
+      } catch {
+        toast({
+          title: t("controlPanel.history.audioNotFound"),
+          variant: "destructive",
+        });
+      }
+    },
+    [toast, t]
+  );
+
+  const retryTranscription = useCallback(
+    async (id: number) => {
+      try {
+        const result = await window.electronAPI.retryTranscription(id);
+        if (result.success && result.transcription) {
+          updateInStore(result.transcription);
+          toast({ title: t("controlPanel.history.retrySuccess") });
+        } else {
+          toast({
+            title: t("controlPanel.history.retryError"),
+            description: result.error,
+            variant: "destructive",
+          });
+        }
+      } catch {
+        toast({
+          title: t("controlPanel.history.retryError"),
+          variant: "destructive",
+        });
+      }
+    },
+    [toast, t]
   );
 
   const handleUpdateClick = async () => {
@@ -495,6 +549,8 @@ export default function ControlPanel() {
                 useReasoningModel={useReasoningModel}
                 copyToClipboard={copyToClipboard}
                 deleteTranscription={deleteTranscription}
+                onDownloadAudio={downloadAudio}
+                onRetryTranscription={retryTranscription}
                 onOpenSettings={(section) => {
                   setSettingsSection(section);
                   setShowSettings(true);

@@ -98,6 +98,8 @@ class AudioManager {
     this.skipReasoning = false;
     this.context = "dictation";
     this.sttConfig = null;
+    this.lastAudioBlob = null;
+    this.lastAudioMetadata = null;
   }
 
   getWorkletBlobUrl() {
@@ -323,6 +325,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         this.onStateChange?.({ isRecording: false, isProcessing: true });
 
         const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
+        this.lastAudioBlob = audioBlob; // preserve for audio retention
 
         logger.info(
           "Recording stopped",
@@ -476,6 +479,14 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       if (!this.isProcessing) {
         return;
       }
+
+      this.lastAudioMetadata = {
+        durationMs: metadata?.durationSeconds
+          ? Math.round(metadata.durationSeconds * 1000)
+          : Math.round(performance.now() - pipelineStart),
+        provider: result?.source || (useLocalWhisper ? localProvider : "cloud"),
+        model: activeModel || null,
+      };
 
       this.onTranscriptionComplete?.(result);
 
@@ -1810,9 +1821,27 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     }
   }
 
-  async saveTranscription(text) {
+  async saveTranscription(text, rawText = null) {
     try {
-      await window.electronAPI.saveTranscription(text);
+      const result = await window.electronAPI.saveTranscription(text, rawText);
+
+      // Save audio if we have a captured blob and the transcription was saved successfully
+      if (result?.id && this.lastAudioBlob) {
+        try {
+          const arrayBuffer = await this.lastAudioBlob.arrayBuffer();
+          await window.electronAPI.saveTranscriptionAudio(
+            result.id,
+            arrayBuffer,
+            this.lastAudioMetadata
+          );
+        } catch (audioErr) {
+          // Non-blocking: transcription is saved even if audio save fails
+          logger.warn("Failed to save transcription audio", { error: audioErr.message }, "audio");
+        }
+        this.lastAudioBlob = null;
+        this.lastAudioMetadata = null;
+      }
+
       return true;
     } catch (error) {
       return false;
@@ -2217,6 +2246,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         this.streamingFallbackRecorder.stop();
       });
     }
+    if (fallbackBlob) {
+      this.lastAudioBlob = fallbackBlob; // preserve for audio retention
+    }
     this.streamingFallbackRecorder = null;
     this.streamingFallbackChunks = [];
 
@@ -2380,6 +2412,13 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     if (finalText) {
       const tBeforePaste = performance.now();
       const clientTotalMs = Math.round(tBeforePaste - t0);
+      this.lastAudioMetadata = {
+        durationMs: durationSeconds
+          ? Math.round(durationSeconds * 1000)
+          : Math.round(tBeforePaste - t0),
+        provider: `${this.sttConfig?.streamingProvider || "deepgram"}-streaming`,
+        model: streamingSttModel || null,
+      };
       this.onTranscriptionComplete?.({
         success: true,
         text: finalText,
@@ -2501,6 +2540,8 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
   }
 
   cleanup() {
+    this.lastAudioBlob = null;
+    this.lastAudioMetadata = null;
     if (this.isStreaming) {
       this.cleanupStreaming();
     }

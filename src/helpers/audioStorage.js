@@ -1,0 +1,167 @@
+const fs = require("fs");
+const path = require("path");
+const { app } = require("electron");
+const debugLogger = require("./debugLogger");
+
+class AudioStorageManager {
+  constructor() {
+    this.audioDir = path.join(app.getPath("userData"), "audio");
+    this.ensureAudioDir();
+  }
+
+  ensureAudioDir() {
+    try {
+      fs.mkdirSync(this.audioDir, { recursive: true });
+    } catch (error) {
+      debugLogger.error(
+        "Failed to create audio directory",
+        { error: error.message },
+        "audio-storage"
+      );
+    }
+  }
+
+  saveAudio(transcriptionId, audioBuffer) {
+    try {
+      const filePath = path.join(this.audioDir, `${transcriptionId}.webm`);
+      fs.writeFileSync(filePath, audioBuffer);
+      debugLogger.debug(
+        "Audio saved",
+        { transcriptionId, size: audioBuffer.length },
+        "audio-storage"
+      );
+      return { success: true, path: filePath };
+    } catch (error) {
+      debugLogger.error(
+        "Failed to save audio",
+        { transcriptionId, error: error.message },
+        "audio-storage"
+      );
+      return { success: false };
+    }
+  }
+
+  getAudioPath(transcriptionId) {
+    const filePath = path.join(this.audioDir, `${transcriptionId}.webm`);
+    return fs.existsSync(filePath) ? filePath : null;
+  }
+
+  getAudioBuffer(transcriptionId) {
+    const filePath = this.getAudioPath(transcriptionId);
+    if (!filePath) return null;
+    try {
+      return fs.readFileSync(filePath);
+    } catch (error) {
+      debugLogger.error(
+        "Failed to read audio",
+        { transcriptionId, error: error.message },
+        "audio-storage"
+      );
+      return null;
+    }
+  }
+
+  deleteAudio(transcriptionId) {
+    try {
+      const filePath = path.join(this.audioDir, `${transcriptionId}.webm`);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        debugLogger.debug("Audio deleted", { transcriptionId }, "audio-storage");
+      }
+      return { success: true };
+    } catch (error) {
+      debugLogger.error(
+        "Failed to delete audio",
+        { transcriptionId, error: error.message },
+        "audio-storage"
+      );
+      return { success: false };
+    }
+  }
+
+  cleanupExpiredAudio(retentionDays, databaseManager) {
+    try {
+      const cutoffMs = Date.now() - retentionDays * 86400000;
+      const files = fs.readdirSync(this.audioDir).filter((f) => f.endsWith(".webm"));
+      const expiredIds = [];
+      let kept = 0;
+
+      for (const file of files) {
+        const filePath = path.join(this.audioDir, file);
+        try {
+          const stats = fs.statSync(filePath);
+          if (stats.mtimeMs < cutoffMs) {
+            fs.unlinkSync(filePath);
+            const id = path.basename(file, ".webm");
+            expiredIds.push(id);
+          } else {
+            kept++;
+          }
+        } catch (error) {
+          debugLogger.error(
+            "Failed to process audio file during cleanup",
+            { file, error: error.message },
+            "audio-storage"
+          );
+        }
+      }
+
+      if (expiredIds.length > 0 && databaseManager) {
+        databaseManager.clearAudioFlags(expiredIds);
+      }
+
+      debugLogger.info(
+        "Audio cleanup complete",
+        { deleted: expiredIds.length, kept, retentionDays },
+        "audio-storage"
+      );
+      return { deleted: expiredIds.length, kept };
+    } catch (error) {
+      debugLogger.error("Audio cleanup failed", { error: error.message }, "audio-storage");
+      return { deleted: 0, kept: 0 };
+    }
+  }
+
+  deleteAllAudio() {
+    try {
+      const files = fs.readdirSync(this.audioDir).filter((f) => f.endsWith(".webm"));
+      for (const file of files) {
+        try {
+          fs.unlinkSync(path.join(this.audioDir, file));
+        } catch (error) {
+          debugLogger.error(
+            "Failed to delete audio file",
+            { file, error: error.message },
+            "audio-storage"
+          );
+        }
+      }
+      debugLogger.info("All audio deleted", { count: files.length }, "audio-storage");
+      return { deleted: files.length };
+    } catch (error) {
+      debugLogger.error("Failed to delete all audio", { error: error.message }, "audio-storage");
+      return { deleted: 0 };
+    }
+  }
+
+  getStorageUsage() {
+    try {
+      const files = fs.readdirSync(this.audioDir).filter((f) => f.endsWith(".webm"));
+      let totalBytes = 0;
+      for (const file of files) {
+        try {
+          const stats = fs.statSync(path.join(this.audioDir, file));
+          totalBytes += stats.size;
+        } catch {
+          // Skip files that can't be stat'd
+        }
+      }
+      return { fileCount: files.length, totalBytes };
+    } catch (error) {
+      debugLogger.error("Failed to get storage usage", { error: error.message }, "audio-storage");
+      return { fileCount: 0, totalBytes: 0 };
+    }
+  }
+}
+
+module.exports = AudioStorageManager;
