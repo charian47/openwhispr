@@ -5,6 +5,7 @@ import { hasStoredByokKey } from "../utils/byokDetection";
 import { ensureAgentNameInDictionary } from "../utils/agentName";
 import logger from "../utils/logger";
 import type { LocalTranscriptionProvider } from "../types/electron";
+import type { GoogleCalendarAccount } from "../types/calendar";
 import type {
   TranscriptionSettings,
   ReasoningSettings,
@@ -55,13 +56,12 @@ const BOOLEAN_SETTINGS = new Set([
   "telemetryEnabled",
   "audioCuesEnabled",
   "floatingIconAutoHide",
-  "gcalConnected",
   "meetingProcessDetection",
   "meetingAudioDetection",
   "isSignedIn",
 ]);
 
-const ARRAY_SETTINGS = new Set(["customDictionary"]);
+const ARRAY_SETTINGS = new Set(["customDictionary", "gcalAccounts"]);
 
 const LANGUAGE_MIGRATIONS: Record<string, string> = { zh: "zh-CN" };
 
@@ -87,6 +87,7 @@ export interface SettingsState
   isSignedIn: boolean;
   audioCuesEnabled: boolean;
   floatingIconAutoHide: boolean;
+  gcalAccounts: GoogleCalendarAccount[];
   gcalConnected: boolean;
   gcalEmail: string;
   meetingProcessDetection: boolean;
@@ -132,8 +133,7 @@ export interface SettingsState
   setTelemetryEnabled: (value: boolean) => void;
   setAudioCuesEnabled: (value: boolean) => void;
   setFloatingIconAutoHide: (enabled: boolean) => void;
-  setGcalConnected: (value: boolean) => void;
-  setGcalEmail: (value: string) => void;
+  setGcalAccounts: (accounts: GoogleCalendarAccount[]) => void;
   setMeetingProcessDetection: (value: boolean) => void;
   setMeetingAudioDetection: (value: boolean) => void;
   setIsSignedIn: (value: boolean) => void;
@@ -247,8 +247,20 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   telemetryEnabled: readBoolean("telemetryEnabled", false),
   audioCuesEnabled: readBoolean("audioCuesEnabled", true),
   floatingIconAutoHide: readBoolean("floatingIconAutoHide", false),
-  gcalConnected: readBoolean("gcalConnected", false),
-  gcalEmail: readString("gcalEmail", ""),
+  ...(() => {
+    let accounts: GoogleCalendarAccount[] = [];
+    try {
+      const parsed = JSON.parse(readString("gcalAccounts", "[]"));
+      if (Array.isArray(parsed)) accounts = parsed;
+    } catch {
+      /* use empty default */
+    }
+    return {
+      gcalAccounts: accounts,
+      gcalConnected: accounts.length > 0,
+      gcalEmail: accounts[0]?.email ?? "",
+    };
+  })(),
   meetingProcessDetection: readBoolean("meetingProcessDetection", true),
   meetingAudioDetection: readBoolean("meetingAudioDetection", true),
   isSignedIn: readBoolean("isSignedIn", false),
@@ -384,8 +396,14 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     }
   },
 
-  setGcalConnected: createBooleanSetter("gcalConnected"),
-  setGcalEmail: createStringSetter("gcalEmail"),
+  setGcalAccounts: (accounts: GoogleCalendarAccount[]) => {
+    if (isBrowser) localStorage.setItem("gcalAccounts", JSON.stringify(accounts));
+    useSettingsStore.setState({
+      gcalAccounts: accounts,
+      gcalConnected: accounts.length > 0,
+      gcalEmail: accounts[0]?.email ?? "",
+    });
+  },
   setMeetingProcessDetection: createBooleanSetter("meetingProcessDetection"),
   setMeetingAudioDetection: createBooleanSetter("meetingAudioDetection"),
 
@@ -626,6 +644,14 @@ export async function initializeSettings(): Promise<void> {
     }
 
     useSettingsStore.setState({ [key]: value });
+
+    if (key === "gcalAccounts" && Array.isArray(value)) {
+      const accounts = value as GoogleCalendarAccount[];
+      useSettingsStore.setState({
+        gcalConnected: accounts.length > 0,
+        gcalEmail: accounts[0]?.email ?? "",
+      });
+    }
 
     if (key === "uiLanguage" && typeof value === "string") {
       void i18n.changeLanguage(value);

@@ -1477,6 +1477,7 @@
     "upgradeTitle": "升级到 Pro",
     "upgradeDescription": "无限转录、实时转录等更多功能。",
     "learnMore": "了解更多",
+    "integrations": "集成",
     "defaultUser": "用户",
     "notSignedIn": "未登录"
   },
@@ -1554,6 +1555,32 @@
     "oauth": {
       "redirectTitle": "正在跳转到应用...",
       "closeTab": "您可以关闭此标签页。"
+    }
+  },
+  "integrations": {
+    "title": "集成",
+    "description": "连接服务以增强您的工作流程",
+    "googleCalendar": {
+      "title": "Google 日历",
+      "description": "连接日历以启用会议笔记。OpenWhispr 会自动检测会议并进行说话人分离录音。",
+      "connect": "连接 Google 日历",
+      "connecting": "连接中...",
+      "connected": "已连接",
+      "addAnother": "添加其他日历",
+      "disconnect": "断开",
+      "disconnectConfirm": "断开 {{email}}？",
+      "disconnectDescription": "将不再从此日历记录会议笔记。"
+    },
+    "plan": {
+      "title": "您的方案",
+      "current": "当前",
+      "free": "免费",
+      "freeLimit": "每月5次会议",
+      "essential": "Essential",
+      "essentialLimit": "每月20次会议",
+      "pro": "Pro",
+      "proLimit": "无限",
+      "upgrade": "升级"
     }
   }
 }

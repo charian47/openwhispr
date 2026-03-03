@@ -899,8 +899,12 @@ declare global {
 
       // Google Calendar
       gcalStartOAuth?: () => Promise<{ success: boolean; email?: string; error?: string }>;
-      gcalDisconnect?: () => Promise<{ success: boolean; error?: string }>;
-      gcalGetConnectionStatus?: () => Promise<{ connected: boolean; email: string | null }>;
+      gcalDisconnect?: (email?: string) => Promise<{ success: boolean; error?: string }>;
+      gcalGetConnectionStatus?: () => Promise<{
+        connected: boolean;
+        accounts: Array<{ email: string }>;
+        email: string | null;
+      }>;
       gcalGetCalendars?: () => Promise<{ success: boolean; calendars: any[] }>;
       gcalSetCalendarSelection?: (
         calendarId: string,

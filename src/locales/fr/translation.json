@@ -1246,6 +1246,7 @@
     "upgradeTitle": "Passer à Pro",
     "upgradeDescription": "Transcriptions illimitées et fonctionnalités premium.",
     "learnMore": "En savoir plus",
+    "integrations": "Intégrations",
     "defaultUser": "Utilisateur",
     "notSignedIn": "Non connecté"
   },
@@ -1558,6 +1559,32 @@
     "oauth": {
       "redirectTitle": "Redirection vers l'app...",
       "closeTab": "Vous pouvez fermer cet onglet."
+    }
+  },
+  "integrations": {
+    "title": "Intégrations",
+    "description": "Connectez des services pour booster votre productivité",
+    "googleCalendar": {
+      "title": "Google Calendar",
+      "description": "Connectez votre calendrier pour activer les notes de réunion. OpenWhispr détecte vos réunions et enregistre avec diarisation — automatiquement.",
+      "connect": "Connecter Google Calendar",
+      "connecting": "Connexion...",
+      "connected": "Connecté",
+      "addAnother": "Ajouter un autre calendrier",
+      "disconnect": "Déconnecter",
+      "disconnectConfirm": "Déconnecter {{email}} ?",
+      "disconnectDescription": "Les notes de réunion ne seront plus enregistrées depuis ce calendrier."
+    },
+    "plan": {
+      "title": "Votre forfait",
+      "current": "Actuel",
+      "free": "Gratuit",
+      "freeLimit": "5 réunions / mois",
+      "essential": "Essential",
+      "essentialLimit": "20 réunions / mois",
+      "pro": "Pro",
+      "proLimit": "Illimité",
+      "upgrade": "Passer au supérieur"
     }
   }
 }

@@ -170,9 +170,12 @@ class GoogleCalendarOAuth {
     return this._httpsPost(GOOGLE_TOKEN_URL, body);
   }
 
-  async getValidAccessToken() {
-    const tokens = this.databaseManager.getGoogleTokens();
-    if (!tokens) throw new Error("No Google tokens found");
+  async getValidAccessToken(accountEmail = null) {
+    const tokens = accountEmail
+      ? this.databaseManager.getGoogleTokensByEmail(accountEmail)
+      : this.databaseManager.getGoogleTokens();
+    if (!tokens)
+      throw new Error(`No Google tokens found${accountEmail ? ` for ${accountEmail}` : ""}`);
 
     const fiveMinutes = 5 * 60 * 1000;
     if (tokens.expires_at - fiveMinutes < Date.now()) {

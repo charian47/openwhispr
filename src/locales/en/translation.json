@@ -847,10 +847,6 @@
         "description": "Dictation hotkey & activation",
         "label": "Hotkeys"
       },
-      "calendar": {
-        "label": "Calendar",
-        "description": "Google Calendar integration"
-      },
       "transcription": {
         "description": "Speech-to-text engine",
         "label": "Transcription"
@@ -1277,6 +1273,7 @@
     "upgradeTitle": "Upgrade to Pro",
     "upgradeDescription": "Unlimited transcriptions and premium features.",
     "learnMore": "Learn more",
+    "integrations": "Integrations",
     "defaultUser": "User",
     "notSignedIn": "Not signed in"
   },
@@ -1589,6 +1586,32 @@
     "oauth": {
       "redirectTitle": "Redirecting to app...",
       "closeTab": "You can close this tab."
+    }
+  },
+  "integrations": {
+    "title": "Integrations",
+    "description": "Connect services to supercharge your workflow",
+    "googleCalendar": {
+      "title": "Google Calendar",
+      "description": "Connect your calendar to activate meeting notes. OpenWhispr detects meetings and records with speaker diarization — automatically.",
+      "connect": "Connect Google Calendar",
+      "connecting": "Connecting...",
+      "connected": "Connected",
+      "addAnother": "Add another calendar",
+      "disconnect": "Disconnect",
+      "disconnectConfirm": "Disconnect {{email}}?",
+      "disconnectDescription": "Meeting notes will no longer be recorded from this calendar."
+    },
+    "plan": {
+      "title": "Your Plan",
+      "current": "Current",
+      "free": "Free",
+      "freeLimit": "5 meetings / month",
+      "essential": "Essential",
+      "essentialLimit": "20 meetings / month",
+      "pro": "Pro",
+      "proLimit": "Unlimited",
+      "upgrade": "Upgrade"
     }
   }
 }

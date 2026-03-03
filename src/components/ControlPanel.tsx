@@ -30,6 +30,7 @@ const ReferralModal = React.lazy(() => import("./ReferralModal"));
 const PersonalNotesView = React.lazy(() => import("./notes/PersonalNotesView"));
 const DictionaryView = React.lazy(() => import("./DictionaryView"));
 const UploadAudioView = React.lazy(() => import("./notes/UploadAudioView"));
+const IntegrationsView = React.lazy(() => import("./IntegrationsView"));
 
 export default function ControlPanel() {
   const { t } = useTranslation();
@@ -576,6 +577,11 @@ export default function ControlPanel() {
                     setShowSettings(true);
                   }}
                 />
+              </Suspense>
+            )}
+            {activeView === "integrations" && (
+              <Suspense fallback={null}>
+                <IntegrationsView />
               </Suspense>
             )}
           </div>

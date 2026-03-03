@@ -144,7 +144,7 @@ class DatabaseManager {
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS google_calendar_tokens (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          google_email TEXT NOT NULL,
+          google_email TEXT NOT NULL UNIQUE,
           access_token TEXT NOT NULL,
           refresh_token TEXT NOT NULL,
           expires_at INTEGER NOT NULL,
@@ -154,6 +154,27 @@ class DatabaseManager {
         )
       `);
 
+      // Migration: add UNIQUE constraint to google_email if table already existed without it
+      try {
+        const tableInfo = this.db.pragma("index_list('google_calendar_tokens')");
+        const hasUniqueEmail = tableInfo.some((idx) => {
+          if (!idx.unique) return false;
+          const cols = this.db.pragma(`index_info('${idx.name}')`);
+          return cols.length === 1 && cols[0].name === "google_email";
+        });
+        if (!hasUniqueEmail) {
+          this.db.exec(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_google_calendar_tokens_email ON google_calendar_tokens(google_email)"
+          );
+        }
+      } catch (err) {
+        debugLogger.error(
+          "Migration: google_email unique index",
+          { error: err.message },
+          "database"
+        );
+      }
+
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS google_calendars (
           id TEXT PRIMARY KEY,
@@ -162,9 +183,16 @@ class DatabaseManager {
           background_color TEXT,
           is_selected INTEGER NOT NULL DEFAULT 1,
           sync_token TEXT,
+          account_email TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
+
+      try {
+        this.db.exec("ALTER TABLE google_calendars ADD COLUMN account_email TEXT");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
 
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS calendar_events (
@@ -589,9 +617,15 @@ class DatabaseManager {
   saveGoogleTokens(tokens) {
     try {
       if (!this.db) throw new Error("Database not initialized");
-      this.db.prepare("DELETE FROM google_calendar_tokens").run();
       const stmt = this.db.prepare(
-        "INSERT INTO google_calendar_tokens (google_email, access_token, refresh_token, expires_at, scope) VALUES (?, ?, ?, ?, ?)"
+        `INSERT INTO google_calendar_tokens (google_email, access_token, refresh_token, expires_at, scope)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(google_email) DO UPDATE SET
+           access_token = excluded.access_token,
+           refresh_token = excluded.refresh_token,
+           expires_at = excluded.expires_at,
+           scope = excluded.scope,
+           updated_at = CURRENT_TIMESTAMP`
       );
       stmt.run(
         tokens.google_email,
@@ -617,6 +651,66 @@ class DatabaseManager {
     }
   }
 
+  getGoogleTokensByEmail(email) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return (
+        this.db.prepare("SELECT * FROM google_calendar_tokens WHERE google_email = ?").get(email) ||
+        null
+      );
+    } catch (error) {
+      debugLogger.error("Error getting Google tokens by email", { error: error.message }, "gcal");
+      throw error;
+    }
+  }
+
+  getAllGoogleTokens() {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db.prepare("SELECT * FROM google_calendar_tokens").all();
+    } catch (error) {
+      debugLogger.error("Error getting all Google tokens", { error: error.message }, "gcal");
+      throw error;
+    }
+  }
+
+  getGoogleAccounts() {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db
+        .prepare("SELECT google_email AS email FROM google_calendar_tokens ORDER BY created_at ASC")
+        .all();
+    } catch (error) {
+      debugLogger.error("Error getting Google accounts", { error: error.message }, "gcal");
+      throw error;
+    }
+  }
+
+  removeGoogleAccount(email) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const transaction = this.db.transaction(() => {
+        const calendarIds = this.db
+          .prepare("SELECT id FROM google_calendars WHERE account_email = ?")
+          .all(email)
+          .map((c) => c.id);
+        if (calendarIds.length > 0) {
+          const placeholders = calendarIds.map(() => "?").join(", ");
+          this.db
+            .prepare(`DELETE FROM calendar_events WHERE calendar_id IN (${placeholders})`)
+            .run(...calendarIds);
+        }
+        this.db.prepare("DELETE FROM google_calendars WHERE account_email = ?").run(email);
+        this.db.prepare("DELETE FROM google_calendar_tokens WHERE google_email = ?").run(email);
+      });
+      transaction();
+      return { success: true };
+    } catch (error) {
+      debugLogger.error("Error removing Google account", { error: error.message }, "gcal");
+      throw error;
+    }
+  }
+
   deleteGoogleTokens() {
     try {
       if (!this.db) throw new Error("Database not initialized");
@@ -628,14 +722,26 @@ class DatabaseManager {
     }
   }
 
-  saveGoogleCalendars(calendars) {
+  saveGoogleCalendars(calendars, accountEmail = null) {
     try {
       if (!this.db) throw new Error("Database not initialized");
       const stmt = this.db.prepare(
-        "INSERT INTO google_calendars (id, summary, description, background_color) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET summary = excluded.summary, description = excluded.description, background_color = excluded.background_color"
+        `INSERT INTO google_calendars (id, summary, description, background_color, account_email)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           summary = excluded.summary,
+           description = excluded.description,
+           background_color = excluded.background_color,
+           account_email = excluded.account_email`
       );
       for (const cal of calendars) {
-        stmt.run(cal.id, cal.summary, cal.description || null, cal.background_color || null);
+        stmt.run(
+          cal.id,
+          cal.summary,
+          cal.description || null,
+          cal.background_color || null,
+          accountEmail
+        );
       }
       return { success: true };
     } catch (error) {
@@ -644,9 +750,14 @@ class DatabaseManager {
     }
   }
 
-  getGoogleCalendars() {
+  getGoogleCalendars(accountEmail = null) {
     try {
       if (!this.db) throw new Error("Database not initialized");
+      if (accountEmail) {
+        return this.db
+          .prepare("SELECT * FROM google_calendars WHERE account_email = ?")
+          .all(accountEmail);
+      }
       return this.db.prepare("SELECT * FROM google_calendars").all();
     } catch (error) {
       debugLogger.error("Error getting Google calendars", { error: error.message }, "gcal");
@@ -667,9 +778,14 @@ class DatabaseManager {
     }
   }
 
-  getSelectedCalendars() {
+  getSelectedCalendars(accountEmail = null) {
     try {
       if (!this.db) throw new Error("Database not initialized");
+      if (accountEmail) {
+        return this.db
+          .prepare("SELECT * FROM google_calendars WHERE is_selected = 1 AND account_email = ?")
+          .all(accountEmail);
+      }
       return this.db.prepare("SELECT * FROM google_calendars WHERE is_selected = 1").all();
     } catch (error) {
       debugLogger.error("Error getting selected calendars", { error: error.message }, "gcal");

@@ -1477,6 +1477,7 @@
     "upgradeTitle": "升級至 Pro",
     "upgradeDescription": "無限轉錄、即時轉錄等更多功能。",
     "learnMore": "瞭解更多",
+    "integrations": "整合",
     "defaultUser": "使用者",
     "notSignedIn": "尚未登入"
   },
@@ -1554,6 +1555,32 @@
     "oauth": {
       "redirectTitle": "正在跳轉到應用程式...",
       "closeTab": "您可以關閉此分頁。"
+    }
+  },
+  "integrations": {
+    "title": "整合",
+    "description": "連接服務以增強您的工作流程",
+    "googleCalendar": {
+      "title": "Google 日曆",
+      "description": "連接日曆以啟用會議筆記。OpenWhispr 會自動偵測會議並進行說話者分離錄音。",
+      "connect": "連接 Google 日曆",
+      "connecting": "連接中...",
+      "connected": "已連接",
+      "addAnother": "新增其他日曆",
+      "disconnect": "中斷連接",
+      "disconnectConfirm": "中斷 {{email}} 的連接？",
+      "disconnectDescription": "將不再從此日曆記錄會議筆記。"
+    },
+    "plan": {
+      "title": "您的方案",
+      "current": "目前",
+      "free": "免費",
+      "freeLimit": "每月5次會議",
+      "essential": "Essential",
+      "essentialLimit": "每月20次會議",
+      "pro": "Pro",
+      "proLimit": "無限",
+      "upgrade": "升級"
     }
   }
 }

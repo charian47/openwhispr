@@ -4,6 +4,7 @@ import {
   NotebookPen,
   BookOpen,
   Upload,
+  Blocks,
   Gift,
   Settings,
   HelpCircle,
@@ -15,7 +16,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "./lib/utils";
 import SupportDropdown from "./ui/SupportDropdown";
 
-export type ControlPanelView = "home" | "personal-notes" | "dictionary" | "upload";
+export type ControlPanelView = "home" | "personal-notes" | "dictionary" | "upload" | "integrations";
 
 interface ControlPanelSidebarProps {
   activeView: ControlPanelView;
@@ -74,6 +75,7 @@ export default function ControlPanelSidebar({
     { id: "personal-notes", label: t("sidebar.notes"), icon: NotebookPen },
     { id: "upload", label: t("sidebar.upload"), icon: Upload },
     { id: "dictionary", label: t("sidebar.dictionary"), icon: BookOpen },
+    { id: "integrations", label: t("sidebar.integrations"), icon: Blocks },
   ];
 
   return (

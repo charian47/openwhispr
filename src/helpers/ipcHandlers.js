@@ -1792,7 +1792,10 @@ class IPCHandlers {
 
         if (!tokenResponse.ok) {
           const err = await tokenResponse.json().catch(() => ({}));
-          return { success: false, error: err.error || `Token request failed: ${tokenResponse.status}` };
+          return {
+            success: false,
+            error: err.error || `Token request failed: ${tokenResponse.status}`,
+          };
         }
 
         const { clientSecret } = await tokenResponse.json();

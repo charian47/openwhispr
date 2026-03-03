@@ -1481,6 +1481,7 @@
     "upgradeTitle": "Перейдите на Pro",
     "upgradeDescription": "Безлимитные транскрипции, транскрипция в реальном времени и многое другое.",
     "learnMore": "Узнать больше",
+    "integrations": "Интеграции",
     "defaultUser": "Пользователь",
     "notSignedIn": "Не авторизован"
   },
@@ -1558,6 +1559,32 @@
     "oauth": {
       "redirectTitle": "Перенаправление в приложение...",
       "closeTab": "Можете закрыть эту вкладку."
+    }
+  },
+  "integrations": {
+    "title": "Интеграции",
+    "description": "Подключите сервисы для улучшения рабочего процесса",
+    "googleCalendar": {
+      "title": "Google Calendar",
+      "description": "Подключите календарь для активации заметок встреч. OpenWhispr определяет встречи и записывает с диаризацией говорящих — автоматически.",
+      "connect": "Подключить Google Calendar",
+      "connecting": "Подключение...",
+      "connected": "Подключено",
+      "addAnother": "Добавить ещё один календарь",
+      "disconnect": "Отключить",
+      "disconnectConfirm": "Отключить {{email}}?",
+      "disconnectDescription": "Заметки встреч больше не будут записываться из этого календаря."
+    },
+    "plan": {
+      "title": "Ваш план",
+      "current": "Текущий",
+      "free": "Бесплатный",
+      "freeLimit": "5 встреч / месяц",
+      "essential": "Essential",
+      "essentialLimit": "20 встреч / месяц",
+      "pro": "Pro",
+      "proLimit": "Безлимитно",
+      "upgrade": "Улучшить"
     }
   }
 }

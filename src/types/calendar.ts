@@ -21,6 +21,10 @@ export interface CalendarEvent {
   attendees_count: number;
 }
 
+export interface GoogleCalendarAccount {
+  email: string;
+}
+
 export interface CalendarConnectionStatus {
   connected: boolean;
   email: string | null;

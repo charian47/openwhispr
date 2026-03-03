@@ -10,6 +10,7 @@ class GoogleCalendarManager {
     this.databaseManager = databaseManager;
     this.windowManager = windowManager;
     this.oauth = new GoogleCalendarOAuth(databaseManager);
+    this.accounts = new Map();
     this.syncInterval = null;
     this.nextMeetingTimer = null;
     this.meetingEndTimer = null;
@@ -20,7 +21,8 @@ class GoogleCalendarManager {
   }
 
   start() {
-    if (!this.isConnected()) return;
+    this._loadAccounts();
+    if (this.accounts.size === 0) return;
 
     this.syncEvents()
       .then(() => this.scheduleNextMeeting())
@@ -28,11 +30,7 @@ class GoogleCalendarManager {
         debugLogger.error("Initial calendar sync failed", { error: err.message }, "gcal")
       );
 
-    this.syncInterval = setInterval(() => {
-      this.syncEvents()
-        .then(() => this.scheduleNextMeeting())
-        .catch((err) => debugLogger.error("Calendar sync failed", { error: err.message }, "gcal"));
-    }, this.SYNC_INTERVAL_MS);
+    this._startSyncInterval();
   }
 
   stop() {
@@ -52,52 +50,84 @@ class GoogleCalendarManager {
   }
 
   isConnected() {
-    return !!this.databaseManager.getGoogleTokens();
+    return this.accounts.size > 0;
+  }
+
+  addAccount(email) {
+    this.accounts.set(email, { email });
+  }
+
+  removeAccount(email) {
+    this.accounts.delete(email);
+    this.databaseManager.removeGoogleAccount(email);
+    this._broadcastAccountsChanged();
+
+    if (this.accounts.size === 0) {
+      this.stop();
+      this.notifiedMeetings.clear();
+    }
   }
 
   async startOAuth() {
     const result = await this.oauth.startOAuthFlow();
-    await this.fetchCalendars();
+    this.addAccount(result.email);
+
+    await this.fetchCalendars(result.email);
     await this.syncEvents();
     this.scheduleNextMeeting();
+    this._startSyncInterval();
+    this._broadcastAccountsChanged();
 
-    if (this.syncInterval) clearInterval(this.syncInterval);
-    this.syncInterval = setInterval(() => {
-      this.syncEvents()
-        .then(() => this.scheduleNextMeeting())
-        .catch((err) => debugLogger.error("Calendar sync failed", { error: err.message }, "gcal"));
-    }, this.SYNC_INTERVAL_MS);
-
-    this.broadcastToWindows("gcal-connection-changed", { connected: true, email: result.email });
     return result;
   }
 
-  disconnect() {
-    this.stop();
-    this.databaseManager.clearCalendarData();
-    this.notifiedMeetings.clear();
-    this.broadcastToWindows("gcal-connection-changed", { connected: false, email: null });
+  disconnect(email) {
+    if (email) {
+      this.removeAccount(email);
+    } else {
+      this.stop();
+      this.accounts.clear();
+      this.databaseManager.clearCalendarData();
+      this.notifiedMeetings.clear();
+      this._broadcastAccountsChanged();
+    }
   }
 
   getConnectionStatus() {
-    const tokens = this.databaseManager.getGoogleTokens();
+    const accounts = this.databaseManager.getGoogleAccounts();
     return {
-      connected: !!tokens,
-      email: tokens?.google_email || null,
-      expiresAt: tokens?.expires_at || null,
+      connected: accounts.length > 0,
+      accounts,
+      // Backwards compat
+      email: accounts[0]?.email || null,
     };
   }
 
-  async fetchCalendars() {
-    const data = await this._apiGet("/users/me/calendarList");
-    const calendars = (data.items || []).map((item) => ({
-      id: item.id,
-      summary: item.summary,
-      description: item.description || null,
-      background_color: item.backgroundColor || null,
-    }));
-    this.databaseManager.saveGoogleCalendars(calendars);
-    return calendars;
+  getAccounts() {
+    return this.databaseManager.getGoogleAccounts();
+  }
+
+  async fetchCalendars(accountEmail = null) {
+    const emails = accountEmail ? [accountEmail] : this._getAccountEmails();
+    const allCalendars = [];
+
+    for (const email of emails) {
+      try {
+        const data = await this._apiGet("/users/me/calendarList", email);
+        const calendars = (data.items || []).map((item) => ({
+          id: item.id,
+          summary: item.summary,
+          description: item.description || null,
+          background_color: item.backgroundColor || null,
+        }));
+        this.databaseManager.saveGoogleCalendars(calendars, email);
+        allCalendars.push(...calendars);
+      } catch (err) {
+        debugLogger.error("Error fetching calendars", { email, error: err.message }, "gcal");
+      }
+    }
+
+    return allCalendars;
   }
 
   async syncEvents() {
@@ -110,10 +140,7 @@ class GoogleCalendarManager {
       } catch (err) {
         debugLogger.error(
           "Error syncing calendar",
-          {
-            calendarId: calendar.id,
-            error: err.message,
-          },
+          { calendarId: calendar.id, error: err.message },
           "gcal"
         );
       }
@@ -124,6 +151,7 @@ class GoogleCalendarManager {
   }
 
   async _syncCalendar(calendar) {
+    const accountEmail = calendar.account_email;
     const params = new URLSearchParams({
       singleEvents: "true",
       orderBy: "startTime",
@@ -141,7 +169,8 @@ class GoogleCalendarManager {
     let data;
     try {
       data = await this._apiGet(
-        `/calendars/${encodeURIComponent(calendar.id)}/events?${params.toString()}`
+        `/calendars/${encodeURIComponent(calendar.id)}/events?${params.toString()}`,
+        accountEmail
       );
     } catch (err) {
       // 410 Gone means syncToken is invalid; fall back to full sync
@@ -153,7 +182,8 @@ class GoogleCalendarManager {
           timeMax: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         });
         data = await this._apiGet(
-          `/calendars/${encodeURIComponent(calendar.id)}/events?${fullParams.toString()}`
+          `/calendars/${encodeURIComponent(calendar.id)}/events?${fullParams.toString()}`,
+          accountEmail
         );
       } else {
         throw err;
@@ -316,8 +346,34 @@ class GoogleCalendarManager {
     });
   }
 
-  async _apiGet(path) {
-    const accessToken = await this.oauth.getValidAccessToken();
+  _loadAccounts() {
+    const accounts = this.databaseManager.getGoogleAccounts();
+    this.accounts.clear();
+    for (const account of accounts) {
+      this.accounts.set(account.email, { email: account.email });
+    }
+  }
+
+  _getAccountEmails() {
+    return Array.from(this.accounts.keys());
+  }
+
+  _startSyncInterval() {
+    if (this.syncInterval) clearInterval(this.syncInterval);
+    this.syncInterval = setInterval(() => {
+      this.syncEvents()
+        .then(() => this.scheduleNextMeeting())
+        .catch((err) => debugLogger.error("Calendar sync failed", { error: err.message }, "gcal"));
+    }, this.SYNC_INTERVAL_MS);
+  }
+
+  _broadcastAccountsChanged() {
+    const accounts = this.getAccounts();
+    this.broadcastToWindows("gcal-connection-changed", { accounts });
+  }
+
+  async _apiGet(path, accountEmail = null) {
+    const accessToken = await this.oauth.getValidAccessToken(accountEmail);
     const urlString = path.startsWith("http") ? path : `${CALENDAR_API_BASE}${path}`;
     const url = new URL(urlString);
 
