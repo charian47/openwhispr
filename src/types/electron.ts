@@ -300,6 +300,7 @@ declare global {
         metadata?: { durationMs?: number; provider?: string; model?: string }
       ) => Promise<{ success: boolean; path?: string }>;
       getAudioPath: (id: number) => Promise<string | null>;
+      showAudioInFolder: (id: number) => Promise<{ success: boolean }>;
       getAudioBuffer: (id: number) => Promise<ArrayBuffer | null>;
       deleteTranscriptionAudio: (id: number) => Promise<{ success: boolean }>;
       getAudioStorageUsage: () => Promise<{ fileCount: number; totalBytes: number }>;

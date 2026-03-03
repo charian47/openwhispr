@@ -19,7 +19,7 @@ interface HistoryViewProps {
   copyToClipboard: (text: string) => void;
   deleteTranscription: (id: number) => void;
   onOpenSettings: (section?: string) => void;
-  onDownloadAudio: (id: number) => void;
+  onShowAudioInFolder: (id: number) => void;
   onRetryTranscription: (id: number) => Promise<void>;
 }
 
@@ -35,7 +35,7 @@ export default function HistoryView({
   copyToClipboard,
   deleteTranscription,
   onOpenSettings,
-  onDownloadAudio,
+  onShowAudioInFolder,
   onRetryTranscription,
 }: HistoryViewProps) {
   const { t } = useTranslation();
@@ -261,7 +261,7 @@ export default function HistoryView({
                       item={item}
                       onCopy={copyToClipboard}
                       onDelete={deleteTranscription}
-                      onDownloadAudio={onDownloadAudio}
+                      onShowAudioInFolder={onShowAudioInFolder}
                       onRetryTranscription={onRetryTranscription}
                     />
                   ))}

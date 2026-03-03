@@ -386,7 +386,9 @@ class IPCHandlers {
 
     // Audio storage handlers
     ipcMain.handle("save-transcription-audio", async (event, id, audioBuffer, metadata) => {
-      const result = this.audioStorageManager.saveAudio(id, Buffer.from(audioBuffer));
+      const transcription = this.databaseManager.getTranscriptionById(id);
+      const timestamp = transcription?.timestamp || null;
+      const result = this.audioStorageManager.saveAudio(id, Buffer.from(audioBuffer), timestamp);
       if (result.success) {
         this.databaseManager.updateTranscriptionAudio(id, {
           hasAudio: 1,
@@ -400,6 +402,13 @@ class IPCHandlers {
 
     ipcMain.handle("get-audio-path", async (event, id) => {
       return this.audioStorageManager.getAudioPath(id);
+    });
+
+    ipcMain.handle("show-audio-in-folder", async (event, id) => {
+      const filePath = this.audioStorageManager.getAudioPath(id);
+      if (!filePath) return { success: false };
+      shell.showItemInFolder(filePath);
+      return { success: true };
     });
 
     ipcMain.handle("get-audio-buffer", async (event, id) => {

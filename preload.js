@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   saveTranscriptionAudio: (id, audioBuffer, metadata) =>
     ipcRenderer.invoke("save-transcription-audio", id, audioBuffer, metadata),
   getAudioPath: (id) => ipcRenderer.invoke("get-audio-path", id),
+  showAudioInFolder: (id) => ipcRenderer.invoke("show-audio-in-folder", id),
   getAudioBuffer: (id) => ipcRenderer.invoke("get-audio-buffer", id),
   deleteTranscriptionAudio: (id) => ipcRenderer.invoke("delete-transcription-audio", id),
   getAudioStorageUsage: () => ipcRenderer.invoke("get-audio-storage-usage"),

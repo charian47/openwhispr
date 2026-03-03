@@ -244,25 +244,16 @@ export default function ControlPanel() {
     [showConfirmDialog, showAlertDialog, t]
   );
 
-  const downloadAudio = useCallback(
+  const showAudioInFolder = useCallback(
     async (id: number) => {
       try {
-        const buffer = await window.electronAPI.getAudioBuffer(id);
-        if (!buffer) {
+        const result = await window.electronAPI.showAudioInFolder(id);
+        if (!result?.success) {
           toast({
             title: t("controlPanel.history.audioNotFound"),
             variant: "destructive",
           });
-          return;
         }
-        const blob = new Blob([buffer], { type: "audio/webm" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `openwhispr-${id}.webm`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast({ title: t("controlPanel.history.audioSaved") });
       } catch {
         toast({
           title: t("controlPanel.history.audioNotFound"),
@@ -549,7 +540,7 @@ export default function ControlPanel() {
                 useReasoningModel={useReasoningModel}
                 copyToClipboard={copyToClipboard}
                 deleteTranscription={deleteTranscription}
-                onDownloadAudio={downloadAudio}
+                onShowAudioInFolder={showAudioInFolder}
                 onRetryTranscription={retryTranscription}
                 onOpenSettings={(section) => {
                   setSettingsSection(section);

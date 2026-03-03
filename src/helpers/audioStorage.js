@@ -21,13 +21,27 @@ class AudioStorageManager {
     }
   }
 
-  saveAudio(transcriptionId, audioBuffer) {
+  _buildFilename(transcriptionId, timestamp) {
+    if (timestamp) {
+      const d = new Date(timestamp);
+      if (!isNaN(d.getTime())) {
+        const pad = (n) => String(n).padStart(2, "0");
+        const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const time = `${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+        return `OpenWhispr-${date}-${time}-${transcriptionId}.webm`;
+      }
+    }
+    return `OpenWhispr-${transcriptionId}.webm`;
+  }
+
+  saveAudio(transcriptionId, audioBuffer, timestamp) {
     try {
-      const filePath = path.join(this.audioDir, `${transcriptionId}.webm`);
+      const filename = this._buildFilename(transcriptionId, timestamp);
+      const filePath = path.join(this.audioDir, filename);
       fs.writeFileSync(filePath, audioBuffer);
       debugLogger.debug(
         "Audio saved",
-        { transcriptionId, size: audioBuffer.length },
+        { transcriptionId, filename, size: audioBuffer.length },
         "audio-storage"
       );
       return { success: true, path: filePath };
@@ -42,8 +56,17 @@ class AudioStorageManager {
   }
 
   getAudioPath(transcriptionId) {
-    const filePath = path.join(this.audioDir, `${transcriptionId}.webm`);
-    return fs.existsSync(filePath) ? filePath : null;
+    // Match any file containing the transcription ID
+    try {
+      const files = fs.readdirSync(this.audioDir);
+      const match = files.find(
+        (f) => f.endsWith(`-${transcriptionId}.webm`) || f === `${transcriptionId}.webm`
+      );
+      if (match) return path.join(this.audioDir, match);
+    } catch {
+      // Fall through
+    }
+    return null;
   }
 
   getAudioBuffer(transcriptionId) {
@@ -63,8 +86,8 @@ class AudioStorageManager {
 
   deleteAudio(transcriptionId) {
     try {
-      const filePath = path.join(this.audioDir, `${transcriptionId}.webm`);
-      if (fs.existsSync(filePath)) {
+      const filePath = this.getAudioPath(transcriptionId);
+      if (filePath) {
         fs.unlinkSync(filePath);
         debugLogger.debug("Audio deleted", { transcriptionId }, "audio-storage");
       }
@@ -92,7 +115,10 @@ class AudioStorageManager {
           const stats = fs.statSync(filePath);
           if (stats.mtimeMs < cutoffMs) {
             fs.unlinkSync(filePath);
-            const id = path.basename(file, ".webm");
+            // Extract ID from "OpenWhispr-...-{id}.webm" or legacy "{id}.webm"
+            const basename = path.basename(file, ".webm");
+            const lastDash = basename.lastIndexOf("-");
+            const id = lastDash !== -1 ? basename.slice(lastDash + 1) : basename;
             expiredIds.push(id);
           } else {
             kept++;

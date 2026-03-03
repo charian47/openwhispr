@@ -2,15 +2,24 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./button";
 import { Tooltip } from "./tooltip";
-import { Copy, Trash2, FileText, Download, RotateCcw, Loader2 } from "lucide-react";
+import { Copy, Trash2, FileText, FolderOpen, RotateCcw, Loader2 } from "lucide-react";
 import type { TranscriptionItem as TranscriptionItemType } from "../../types/electron";
 import { cn } from "../lib/utils";
+import { getCachedPlatform } from "../../utils/platform";
+
+const platform = getCachedPlatform();
+
+function getShowInFolderKey(): string {
+  if (platform === "win32") return "controlPanel.history.showInFolderWindows";
+  if (platform === "linux") return "controlPanel.history.showInFolderLinux";
+  return "controlPanel.history.showInFolder";
+}
 
 interface TranscriptionItemProps {
   item: TranscriptionItemType;
   onCopy: (text: string) => void;
   onDelete: (id: number) => void;
-  onDownloadAudio?: (id: number) => void;
+  onShowAudioInFolder?: (id: number) => void;
   onRetryTranscription?: (id: number) => Promise<void>;
 }
 
@@ -18,7 +27,7 @@ export default function TranscriptionItem({
   item,
   onCopy,
   onDelete,
-  onDownloadAudio,
+  onShowAudioInFolder,
   onRetryTranscription,
 }: TranscriptionItemProps) {
   const { t, i18n } = useTranslation();
@@ -88,14 +97,14 @@ export default function TranscriptionItem({
             </Tooltip>
           )}
           {hasAudio && (
-            <Tooltip content={t("controlPanel.history.downloadAudio")}>
+            <Tooltip content={t(getShowInFolderKey())}>
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={() => onDownloadAudio?.(item.id)}
+                onClick={() => onShowAudioInFolder?.(item.id)}
                 className="h-6 w-6 rounded-sm text-muted-foreground hover:text-primary hover:bg-primary/10"
               >
-                <Download size={12} />
+                <FolderOpen size={12} />
               </Button>
             </Tooltip>
           )}
