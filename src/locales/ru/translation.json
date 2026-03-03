@@ -1627,5 +1627,22 @@
     "deleteConfirmTitle": "Удалить заметку?",
     "deleteConfirmDescription": "Эта заметка будет удалена безвозвратно.",
     "deleteConfirm": "Удалить"
+  },
+  "commandSearch": {
+    "title": "Поиск",
+    "description": "Поиск по заметкам и транскрипциям",
+    "shortPlaceholder": "Поиск",
+    "placeholder": "Поиск по заметкам и транскрипциям…",
+    "sections": {
+      "notes": "Заметки",
+      "transcripts": "Транскрипции"
+    },
+    "noResults": "Нет результатов",
+    "emptyState": "Начните ввод для поиска",
+    "footer": {
+      "navigate": "Навигация",
+      "open": "Открыть",
+      "dismiss": "Закрыть"
+    }
   }
 }

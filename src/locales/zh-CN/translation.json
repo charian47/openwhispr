@@ -940,7 +940,11 @@
         "enterprise": {
           "name": "企业版",
           "price": "自定义",
-          "features": ["云端同步", "团队功能（即将推出）", "SSO 与合规"],
+          "features": [
+            "云端同步",
+            "团队功能（即将推出）",
+            "SSO 与合规"
+          ],
           "cta": "联系我们"
         },
         "currentPlan": "当前套餐"
@@ -1609,7 +1613,7 @@
     },
     "searchEmpty": {
       "title": "无结果",
-      "description": "未找到与\u201c{{query}}\u201d匹配的笔记。"
+      "description": "未找到与“{{query}}”匹配的笔记。"
     },
     "noteType": {
       "personal": "个人",
@@ -1623,5 +1627,22 @@
     "deleteConfirmTitle": "删除笔记？",
     "deleteConfirmDescription": "此笔记将被永久删除，无法恢复。",
     "deleteConfirm": "删除"
+  },
+  "commandSearch": {
+    "title": "搜索",
+    "description": "搜索笔记和转录",
+    "shortPlaceholder": "搜索",
+    "placeholder": "搜索笔记和转录…",
+    "sections": {
+      "notes": "笔记",
+      "transcripts": "转录"
+    },
+    "noResults": "无结果",
+    "emptyState": "输入内容开始搜索",
+    "footer": {
+      "navigate": "导航",
+      "open": "打开",
+      "dismiss": "关闭"
+    }
   }
 }

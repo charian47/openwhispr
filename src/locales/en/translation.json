@@ -1623,5 +1623,22 @@
     "deleteConfirmTitle": "Delete note?",
     "deleteConfirmDescription": "This note will be permanently deleted and cannot be recovered.",
     "deleteConfirm": "Delete"
+  },
+  "commandSearch": {
+    "title": "Search",
+    "description": "Search across notes and transcripts",
+    "shortPlaceholder": "Search",
+    "placeholder": "Search notes and transcripts…",
+    "sections": {
+      "notes": "Notes",
+      "transcripts": "Transcripts"
+    },
+    "noResults": "No results",
+    "emptyState": "Start typing to search",
+    "footer": {
+      "navigate": "Navigate",
+      "open": "Open",
+      "dismiss": "Dismiss"
+    }
   }
 }

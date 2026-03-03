@@ -940,7 +940,11 @@
         "enterprise": {
           "name": "企業版",
           "price": "自訂",
-          "features": ["雲端同步", "團隊功能（即將推出）", "SSO 與合規"],
+          "features": [
+            "雲端同步",
+            "團隊功能（即將推出）",
+            "SSO 與合規"
+          ],
           "cta": "聯絡我們"
         },
         "currentPlan": "目前方案"
@@ -1623,5 +1627,22 @@
     "deleteConfirmTitle": "刪除筆記？",
     "deleteConfirmDescription": "此筆記將被永久刪除，無法復原。",
     "deleteConfirm": "刪除"
+  },
+  "commandSearch": {
+    "title": "搜尋",
+    "description": "搜尋筆記與轉錄",
+    "shortPlaceholder": "搜尋",
+    "placeholder": "搜尋筆記與轉錄…",
+    "sections": {
+      "notes": "筆記",
+      "transcripts": "轉錄"
+    },
+    "noResults": "無結果",
+    "emptyState": "輸入內容開始搜尋",
+    "footer": {
+      "navigate": "導覽",
+      "open": "開啟",
+      "dismiss": "關閉"
+    }
   }
 }

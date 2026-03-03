@@ -920,7 +920,11 @@
         "enterprise": {
           "name": "Enterprise",
           "price": "カスタム",
-          "features": ["クラウド同期", "チーム機能（近日公開）", "SSO & コンプライアンス"],
+          "features": [
+            "クラウド同期",
+            "チーム機能（近日公開）",
+            "SSO & コンプライアンス"
+          ],
           "cta": "お問い合わせ"
         },
         "currentPlan": "現在のプラン"
@@ -1623,5 +1627,22 @@
     "deleteConfirmTitle": "ノートを削除しますか？",
     "deleteConfirmDescription": "このノートは完全に削除され、復元できません。",
     "deleteConfirm": "削除"
+  },
+  "commandSearch": {
+    "title": "検索",
+    "description": "ノートと文字起こしを検索",
+    "shortPlaceholder": "検索",
+    "placeholder": "ノートと文字起こしを検索…",
+    "sections": {
+      "notes": "ノート",
+      "transcripts": "文字起こし"
+    },
+    "noResults": "結果なし",
+    "emptyState": "入力して検索",
+    "footer": {
+      "navigate": "移動",
+      "open": "開く",
+      "dismiss": "閉じる"
+    }
   }
 }

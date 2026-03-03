@@ -9,11 +9,15 @@ import {
   HelpCircle,
   UserCircle,
   X,
+  Search,
 } from "lucide-react";
 import logoIcon from "../assets/icon.png";
 import { useTranslation } from "react-i18next";
 import { cn } from "./lib/utils";
 import SupportDropdown from "./ui/SupportDropdown";
+import { getCachedPlatform } from "../utils/platform";
+
+const platform = getCachedPlatform();
 
 export type ControlPanelView = "home" | "personal-notes" | "dictionary" | "upload";
 
@@ -21,6 +25,7 @@ interface ControlPanelSidebarProps {
   activeView: ControlPanelView;
   onViewChange: (view: ControlPanelView) => void;
   onOpenSettings: () => void;
+  onOpenSearch?: () => void;
   onOpenReferrals?: () => void;
   onUpgrade?: () => void;
   onUpgradeCheckout?: () => void;
@@ -39,6 +44,7 @@ export default function ControlPanelSidebar({
   activeView,
   onViewChange,
   onOpenSettings,
+  onOpenSearch,
   onOpenReferrals,
   onUpgrade,
   onUpgradeCheckout,
@@ -83,7 +89,24 @@ export default function ControlPanelSidebar({
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       />
 
-      <nav className="flex flex-col gap-0.5 px-2 pt-4 pb-2">
+      {onOpenSearch && (
+        <div className="px-2 pb-1">
+          <button
+            onClick={onOpenSearch}
+            className="group flex items-center w-full h-7 px-2.5 rounded-md border border-border/25 dark:border-white/8 bg-foreground/3 dark:bg-white/3 hover:bg-foreground/5 dark:hover:bg-white/5 transition-colors gap-2 outline-none focus-visible:ring-1 focus-visible:ring-primary/30"
+          >
+            <Search size={11} className="text-muted-foreground/50 shrink-0" />
+            <span className="flex-1 text-[11px] text-left text-muted-foreground/50">
+              {t("commandSearch.shortPlaceholder")}
+            </span>
+            <kbd className="text-[10px] text-muted-foreground/35 font-mono leading-none">
+              {platform === "darwin" ? "⌘K" : "⌃K"}
+            </kbd>
+          </button>
+        </div>
+      )}
+
+      <nav className="flex flex-col gap-0.5 px-2 pt-2 pb-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;

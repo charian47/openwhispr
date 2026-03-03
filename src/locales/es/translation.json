@@ -1627,5 +1627,22 @@
     "deleteConfirmTitle": "¿Eliminar nota?",
     "deleteConfirmDescription": "Esta nota se eliminará permanentemente y no se podrá recuperar.",
     "deleteConfirm": "Eliminar"
+  },
+  "commandSearch": {
+    "title": "Buscar",
+    "description": "Buscar en notas y transcripciones",
+    "shortPlaceholder": "Buscar",
+    "placeholder": "Buscar notas y transcripciones…",
+    "sections": {
+      "notes": "Notas",
+      "transcripts": "Transcripciones"
+    },
+    "noResults": "Sin resultados",
+    "emptyState": "Escribe para buscar",
+    "footer": {
+      "navigate": "Navegar",
+      "open": "Abrir",
+      "dismiss": "Cerrar"
+    }
   }
 }

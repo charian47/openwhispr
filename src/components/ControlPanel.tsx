@@ -29,6 +29,7 @@ const ReferralModal = React.lazy(() => import("./ReferralModal"));
 const PersonalNotesView = React.lazy(() => import("./notes/PersonalNotesView"));
 const DictionaryView = React.lazy(() => import("./DictionaryView"));
 const UploadAudioView = React.lazy(() => import("./notes/UploadAudioView"));
+const CommandSearch = React.lazy(() => import("./CommandSearch"));
 
 export default function ControlPanel() {
   const { t } = useTranslation();
@@ -43,6 +44,7 @@ export default function ControlPanel() {
     () => localStorage.getItem("aiCTADismissed") === "true"
   );
   const [showReferrals, setShowReferrals] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const [showCloudMigrationBanner, setShowCloudMigrationBanner] = useState(false);
   const [activeView, setActiveView] = useState<ControlPanelView>("home");
   const [gpuAccelAvailable, setGpuAccelAvailable] = useState<{ cuda: boolean; vulkan: boolean }>({
@@ -86,6 +88,18 @@ export default function ControlPanel() {
 
   useEffect(() => {
     loadTranscriptions();
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const mod = platform === "darwin" ? e.metaKey : e.ctrlKey;
+      if (mod && e.key === "k") {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   useEffect(() => {
@@ -354,10 +368,28 @@ export default function ControlPanel() {
         </Suspense>
       )}
 
+      {showSearch && (
+        <Suspense fallback={null}>
+          <CommandSearch
+            open={showSearch}
+            onOpenChange={setShowSearch}
+            transcriptions={history}
+            onNoteSelect={(id) => {
+              setActiveNoteId(id);
+              setActiveView("personal-notes");
+            }}
+            onTranscriptSelect={() => {
+              setActiveView("home");
+            }}
+          />
+        </Suspense>
+      )}
+
       <div className="flex flex-1 overflow-hidden">
         <ControlPanelSidebar
           activeView={activeView}
           onViewChange={setActiveView}
+          onOpenSearch={() => setShowSearch(true)}
           onOpenSettings={() => {
             setSettingsSection(undefined);
             setShowSettings(true);

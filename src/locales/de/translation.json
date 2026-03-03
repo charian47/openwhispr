@@ -920,7 +920,11 @@
         "enterprise": {
           "name": "Enterprise",
           "price": "Individuell",
-          "features": ["Cloud-Synchronisation", "Team-Funktionen (demnächst)", "SSO & Compliance"],
+          "features": [
+            "Cloud-Synchronisation",
+            "Team-Funktionen (demnächst)",
+            "SSO & Compliance"
+          ],
           "cta": "Kontakt aufnehmen"
         },
         "currentPlan": "Aktueller Tarif"
@@ -1609,7 +1613,7 @@
     },
     "searchEmpty": {
       "title": "Keine Ergebnisse",
-      "description": "Keine Notizen für \u201e{{query}}\u201c gefunden."
+      "description": "Keine Notizen für „{{query}}“ gefunden."
     },
     "noteType": {
       "personal": "persönlich",
@@ -1623,5 +1627,22 @@
     "deleteConfirmTitle": "Notiz löschen?",
     "deleteConfirmDescription": "Diese Notiz wird dauerhaft gelöscht und kann nicht wiederhergestellt werden.",
     "deleteConfirm": "Löschen"
+  },
+  "commandSearch": {
+    "title": "Suche",
+    "description": "In Notizen und Transkripten suchen",
+    "shortPlaceholder": "Suche",
+    "placeholder": "Notizen und Transkripte durchsuchen…",
+    "sections": {
+      "notes": "Notizen",
+      "transcripts": "Transkripte"
+    },
+    "noResults": "Keine Ergebnisse",
+    "emptyState": "Tippen, um zu suchen",
+    "footer": {
+      "navigate": "Navigieren",
+      "open": "Öffnen",
+      "dismiss": "Schließen"
+    }
   }
 }
