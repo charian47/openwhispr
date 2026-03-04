@@ -54,9 +54,9 @@ class MeetingDetectionEngine {
 
     const calendarState = this.googleCalendarManager?.getActiveMeetingState?.();
     if (calendarState) {
-      if (calendarState.activeMeeting || calendarState.activeEvents?.length > 0) {
+      if (calendarState.activeMeeting) {
         debugLogger.info(
-          "Suppressing detection — active calendar meeting exists",
+          "Suppressing detection — active calendar meeting recording in progress",
           { detectionId, activeMeeting: calendarState.activeMeeting?.summary },
           "meeting"
         );
