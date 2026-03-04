@@ -1,7 +1,7 @@
 import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
-import { Download, RefreshCw, Loader2, AlertTriangle, Zap, ArrowLeft } from "lucide-react";
+import { Download, RefreshCw, Loader2, AlertTriangle, Zap, ChevronLeft } from "lucide-react";
 import UpgradePrompt from "./UpgradePrompt";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
@@ -18,7 +18,7 @@ import {
 } from "../stores/transcriptionStore";
 import ControlPanelSidebar, { type ControlPanelView } from "./ControlPanelSidebar";
 import WindowControls from "./WindowControls";
-import { cn } from "./lib/utils";
+
 import { getCachedPlatform } from "../utils/platform";
 import { setActiveNoteId, setActiveFolderId } from "../stores/noteStore";
 import HistoryView from "./HistoryView";
@@ -202,6 +202,11 @@ export default function ControlPanel() {
     () => setMeetingRecordingRequest(null),
     []
   );
+
+  const handleExitMeetingMode = useCallback(() => {
+    setIsMeetingMode(false);
+    window.electronAPI?.restoreFromMeetingMode?.();
+  }, []);
 
   const loadTranscriptions = async () => {
     try {
@@ -425,25 +430,26 @@ export default function ControlPanel() {
         </div>
         <main className="flex-1 flex flex-col overflow-hidden">
           <div
-            className={cn(
-              "flex items-center w-full h-10 shrink-0",
-              isMeetingMode ? "justify-between" : "justify-end"
-            )}
+            className="flex items-center justify-between w-full h-10 shrink-0"
             style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
           >
             {isMeetingMode && (
-              <button
-                onClick={() => setIsMeetingMode(false)}
-                className={cn(
-                  "flex items-center gap-1 text-xs font-medium text-muted-foreground/70 hover:text-foreground transition-colors",
-                  platform === "darwin" ? "ml-19" : "ml-3"
-                )}
+              <div
+                className={platform === "darwin" ? "ml-[84px] mt-[12px]" : "ml-2"}
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
               >
-                <ArrowLeft size={13} strokeWidth={2} />
-                {t("notes.meeting.back")}
-              </button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExitMeetingMode}
+                  className="h-7 px-2 gap-1"
+                >
+                  <ChevronLeft size={14} strokeWidth={2} />
+                  <span className="text-xs">Back to notes</span>
+                </Button>
+              </div>
             )}
+            <div className="flex-1" />
             {platform !== "darwin" && (
               <div className="pr-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
                 <WindowControls />

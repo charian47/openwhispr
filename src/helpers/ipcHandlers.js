@@ -270,6 +270,10 @@ class IPCHandlers {
       return false;
     });
 
+    ipcMain.handle("restore-from-meeting-mode", () => {
+      this.windowManager.restoreControlPanelFromMeetingMode();
+    });
+
     ipcMain.handle("app-quit", () => {
       app.quit();
     });

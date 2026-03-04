@@ -923,6 +923,7 @@ class WindowManager {
   snapControlPanelToMeetingMode() {
     const win = this.controlPanelWindow;
     if (!win || win.isDestroyed()) return;
+    this._preMeetingBounds = win.getBounds();
     const display = screen.getPrimaryDisplay();
     const workArea = display.workArea;
     const width = Math.round(workArea.width / 3);
@@ -933,6 +934,19 @@ class WindowManager {
       height: workArea.height,
     });
     win.focus();
+  }
+
+  restoreControlPanelFromMeetingMode() {
+    const win = this.controlPanelWindow;
+    if (!win || win.isDestroyed()) return;
+    if (this._preMeetingBounds) {
+      win.setBounds(this._preMeetingBounds);
+      this._preMeetingBounds = null;
+    } else {
+      const { width, height } = CONTROL_PANEL_CONFIG;
+      win.setSize(width, height);
+      win.center();
+    }
   }
 
   refreshLocalizedUi() {

@@ -1669,5 +1669,14 @@
       "proLimit": "无限",
       "upgrade": "升级"
     }
+  },
+  "upcoming": {
+    "title": "即将开始的会议",
+    "transcriptions": "转录",
+    "tomorrow": "明天",
+    "noMoreMeetings": "今天没有更多会议了",
+    "now": "进行中",
+    "join": "加入",
+    "untitledEvent": "无标题事件"
   }
 }

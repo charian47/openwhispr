@@ -21,6 +21,15 @@ const getSystemAudioStream = async (): Promise<MediaStream | null> => {
 
     const audioTracks = stream.getAudioTracks();
     const videoTracks = stream.getVideoTracks();
+    logger.debug(
+      "Display media stream obtained",
+      {
+        audioTracks: audioTracks.length,
+        videoTracks: videoTracks.length,
+        audioSettings: audioTracks[0]?.getSettings(),
+      },
+      "meeting"
+    );
 
     if (!audioTracks.length) {
       logger.error("No audio track in display media stream", {}, "meeting");
@@ -178,14 +187,26 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
       });
       if (errorCleanup) ipcCleanupsRef.current.push(errorCleanup);
 
+      let audioCheckCount = 0;
       scriptNode.onaudioprocess = (event) => {
         if (!isRecordingRef.current) return;
         const input = event.inputBuffer.getChannelData(0);
         const pcm = new Int16Array(input.length);
+        let maxAmplitude = 0;
         for (let i = 0; i < input.length; i++) {
           const s = Math.max(-1, Math.min(1, input[i]));
           pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+          const abs = Math.abs(input[i]);
+          if (abs > maxAmplitude) maxAmplitude = abs;
         }
+        if (audioCheckCount < 10 || audioCheckCount % 50 === 0) {
+          logger.debug(
+            "Meeting audio chunk",
+            { maxAmplitude: maxAmplitude.toFixed(6), samples: input.length },
+            "meeting"
+          );
+        }
+        audioCheckCount++;
         window.electronAPI?.meetingTranscriptionSend?.(pcm.buffer);
       };
 

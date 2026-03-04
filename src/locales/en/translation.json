@@ -525,6 +525,15 @@
       "audioDescription": "Prompt when sustained conversation is detected"
     }
   },
+  "upcoming": {
+    "title": "Upcoming Meetings",
+    "transcriptions": "Transcriptions",
+    "tomorrow": "Tomorrow",
+    "noMoreMeetings": "No more meetings today",
+    "now": "Now",
+    "join": "Join",
+    "untitledEvent": "Untitled event"
+  },
   "cleanupPrompt": "Cleanup",
   "developerSection": {
     "currentLogFile": "Current log file",

@@ -1669,5 +1669,14 @@
       "proLimit": "無制限",
       "upgrade": "アップグレード"
     }
+  },
+  "upcoming": {
+    "title": "今後の会議",
+    "transcriptions": "文字起こし",
+    "tomorrow": "明日",
+    "noMoreMeetings": "今日の予定はありません",
+    "now": "進行中",
+    "join": "参加",
+    "untitledEvent": "無題のイベント"
   }
 }

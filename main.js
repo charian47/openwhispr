@@ -493,12 +493,19 @@ async function startApp() {
   // screen source with loopback audio so no system picker dialog is shown.
   const { desktopCapturer } = require("electron");
   session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
-    const sources = await desktopCapturer.getSources({ types: ["screen"] });
-    if (!sources.length) {
+    try {
+      const sources = await desktopCapturer.getSources({ types: ["screen"] });
+      debugLogger.debug("Display media sources", { count: sources.length, names: sources.map((s) => s.name) });
+      if (!sources.length) {
+        debugLogger.error("No screen sources available — Screen Recording permission may be denied");
+        callback({});
+        return;
+      }
+      callback({ video: sources[0], audio: "loopback" });
+    } catch (err) {
+      debugLogger.error("Display media handler error", { error: err.message });
       callback({});
-      return;
     }
-    callback({ video: sources[0], audio: "loopback" });
   });
 
   windowManager.setActivationModeCache(environmentManager.getActivationMode());

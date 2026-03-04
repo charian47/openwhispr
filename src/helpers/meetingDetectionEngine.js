@@ -105,7 +105,7 @@ class MeetingDetectionEngine {
       event = {
         id: `detected-${Date.now()}`,
         calendar_id: "__detected__",
-        summary: data.appName ? `${data.appName} Meeting` : "Detected Meeting",
+        summary: data.appName ? `${data.appName} Meeting` : "New note",
         start_time: new Date().toISOString(),
         end_time: new Date(Date.now() + 3600000).toISOString(),
         is_all_day: 0,
@@ -156,7 +156,7 @@ class MeetingDetectionEngine {
       const detection = this.activeDetections.get(detectionId);
 
       if (action === "start" && detection) {
-        const eventSummary = detection.event?.summary || "Meeting";
+        const eventSummary = detection.event?.summary || "New note";
 
         const noteResult = this.databaseManager.saveNote(eventSummary, "", "meeting");
         const meetingsFolder = this.databaseManager.getMeetingsFolder();

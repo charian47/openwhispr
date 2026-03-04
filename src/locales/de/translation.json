@@ -1669,5 +1669,14 @@
       "proLimit": "Unbegrenzt",
       "upgrade": "Upgrade"
     }
+  },
+  "upcoming": {
+    "title": "Anstehende Meetings",
+    "transcriptions": "Transkriptionen",
+    "tomorrow": "Morgen",
+    "noMoreMeetings": "Keine weiteren Meetings heute",
+    "now": "Jetzt",
+    "join": "Beitreten",
+    "untitledEvent": "Unbenanntes Ereignis"
   }
 }

@@ -1673,5 +1673,14 @@
       "proLimit": "Illimité",
       "upgrade": "Passer au supérieur"
     }
+  },
+  "upcoming": {
+    "title": "Réunions à venir",
+    "transcriptions": "Transcriptions",
+    "tomorrow": "Demain",
+    "noMoreMeetings": "Plus de réunions aujourd'hui",
+    "now": "En cours",
+    "join": "Rejoindre",
+    "untitledEvent": "Événement sans titre"
   }
 }
