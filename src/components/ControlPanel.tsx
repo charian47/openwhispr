@@ -435,17 +435,17 @@ export default function ControlPanel() {
           >
             {isMeetingMode && (
               <div
-                className={platform === "darwin" ? "ml-[84px] mt-[12px]" : "ml-2"}
+                className={platform === "darwin" ? "ml-[84px] mt-[16px]" : "ml-2"}
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
               >
                 <Button
-                  variant="outline"
+                  variant="outline-flat"
                   size="sm"
                   onClick={handleExitMeetingMode}
-                  className="h-7 px-2 gap-1"
+                  className="h-7 px-2.5 pl-1.5 gap-1"
                 >
-                  <ChevronLeft size={14} strokeWidth={2} />
-                  <span className="text-xs">Back to notes</span>
+                  <ChevronLeft size={14} strokeWidth={1.8} />
+                  Back to notes
                 </Button>
               </div>
             )}
