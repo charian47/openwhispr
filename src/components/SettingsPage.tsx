@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -23,6 +23,9 @@ import {
   Loader2,
   Check,
   Mail,
+  CircleCheck,
+  CircleX,
+  RotateCw,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { NEON_AUTH_URL, signOut } from "../lib/neonAuth";
@@ -752,6 +755,30 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // silent fail
     }
   };
+
+  // ydotool status for Wayland paste diagnostics
+  const [ydotoolStatus, setYdotoolStatus] = useState<{
+    isLinux: boolean;
+    isWayland: boolean;
+    hasYdotool: boolean;
+    hasYdotoold: boolean;
+    daemonRunning: boolean;
+    hasService: boolean;
+    hasUinput: boolean;
+    hasGroup: boolean;
+    allGood: boolean;
+  } | null>(null);
+
+  const refreshYdotoolStatus = useCallback(async () => {
+    try {
+      const status = await window.electronAPI?.getYdotoolStatus?.();
+      if (status) setYdotoolStatus(status);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    refreshYdotoolStatus();
+  }, [refreshYdotoolStatus]);
 
   const handleAddDictionaryWord = useCallback(() => {
     const existingWords = new Set(customDictionary.map((w) => w.toLowerCase()));
@@ -1916,6 +1943,105 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 )}
               </SettingsPanel>
             </div>
+
+            {/* Wayland Paste Diagnostics — only on Linux + Wayland */}
+            {ydotoolStatus?.isLinux && ydotoolStatus?.isWayland && (
+              <div>
+                <SectionHeader
+                  title={t("settingsPage.general.waylandPaste.title", {
+                    defaultValue: "Wayland Paste Setup",
+                  })}
+                  description={t("settingsPage.general.waylandPaste.description", {
+                    defaultValue:
+                      "Auto-paste on Wayland requires ydotool. Check the status of each component below.",
+                  })}
+                />
+                <SettingsPanel>
+                  {(
+                    [
+                      {
+                        key: "hasYdotool",
+                        label: "ydotool",
+                        ok: ydotoolStatus.hasYdotool,
+                        fix: t("settingsPage.general.waylandPaste.installYdotool", {
+                          defaultValue:
+                            "Install with your package manager (apt install ydotool / dnf install ydotool)",
+                        }),
+                      },
+                      {
+                        key: "hasYdotoold",
+                        label: "ydotoold",
+                        ok: ydotoolStatus.hasYdotoold,
+                        fix: t("settingsPage.general.waylandPaste.installYdotoold", {
+                          defaultValue:
+                            "On Ubuntu/Pop!_OS: sudo apt install ydotoold (included in ydotool on Fedora/Arch)",
+                        }),
+                      },
+                      {
+                        key: "hasUinput",
+                        label: "/dev/uinput",
+                        ok: ydotoolStatus.hasUinput,
+                        fix: t("settingsPage.general.waylandPaste.uinputRule", {
+                          defaultValue:
+                            'Run: echo \'KERNEL=="uinput", GROUP="input", MODE="0660", TAG+="uaccess"\' | sudo tee /etc/udev/rules.d/80-uinput.rules && sudo udevadm control --reload-rules && sudo udevadm trigger /dev/uinput',
+                        }),
+                      },
+                      {
+                        key: "hasGroup",
+                        label: t("settingsPage.general.waylandPaste.inputGroup", {
+                          defaultValue: "input group",
+                        }),
+                        ok: ydotoolStatus.hasGroup,
+                        fix: t("settingsPage.general.waylandPaste.addToGroup", {
+                          defaultValue:
+                            "Run: sudo usermod -aG input $USER (logout/login required)",
+                        }),
+                      },
+                      {
+                        key: "daemonRunning",
+                        label: t("settingsPage.general.waylandPaste.daemon", {
+                          defaultValue: "ydotoold daemon",
+                        }),
+                        ok: ydotoolStatus.daemonRunning,
+                        fix: t("settingsPage.general.waylandPaste.startDaemon", {
+                          defaultValue:
+                            "Run: systemctl --user enable ydotoold && systemctl --user start ydotoold",
+                        }),
+                      },
+                    ] as const
+                  ).map((item) => (
+                    <SettingsPanelRow key={item.key}>
+                      <div className="flex items-start gap-2">
+                        {item.ok ? (
+                          <CircleCheck className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                        ) : (
+                          <CircleX className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">{item.label}</p>
+                          {!item.ok && (
+                            <p className="text-xs text-muted-foreground mt-0.5 break-all">
+                              {item.fix}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </SettingsPanelRow>
+                  ))}
+                  <SettingsPanelRow>
+                    <button
+                      onClick={refreshYdotoolStatus}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <RotateCw className="w-3 h-3" />
+                      {t("settingsPage.general.waylandPaste.recheck", {
+                        defaultValue: "Re-check",
+                      })}
+                    </button>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </div>
+            )}
           </div>
         );
 

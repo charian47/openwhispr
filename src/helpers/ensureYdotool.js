@@ -156,4 +156,28 @@ async function ensureYdotool() {
   }
 }
 
-module.exports = { ensureYdotool };
+function getYdotoolStatus() {
+  const hasYdotool = commandExists("ydotool");
+  const hasYdotoold = commandExists("ydotoold");
+  const daemonRunning = isYdotooldRunning();
+  const hasService = serviceFileExists();
+  const hasUinput = isUinputAccessible();
+  const hasGroup = userInInputGroup();
+  const isWayland =
+    (process.env.XDG_SESSION_TYPE || "").toLowerCase() === "wayland" ||
+    !!process.env.WAYLAND_DISPLAY;
+
+  return {
+    isLinux: process.platform === "linux",
+    isWayland,
+    hasYdotool,
+    hasYdotoold,
+    daemonRunning,
+    hasService,
+    hasUinput,
+    hasGroup,
+    allGood: hasYdotool && hasYdotoold && daemonRunning && hasUinput && hasGroup,
+  };
+}
+
+module.exports = { ensureYdotool, getYdotoolStatus };
