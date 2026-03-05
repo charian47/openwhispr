@@ -1084,6 +1084,63 @@
         "launchAtLoginDescription": "OpenWhispr automatisch starten, wenn Sie sich anmelden",
         "title": "Autostart"
       },
+      "waylandPaste": {
+        "title": "Wayland-Einfügen einrichten",
+        "description": "Das automatische Einfügen unter Wayland erfordert ydotool. Prüfen Sie den Status der einzelnen Komponenten.",
+        "allGoodDesc": "Das automatische Einfügen ist einsatzbereit.",
+        "recheck": "Erneut prüfen",
+        "copy": "Kopieren",
+        "ydotoolDesc": "Eingabeautomatisierung für Wayland",
+        "ydotooldDesc": "Daemon für ydotool (separates Paket unter Ubuntu/Pop!_OS)",
+        "uinputDesc": "Zugriff auf das Kernel-Eingabegerät",
+        "uinputRuleFound": "Regel vorhanden, aber nicht aktiv. Ein Neustart sollte das beheben.",
+        "uinputRuleMissing": "Keine udev-Regel gefunden",
+        "inputGroup": "input-Gruppe",
+        "inputGroupDesc": "Der Benutzer muss Mitglied der Gruppe input sein (erneute Anmeldung erforderlich)",
+        "service": "systemd-Dienst",
+        "serviceDesc": "Benutzer-Dienstdatei für den automatischen Start von ydotoold",
+        "daemon": "ydotoold-Daemon",
+        "daemonDesc": "Der Hintergrunddienst muss laufen",
+        "guide": {
+          "open": "Anleitung",
+          "ydotool": {
+            "step1Title": "ydotool installieren",
+            "step1Desc": "Verwenden Sie den Paketmanager Ihrer Distribution, um ydotool zu installieren.",
+            "step2Title": "Installation überprüfen",
+            "step2Desc": "Prüfen Sie, ob ydotool in Ihrem PATH verfügbar ist."
+          },
+          "ydotoold": {
+            "step1Title": "ydotoold installieren",
+            "step1Desc": "Unter Ubuntu und Pop!_OS ist ydotoold ein separates Paket. Unter Fedora ist es in ydotool enthalten."
+          },
+          "uinput": {
+            "ruleFoundTitle": "udev-Regel bereits konfiguriert",
+            "ruleFoundDesc": "Die udev-Regel für /dev/uinput ist bereits auf Ihrem System vorhanden, aber noch nicht aktiv. Versuchen Sie, sie neu zu laden:",
+            "rebootTitle": "Falls das Neuladen nicht geholfen hat, starten Sie neu",
+            "rebootDesc": "Bei einigen Distributionen werden udev-Änderungen erst nach einem vollständigen Neustart wirksam. Starten Sie Ihren Computer neu und prüfen Sie erneut.",
+            "step1Title": "Eine udev-Regel erstellen",
+            "step1Desc": "Diese Regel gewährt Benutzern der Gruppe input Zugriff auf /dev/uinput.",
+            "step2Title": "udev-Regeln neu laden",
+            "step2Desc": "Die neue Regel ohne Neustart anwenden."
+          },
+          "group": {
+            "step1Title": "Ihren Benutzer zur Gruppe input hinzufügen",
+            "step2Title": "Abmelden und wieder anmelden",
+            "step2Desc": "Gruppenänderungen werden erst nach einer neuen Sitzung wirksam. Melden Sie sich ab, wieder an und öffnen Sie OpenWhispr erneut."
+          },
+          "service": {
+            "step1Title": "Dienstverzeichnis erstellen",
+            "step2Title": "Dienstdatei erstellen",
+            "step2Desc": "Erstellt einen systemd-Dienst auf Benutzerebene, der ydotoold automatisch bei der Anmeldung startet.",
+            "step3Title": "Neu laden und aktivieren"
+          },
+          "daemon": {
+            "step1Title": "Daemon starten",
+            "step1Desc": "Starten Sie ydotoold und aktivieren Sie es für jeden Anmeldevorgang.",
+            "step2Title": "Prüfen, ob er läuft"
+          }
+        }
+      },
       "updates": {
         "badges": {
           "dev": "Dev",

@@ -1084,6 +1084,63 @@
         "launchAtLoginDescription": "登录时自动启动 OpenWhispr",
         "title": "启动"
       },
+      "waylandPaste": {
+        "title": "Wayland 粘贴设置",
+        "description": "Wayland 下的自动粘贴需要 ydotool。请检查以下各组件的状态。",
+        "allGoodDesc": "自动粘贴已就绪。",
+        "recheck": "重新检查",
+        "copy": "复制",
+        "ydotoolDesc": "Wayland 输入自动化工具",
+        "ydotooldDesc": "ydotool 守护进程（Ubuntu/Pop!_OS 上为独立包）",
+        "uinputDesc": "内核输入设备访问",
+        "uinputRuleFound": "规则已存在但未生效，重启应可解决。",
+        "uinputRuleMissing": "未找到 udev 规则",
+        "inputGroup": "input 用户组",
+        "inputGroupDesc": "用户必须属于 input 组（需重新登录）",
+        "service": "systemd 服务",
+        "serviceDesc": "用于自动启动 ydotoold 的用户服务文件",
+        "daemon": "ydotoold 守护进程",
+        "daemonDesc": "后台服务必须正在运行",
+        "guide": {
+          "open": "指南",
+          "ydotool": {
+            "step1Title": "安装 ydotool",
+            "step1Desc": "使用你的发行版包管理器安装 ydotool。",
+            "step2Title": "验证安装",
+            "step2Desc": "检查 ydotool 是否在你的 PATH 中可用。"
+          },
+          "ydotoold": {
+            "step1Title": "安装 ydotoold",
+            "step1Desc": "在 Ubuntu 和 Pop!_OS 上，ydotoold 是独立的包。在 Fedora 上它包含在 ydotool 中。"
+          },
+          "uinput": {
+            "ruleFoundTitle": "udev 规则已配置",
+            "ruleFoundDesc": "/dev/uinput 的 udev 规则已在系统中，但尚未生效。尝试重新加载：",
+            "rebootTitle": "如果重新加载无效，请重启",
+            "rebootDesc": "在某些发行版上，udev 的更改只有在完全重启后才会生效。重启计算机后回来重新检查。",
+            "step1Title": "创建 udev 规则",
+            "step1Desc": "此规则为 input 组用户授予 /dev/uinput 的访问权限。",
+            "step2Title": "重新加载 udev 规则",
+            "step2Desc": "无需重启即可应用新规则。"
+          },
+          "group": {
+            "step1Title": "将你的用户添加到 input 组",
+            "step2Title": "注销并重新登录",
+            "step2Desc": "组更改仅在新会话后生效。从桌面注销，重新登录，然后重新打开 OpenWhispr。"
+          },
+          "service": {
+            "step1Title": "创建服务目录",
+            "step2Title": "创建服务文件",
+            "step2Desc": "创建一个用户级 systemd 服务，在登录时自动启动 ydotoold。",
+            "step3Title": "重新加载并启用"
+          },
+          "daemon": {
+            "step1Title": "启动守护进程",
+            "step1Desc": "启动 ydotoold 并设置为每次登录时自动运行。",
+            "step2Title": "验证是否正在运行"
+          }
+        }
+      },
       "updates": {
         "badges": {
           "dev": "开发版",

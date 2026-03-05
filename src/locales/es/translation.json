@@ -1088,6 +1088,63 @@
         "launchAtLoginDescription": "Inicia OpenWhispr automáticamente al iniciar sesión",
         "title": "Inicio"
       },
+      "waylandPaste": {
+        "title": "Configuración de pegado en Wayland",
+        "description": "El pegado automático en Wayland requiere ydotool. Comprueba el estado de cada componente a continuación.",
+        "allGoodDesc": "El pegado automático está listo.",
+        "recheck": "Volver a comprobar",
+        "copy": "Copiar",
+        "ydotoolDesc": "Herramienta de automatización de entrada para Wayland",
+        "ydotooldDesc": "Daemon de ydotool (paquete separado en Ubuntu/Pop!_OS)",
+        "uinputDesc": "Acceso al dispositivo de entrada del kernel",
+        "uinputRuleFound": "Regla presente pero no activa. Un reinicio debería solucionarlo.",
+        "uinputRuleMissing": "no se encontró ninguna regla udev",
+        "inputGroup": "grupo input",
+        "inputGroupDesc": "El usuario debe pertenecer al grupo input (requiere cerrar sesión)",
+        "service": "servicio systemd",
+        "serviceDesc": "Archivo de servicio de usuario para iniciar ydotoold automáticamente",
+        "daemon": "daemon ydotoold",
+        "daemonDesc": "El servicio en segundo plano debe estar en ejecución",
+        "guide": {
+          "open": "Guía",
+          "ydotool": {
+            "step1Title": "Instalar ydotool",
+            "step1Desc": "Usa el gestor de paquetes de tu distribución para instalar ydotool.",
+            "step2Title": "Verificar la instalación",
+            "step2Desc": "Comprueba que ydotool esté disponible en tu PATH."
+          },
+          "ydotoold": {
+            "step1Title": "Instalar ydotoold",
+            "step1Desc": "En Ubuntu y Pop!_OS, ydotoold es un paquete separado. En Fedora viene incluido con ydotool."
+          },
+          "uinput": {
+            "ruleFoundTitle": "Regla udev ya configurada",
+            "ruleFoundDesc": "La regla udev para /dev/uinput ya está en tu sistema pero aún no se ha aplicado. Prueba a recargarla:",
+            "rebootTitle": "Si recargar no funcionó, reinicia",
+            "rebootDesc": "En algunas distribuciones, los cambios de udev solo se aplican tras un reinicio completo. Reinicia tu ordenador y vuelve aquí para comprobar.",
+            "step1Title": "Crear una regla udev",
+            "step1Desc": "Esta regla concede acceso a /dev/uinput a los usuarios del grupo input.",
+            "step2Title": "Recargar las reglas udev",
+            "step2Desc": "Aplica la nueva regla sin reiniciar."
+          },
+          "group": {
+            "step1Title": "Añade tu usuario al grupo input",
+            "step2Title": "Cierra sesión y vuelve a entrar",
+            "step2Desc": "Los cambios de grupo solo surten efecto tras una nueva sesión. Cierra sesión en tu escritorio, vuelve a entrar y reabre OpenWhispr."
+          },
+          "service": {
+            "step1Title": "Crear el directorio del servicio",
+            "step2Title": "Crear el archivo del servicio",
+            "step2Desc": "Crea un servicio systemd a nivel de usuario que inicia ydotoold automáticamente al iniciar sesión.",
+            "step3Title": "Recargar y habilitar"
+          },
+          "daemon": {
+            "step1Title": "Iniciar el daemon",
+            "step1Desc": "Inicia ydotoold y habilítalo para que se ejecute en cada inicio de sesión.",
+            "step2Title": "Verificar que está en ejecución"
+          }
+        }
+      },
       "updates": {
         "badges": {
           "dev": "Dev",

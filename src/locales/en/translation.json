@@ -1102,6 +1102,63 @@
         "launchAtLoginDescription": "Start OpenWhispr automatically when you log in",
         "title": "Startup"
       },
+      "waylandPaste": {
+        "title": "Wayland Paste Setup",
+        "description": "Auto-paste on Wayland requires ydotool. Check the status of each component below.",
+        "allGoodDesc": "Auto-paste is ready to go.",
+        "recheck": "Re-check",
+        "copy": "Copy",
+        "ydotoolDesc": "Input automation tool for Wayland",
+        "ydotooldDesc": "Daemon for ydotool (separate package on Ubuntu/Pop!_OS)",
+        "uinputDesc": "Kernel input device access",
+        "uinputRuleFound": "Rule present but not active. A reboot should fix it.",
+        "uinputRuleMissing": "no udev rule found",
+        "inputGroup": "input group",
+        "inputGroupDesc": "User must be in the input group (requires re-login)",
+        "service": "systemd service",
+        "serviceDesc": "User service file for auto-starting ydotoold",
+        "daemon": "ydotoold daemon",
+        "daemonDesc": "Background service must be running",
+        "guide": {
+          "open": "Guide",
+          "ydotool": {
+            "step1Title": "Install ydotool",
+            "step1Desc": "Use your distribution's package manager to install ydotool.",
+            "step2Title": "Verify installation",
+            "step2Desc": "Check that ydotool is available in your PATH."
+          },
+          "ydotoold": {
+            "step1Title": "Install ydotoold",
+            "step1Desc": "On Ubuntu and Pop!_OS, ydotoold is a separate package. On Fedora, it's included with ydotool."
+          },
+          "uinput": {
+            "ruleFoundTitle": "udev rule already configured",
+            "ruleFoundDesc": "The udev rule for /dev/uinput is already on your system but hasn't taken effect. Try reloading:",
+            "rebootTitle": "If reloading didn't help, reboot",
+            "rebootDesc": "On some distros, udev changes only apply after a full reboot. Restart your computer and come back to re-check.",
+            "step1Title": "Create a udev rule",
+            "step1Desc": "This rule grants access to /dev/uinput for users in the input group.",
+            "step2Title": "Reload udev rules",
+            "step2Desc": "Apply the new rule without rebooting."
+          },
+          "group": {
+            "step1Title": "Add your user to the input group",
+            "step2Title": "Log out and back in",
+            "step2Desc": "Group changes only take effect after a new login session. Log out of your desktop and log back in, then reopen OpenWhispr."
+          },
+          "service": {
+            "step1Title": "Create the service directory",
+            "step2Title": "Create the service file",
+            "step2Desc": "This creates a user-level systemd service that starts ydotoold automatically when you log in.",
+            "step3Title": "Reload and enable"
+          },
+          "daemon": {
+            "step1Title": "Start the daemon",
+            "step1Desc": "Start ydotoold and enable it so it runs on every login.",
+            "step2Title": "Verify it's running"
+          }
+        }
+      },
       "updates": {
         "badges": {
           "dev": "Dev",

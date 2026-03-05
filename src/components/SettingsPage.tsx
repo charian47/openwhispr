@@ -2184,60 +2184,78 @@ EOF`,
                     },
                   ];
 
+                  const allOk = checks.every((c) => c.ok);
                   const activeGuide = checks.find((c) => c.key === ydotoolGuideKey);
 
                   return (
                     <>
-                      <div className="rounded-xl border border-border overflow-hidden">
-                        <div className="divide-y divide-border">
-                          {checks.map((item) => (
-                            <div key={item.key} className="px-4 py-3">
-                              <div className="flex items-center gap-2.5">
-                                {item.ok ? (
-                                  <CircleCheck className="h-4 w-4 shrink-0 text-emerald-500" />
-                                ) : (
-                                  <CircleX className="h-4 w-4 shrink-0 text-red-500" />
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-sm font-medium">{item.label}</span>
-                                  <span className="text-xs text-muted-foreground ml-2">{item.desc}</span>
-                                  {item.note && (
-                                    <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5 ml-0">{item.note}</p>
-                                  )}
-                                </div>
-                                {!item.ok && (
-                                  <button
-                                    onClick={() => setYdotoolGuideKey(item.key)}
-                                    className="shrink-0 flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border hover:bg-muted transition-colors text-foreground"
-                                  >
-                                    <BookOpen className="w-3 h-3" />
-                                    {t("settingsPage.general.waylandPaste.guide.open", {
-                                      defaultValue: "Guide",
-                                    })}
-                                  </button>
-                                )}
+                      {allOk ? (
+                        <SettingsPanel>
+                          <SettingsPanelRow>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <CircleCheck className="h-4 w-4 text-emerald-500" />
+                                <span className="text-sm">
+                                  {t("settingsPage.general.waylandPaste.allGoodDesc", {
+                                    defaultValue: "Auto-paste is ready to go.",
+                                  })}
+                                </span>
                               </div>
+                              <button
+                                onClick={refreshYdotoolStatus}
+                                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                <RotateCw className="w-3.5 h-3.5" />
+                              </button>
                             </div>
-                          ))}
-                        </div>
-                        {checks.every((c) => c.ok) && (
-                          <div className="px-4 py-2.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 text-xs">
-                            {t("settingsPage.general.waylandPaste.allGoodDesc", {
-                              defaultValue: "ydotool is fully configured. Auto-paste should work correctly.",
-                            })}
+                          </SettingsPanelRow>
+                        </SettingsPanel>
+                      ) : (
+                        <>
+                          <div className="rounded-xl border border-border overflow-hidden">
+                            <div className="divide-y divide-border">
+                              {checks.map((item) => (
+                                <div key={item.key} className="px-4 py-3">
+                                  <div className="flex items-center gap-2.5">
+                                    {item.ok ? (
+                                      <CircleCheck className="h-4 w-4 shrink-0 text-emerald-500" />
+                                    ) : (
+                                      <CircleX className="h-4 w-4 shrink-0 text-red-500" />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <span className="text-sm font-medium">{item.label}</span>
+                                      <span className="text-xs text-muted-foreground ml-2">{item.desc}</span>
+                                      {item.note && (
+                                        <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">{item.note}</p>
+                                      )}
+                                    </div>
+                                    {!item.ok && (
+                                      <button
+                                        onClick={() => setYdotoolGuideKey(item.key)}
+                                        className="shrink-0 flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border hover:bg-muted transition-colors text-foreground"
+                                      >
+                                        <BookOpen className="w-3 h-3" />
+                                        {t("settingsPage.general.waylandPaste.guide.open", {
+                                          defaultValue: "Guide",
+                                        })}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={refreshYdotoolStatus}
-                        className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <RotateCw className="w-3 h-3" />
-                        {t("settingsPage.general.waylandPaste.recheck", {
-                          defaultValue: "Re-check",
-                        })}
-                      </button>
+                          <button
+                            onClick={refreshYdotoolStatus}
+                            className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <RotateCw className="w-3 h-3" />
+                            {t("settingsPage.general.waylandPaste.recheck", {
+                              defaultValue: "Re-check",
+                            })}
+                          </button>
+                        </>
+                      )}
 
                       {/* Step-by-step guide dialog */}
                       <Dialog open={!!activeGuide} onOpenChange={(open) => !open && setYdotoolGuideKey(null)}>

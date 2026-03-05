@@ -1084,6 +1084,63 @@
         "launchAtLoginDescription": "ログイン時に OpenWhispr を自動的に起動",
         "title": "起動設定"
       },
+      "waylandPaste": {
+        "title": "Wayland 貼り付け設定",
+        "description": "Wayland での自動貼り付けには ydotool が必要です。各コンポーネントの状態を確認してください。",
+        "allGoodDesc": "自動貼り付けの準備ができています。",
+        "recheck": "再確認",
+        "copy": "コピー",
+        "ydotoolDesc": "Wayland 用入力自動化ツール",
+        "ydotooldDesc": "ydotool デーモン（Ubuntu/Pop!_OS では別パッケージ）",
+        "uinputDesc": "カーネル入力デバイスへのアクセス",
+        "uinputRuleFound": "ルールは存在しますが未適用です。再起動で解決するはずです。",
+        "uinputRuleMissing": "udev ルールが見つかりません",
+        "inputGroup": "input グループ",
+        "inputGroupDesc": "ユーザーが input グループに所属している必要があります（再ログインが必要）",
+        "service": "systemd サービス",
+        "serviceDesc": "ydotoold を自動起動するユーザーサービスファイル",
+        "daemon": "ydotoold デーモン",
+        "daemonDesc": "バックグラウンドサービスが実行中である必要があります",
+        "guide": {
+          "open": "ガイド",
+          "ydotool": {
+            "step1Title": "ydotool をインストール",
+            "step1Desc": "お使いのディストリビューションのパッケージマネージャーで ydotool をインストールしてください。",
+            "step2Title": "インストールの確認",
+            "step2Desc": "ydotool が PATH で利用可能か確認してください。"
+          },
+          "ydotoold": {
+            "step1Title": "ydotoold をインストール",
+            "step1Desc": "Ubuntu と Pop!_OS では ydotoold は別パッケージです。Fedora では ydotool に含まれています。"
+          },
+          "uinput": {
+            "ruleFoundTitle": "udev ルールは設定済み",
+            "ruleFoundDesc": "/dev/uinput の udev ルールはシステムに存在しますが、まだ適用されていません。再読み込みを試してください：",
+            "rebootTitle": "再読み込みで解決しない場合は再起動",
+            "rebootDesc": "一部のディストリビューションでは、udev の変更は完全な再起動後にのみ適用されます。コンピューターを再起動してから再確認してください。",
+            "step1Title": "udev ルールを作成",
+            "step1Desc": "このルールは input グループのユーザーに /dev/uinput へのアクセスを許可します。",
+            "step2Title": "udev ルールを再読み込み",
+            "step2Desc": "再起動せずに新しいルールを適用します。"
+          },
+          "group": {
+            "step1Title": "ユーザーを input グループに追加",
+            "step2Title": "ログアウトして再ログイン",
+            "step2Desc": "グループの変更は新しいセッションでのみ有効になります。デスクトップからログアウトし、再ログインしてから OpenWhispr を開き直してください。"
+          },
+          "service": {
+            "step1Title": "サービスディレクトリを作成",
+            "step2Title": "サービスファイルを作成",
+            "step2Desc": "ログイン時に ydotoold を自動起動するユーザーレベルの systemd サービスを作成します。",
+            "step3Title": "再読み込みして有効化"
+          },
+          "daemon": {
+            "step1Title": "デーモンを起動",
+            "step1Desc": "ydotoold を起動し、毎回のログイン時に実行されるよう有効化します。",
+            "step2Title": "実行中か確認"
+          }
+        }
+      },
       "updates": {
         "badges": {
           "dev": "開発版",
