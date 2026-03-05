@@ -57,6 +57,27 @@ function isUinputAccessible() {
   }
 }
 
+function udevRuleExists() {
+  const ruleDirs = [
+    "/etc/udev/rules.d",
+    "/usr/lib/udev/rules.d",
+    "/lib/udev/rules.d",
+  ];
+  for (const dir of ruleDirs) {
+    try {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        if (!file.endsWith(".rules")) continue;
+        try {
+          const content = fs.readFileSync(`${dir}/${file}`, "utf-8");
+          if (content.includes("uinput")) return true;
+        } catch {}
+      }
+    } catch {}
+  }
+  return false;
+}
+
 function userInInputGroup() {
   try {
     const result = spawnSync("groups", [], { stdio: "pipe", timeout: 5000 });
@@ -124,7 +145,7 @@ async function ensureYdotool() {
   }
   if (!hasUinput) {
     missing.push(
-      '- /dev/uinput is not accessible. Add a udev rule:\n  echo \'KERNEL=="uinput", GROUP="input", MODE="0660", TAG+="uaccess"\' | sudo tee /etc/udev/rules.d/80-uinput.rules\n  sudo udevadm control --reload-rules && sudo udevadm trigger /dev/uinput'
+      '- /dev/uinput is not accessible. Add a udev rule:\n  echo \'KERNEL=="uinput", GROUP="input", MODE="0660", TAG+="uaccess"\' | sudo tee /etc/udev/rules.d/70-uinput.rules\n  sudo udevadm control --reload-rules && sudo udevadm trigger /dev/uinput'
     );
   }
   if (!hasGroup) {
@@ -162,6 +183,7 @@ function getYdotoolStatus() {
   const daemonRunning = isYdotooldRunning();
   const hasService = serviceFileExists();
   const hasUinput = isUinputAccessible();
+  const hasUdevRule = udevRuleExists();
   const hasGroup = userInInputGroup();
   const isWayland =
     (process.env.XDG_SESSION_TYPE || "").toLowerCase() === "wayland" ||
@@ -175,6 +197,7 @@ function getYdotoolStatus() {
     daemonRunning,
     hasService,
     hasUinput,
+    hasUdevRule,
     hasGroup,
     allGood: hasYdotool && hasYdotoold && daemonRunning && hasUinput && hasGroup,
   };

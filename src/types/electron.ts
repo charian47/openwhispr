@@ -625,6 +625,20 @@ declare global {
       ) => Promise<{ success: boolean }>;
       getHotkeyModeInfo?: () => Promise<{ isUsingGnome: boolean }>;
 
+      // Wayland paste diagnostics
+      getYdotoolStatus?: () => Promise<{
+        isLinux: boolean;
+        isWayland: boolean;
+        hasYdotool: boolean;
+        hasYdotoold: boolean;
+        daemonRunning: boolean;
+        hasService: boolean;
+        hasUinput: boolean;
+        hasUdevRule: boolean;
+        hasGroup: boolean;
+        allGood: boolean;
+      }>;
+
       // Globe key listener for hotkey capture (macOS only)
       onGlobeKeyPressed?: (callback: () => void) => () => void;
       onGlobeKeyReleased?: (callback: () => void) => () => void;

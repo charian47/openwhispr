@@ -5,7 +5,7 @@
 set -euo pipefail
 
 UDEV_RULE='KERNEL=="uinput", GROUP="input", MODE="0660", TAG+="uaccess"'
-UDEV_RULE_PATH="/etc/udev/rules.d/80-uinput.rules"
+UDEV_RULE_PATH="/etc/udev/rules.d/70-uinput.rules"
 SERVICE_PATH="/usr/lib/systemd/user/ydotoold.service"
 
 # Detect the real user (not root) who triggered the install
