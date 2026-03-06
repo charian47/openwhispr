@@ -1074,6 +1074,8 @@
       "soundEffects": {
         "dictationSounds": "听写音效",
         "dictationSoundsDescription": "在录音开始和停止时播放提示音",
+        "pauseMedia": "暂停媒体",
+        "pauseMediaDescription": "开始听写时自动暂停音乐",
         "title": "音效"
       },
       "startup": {

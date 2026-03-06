@@ -54,6 +54,7 @@ const BOOLEAN_SETTINGS = new Set([
   "cloudBackupEnabled",
   "telemetryEnabled",
   "audioCuesEnabled",
+  "pauseMediaOnDictation",
   "floatingIconAutoHide",
   "isSignedIn",
 ]);
@@ -83,6 +84,7 @@ export interface SettingsState
     ThemeSettings {
   isSignedIn: boolean;
   audioCuesEnabled: boolean;
+  pauseMediaOnDictation: boolean;
   floatingIconAutoHide: boolean;
 
   setUseLocalWhisper: (value: boolean) => void;
@@ -235,6 +237,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   cloudBackupEnabled: readBoolean("cloudBackupEnabled", false),
   telemetryEnabled: readBoolean("telemetryEnabled", false),
   audioCuesEnabled: readBoolean("audioCuesEnabled", true),
+  pauseMediaOnDictation: readBoolean("pauseMediaOnDictation", false),
   floatingIconAutoHide: readBoolean("floatingIconAutoHide", false),
   isSignedIn: readBoolean("isSignedIn", false),
 
@@ -359,6 +362,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setCloudBackupEnabled: createBooleanSetter("cloudBackupEnabled"),
   setTelemetryEnabled: createBooleanSetter("telemetryEnabled"),
   setAudioCuesEnabled: createBooleanSetter("audioCuesEnabled"),
+  setPauseMediaOnDictation: createBooleanSetter("pauseMediaOnDictation"),
 
   setFloatingIconAutoHide: (enabled: boolean) => {
     if (get().floatingIconAutoHide === enabled) return;

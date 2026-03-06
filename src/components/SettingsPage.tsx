@@ -674,6 +674,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setCloudReasoningMode,
     audioCuesEnabled,
     setAudioCuesEnabled,
+    pauseMediaOnDictation,
+    setPauseMediaOnDictation,
     floatingIconAutoHide,
     setFloatingIconAutoHide,
     cloudBackupEnabled,
@@ -1681,6 +1683,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     description={t("settingsPage.general.soundEffects.dictationSoundsDescription")}
                   >
                     <Toggle checked={audioCuesEnabled} onChange={setAudioCuesEnabled} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.general.soundEffects.pauseMedia")}
+                    description={t("settingsPage.general.soundEffects.pauseMediaDescription")}
+                  >
+                    <Toggle checked={pauseMediaOnDictation} onChange={setPauseMediaOnDictation} />
                   </SettingsRow>
                 </SettingsPanelRow>
               </SettingsPanel>
