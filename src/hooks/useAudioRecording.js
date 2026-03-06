@@ -103,6 +103,12 @@ export const useAudioRecording = (toast, options = {}) => {
         }
 
         if (result.success) {
+          const transcribedText = result.text?.trim();
+
+          if (!transcribedText) {
+            return;
+          }
+
           setTranscript(result.text);
 
           const isStreaming = result.source?.includes("streaming");
