@@ -84,6 +84,7 @@ export default function App() {
 
   // Floating icon auto-hide setting (read from store, synced via IPC)
   const floatingIconAutoHide = useSettingsStore((s) => s.floatingIconAutoHide);
+  const panelStartPosition = useSettingsStore((s) => s.panelStartPosition);
   const prevAutoHideRef = useRef(floatingIconAutoHide);
 
   const setWindowInteractivity = React.useCallback((shouldCapture) => {
@@ -294,8 +295,16 @@ export default function App() {
 
   return (
     <div className="dictation-window">
-      {/* Bottom-right voice button - window expands upward/leftward */}
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* Voice button - position determined by panelStartPosition setting */}
+      <div
+        className={`fixed bottom-1 z-50 ${
+          panelStartPosition === "bottom-left"
+            ? "left-1"
+            : panelStartPosition === "center"
+              ? "left-1/2 -translate-x-1/2"
+              : "right-1"
+        }`}
+      >
         <div
           className="relative flex items-center gap-2"
           onMouseEnter={() => {

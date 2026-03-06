@@ -186,11 +186,17 @@ class MediaPlayer {
       const status = this._getMprisPlaybackStatus(dest);
       if (status !== "Playing") continue;
 
-      const result = spawnSync("dbus-send", [
-        "--session", "--type=method_call", `--dest=${dest}`,
-        "/org/mpris/MediaPlayer2",
-        "org.mpris.MediaPlayer2.Player.Pause",
-      ], { stdio: "pipe", timeout: 2000 });
+      const result = spawnSync(
+        "dbus-send",
+        [
+          "--session",
+          "--type=method_call",
+          `--dest=${dest}`,
+          "/org/mpris/MediaPlayer2",
+          "org.mpris.MediaPlayer2.Player.Pause",
+        ],
+        { stdio: "pipe", timeout: 2000 }
+      );
 
       if (result.status === 0) {
         debugLogger.debug("Media paused via MPRIS", { player: dest }, "media");
@@ -204,11 +210,17 @@ class MediaPlayer {
     let resumed = false;
     for (const dest of this._pausedPlayers) {
       if (dest === "playerctl") continue;
-      const result = spawnSync("dbus-send", [
-        "--session", "--type=method_call", `--dest=${dest}`,
-        "/org/mpris/MediaPlayer2",
-        "org.mpris.MediaPlayer2.Player.Play",
-      ], { stdio: "pipe", timeout: 2000 });
+      const result = spawnSync(
+        "dbus-send",
+        [
+          "--session",
+          "--type=method_call",
+          `--dest=${dest}`,
+          "/org/mpris/MediaPlayer2",
+          "org.mpris.MediaPlayer2.Player.Play",
+        ],
+        { stdio: "pipe", timeout: 2000 }
+      );
 
       if (result.status === 0) {
         debugLogger.debug("Media resumed via MPRIS", { player: dest }, "media");
@@ -219,13 +231,19 @@ class MediaPlayer {
   }
 
   _getMprisPlaybackStatus(dest) {
-    const result = spawnSync("dbus-send", [
-      "--session", "--print-reply", `--dest=${dest}`,
-      "/org/mpris/MediaPlayer2",
-      "org.freedesktop.DBus.Properties.Get",
-      "string:org.mpris.MediaPlayer2.Player",
-      "string:PlaybackStatus",
-    ], { stdio: "pipe", timeout: 2000 });
+    const result = spawnSync(
+      "dbus-send",
+      [
+        "--session",
+        "--print-reply",
+        `--dest=${dest}`,
+        "/org/mpris/MediaPlayer2",
+        "org.freedesktop.DBus.Properties.Get",
+        "string:org.mpris.MediaPlayer2.Player",
+        "string:PlaybackStatus",
+      ],
+      { stdio: "pipe", timeout: 2000 }
+    );
 
     if (result.status !== 0) return null;
 
@@ -235,11 +253,18 @@ class MediaPlayer {
   }
 
   _listMprisPlayers() {
-    const listResult = spawnSync("dbus-send", [
-      "--session", "--dest=org.freedesktop.DBus", "--type=method_call",
-      "--print-reply", "/org/freedesktop/DBus",
-      "org.freedesktop.DBus.ListNames",
-    ], { stdio: "pipe", timeout: 2000 });
+    const listResult = spawnSync(
+      "dbus-send",
+      [
+        "--session",
+        "--dest=org.freedesktop.DBus",
+        "--type=method_call",
+        "--print-reply",
+        "/org/freedesktop/DBus",
+        "org.freedesktop.DBus.ListNames",
+      ],
+      { stdio: "pipe", timeout: 2000 }
+    );
 
     if (listResult.status !== 0) return [];
 
@@ -247,7 +272,7 @@ class MediaPlayer {
     const matches = output.match(/string "org\.mpris\.MediaPlayer2\.[A-Za-z0-9_.\-]+"/g);
     if (!matches || matches.length === 0) return [];
 
-    return matches.map(m => m.replace(/^string "/, "").replace(/"$/, ""));
+    return matches.map((m) => m.replace(/^string "/, "").replace(/"$/, ""));
   }
 
   // --- Linux toggle (legacy, used by toggleMedia) ---
@@ -286,11 +311,17 @@ class MediaPlayer {
 
     let toggled = false;
     for (const dest of players) {
-      const result = spawnSync("dbus-send", [
-        "--session", "--type=method_call", `--dest=${dest}`,
-        "/org/mpris/MediaPlayer2",
-        "org.mpris.MediaPlayer2.Player.PlayPause",
-      ], { stdio: "pipe", timeout: 2000 });
+      const result = spawnSync(
+        "dbus-send",
+        [
+          "--session",
+          "--type=method_call",
+          `--dest=${dest}`,
+          "/org/mpris/MediaPlayer2",
+          "org.mpris.MediaPlayer2.Player.PlayPause",
+        ],
+        { stdio: "pipe", timeout: 2000 }
+      );
 
       if (result.status === 0) {
         debugLogger.debug("Media toggled via MPRIS", { player: dest }, "media");
@@ -352,13 +383,14 @@ class MediaPlayer {
   }
 
   _sendMacMediaKey() {
-    const result = spawnSync("osascript", [
-      "-e",
-      'tell application "System Events" to key code 100',
-    ], {
-      stdio: "pipe",
-      timeout: 3000,
-    });
+    const result = spawnSync(
+      "osascript",
+      ["-e", 'tell application "System Events" to key code 100'],
+      {
+        stdio: "pipe",
+        timeout: 3000,
+      }
+    );
     if (result.status === 0) {
       debugLogger.debug("Media key sent via osascript", {}, "media");
       return true;
@@ -367,13 +399,14 @@ class MediaPlayer {
   }
 
   _toggleMacOS() {
-    const result = spawnSync("osascript", [
-      "-e",
-      'tell application "System Events" to key code 100',
-    ], {
-      stdio: "pipe",
-      timeout: 3000,
-    });
+    const result = spawnSync(
+      "osascript",
+      ["-e", 'tell application "System Events" to key code 100'],
+      {
+        stdio: "pipe",
+        timeout: 3000,
+      }
+    );
     if (result.status === 0) {
       debugLogger.debug("Media toggled via osascript", {}, "media");
       return true;
@@ -403,7 +436,7 @@ try {
   }
 
   _gsmtcResumeScript(appIds) {
-    const idList = appIds.map(id => `'${id.replace(/'/g, "''")}'`).join(",");
+    const idList = appIds.map((id) => `'${id.replace(/'/g, "''")}'`).join(",");
     return `
 try {
   $ids = @(${idList})
@@ -430,13 +463,19 @@ try {
       if (result.status === 0) return true;
     }
 
-    const result = spawnSync("powershell", [
-      "-NoProfile", "-NonInteractive", "-Command",
-      "Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public class KB { [DllImport(\"user32.dll\")] public static extern void keybd_event(byte bVk, byte bScan, int dwFlags, int dwExtraInfo); }'; [KB]::keybd_event(0xB3, 0, 1, 0); [KB]::keybd_event(0xB3, 0, 3, 0)",
-    ], {
-      stdio: "pipe",
-      timeout: 5000,
-    });
+    const result = spawnSync(
+      "powershell",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public class KB { [DllImport(\"user32.dll\")] public static extern void keybd_event(byte bVk, byte bScan, int dwFlags, int dwExtraInfo); }'; [KB]::keybd_event(0xB3, 0, 1, 0); [KB]::keybd_event(0xB3, 0, 3, 0)",
+      ],
+      {
+        stdio: "pipe",
+        timeout: 5000,
+      }
+    );
     return result.status === 0;
   }
 
@@ -444,10 +483,11 @@ try {
     this._pausedWinApps = [];
 
     // Try GSMTC first (Windows 10 1809+)
-    const result = spawnSync("powershell", [
-      "-NoProfile", "-NonInteractive", "-Command",
-      this._gsmtcPauseScript(),
-    ], { stdio: "pipe", timeout: 5000 });
+    const result = spawnSync(
+      "powershell",
+      ["-NoProfile", "-NonInteractive", "-Command", this._gsmtcPauseScript()],
+      { stdio: "pipe", timeout: 5000 }
+    );
 
     if (result.status === 0) {
       const output = (result.stdout?.toString() || "").trim();
@@ -479,10 +519,11 @@ try {
       const apps = this._pausedWinApps;
       this._pausedWinApps = [];
 
-      const result = spawnSync("powershell", [
-        "-NoProfile", "-NonInteractive", "-Command",
-        this._gsmtcResumeScript(apps),
-      ], { stdio: "pipe", timeout: 5000 });
+      const result = spawnSync(
+        "powershell",
+        ["-NoProfile", "-NonInteractive", "-Command", this._gsmtcResumeScript(apps)],
+        { stdio: "pipe", timeout: 5000 }
+      );
 
       if (result.status === 0) {
         debugLogger.debug("Media resumed via GSMTC", { apps }, "media");

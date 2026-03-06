@@ -84,12 +84,24 @@ const CONTROL_PANEL_CONFIG = {
 };
 
 class WindowPositionUtil {
-  static getMainWindowPosition(display, customSize = null) {
+  static getMainWindowPosition(display, customSize = null, position = "bottom-right") {
     const { width, height } = customSize || WINDOW_SIZES.BASE;
-    const MARGIN = 24;
+    const MARGIN = 4;
     const workArea = display.workArea || display.bounds;
-    const x = Math.max(0, workArea.x + workArea.width - width - MARGIN);
-    const y = Math.max(0, workArea.y + workArea.height - height - MARGIN);
+
+    let x, y;
+    if (position === "bottom-left") {
+      x = workArea.x + MARGIN;
+      y = Math.max(0, workArea.y + workArea.height - height - MARGIN);
+    } else if (position === "center") {
+      x = Math.round(workArea.x + (workArea.width - width) / 2);
+      y = Math.max(0, workArea.y + workArea.height - height - MARGIN);
+    } else {
+      // bottom-right (default)
+      x = Math.max(0, workArea.x + workArea.width - width - MARGIN);
+      y = Math.max(0, workArea.y + workArea.height - height - MARGIN);
+    }
+
     return { x, y, width, height };
   }
 

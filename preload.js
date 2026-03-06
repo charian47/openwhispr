@@ -471,6 +471,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     (callback) => (_event, enabled) => callback(enabled)
   ),
 
+  // Panel start position
+  notifyPanelStartPositionChanged: (position) =>
+    ipcRenderer.send("panel-start-position-changed", position),
+
   // Auto-start management
   getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),
   setAutoStartEnabled: (enabled) => ipcRenderer.invoke("set-auto-start-enabled", enabled),

@@ -483,6 +483,10 @@ async function startApp() {
     }
   });
 
+  ipcMain.on("panel-start-position-changed", (_event, position) => {
+    windowManager.setPanelStartPosition(position);
+  });
+
   if (process.platform === "darwin") {
     app.setActivationPolicy("regular");
   }

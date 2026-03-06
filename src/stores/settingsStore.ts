@@ -88,6 +88,7 @@ export interface SettingsState
   audioCuesEnabled: boolean;
   pauseMediaOnDictation: boolean;
   floatingIconAutoHide: boolean;
+  panelStartPosition: "bottom-right" | "center" | "bottom-left";
 
   setUseLocalWhisper: (value: boolean) => void;
   setWhisperModel: (value: string) => void;
@@ -129,7 +130,9 @@ export interface SettingsState
   setTelemetryEnabled: (value: boolean) => void;
   setAudioRetentionDays: (days: number) => void;
   setAudioCuesEnabled: (value: boolean) => void;
+  setPauseMediaOnDictation: (value: boolean) => void;
   setFloatingIconAutoHide: (enabled: boolean) => void;
+  setPanelStartPosition: (position: "bottom-right" | "center" | "bottom-left") => void;
   setIsSignedIn: (value: boolean) => void;
 
   updateTranscriptionSettings: (settings: Partial<TranscriptionSettings>) => void;
@@ -249,6 +252,11 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   audioCuesEnabled: readBoolean("audioCuesEnabled", true),
   pauseMediaOnDictation: readBoolean("pauseMediaOnDictation", false),
   floatingIconAutoHide: readBoolean("floatingIconAutoHide", false),
+  panelStartPosition: (() => {
+    const v = readString("panelStartPosition", "bottom-right");
+    if (v === "bottom-right" || v === "center" || v === "bottom-left") return v;
+    return "bottom-right" as const;
+  })(),
   isSignedIn: readBoolean("isSignedIn", false),
 
   setUseLocalWhisper: createBooleanSetter("useLocalWhisper"),
@@ -384,6 +392,15 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     set({ floatingIconAutoHide: enabled });
     if (isBrowser) {
       window.electronAPI?.notifyFloatingIconAutoHideChanged?.(enabled);
+    }
+  },
+
+  setPanelStartPosition: (position: "bottom-right" | "center" | "bottom-left") => {
+    if (get().panelStartPosition === position) return;
+    if (isBrowser) localStorage.setItem("panelStartPosition", position);
+    set({ panelStartPosition: position });
+    if (isBrowser) {
+      window.electronAPI?.notifyPanelStartPositionChanged?.(position);
     }
   },
 

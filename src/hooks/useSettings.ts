@@ -218,6 +218,8 @@ function useSettingsInternal() {
     setPauseMediaOnDictation: store.setPauseMediaOnDictation,
     floatingIconAutoHide: store.floatingIconAutoHide,
     setFloatingIconAutoHide: store.setFloatingIconAutoHide,
+    panelStartPosition: store.panelStartPosition,
+    setPanelStartPosition: store.setPanelStartPosition,
     preferBuiltInMic: store.preferBuiltInMic,
     selectedMicDeviceId: store.selectedMicDeviceId,
     setPreferBuiltInMic: store.setPreferBuiltInMic,

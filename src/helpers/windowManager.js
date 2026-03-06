@@ -28,6 +28,7 @@ class WindowManager {
     this.winPushState = null;
     this._cachedActivationMode = "tap";
     this._floatingIconAutoHide = false;
+    this._panelStartPosition = "bottom-right";
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -36,7 +37,11 @@ class WindowManager {
 
   async createMainWindow() {
     const display = screen.getPrimaryDisplay();
-    const position = WindowPositionUtil.getMainWindowPosition(display);
+    const position = WindowPositionUtil.getMainWindowPosition(
+      display,
+      null,
+      this._panelStartPosition
+    );
 
     this.mainWindow = new BrowserWindow({
       ...MAIN_WINDOW_CONFIG,
@@ -101,16 +106,33 @@ class WindowManager {
 
     const newSize = WINDOW_SIZES[sizeKey] || WINDOW_SIZES.BASE;
     const currentBounds = this.mainWindow.getBounds();
+    const position = this._panelStartPosition;
 
-    const bottomRightX = currentBounds.x + currentBounds.width;
-    const bottomRightY = currentBounds.y + currentBounds.height;
-
-    const display = screen.getDisplayNearestPoint({ x: bottomRightX, y: bottomRightY });
+    const display = screen.getDisplayNearestPoint({
+      x: currentBounds.x + currentBounds.width / 2,
+      y: currentBounds.y + currentBounds.height,
+    });
     const workArea = display.workArea || display.bounds;
 
-    let newX = bottomRightX - newSize.width;
-    let newY = bottomRightY - newSize.height;
+    let newX, newY;
 
+    if (position === "bottom-left") {
+      // Anchor bottom-left corner: keep x, expand rightward and upward
+      newX = currentBounds.x;
+      newY = currentBounds.y + currentBounds.height - newSize.height;
+    } else if (position === "center") {
+      // Anchor bottom-center: expand symmetrically and upward
+      const centerX = currentBounds.x + currentBounds.width / 2;
+      newX = centerX - newSize.width / 2;
+      newY = currentBounds.y + currentBounds.height - newSize.height;
+    } else {
+      // bottom-right (default): anchor bottom-right corner, expand leftward and upward
+      const bottomRightX = currentBounds.x + currentBounds.width;
+      newX = bottomRightX - newSize.width;
+      newY = currentBounds.y + currentBounds.height - newSize.height;
+    }
+
+    // Clamp to work area
     newX = Math.max(workArea.x, Math.min(newX, workArea.x + workArea.width - newSize.width));
     newY = Math.max(workArea.y, Math.min(newY, workArea.y + workArea.height - newSize.height));
 
@@ -398,6 +420,24 @@ class WindowManager {
 
   setFloatingIconAutoHide(enabled) {
     this._floatingIconAutoHide = Boolean(enabled);
+  }
+
+  setPanelStartPosition(position) {
+    this._panelStartPosition = position || "bottom-right";
+    // Reposition the window immediately
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      const currentBounds = this.mainWindow.getBounds();
+      const display = screen.getDisplayNearestPoint({
+        x: currentBounds.x + currentBounds.width / 2,
+        y: currentBounds.y + currentBounds.height / 2,
+      });
+      const newPos = WindowPositionUtil.getMainWindowPosition(
+        display,
+        { width: currentBounds.width, height: currentBounds.height },
+        this._panelStartPosition
+      );
+      this.mainWindow.setBounds(newPos);
+    }
   }
 
   setHotkeyListeningMode(enabled) {
