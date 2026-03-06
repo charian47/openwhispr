@@ -1086,6 +1086,11 @@
         "pauseMediaDescription": "Metti automaticamente in pausa la musica quando inizia la dettatura",
         "title": "Effetti sonori"
       },
+      "clipboard": {
+        "title": "Appunti",
+        "autoPaste": "Incolla automaticamente dopo la dettatura",
+        "autoPasteDescription": "Incolla automaticamente il testo trascritto nell'app attiva"
+      },
       "startup": {
         "launchAtLogin": "Avvia all'accesso",
         "launchAtLoginDescription": "Avvia OpenWhispr automaticamente all'accesso",

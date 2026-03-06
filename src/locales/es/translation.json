@@ -1086,6 +1086,11 @@
         "pauseMediaDescription": "Pausar la música automáticamente al iniciar el dictado",
         "title": "Efectos de sonido"
       },
+      "clipboard": {
+        "title": "Portapapeles",
+        "autoPaste": "Pegar automáticamente después del dictado",
+        "autoPasteDescription": "Pegar automáticamente el texto transcrito en la aplicación activa"
+      },
       "startup": {
         "launchAtLogin": "Abrir al iniciar sesión",
         "launchAtLoginDescription": "Inicia OpenWhispr automáticamente al iniciar sesión",

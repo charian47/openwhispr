@@ -1086,6 +1086,11 @@
         "pauseMediaDescription": "Mettre automatiquement la musique en pause au début de la dictée",
         "title": "Effets sonores"
       },
+      "clipboard": {
+        "title": "Presse-papiers",
+        "autoPaste": "Coller automatiquement après la dictée",
+        "autoPasteDescription": "Coller automatiquement le texte transcrit dans l'application active"
+      },
       "startup": {
         "launchAtLogin": "Lancer au démarrage",
         "launchAtLoginDescription": "Démarrer OpenWhispr automatiquement à la connexion",

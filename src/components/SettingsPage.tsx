@@ -681,6 +681,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setAudioCuesEnabled,
     pauseMediaOnDictation,
     setPauseMediaOnDictation,
+    autoPasteEnabled,
+    setAutoPasteEnabled,
     floatingIconAutoHide,
     setFloatingIconAutoHide,
     panelStartPosition,
@@ -1728,6 +1730,21 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     description={t("settingsPage.general.soundEffects.pauseMediaDescription")}
                   >
                     <Toggle checked={pauseMediaOnDictation} onChange={setPauseMediaOnDictation} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Clipboard */}
+            <div>
+              <SectionHeader title={t("settingsPage.general.clipboard.title")} />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.general.clipboard.autoPaste")}
+                    description={t("settingsPage.general.clipboard.autoPasteDescription")}
+                  >
+                    <Toggle checked={autoPasteEnabled} onChange={setAutoPasteEnabled} />
                   </SettingsRow>
                 </SettingsPanelRow>
               </SettingsPanel>

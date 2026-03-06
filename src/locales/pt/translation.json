@@ -1058,6 +1058,11 @@
         "pauseMediaDescription": "Pausar a música automaticamente ao iniciar o ditado",
         "title": "Efeitos sonoros"
       },
+      "clipboard": {
+        "title": "Área de transferência",
+        "autoPaste": "Colar automaticamente após o ditado",
+        "autoPasteDescription": "Colar automaticamente o texto transcrito no aplicativo ativo"
+      },
       "startup": {
         "launchAtLogin": "Iniciar ao fazer login",
         "launchAtLoginDescription": "Iniciar o OpenWhispr automaticamente ao fazer login",

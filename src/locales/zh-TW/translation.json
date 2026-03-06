@@ -1082,6 +1082,11 @@
         "pauseMediaDescription": "開始聽寫時自動暫停音樂",
         "title": "音效"
       },
+      "clipboard": {
+        "title": "剪貼簿",
+        "autoPaste": "語音輸入後自動貼上",
+        "autoPasteDescription": "自動將轉錄文字貼上到使用中的應用程式"
+      },
       "startup": {
         "launchAtLogin": "登入時啟動",
         "launchAtLoginDescription": "登入時自動啟動 OpenWhispr",

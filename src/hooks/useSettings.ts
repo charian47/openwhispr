@@ -235,6 +235,8 @@ function useSettingsInternal() {
     setSelectedMicDeviceId: store.setSelectedMicDeviceId,
     autoLearnCorrections,
     setAutoLearnCorrections,
+    autoPasteEnabled: store.autoPasteEnabled,
+    setAutoPasteEnabled: store.setAutoPasteEnabled,
     cloudBackupEnabled: store.cloudBackupEnabled,
     setCloudBackupEnabled: store.setCloudBackupEnabled,
     telemetryEnabled: store.telemetryEnabled,

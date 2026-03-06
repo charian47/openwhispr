@@ -1082,6 +1082,11 @@
         "pauseMediaDescription": "Musik beim Starten der Diktat automatisch pausieren",
         "title": "Soundeffekte"
       },
+      "clipboard": {
+        "title": "Zwischenablage",
+        "autoPaste": "Nach dem Diktat automatisch einfügen",
+        "autoPasteDescription": "Transkribierten Text automatisch in die aktive App einfügen"
+      },
       "startup": {
         "launchAtLogin": "Beim Anmelden starten",
         "launchAtLoginDescription": "OpenWhispr automatisch starten, wenn Sie sich anmelden",

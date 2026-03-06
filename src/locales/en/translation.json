@@ -1145,6 +1145,11 @@
         "pauseMediaDescription": "Automatically pause music when dictation starts",
         "title": "Sound Effects"
       },
+      "clipboard": {
+        "title": "Clipboard",
+        "autoPaste": "Auto-paste after dictation",
+        "autoPasteDescription": "Automatically paste transcribed text into the active app"
+      },
       "startup": {
         "launchAtLogin": "Launch at login",
         "launchAtLoginDescription": "Start OpenWhispr automatically when you log in",
