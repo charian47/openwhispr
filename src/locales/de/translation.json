@@ -1384,7 +1384,10 @@
       "wordsCount": "{{count}} Wörter",
       "startWriting": "Schreibe los...",
       "staleIndicator": "Der Inhalt hat sich seit der Verbesserung geändert",
-      "live": "Live"
+      "live": "Live",
+      "transcript": "Transkript",
+      "notes": "Notizen",
+      "generateNotes": "Notizen generieren"
     },
     "upload": {
       "title": "Audio hochladen",

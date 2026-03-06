@@ -1497,7 +1497,10 @@
       "wordsCount": "{{count}} words",
       "startWriting": "Start writing...",
       "staleIndicator": "Content has changed since enhancement",
-      "live": "Live"
+      "live": "Live",
+      "transcript": "Transcript",
+      "notes": "Notes",
+      "generateNotes": "Generate notes"
     },
     "upload": {
       "title": "Upload Audio",

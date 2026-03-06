@@ -1384,7 +1384,10 @@
       "wordsCount": "{{count}} 個字",
       "startWriting": "開始撰寫...",
       "staleIndicator": "內容在增強後已變更",
-      "live": "即時"
+      "live": "即時",
+      "transcript": "轉錄",
+      "notes": "筆記",
+      "generateNotes": "生成筆記"
     },
     "upload": {
       "title": "上傳音訊",

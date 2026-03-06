@@ -1425,7 +1425,10 @@
       "wordsCount": "{{count}} mots",
       "startWriting": "Commencez à écrire...",
       "staleIndicator": "Le contenu a changé depuis l'amélioration",
-      "live": "En direct"
+      "live": "En direct",
+      "transcript": "Transcription",
+      "notes": "Notes",
+      "generateNotes": "Générer des notes"
     },
     "upload": {
       "title": "Téléverser un fichier audio",

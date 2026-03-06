@@ -1388,7 +1388,10 @@
       "wordsCount": "{{count}} palavras",
       "startWriting": "Comece a escrever...",
       "staleIndicator": "O conteúdo mudou desde o aprimoramento",
-      "live": "Ao vivo"
+      "live": "Ao vivo",
+      "transcript": "Transcrição",
+      "notes": "Notas",
+      "generateNotes": "Gerar notas"
     },
     "upload": {
       "title": "Enviar áudio",
