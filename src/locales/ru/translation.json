@@ -223,7 +223,17 @@
       "dateGroups": {
         "today": "Сегодня",
         "yesterday": "Вчера"
-      }
+      },
+      "transcriptionFailed": "Транскрипция не удалась",
+      "failedCtaSettings": "Настройте провайдер транскрипции",
+      "failedCtaAndRetry": "затем нажмите повторить",
+      "failedCtaSettingsOnly": "Настройте провайдер транскрипции в Настройках",
+      "clearAll": "Очистить все",
+      "clearAllTitle": "Очистить все транскрипции",
+      "clearAllDescription": "Все транскрипции и аудиофайлы будут безвозвратно удалены.",
+      "clearAllSuccess": "История очищена",
+      "clearAllErrorTitle": "Не удалось очистить историю",
+      "clearAllErrorDescription": "Что-то пошло не так. Попробуйте ещё раз."
     },
     "cloudMigration": {
       "title": "Добро пожаловать в OpenWhispr Pro",
@@ -597,7 +607,7 @@
     },
     "title": "Сброс пароля"
   },
-  "fullPrompt": "Полный промпт",
+  "actionPrompt": "Промпт действия",
   "hotkeyGuidance": {
     "blockedDescription": "Эти сочетания заблокированы, так как часто используются системой.",
     "blockedTitle": "Заблокированные сочетания",
@@ -832,6 +842,10 @@
       "system": {
         "description": "Обновления, хранилище и инструменты разработчика",
         "label": "Система"
+      },
+      "agentMode": {
+        "label": "Режим агента",
+        "description": "Голосовой чат-ассистент"
       }
     },
     "title": "Настройки"
@@ -1082,6 +1096,11 @@
         "pauseMedia": "Пауза медиа",
         "pauseMediaDescription": "Автоматически приостанавливать музыку при начале диктовки",
         "title": "Звуковые эффекты"
+      },
+      "clipboard": {
+        "title": "Буфер обмена",
+        "autoPaste": "Автовставка после диктовки",
+        "autoPasteDescription": "Автоматически вставлять транскрибированный текст в активное приложение"
       },
       "startup": {
         "launchAtLogin": "Запускать при входе",
@@ -1426,7 +1445,10 @@
       "wordsCount": "{{count}} слов",
       "startWriting": "Начните писать...",
       "staleIndicator": "Содержимое изменилось после улучшения",
-      "live": "Живой"
+      "live": "Живой",
+      "transcript": "Транскрипция",
+      "notes": "Заметки",
+      "generateNotes": "Сгенерировать заметки"
     },
     "upload": {
       "title": "Загрузить аудио",
@@ -1474,8 +1496,9 @@
     },
     "meeting": {
       "title": "Заметки со встреч",
-      "description": "Определение говорящих и структурированные резюме",
-      "comingSoon": "Скоро"
+      "description": "Транскрипции и структурированные резюме",
+      "comingSoon": "Скоро",
+      "back": "Назад"
     },
     "context": {
       "moveToFolder": "Переместить в папку",
@@ -1580,6 +1603,7 @@
     "upgradeTitle": "Перейдите на Pro",
     "upgradeDescription": "Безлимитные транскрипции, транскрипция в реальном времени и многое другое.",
     "learnMore": "Узнать больше",
+    "integrations": "Интеграции",
     "defaultUser": "Пользователь",
     "notSignedIn": "Не авторизован"
   },
@@ -1661,6 +1685,83 @@
       "redirectTitle": "Перенаправление в приложение...",
       "closeTab": "Можете закрыть эту вкладку."
     }
+  },
+  "agentMode": {
+    "settings": {
+      "title": "Режим агента",
+      "description": "Голосовой чат-ассистент с отдельной моделью ИИ",
+      "enabled": "Включить режим агента",
+      "enabledDescription": "Используйте отдельную горячую клавишу для открытия наложения голосового чата",
+      "hotkey": "Горячая клавиша агента",
+      "hotkeyDescription": "Горячая клавиша для переключения наложения агента",
+      "model": "Модель агента",
+      "modelDescription": "Модель ИИ для разговоров с агентом",
+      "systemPrompt": "Системный промпт",
+      "systemPromptDescription": "Пользовательские инструкции для агента",
+      "systemPromptPlaceholder": "Введите пользовательский системный промпт...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "Использовать облачный ИИ OpenWhispr для разговоров с агентом",
+      "customSetup": "Своя настройка (BYOK)",
+      "customSetupDescription": "Используйте собственные API-ключи и выберите предпочтительную модель"
+    },
+    "chat": {
+      "placeholder": "Нажмите {{hotkey}} чтобы говорить",
+      "thinking": "Думаю...",
+      "transcribing": "Транскрибирую...",
+      "listening": "Слушаю...",
+      "newConversation": "Новый",
+      "copyToClipboard": "Копировать в буфер обмена",
+      "copied": "Скопировано!",
+      "emptyState": "Удерживайте {{hotkey}}, чтобы начать разговор",
+      "errorPrefix": "Ошибка"
+    },
+    "titleBar": {
+      "label": "Агент",
+      "newChat": "Новый разговор",
+      "close": "Закрыть"
+    },
+    "input": {
+      "holdToSpeak": "Удерживайте для разговора",
+      "toClose": "закрыть",
+      "listening": "Слушаю...",
+      "transcribing": "Транскрибирую...",
+      "thinking": "Думаю..."
+    }
+  },
+  "integrations": {
+    "title": "Интеграции",
+    "description": "Подключите сервисы для улучшения рабочего процесса",
+    "googleCalendar": {
+      "title": "Google Calendar",
+      "description": "Подключите календарь для автоматического обнаружения встреч и записи транскрипций.",
+      "connect": "Подключить Google Calendar",
+      "connecting": "Подключение...",
+      "connected": "Подключено",
+      "addAnother": "Добавить ещё один календарь",
+      "disconnect": "Отключить",
+      "disconnectConfirm": "Отключить {{email}}?",
+      "disconnectDescription": "Заметки встреч больше не будут записываться из этого календаря."
+    },
+    "plan": {
+      "title": "Ваш план",
+      "current": "Текущий",
+      "free": "Бесплатный",
+      "freeLimit": "5 встреч / месяц",
+      "essential": "Essential",
+      "essentialLimit": "20 встреч / месяц",
+      "pro": "Pro",
+      "proLimit": "Безлимитно",
+      "upgrade": "Улучшить"
+    }
+  },
+  "upcoming": {
+    "title": "Предстоящие встречи",
+    "transcriptions": "Транскрипции",
+    "tomorrow": "Завтра",
+    "noMoreMeetings": "Больше встреч сегодня нет",
+    "now": "Сейчас",
+    "join": "Присоединиться",
+    "untitledEvent": "Без названия"
   },
   "notesView": {
     "searchPlaceholder": "Поиск заметок…",

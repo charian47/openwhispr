@@ -31,7 +31,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onStopDictation: registerListener("stop-dictation", (callback) => () => callback()),
 
   // Database functions
-  saveTranscription: (text, rawText) => ipcRenderer.invoke("db-save-transcription", text, rawText),
+  saveTranscription: (text, rawText, options) =>
+    ipcRenderer.invoke("db-save-transcription", text, rawText, options),
   getTranscriptions: (limit) => ipcRenderer.invoke("db-get-transcriptions", limit),
   clearTranscriptions: () => ipcRenderer.invoke("db-clear-transcriptions"),
   deleteTranscription: (id) => ipcRenderer.invoke("db-delete-transcription", id),
@@ -155,6 +156,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("transcriptions-cleared", listener);
     return () => ipcRenderer.removeListener("transcriptions-cleared", listener);
   },
+  onTranscriptionUpdated: (callback) => {
+    const listener = (_event, transcription) => callback?.(transcription);
+    ipcRenderer.on("transcription-updated", listener);
+    return () => ipcRenderer.removeListener("transcription-updated", listener);
+  },
 
   // Environment variables
   getOpenAIKey: () => ipcRenderer.invoke("get-openai-key"),
@@ -225,6 +231,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   windowMaximize: () => ipcRenderer.invoke("window-maximize"),
   windowClose: () => ipcRenderer.invoke("window-close"),
   windowIsMaximized: () => ipcRenderer.invoke("window-is-maximized"),
+  restoreFromMeetingMode: () => ipcRenderer.invoke("restore-from-meeting-mode"),
   getPlatform: () => process.platform,
   appQuit: () => ipcRenderer.invoke("app-quit"),
 
@@ -352,9 +359,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // System settings helpers for microphone/audio permissions
   requestMicrophoneAccess: () => ipcRenderer.invoke("request-microphone-access"),
+  checkScreenRecordingAccess: () => ipcRenderer.invoke("check-screen-recording-access"),
   openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
   openSoundInputSettings: () => ipcRenderer.invoke("open-sound-input-settings"),
   openAccessibilitySettings: () => ipcRenderer.invoke("open-accessibility-settings"),
+  openScreenRecordingSettings: () => ipcRenderer.invoke("open-screen-recording-settings"),
   toggleMediaPlayback: () => ipcRenderer.invoke("toggle-media-playback"),
   pauseMediaPlayback: () => ipcRenderer.invoke("pause-media-playback"),
   resumeMediaPlayback: () => ipcRenderer.invoke("resume-media-playback"),
@@ -435,6 +444,30 @@ contextBridge.exposeInMainWorld("electronAPI", {
     (callback) => (_event, data) => callback(data)
   ),
 
+  // Meeting chain transcription (BaseTen)
+  meetingTranscribeChain: (blobUrl, opts) =>
+    ipcRenderer.invoke("meeting-transcribe-chain", blobUrl, opts),
+
+  // Meeting transcription (streaming)
+  meetingTranscriptionPrepare: (options) =>
+    ipcRenderer.invoke("meeting-transcription-prepare", options),
+  meetingTranscriptionStart: (options) =>
+    ipcRenderer.invoke("meeting-transcription-start", options),
+  meetingTranscriptionSend: (buffer) => ipcRenderer.send("meeting-transcription-send", buffer),
+  meetingTranscriptionStop: () => ipcRenderer.invoke("meeting-transcription-stop"),
+  onMeetingTranscriptionPartial: registerListener(
+    "meeting-transcription-partial",
+    (callback) => (_event, data) => callback(data)
+  ),
+  onMeetingTranscriptionFinal: registerListener(
+    "meeting-transcription-final",
+    (callback) => (_event, data) => callback(data)
+  ),
+  onMeetingTranscriptionError: registerListener(
+    "meeting-transcription-error",
+    (callback) => (_event, data) => callback(data)
+  ),
+
   // Usage limit events (for showing UpgradePrompt in ControlPanel)
   notifyLimitReached: (data) => ipcRenderer.send("limit-reached", data),
   onLimitReached: registerListener("limit-reached", (callback) => (_event, data) => callback(data)),
@@ -483,4 +516,104 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Auto-start management
   getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),
   setAutoStartEnabled: (enabled) => ipcRenderer.invoke("set-auto-start-enabled", enabled),
+
+  // Agent mode
+  notifyAgentHotkeyChanged: (hotkey) => ipcRenderer.send("agent-hotkey-changed", hotkey),
+  getAgentKey: () => ipcRenderer.invoke("get-agent-key"),
+  saveAgentKey: (key) => ipcRenderer.invoke("save-agent-key", key),
+  onAgentStartRecording: registerListener("agent-start-recording", (callback) => () => callback()),
+  onAgentStopRecording: registerListener("agent-stop-recording", (callback) => () => callback()),
+  onAgentToggleRecording: registerListener(
+    "agent-toggle-recording",
+    (callback) => () => callback()
+  ),
+  toggleAgentOverlay: () => ipcRenderer.invoke("toggle-agent-overlay"),
+  hideAgentOverlay: () => ipcRenderer.invoke("hide-agent-overlay"),
+  resizeAgentWindow: (width, height) => ipcRenderer.invoke("resize-agent-window", width, height),
+  getAgentWindowBounds: () => ipcRenderer.invoke("get-agent-window-bounds"),
+  setAgentWindowBounds: (x, y, width, height) =>
+    ipcRenderer.invoke("set-agent-window-bounds", x, y, width, height),
+  acquireRecordingLock: (pipeline) => ipcRenderer.invoke("acquire-recording-lock", pipeline),
+  releaseRecordingLock: (pipeline) => ipcRenderer.invoke("release-recording-lock", pipeline),
+
+  // Agent cloud streaming
+  cloudAgentStream: (messages, opts) => ipcRenderer.invoke("cloud-agent-stream", messages, opts),
+  onAgentStreamChunk: registerListener(
+    "agent-stream-chunk",
+    (callback) => (_event, chunk) => callback(chunk)
+  ),
+  onAgentStreamDone: registerListener("agent-stream-done", (callback) => () => callback()),
+
+  // Agent conversation persistence
+  createAgentConversation: (title) => ipcRenderer.invoke("db-create-agent-conversation", title),
+  getAgentConversations: (limit) => ipcRenderer.invoke("db-get-agent-conversations", limit),
+  getAgentConversation: (id) => ipcRenderer.invoke("db-get-agent-conversation", id),
+  deleteAgentConversation: (id) => ipcRenderer.invoke("db-delete-agent-conversation", id),
+  updateAgentConversationTitle: (id, title) =>
+    ipcRenderer.invoke("db-update-agent-conversation-title", id, title),
+  addAgentMessage: (conversationId, role, content) =>
+    ipcRenderer.invoke("db-add-agent-message", conversationId, role, content),
+  getAgentMessages: (conversationId) => ipcRenderer.invoke("db-get-agent-messages", conversationId),
+
+  // Google Calendar
+  gcalStartOAuth: () => ipcRenderer.invoke("gcal-start-oauth"),
+  gcalDisconnect: () => ipcRenderer.invoke("gcal-disconnect"),
+  gcalGetConnectionStatus: () => ipcRenderer.invoke("gcal-get-connection-status"),
+  gcalGetCalendars: () => ipcRenderer.invoke("gcal-get-calendars"),
+  gcalSetCalendarSelection: (calendarId, isSelected) =>
+    ipcRenderer.invoke("gcal-set-calendar-selection", calendarId, isSelected),
+  gcalSyncEvents: () => ipcRenderer.invoke("gcal-sync-events"),
+  gcalGetUpcomingEvents: (windowMinutes) =>
+    ipcRenderer.invoke("gcal-get-upcoming-events", windowMinutes),
+
+  // Desktop audio capture
+  getDesktopSources: (types) => ipcRenderer.invoke("get-desktop-sources", types),
+
+  // Google Calendar event listeners
+  onGcalMeetingStarting: registerListener(
+    "gcal-meeting-starting",
+    (callback) => (_event, data) => callback(data)
+  ),
+  onGcalMeetingEnded: registerListener(
+    "gcal-meeting-ended",
+    (callback) => (_event, data) => callback(data)
+  ),
+  onGcalStartRecording: registerListener(
+    "gcal-start-recording",
+    (callback) => (_event, data) => callback(data)
+  ),
+  onGcalConnectionChanged: registerListener(
+    "gcal-connection-changed",
+    (callback) => (_event, data) => callback(data)
+  ),
+  onGcalEventsSynced: registerListener(
+    "gcal-events-synced",
+    (callback) => (_event, data) => callback(data)
+  ),
+
+  // Meeting detection
+  meetingDetectionGetPreferences: () => ipcRenderer.invoke("meeting-detection-get-preferences"),
+  meetingDetectionSetPreferences: (prefs) =>
+    ipcRenderer.invoke("meeting-detection-set-preferences", prefs),
+  meetingDetectionRespond: (detectionId, action) =>
+    ipcRenderer.invoke("meeting-detection-respond", detectionId, action),
+  onMeetingDetected: registerListener(
+    "meeting-detected",
+    (callback) => (_event, data) => callback(data)
+  ),
+  onMeetingDetectedStartRecording: registerListener(
+    "meeting-detected-start-recording",
+    (callback) => (_event, data) => callback(data)
+  ),
+  onMeetingNotificationData: registerListener(
+    "meeting-notification-data",
+    (callback) => (_event, data) => callback(data)
+  ),
+  getMeetingNotificationData: () => ipcRenderer.invoke("get-meeting-notification-data"),
+  meetingNotificationRespond: (detectionId, action) =>
+    ipcRenderer.invoke("meeting-notification-respond", detectionId, action),
+  onNavigateToMeetingNote: registerListener(
+    "navigate-to-meeting-note",
+    (callback) => (_event, data) => callback(data)
+  ),
 });

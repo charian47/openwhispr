@@ -112,20 +112,23 @@ export const useAudioRecording = (toast, options = {}) => {
           setTranscript(result.text);
 
           const isStreaming = result.source?.includes("streaming");
-          const pasteStart = performance.now();
-          await audioManagerRef.current.safePaste(
-            result.text,
-            isStreaming ? { fromStreaming: true } : {}
-          );
-          logger.info(
-            "Paste timing",
-            {
-              pasteMs: Math.round(performance.now() - pasteStart),
-              source: result.source,
-              textLength: result.text.length,
-            },
-            "streaming"
-          );
+          const { autoPasteEnabled } = getSettings();
+          if (autoPasteEnabled) {
+            const pasteStart = performance.now();
+            await audioManagerRef.current.safePaste(
+              result.text,
+              isStreaming ? { fromStreaming: true } : {}
+            );
+            logger.info(
+              "Paste timing",
+              {
+                pasteMs: Math.round(performance.now() - pasteStart),
+                source: result.source,
+                textLength: result.text.length,
+              },
+              "streaming"
+            );
+          }
 
           audioManagerRef.current.saveTranscription(result.text, result.rawText ?? result.text);
 

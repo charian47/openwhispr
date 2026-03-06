@@ -5,6 +5,7 @@ import { hasStoredByokKey } from "../utils/byokDetection";
 import { ensureAgentNameInDictionary } from "../utils/agentName";
 import logger from "../utils/logger";
 import type { LocalTranscriptionProvider } from "../types/electron";
+import type { GoogleCalendarAccount } from "../types/calendar";
 import type {
   TranscriptionSettings,
   ReasoningSettings,
@@ -13,6 +14,7 @@ import type {
   ApiKeySettings,
   PrivacySettings,
   ThemeSettings,
+  AgentModeSettings,
 } from "../hooks/useSettings";
 
 let _ReasoningService: typeof import("../services/ReasoningService").default | null = null;
@@ -56,10 +58,14 @@ const BOOLEAN_SETTINGS = new Set([
   "audioCuesEnabled",
   "pauseMediaOnDictation",
   "floatingIconAutoHide",
+  "meetingProcessDetection",
+  "meetingAudioDetection",
   "isSignedIn",
+  "agentEnabled",
+  "autoPasteEnabled",
 ]);
 
-const ARRAY_SETTINGS = new Set(["customDictionary"]);
+const ARRAY_SETTINGS = new Set(["customDictionary", "gcalAccounts"]);
 
 const NUMERIC_SETTINGS = new Set(["audioRetentionDays"]);
 
@@ -83,12 +89,19 @@ export interface SettingsState
     MicrophoneSettings,
     ApiKeySettings,
     PrivacySettings,
-    ThemeSettings {
+    ThemeSettings,
+    AgentModeSettings {
   isSignedIn: boolean;
   audioCuesEnabled: boolean;
   pauseMediaOnDictation: boolean;
   floatingIconAutoHide: boolean;
+  gcalAccounts: GoogleCalendarAccount[];
+  gcalConnected: boolean;
+  gcalEmail: string;
+  meetingProcessDetection: boolean;
+  meetingAudioDetection: boolean;
   panelStartPosition: "bottom-right" | "center" | "bottom-left";
+  autoPasteEnabled: boolean;
 
   setUseLocalWhisper: (value: boolean) => void;
   setWhisperModel: (value: string) => void;
@@ -132,12 +145,24 @@ export interface SettingsState
   setAudioCuesEnabled: (value: boolean) => void;
   setPauseMediaOnDictation: (value: boolean) => void;
   setFloatingIconAutoHide: (enabled: boolean) => void;
+  setGcalAccounts: (accounts: GoogleCalendarAccount[]) => void;
+  setMeetingProcessDetection: (value: boolean) => void;
+  setMeetingAudioDetection: (value: boolean) => void;
   setPanelStartPosition: (position: "bottom-right" | "center" | "bottom-left") => void;
+  setAutoPasteEnabled: (value: boolean) => void;
   setIsSignedIn: (value: boolean) => void;
+
+  setAgentModel: (value: string) => void;
+  setAgentProvider: (value: string) => void;
+  setAgentKey: (key: string) => void;
+  setAgentSystemPrompt: (value: string) => void;
+  setAgentEnabled: (value: boolean) => void;
+  setCloudAgentMode: (value: string) => void;
 
   updateTranscriptionSettings: (settings: Partial<TranscriptionSettings>) => void;
   updateReasoningSettings: (settings: Partial<ReasoningSettings>) => void;
   updateApiKeys: (keys: Partial<ApiKeySettings>) => void;
+  updateAgentModeSettings: (settings: Partial<AgentModeSettings>) => void;
 }
 
 function createStringSetter(key: string) {
@@ -252,12 +277,36 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   audioCuesEnabled: readBoolean("audioCuesEnabled", true),
   pauseMediaOnDictation: readBoolean("pauseMediaOnDictation", false),
   floatingIconAutoHide: readBoolean("floatingIconAutoHide", false),
+  ...(() => {
+    let accounts: GoogleCalendarAccount[] = [];
+    try {
+      const parsed = JSON.parse(readString("gcalAccounts", "[]"));
+      if (Array.isArray(parsed)) accounts = parsed;
+    } catch {
+      /* use empty default */
+    }
+    return {
+      gcalAccounts: accounts,
+      gcalConnected: accounts.length > 0,
+      gcalEmail: accounts[0]?.email ?? "",
+    };
+  })(),
+  meetingProcessDetection: readBoolean("meetingProcessDetection", true),
+  meetingAudioDetection: readBoolean("meetingAudioDetection", true),
   panelStartPosition: (() => {
     const v = readString("panelStartPosition", "bottom-right");
     if (v === "bottom-right" || v === "center" || v === "bottom-left") return v;
     return "bottom-right" as const;
   })(),
+  autoPasteEnabled: readBoolean("autoPasteEnabled", true),
   isSignedIn: readBoolean("isSignedIn", false),
+
+  agentModel: readString("agentModel", "openai/gpt-oss-120b"),
+  agentProvider: readString("agentProvider", "groq"),
+  agentKey: readString("agentKey", ""),
+  agentSystemPrompt: readString("agentSystemPrompt", ""),
+  agentEnabled: readBoolean("agentEnabled", true),
+  cloudAgentMode: readString("cloudAgentMode", "openwhispr"),
 
   setUseLocalWhisper: createBooleanSetter("useLocalWhisper"),
   setWhisperModel: createStringSetter("whisperModel"),
@@ -395,6 +444,16 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     }
   },
 
+  setGcalAccounts: (accounts: GoogleCalendarAccount[]) => {
+    if (isBrowser) localStorage.setItem("gcalAccounts", JSON.stringify(accounts));
+    useSettingsStore.setState({
+      gcalAccounts: accounts,
+      gcalConnected: accounts.length > 0,
+      gcalEmail: accounts[0]?.email ?? "",
+    });
+  },
+  setMeetingProcessDetection: createBooleanSetter("meetingProcessDetection"),
+  setMeetingAudioDetection: createBooleanSetter("meetingAudioDetection"),
   setPanelStartPosition: (position: "bottom-right" | "center" | "bottom-left") => {
     if (get().panelStartPosition === position) return;
     if (isBrowser) localStorage.setItem("panelStartPosition", position);
@@ -404,10 +463,26 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     }
   },
 
+  setAutoPasteEnabled: createBooleanSetter("autoPasteEnabled"),
+
   setIsSignedIn: (value: boolean) => {
     if (isBrowser) localStorage.setItem("isSignedIn", String(value));
     set({ isSignedIn: value });
   },
+
+  setAgentModel: createStringSetter("agentModel"),
+  setAgentProvider: createStringSetter("agentProvider"),
+  setAgentKey: (key: string) => {
+    if (isBrowser) localStorage.setItem("agentKey", key);
+    useSettingsStore.setState({ agentKey: key });
+    if (isBrowser) {
+      window.electronAPI?.notifyAgentHotkeyChanged?.(key);
+      window.electronAPI?.saveAgentKey?.(key);
+    }
+  },
+  setAgentSystemPrompt: createStringSetter("agentSystemPrompt"),
+  setAgentEnabled: createBooleanSetter("agentEnabled"),
+  setCloudAgentMode: createStringSetter("cloudAgentMode"),
 
   updateTranscriptionSettings: (settings: Partial<TranscriptionSettings>) => {
     const s = useSettingsStore.getState();
@@ -463,6 +538,17 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     if (keys.customReasoningApiKey !== undefined)
       s.setCustomReasoningApiKey(keys.customReasoningApiKey);
   },
+
+  updateAgentModeSettings: (settings: Partial<AgentModeSettings>) => {
+    const s = useSettingsStore.getState();
+    if (settings.agentModel !== undefined) s.setAgentModel(settings.agentModel);
+    if (settings.agentProvider !== undefined) s.setAgentProvider(settings.agentProvider);
+    if (settings.agentKey !== undefined) s.setAgentKey(settings.agentKey);
+    if (settings.agentSystemPrompt !== undefined)
+      s.setAgentSystemPrompt(settings.agentSystemPrompt);
+    if (settings.agentEnabled !== undefined) s.setAgentEnabled(settings.agentEnabled);
+    if (settings.cloudAgentMode !== undefined) s.setCloudAgentMode(settings.cloudAgentMode);
+  },
 }));
 
 // --- Selectors (derived state, not stored) ---
@@ -472,6 +558,13 @@ export const selectIsCloudReasoningMode = (state: SettingsState) =>
 
 export const selectEffectiveReasoningProvider = (state: SettingsState) =>
   selectIsCloudReasoningMode(state) ? "openwhispr" : state.reasoningProvider;
+
+export const selectIsCloudAgentMode = (state: SettingsState) =>
+  state.isSignedIn && state.cloudAgentMode === "openwhispr";
+
+export function isCloudAgentMode() {
+  return selectIsCloudAgentMode(useSettingsStore.getState());
+}
 
 // --- Convenience getters for non-React code ---
 
@@ -551,6 +644,20 @@ export async function initializeSettings(): Promise<void> {
     } catch (err) {
       logger.warn(
         "Failed to sync dictation key on startup",
+        { error: (err as Error).message },
+        "settings"
+      );
+    }
+
+    // Sync agent key from main process
+    try {
+      const envKey = await window.electronAPI.getAgentKey?.();
+      if (envKey && envKey !== state.agentKey) {
+        createStringSetter("agentKey")(envKey);
+      }
+    } catch (err) {
+      logger.warn(
+        "Failed to sync agent key on startup",
         { error: (err as Error).message },
         "settings"
       );
@@ -644,6 +751,14 @@ export async function initializeSettings(): Promise<void> {
     }
 
     useSettingsStore.setState({ [key]: value });
+
+    if (key === "gcalAccounts" && Array.isArray(value)) {
+      const accounts = value as GoogleCalendarAccount[];
+      useSettingsStore.setState({
+        gcalConnected: accounts.length > 0,
+        gcalEmail: accounts[0]?.email ?? "",
+      });
+    }
 
     if (key === "uiLanguage" && typeof value === "string") {
       void i18n.changeLanguage(value);

@@ -223,7 +223,17 @@
       "dateGroups": {
         "today": "Heute",
         "yesterday": "Gestern"
-      }
+      },
+      "transcriptionFailed": "Transkription fehlgeschlagen",
+      "failedCtaSettings": "Richten Sie Ihren Transkriptionsanbieter ein",
+      "failedCtaAndRetry": "und klicken Sie dann auf Wiederholen",
+      "failedCtaSettingsOnly": "Richten Sie Ihren Transkriptionsanbieter in den Einstellungen ein",
+      "clearAll": "Alle löschen",
+      "clearAllTitle": "Alle Transkriptionen löschen",
+      "clearAllDescription": "Alle Transkriptionen und Audiodateien werden dauerhaft entfernt.",
+      "clearAllSuccess": "Verlauf gelöscht",
+      "clearAllErrorTitle": "Verlauf konnte nicht gelöscht werden",
+      "clearAllErrorDescription": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
     },
     "cloudMigration": {
       "title": "Willkommen bei OpenWhispr Pro",
@@ -597,7 +607,7 @@
     },
     "title": "Passwort zurücksetzen"
   },
-  "fullPrompt": "Vollständiger Prompt",
+  "actionPrompt": "Aktions-Prompt",
   "hotkeyGuidance": {
     "blockedDescription": "Diese Tastenkombinationen sind blockiert, da sie häufig vom System verwendet werden.",
     "blockedTitle": "Blockierte Tastenkombinationen",
@@ -832,6 +842,10 @@
       "system": {
         "description": "Updates, Speicher & Entwicklertools",
         "label": "System"
+      },
+      "agentMode": {
+        "label": "Agent-Modus",
+        "description": "Sprach-Chat-Assistent"
       }
     },
     "title": "Einstellungen"
@@ -1078,6 +1092,11 @@
         "pauseMedia": "Medien pausieren",
         "pauseMediaDescription": "Musik beim Starten der Diktat automatisch pausieren",
         "title": "Soundeffekte"
+      },
+      "clipboard": {
+        "title": "Zwischenablage",
+        "autoPaste": "Nach dem Diktat automatisch einfügen",
+        "autoPasteDescription": "Transkribierten Text automatisch in die aktive App einfügen"
       },
       "startup": {
         "launchAtLogin": "Beim Anmelden starten",
@@ -1422,7 +1441,10 @@
       "wordsCount": "{{count}} Wörter",
       "startWriting": "Schreibe los...",
       "staleIndicator": "Der Inhalt hat sich seit der Verbesserung geändert",
-      "live": "Live"
+      "live": "Live",
+      "transcript": "Transkript",
+      "notes": "Notizen",
+      "generateNotes": "Notizen generieren"
     },
     "upload": {
       "title": "Audio hochladen",
@@ -1470,8 +1492,9 @@
     },
     "meeting": {
       "title": "Besprechungsnotizen",
-      "description": "Sprechererkennung und strukturierte Zusammenfassungen",
-      "comingSoon": "Demnächst verfügbar"
+      "description": "Transkriptionen und strukturierte Zusammenfassungen",
+      "comingSoon": "Demnächst verfügbar",
+      "back": "Zurück"
     },
     "context": {
       "moveToFolder": "In Ordner verschieben",
@@ -1576,6 +1599,7 @@
     "upgradeTitle": "Auf Pro upgraden",
     "upgradeDescription": "Unbegrenzte Transkriptionen und mehr.",
     "learnMore": "Mehr erfahren",
+    "integrations": "Integrationen",
     "defaultUser": "Benutzer",
     "notSignedIn": "Nicht angemeldet"
   },
@@ -1657,6 +1681,83 @@
       "redirectTitle": "Weiterleitung zur App...",
       "closeTab": "Du kannst diesen Tab schließen."
     }
+  },
+  "agentMode": {
+    "settings": {
+      "title": "Agent-Modus",
+      "description": "Sprach-Chat-Assistent mit separatem KI-Modell",
+      "enabled": "Agent-Modus aktivieren",
+      "enabledDescription": "Verwende eine separate Tastenkombination, um ein Sprach-Chat-Overlay zu öffnen",
+      "hotkey": "Agent-Tastenkombination",
+      "hotkeyDescription": "Tastenkombination zum Umschalten des Agent-Overlays",
+      "model": "Agent-Modell",
+      "modelDescription": "KI-Modell für Agent-Unterhaltungen",
+      "systemPrompt": "System-Prompt",
+      "systemPromptDescription": "Benutzerdefinierte Anweisungen für den Agenten",
+      "systemPromptPlaceholder": "Benutzerdefinierten System-Prompt eingeben...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "OpenWhisprs Cloud-KI für Agent-Unterhaltungen verwenden",
+      "customSetup": "Eigene Konfiguration (BYOK)",
+      "customSetupDescription": "Eigene API-Schlüssel verwenden und bevorzugtes Modell auswählen"
+    },
+    "chat": {
+      "placeholder": "Drücke {{hotkey}} zum Sprechen",
+      "thinking": "Denkt nach...",
+      "transcribing": "Transkribiert...",
+      "listening": "Hört zu...",
+      "newConversation": "Neu",
+      "copyToClipboard": "In Zwischenablage kopieren",
+      "copied": "Kopiert!",
+      "emptyState": "{{hotkey}} gedrückt halten, um eine Unterhaltung zu starten",
+      "errorPrefix": "Fehler"
+    },
+    "titleBar": {
+      "label": "Agent",
+      "newChat": "Neues Gespräch",
+      "close": "Schließen"
+    },
+    "input": {
+      "holdToSpeak": "Gedrückt halten zum Sprechen",
+      "toClose": "schließen",
+      "listening": "Hört zu...",
+      "transcribing": "Transkribiert...",
+      "thinking": "Denkt nach..."
+    }
+  },
+  "integrations": {
+    "title": "Integrationen",
+    "description": "Verbinde Dienste, um deinen Workflow zu verbessern",
+    "googleCalendar": {
+      "title": "Google Calendar",
+      "description": "Verbinde deinen Kalender, um Meetings automatisch zu erkennen und Transkriptionen aufzuzeichnen.",
+      "connect": "Google Calendar verbinden",
+      "connecting": "Verbinde...",
+      "connected": "Verbunden",
+      "addAnother": "Weiteren Kalender hinzufügen",
+      "disconnect": "Trennen",
+      "disconnectConfirm": "{{email}} trennen?",
+      "disconnectDescription": "Besprechungsnotizen werden von diesem Kalender nicht mehr aufgezeichnet."
+    },
+    "plan": {
+      "title": "Dein Plan",
+      "current": "Aktuell",
+      "free": "Kostenlos",
+      "freeLimit": "5 Meetings / Monat",
+      "essential": "Essential",
+      "essentialLimit": "20 Meetings / Monat",
+      "pro": "Pro",
+      "proLimit": "Unbegrenzt",
+      "upgrade": "Upgrade"
+    }
+  },
+  "upcoming": {
+    "title": "Anstehende Meetings",
+    "transcriptions": "Transkriptionen",
+    "tomorrow": "Morgen",
+    "noMoreMeetings": "Keine weiteren Meetings heute",
+    "now": "Jetzt",
+    "join": "Beitreten",
+    "untitledEvent": "Unbenanntes Ereignis"
   },
   "notesView": {
     "searchPlaceholder": "Notizen durchsuchen…",

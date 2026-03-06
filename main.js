@@ -166,6 +166,10 @@ const DevServerManager = require("./src/helpers/devServerManager");
 const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
 const TextEditMonitor = require("./src/helpers/textEditMonitor");
 const WhisperCudaManager = require("./src/helpers/whisperCudaManager");
+const GoogleCalendarManager = require("./src/helpers/googleCalendarManager");
+const MeetingProcessDetector = require("./src/helpers/meetingProcessDetector");
+const AudioActivityDetector = require("./src/helpers/audioActivityDetector");
+const MeetingDetectionEngine = require("./src/helpers/meetingDetectionEngine");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
 const { ensureYdotool } = require("./src/helpers/ensureYdotool");
 
@@ -184,6 +188,8 @@ let globeKeyManager = null;
 let windowsKeyManager = null;
 let textEditMonitor = null;
 let whisperCudaManager = null;
+let googleCalendarManager = null;
+let meetingDetectionEngine = null;
 let ipcHandlers = null;
 let globeKeyAlertShown = false;
 let authBridgeServer = null;
@@ -247,6 +253,14 @@ function initializeCoreManagers() {
     whisperCudaManager = new WhisperCudaManager();
   }
   parakeetManager = new ParakeetManager();
+  googleCalendarManager = new GoogleCalendarManager(databaseManager, windowManager);
+  meetingDetectionEngine = new MeetingDetectionEngine(
+    googleCalendarManager,
+    new MeetingProcessDetector(),
+    new AudioActivityDetector(),
+    windowManager,
+    databaseManager
+  );
   updateManager = new UpdateManager();
   windowsKeyManager = new WindowsKeyManager();
   textEditMonitor = new TextEditMonitor();
@@ -264,6 +278,8 @@ function initializeCoreManagers() {
     windowsKeyManager,
     textEditMonitor,
     whisperCudaManager,
+    googleCalendarManager,
+    meetingDetectionEngine,
     getTrayManager: () => trayManager,
   });
 }
@@ -271,7 +287,11 @@ function initializeCoreManagers() {
 // Phase 2: Non-critical setup after windows are visible
 function initializeDeferredManagers() {
   ensureYdotool().catch((err) => {
-    require("./src/helpers/debugLogger").warn("ydotool setup error", { error: err?.message }, "clipboard");
+    require("./src/helpers/debugLogger").warn(
+      "ydotool setup error",
+      { error: err?.message },
+      "clipboard"
+    );
   });
   clipboardManager.preWarmAccessibility();
   trayManager = new TrayManager();
@@ -303,6 +323,9 @@ function initializeDeferredManagers() {
       });
     });
   }
+
+  googleCalendarManager.start();
+  meetingDetectionEngine.start();
 }
 
 app.on("open-url", (event, url) => {
@@ -466,6 +489,25 @@ async function startApp() {
     }
   );
 
+  // Handle getDisplayMedia() calls from the renderer — auto-select the first
+  // screen source with loopback audio so no system picker dialog is shown.
+  const { desktopCapturer } = require("electron");
+  session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
+    try {
+      const sources = await desktopCapturer.getSources({ types: ["screen"] });
+      debugLogger.debug("Display media sources", { count: sources.length, names: sources.map((s) => s.name) });
+      if (!sources.length) {
+        debugLogger.error("No screen sources available — Screen Recording permission may be denied");
+        callback({});
+        return;
+      }
+      callback({ video: sources[0], audio: "loopback" });
+    } catch (err) {
+      debugLogger.error("Display media handler error", { error: err.message });
+      callback({});
+    }
+  });
+
   windowManager.setActivationModeCache(environmentManager.getActivationMode());
   windowManager.setFloatingIconAutoHide(environmentManager.getFloatingIconAutoHide());
 
@@ -500,8 +542,43 @@ async function startApp() {
   await windowManager.createMainWindow();
   await windowManager.createControlPanelWindow();
 
+  // Create agent window (hidden) and set up agent hotkey
+  await windowManager.createAgentWindow();
+
+  const agentHotkeyCallback = () => {
+    if (hotkeyManager.isInListeningMode()) return;
+    windowManager.toggleAgentOverlay();
+  };
+  windowManager._agentHotkeyCallback = agentHotkeyCallback;
+
+  const savedAgentKey = environmentManager.getAgentKey?.() || "";
+  if (savedAgentKey) {
+    hotkeyManager.registerSlot("agent", savedAgentKey, agentHotkeyCallback);
+  }
+
+  ipcMain.on("agent-hotkey-changed", (_event, hotkey) => {
+    if (hotkey) {
+      hotkeyManager.registerSlot("agent", hotkey, agentHotkeyCallback);
+      environmentManager.saveAgentKey(hotkey);
+    } else {
+      hotkeyManager.unregisterSlot("agent");
+      environmentManager.saveAgentKey("");
+    }
+  });
+
   // Phase 2: Initialize remaining managers after windows are visible
   initializeDeferredManagers();
+
+  app.on("browser-window-focus", () => {
+    if (googleCalendarManager) googleCalendarManager.syncOnFocus();
+  });
+
+  const { powerMonitor } = require("electron");
+  powerMonitor.on("resume", () => {
+    if (googleCalendarManager) {
+      googleCalendarManager.onWakeFromSleep();
+    }
+  });
 
   // Non-blocking server pre-warming
   const whisperSettings = {
@@ -593,7 +670,13 @@ async function startApp() {
         } else {
           debugLogger?.debug("[Globe] Ignored — mainWindow not live");
         }
-      } else {
+      }
+
+      // Check agent slot for Globe/Fn key
+      const agentHotkey = hotkeyManager.getSlotHotkey("agent");
+      if (agentHotkey && isGlobeLikeHotkey(agentHotkey)) {
+        windowManager.toggleAgentOverlay();
+      } else if (!isGlobeLikeHotkey(currentHotkey)) {
         debugLogger?.debug("[Globe] Ignored — hotkey is not GLOBE", { currentHotkey });
       }
     });
@@ -636,6 +719,13 @@ async function startApp() {
 
     globeKeyManager.on("right-modifier-down", async (modifier) => {
       const currentHotkey = hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey();
+
+      // Check agent slot for right-modifier
+      const agentHotkey = hotkeyManager.getSlotHotkey("agent");
+      if (agentHotkey === modifier) {
+        windowManager.toggleAgentOverlay();
+      }
+
       if (currentHotkey !== modifier) return;
       if (!isLiveWindow(windowManager.mainWindow)) return;
 
@@ -924,6 +1014,9 @@ if (gotSingleInstanceLock) {
       authBridgeServer.close();
       authBridgeServer = null;
     }
+    if (windowManager && isLiveWindow(windowManager.agentWindow)) {
+      windowManager.agentWindow.destroy();
+    }
     if (hotkeyManager) {
       hotkeyManager.unregisterAll();
     } else {
@@ -934,6 +1027,12 @@ if (gotSingleInstanceLock) {
     }
     if (windowsKeyManager) {
       windowsKeyManager.stop();
+    }
+    if (meetingDetectionEngine) {
+      meetingDetectionEngine.stop();
+    }
+    if (googleCalendarManager) {
+      googleCalendarManager.stop();
     }
     if (ipcHandlers) {
       ipcHandlers._cleanupTextEditMonitor();

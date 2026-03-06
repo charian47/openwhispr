@@ -195,7 +195,17 @@
       "dateGroups": {
         "today": "Hoje",
         "yesterday": "Ontem"
-      }
+      },
+      "transcriptionFailed": "A transcrição falhou",
+      "failedCtaSettings": "Configure seu provedor de transcrição",
+      "failedCtaAndRetry": "e depois clique em tentar novamente",
+      "failedCtaSettingsOnly": "Configure seu provedor de transcrição nas Configurações",
+      "clearAll": "Limpar tudo",
+      "clearAllTitle": "Limpar todas as transcrições",
+      "clearAllDescription": "Todas as transcrições e arquivos de áudio serão removidos permanentemente.",
+      "clearAllSuccess": "Histórico limpo",
+      "clearAllErrorTitle": "Não foi possível limpar o histórico",
+      "clearAllErrorDescription": "Algo deu errado. Tente novamente."
     },
     "cloudMigration": {
       "title": "Boas-vindas ao OpenWhispr Pro",
@@ -569,7 +579,7 @@
     },
     "title": "Redefinir sua senha"
   },
-  "fullPrompt": "Prompt completo",
+  "actionPrompt": "Prompt de ação",
   "hotkeyGuidance": {
     "blockedDescription": "Esses atalhos são bloqueados porque são comumente usados pelo sistema.",
     "blockedTitle": "Atalhos bloqueados",
@@ -804,6 +814,10 @@
       "system": {
         "description": "Atualizações, armazenamento e ferramentas de desenvolvimento",
         "label": "Sistema"
+      },
+      "agentMode": {
+        "label": "Modo Agente",
+        "description": "Assistente de chat por voz"
       }
     },
     "title": "Configurações"
@@ -1054,6 +1068,11 @@
         "pauseMedia": "Pausar mídia",
         "pauseMediaDescription": "Pausar a música automaticamente ao iniciar o ditado",
         "title": "Efeitos sonoros"
+      },
+      "clipboard": {
+        "title": "Área de transferência",
+        "autoPaste": "Colar automaticamente após o ditado",
+        "autoPasteDescription": "Colar automaticamente o texto transcrito no aplicativo ativo"
       },
       "startup": {
         "launchAtLogin": "Iniciar ao fazer login",
@@ -1426,7 +1445,10 @@
       "wordsCount": "{{count}} palavras",
       "startWriting": "Comece a escrever...",
       "staleIndicator": "O conteúdo mudou desde o aprimoramento",
-      "live": "Ao vivo"
+      "live": "Ao vivo",
+      "transcript": "Transcrição",
+      "notes": "Notas",
+      "generateNotes": "Gerar notas"
     },
     "upload": {
       "title": "Enviar áudio",
@@ -1474,8 +1496,9 @@
     },
     "meeting": {
       "title": "Notas de reunião",
-      "description": "Identificação de falantes e resumos estruturados",
-      "comingSoon": "Em breve"
+      "description": "Transcrições e resumos estruturados",
+      "comingSoon": "Em breve",
+      "back": "Voltar"
     },
     "context": {
       "moveToFolder": "Mover para pasta",
@@ -1580,6 +1603,7 @@
     "upgradeTitle": "Fazer upgrade para Pro",
     "upgradeDescription": "Transcrições ilimitadas e recursos avançados.",
     "learnMore": "Saiba mais",
+    "integrations": "Integrações",
     "defaultUser": "Usuário",
     "notSignedIn": "Não conectado"
   },
@@ -1661,6 +1685,83 @@
       "redirectTitle": "Redirecionando para o app...",
       "closeTab": "Você pode fechar esta aba."
     }
+  },
+  "agentMode": {
+    "settings": {
+      "title": "Modo Agente",
+      "description": "Assistente de chat por voz com um modelo de IA separado",
+      "enabled": "Ativar Modo Agente",
+      "enabledDescription": "Usar uma tecla de atalho separada para abrir uma sobreposição de chat por voz",
+      "hotkey": "Tecla do Agente",
+      "hotkeyDescription": "Tecla de atalho para alternar a sobreposição do agente",
+      "model": "Modelo do Agente",
+      "modelDescription": "Modelo de IA usado para conversas do agente",
+      "systemPrompt": "Prompt do Sistema",
+      "systemPromptDescription": "Instruções personalizadas para o agente",
+      "systemPromptPlaceholder": "Digite um prompt de sistema personalizado...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "Usar a IA na nuvem da OpenWhispr para conversas do agente",
+      "customSetup": "Configuração personalizada (BYOK)",
+      "customSetupDescription": "Use suas próprias chaves API e escolha seu modelo preferido"
+    },
+    "chat": {
+      "placeholder": "Pressione {{hotkey}} para falar",
+      "thinking": "Pensando...",
+      "transcribing": "Transcrevendo...",
+      "listening": "Ouvindo...",
+      "newConversation": "Novo",
+      "copyToClipboard": "Copiar para área de transferência",
+      "copied": "Copiado!",
+      "emptyState": "Segure {{hotkey}} para iniciar uma conversa",
+      "errorPrefix": "Erro"
+    },
+    "titleBar": {
+      "label": "Agente",
+      "newChat": "Nova conversa",
+      "close": "Fechar"
+    },
+    "input": {
+      "holdToSpeak": "Segure para falar",
+      "toClose": "fechar",
+      "listening": "Ouvindo...",
+      "transcribing": "Transcrevendo...",
+      "thinking": "Pensando..."
+    }
+  },
+  "integrations": {
+    "title": "Integrações",
+    "description": "Conecte serviços para turbinar seu fluxo de trabalho",
+    "googleCalendar": {
+      "title": "Google Calendar",
+      "description": "Conecte seu calendário para detectar reuniões automaticamente e gravar transcrições.",
+      "connect": "Conectar Google Calendar",
+      "connecting": "Conectando...",
+      "connected": "Conectado",
+      "addAnother": "Adicionar outro calendário",
+      "disconnect": "Desconectar",
+      "disconnectConfirm": "Desconectar {{email}}?",
+      "disconnectDescription": "As notas de reunião não serão mais gravadas deste calendário."
+    },
+    "plan": {
+      "title": "Seu Plano",
+      "current": "Atual",
+      "free": "Grátis",
+      "freeLimit": "5 reuniões / mês",
+      "essential": "Essential",
+      "essentialLimit": "20 reuniões / mês",
+      "pro": "Pro",
+      "proLimit": "Ilimitado",
+      "upgrade": "Atualizar"
+    }
+  },
+  "upcoming": {
+    "title": "Próximas reuniões",
+    "transcriptions": "Transcrições",
+    "tomorrow": "Amanhã",
+    "noMoreMeetings": "Sem mais reuniões hoje",
+    "now": "Agora",
+    "join": "Entrar",
+    "untitledEvent": "Evento sem título"
   },
   "notesView": {
     "searchPlaceholder": "Pesquisar notas…",

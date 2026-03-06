@@ -1,5 +1,7 @@
 export type LocalTranscriptionProvider = "whisper" | "nvidia";
 
+export type TranscriptionStatus = "completed" | "failed" | "pending";
+
 export interface TranscriptionItem {
   id: number;
   text: string;
@@ -10,6 +12,8 @@ export interface TranscriptionItem {
   audio_duration_ms: number | null;
   provider: string | null;
   model: string | null;
+  status: TranscriptionStatus;
+  error_message: string | null;
 }
 
 export interface NoteItem {
@@ -23,6 +27,8 @@ export interface NoteItem {
   source_file: string | null;
   audio_duration_seconds: number | null;
   folder_id: number | null;
+  transcript: string | null;
+  calendar_event_id: string | null;
   cloud_id: string | null;
   created_at: string;
   updated_at: string;
@@ -287,7 +293,8 @@ declare global {
       // Database operations
       saveTranscription: (
         text: string,
-        rawText?: string | null
+        rawText?: string | null,
+        options?: { status?: TranscriptionStatus; errorMessage?: string | null }
       ) => Promise<{ id: number; success: boolean; transcription?: TranscriptionItem }>;
       getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
       clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
@@ -347,6 +354,8 @@ declare global {
           enhancement_prompt?: string | null;
           enhanced_at_content_hash?: string | null;
           folder_id?: number | null;
+          transcript?: string | null;
+          calendar_event_id?: string | null;
         }
       ) => Promise<{ success: boolean; note?: NoteItem }>;
       deleteNote: (id: number) => Promise<{ success: boolean }>;
@@ -414,6 +423,7 @@ declare global {
 
       // Database event listeners
       onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => () => void;
+      onTranscriptionUpdated?: (callback: (item: TranscriptionItem) => void) => () => void;
       onTranscriptionDeleted?: (callback: (payload: { id: number }) => void) => () => void;
       onTranscriptionsCleared?: (callback: (payload: { cleared: number }) => void) => () => void;
 
@@ -591,6 +601,7 @@ declare global {
       windowMaximize: () => Promise<void>;
       windowClose: () => Promise<void>;
       windowIsMaximized: () => Promise<boolean>;
+      restoreFromMeetingMode: () => Promise<void>;
       getPlatform: () => string;
       startWindowDrag: () => Promise<void>;
       stopWindowDrag: () => Promise<void>;
@@ -711,9 +722,11 @@ declare global {
 
       // System settings helpers
       requestMicrophoneAccess?: () => Promise<{ granted: boolean }>;
+      checkScreenRecordingAccess?: () => Promise<{ granted: boolean }>;
       openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
+      openScreenRecordingSettings?: () => Promise<{ success: boolean; error?: string }>;
       toggleMediaPlayback?: () => Promise<boolean>;
       pauseMediaPlayback?: () => Promise<boolean>;
       resumeMediaPlayback?: () => Promise<boolean>;
@@ -736,7 +749,7 @@ declare global {
       // OpenWhispr Cloud API
       cloudTranscribe?: (
         audioBuffer: ArrayBuffer,
-        opts: { language?: string; prompt?: string }
+        opts: { language?: string; prompt?: string; useCase?: string; diarization?: boolean }
       ) => Promise<{
         success: boolean;
         text?: string;
@@ -918,6 +931,60 @@ declare global {
         }>;
       }>;
 
+      // Agent Mode
+      notifyAgentHotkeyChanged?: (hotkey: string) => void;
+      getAgentKey?: () => Promise<string>;
+      saveAgentKey?: (key: string) => Promise<void>;
+      createAgentConversation?: (title: string) => Promise<{
+        id: number;
+        title: string;
+        created_at: string;
+        updated_at: string;
+      }>;
+      getAgentConversations?: (limit?: number) => Promise<
+        Array<{
+          id: number;
+          title: string;
+          created_at: string;
+          updated_at: string;
+        }>
+      >;
+      getAgentConversation?: (id: number) => Promise<{
+        id: number;
+        title: string;
+        created_at: string;
+        updated_at: string;
+        messages: Array<{
+          id: number;
+          conversation_id: number;
+          role: "user" | "assistant" | "system";
+          content: string;
+          created_at: string;
+        }>;
+      } | null>;
+      deleteAgentConversation?: (id: number) => Promise<{ success: boolean }>;
+      updateAgentConversationTitle?: (id: number, title: string) => Promise<{ success: boolean }>;
+      addAgentMessage?: (
+        conversationId: number,
+        role: "user" | "assistant" | "system",
+        content: string
+      ) => Promise<{
+        id: number;
+        conversation_id: number;
+        role: string;
+        content: string;
+        created_at: string;
+      }>;
+      getAgentMessages?: (conversationId: number) => Promise<
+        Array<{
+          id: number;
+          conversation_id: number;
+          role: "user" | "assistant" | "system";
+          content: string;
+          created_at: string;
+        }>
+      >;
+
       // Deepgram Streaming
       deepgramStreamingWarmup?: (options?: { sampleRate?: number; language?: string }) => Promise<{
         success: boolean;
@@ -925,7 +992,11 @@ declare global {
         error?: string;
         code?: string;
       }>;
-      deepgramStreamingStart?: (options?: { sampleRate?: number; language?: string }) => Promise<{
+      deepgramStreamingStart?: (options?: {
+        sampleRate?: number;
+        language?: string;
+        forceNew?: boolean;
+      }) => Promise<{
         success: boolean;
         usedWarmConnection?: boolean;
         error?: string;
@@ -947,6 +1018,115 @@ declare global {
       onDeepgramError?: (callback: (error: string) => void) => () => void;
       onDeepgramSessionEnd?: (
         callback: (data: { audioDuration?: number; text?: string }) => void
+      ) => () => void;
+
+      // Agent overlay
+      resizeAgentWindow?: (width: number, height: number) => Promise<void>;
+      getAgentWindowBounds?: () => Promise<{
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      } | null>;
+      setAgentWindowBounds?: (x: number, y: number, width: number, height: number) => Promise<void>;
+      hideAgentOverlay?: () => Promise<void>;
+      onAgentStartRecording?: (callback: () => void) => () => void;
+      onAgentStopRecording?: (callback: () => void) => () => void;
+      onAgentToggleRecording?: (callback: () => void) => () => void;
+
+      // Agent cloud streaming
+      cloudAgentStream?: (
+        messages: Array<{ role: string; content: string }>,
+        opts?: { systemPrompt?: string }
+      ) => Promise<{ success: boolean; error?: string; code?: string }>;
+      onAgentStreamChunk?: (callback: (chunk: string) => void) => () => void;
+      onAgentStreamDone?: (callback: () => void) => () => void;
+
+      // Google Calendar
+      gcalStartOAuth?: () => Promise<{ success: boolean; email?: string; error?: string }>;
+      gcalDisconnect?: (email?: string) => Promise<{ success: boolean; error?: string }>;
+      gcalGetConnectionStatus?: () => Promise<{
+        connected: boolean;
+        accounts: Array<{ email: string }>;
+        email: string | null;
+      }>;
+      gcalGetCalendars?: () => Promise<{ success: boolean; calendars: any[] }>;
+      gcalSetCalendarSelection?: (
+        calendarId: string,
+        isSelected: boolean
+      ) => Promise<{ success: boolean; error?: string }>;
+      gcalSyncEvents?: () => Promise<{ success: boolean; error?: string }>;
+      gcalGetUpcomingEvents?: (
+        windowMinutes?: number
+      ) => Promise<{ success: boolean; events: any[] }>;
+
+      // Meeting chain transcription (BaseTen)
+      meetingTranscribeChain?: (
+        blobUrl: string,
+        opts?: {
+          skipCleanup?: boolean;
+          agentName?: string;
+          customDictionary?: string[];
+        }
+      ) => Promise<{
+        success: boolean;
+        text?: string;
+        rawText?: string;
+        cleanedText?: string;
+        processingDurationSec?: number;
+        speedupFactor?: number;
+        error?: string;
+      }>;
+
+      // Meeting transcription (streaming)
+      meetingTranscriptionPrepare?: (options: {
+        provider?: string;
+        model?: string;
+        language?: string;
+      }) => Promise<{ success: boolean; alreadyPrepared?: boolean; error?: string }>;
+      meetingTranscriptionStart?: (options: {
+        provider?: string;
+        model?: string;
+        language?: string;
+      }) => Promise<{ success: boolean; error?: string }>;
+      meetingTranscriptionSend?: (buffer: ArrayBuffer) => void;
+      meetingTranscriptionStop?: () => Promise<{
+        success: boolean;
+        transcript?: string;
+        error?: string;
+      }>;
+      onMeetingTranscriptionPartial?: (callback: (text: string) => void) => () => void;
+      onMeetingTranscriptionFinal?: (callback: (text: string) => void) => () => void;
+      onMeetingTranscriptionError?: (callback: (error: string) => void) => () => void;
+
+      // Desktop audio capture
+      getDesktopSources?: (types: string[]) => Promise<Array<{ id: string; name: string }>>;
+
+      // Google Calendar event listeners
+      onGcalMeetingStarting?: (callback: (data: any) => void) => () => void;
+      onGcalMeetingEnded?: (callback: (data: any) => void) => () => void;
+      onGcalStartRecording?: (callback: (data: any) => void) => () => void;
+      onGcalConnectionChanged?: (callback: (data: any) => void) => () => void;
+      onGcalEventsSynced?: (callback: (data: any) => void) => () => void;
+
+      meetingDetectionGetPreferences?: () => Promise<{ success: boolean; preferences?: any }>;
+      meetingDetectionSetPreferences?: (
+        prefs: Record<string, boolean>
+      ) => Promise<{ success: boolean }>;
+      meetingDetectionRespond?: (
+        detectionId: string,
+        action: string
+      ) => Promise<{ success: boolean }>;
+      onMeetingDetected?: (callback: (data: any) => void) => () => void;
+      onMeetingDetectedStartRecording?: (callback: (data: any) => void) => () => void;
+      onMeetingNotificationData?: (callback: (data: any) => void) => () => void;
+      getMeetingNotificationData?: () => Promise<any>;
+      meetingNotificationRespond?: (
+        detectionId: string,
+        action: string
+      ) => Promise<{ success: boolean }>;
+      onNavigateToMeetingNote?: (
+        callback: (data: { noteId: number; folderId: number; event: any }) => void
       ) => () => void;
     };
 

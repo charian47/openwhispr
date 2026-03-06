@@ -534,6 +534,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           description: `Transcription failed: ${error.message}`,
           code: error.code,
         });
+
+        // Save failed transcription with audio so the user can retry later
+        if (this.lastAudioBlob) {
+          this.saveFailedTranscription(error.message, metadata);
+        }
       }
     } finally {
       if (this.isProcessing) {
@@ -1238,7 +1243,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     let processedText = result.text;
     if (settings.useReasoningModel && processedText && !this.skipReasoning) {
       const reasoningStart = performance.now();
-      const agentName = localStorage.getItem("agentName") || "";
+      const agentName = localStorage.getItem("agentName") || null;
       const cloudReasoningMode = settings.cloudReasoningMode || "openwhispr";
 
       if (cloudReasoningMode === "openwhispr") {
@@ -1860,6 +1865,47 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     }
   }
 
+  async saveFailedTranscription(errorMessage, metadata = {}) {
+    try {
+      const result = await window.electronAPI.saveTranscription("", null, {
+        status: "failed",
+        errorMessage,
+      });
+
+      if (result?.id && this.lastAudioBlob) {
+        try {
+          const durationMs = metadata?.durationSeconds
+            ? Math.round(metadata.durationSeconds * 1000)
+            : null;
+          const arrayBuffer = await this.lastAudioBlob.arrayBuffer();
+          await window.electronAPI.saveTranscriptionAudio(result.id, arrayBuffer, {
+            durationMs,
+            provider: null,
+            model: null,
+          });
+        } catch (audioErr) {
+          logger.warn(
+            "Failed to save audio for failed transcription",
+            {
+              error: audioErr.message,
+            },
+            "audio"
+          );
+        }
+        this.lastAudioBlob = null;
+        this.lastAudioMetadata = null;
+      }
+    } catch (error) {
+      logger.error(
+        "Failed to save failed transcription record",
+        {
+          error: error.message,
+        },
+        "audio"
+      );
+    }
+  }
+
   getState() {
     return {
       isRecording: this.isRecording,
@@ -2326,7 +2372,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     let usedCloudReasoning = false;
     if (stSettings.useReasoningModel && finalText && !this.skipReasoning) {
       const reasoningStart = performance.now();
-      const agentName = localStorage.getItem("agentName") || "";
+      const agentName = localStorage.getItem("agentName") || null;
       const cloudReasoningMode = stSettings.cloudReasoningMode || "openwhispr";
 
       try {

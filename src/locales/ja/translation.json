@@ -223,7 +223,17 @@
       "dateGroups": {
         "today": "今日",
         "yesterday": "昨日"
-      }
+      },
+      "transcriptionFailed": "文字起こしに失敗しました",
+      "failedCtaSettings": "文字起こしプロバイダーを設定してください",
+      "failedCtaAndRetry": "その後、再試行をクリックしてください",
+      "failedCtaSettingsOnly": "設定で文字起こしプロバイダーを設定してください",
+      "clearAll": "すべて削除",
+      "clearAllTitle": "すべての文字起こしを削除",
+      "clearAllDescription": "すべての文字起こしと音声ファイルが完全に削除されます。",
+      "clearAllSuccess": "履歴を削除しました",
+      "clearAllErrorTitle": "履歴を削除できませんでした",
+      "clearAllErrorDescription": "問題が発生しました。もう一度お試しください。"
     },
     "cloudMigration": {
       "title": "OpenWhispr Pro へようこそ",
@@ -597,7 +607,7 @@
     },
     "title": "パスワードをリセット"
   },
-  "fullPrompt": "フルプロンプト",
+  "actionPrompt": "アクションプロンプト",
   "hotkeyGuidance": {
     "blockedDescription": "これらのショートカットはシステムでよく使われるためブロックされています。",
     "blockedTitle": "ブロックされたショートカット",
@@ -832,6 +842,10 @@
       "system": {
         "description": "更新、ストレージ、開発者ツール",
         "label": "システム"
+      },
+      "agentMode": {
+        "label": "エージェントモード",
+        "description": "音声チャットアシスタント"
       }
     },
     "title": "設定"
@@ -1079,6 +1093,11 @@
         "pauseMediaDescription": "ディクテーション開始時に音楽を自動的に一時停止",
         "title": "サウンドエフェクト"
       },
+      "clipboard": {
+        "title": "クリップボード",
+        "autoPaste": "ディクテーション後に自動貼り付け",
+        "autoPasteDescription": "文字起こしテキストをアクティブなアプリに自動的に貼り付け"
+      },
       "startup": {
         "launchAtLogin": "ログイン時に起動",
         "launchAtLoginDescription": "ログイン時に OpenWhispr を自動的に起動",
@@ -1321,6 +1340,9 @@
       "transcribe": "文字起こし",
       "staleIndicator": "強化後にコンテンツが変更されました",
       "live": "ライブ",
+      "transcript": "文字起こし",
+      "notes": "ノート",
+      "generateNotes": "ノートを生成",
       "untitled": "無題",
       "noteTitle": "ノートのタイトル",
       "stop": "停止",
@@ -1449,8 +1471,9 @@
     },
     "meeting": {
       "title": "議事録",
-      "description": "話者識別と構造化されたサマリー",
-      "comingSoon": "近日公開"
+      "description": "文字起こしと構造化されたサマリー",
+      "comingSoon": "近日公開",
+      "back": "戻る"
     },
     "onboarding": {
       "llm": {
@@ -1576,6 +1599,7 @@
     "upgradeTitle": "Pro にアップグレード",
     "upgradeDescription": "無制限の文字起こしと最新の AI モデルをご利用いただけます。",
     "learnMore": "詳しく見る",
+    "integrations": "連携",
     "defaultUser": "ユーザー",
     "notSignedIn": "未サインイン"
   },
@@ -1657,6 +1681,83 @@
       "redirectTitle": "アプリにリダイレクト中...",
       "closeTab": "このタブを閉じてください。"
     }
+  },
+  "agentMode": {
+    "settings": {
+      "title": "エージェントモード",
+      "description": "別のAIモデルを使用する音声チャットアシスタント",
+      "enabled": "エージェントモードを有効にする",
+      "enabledDescription": "別のホットキーを使用して音声チャットオーバーレイを開く",
+      "hotkey": "エージェントホットキー",
+      "hotkeyDescription": "エージェントオーバーレイを切り替えるホットキー",
+      "model": "エージェントモデル",
+      "modelDescription": "エージェント会話に使用するAIモデル",
+      "systemPrompt": "システムプロンプト",
+      "systemPromptDescription": "エージェントへのカスタム指示",
+      "systemPromptPlaceholder": "カスタムシステムプロンプトを入力...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "OpenWhisprのクラウドAIをエージェント会話に使用する",
+      "customSetup": "カスタム設定 (BYOK)",
+      "customSetupDescription": "自分のAPIキーを使用してお好みのモデルを選択する"
+    },
+    "chat": {
+      "placeholder": "{{hotkey}}を押して話す",
+      "thinking": "考え中...",
+      "transcribing": "文字起こし中...",
+      "listening": "聞いています...",
+      "newConversation": "新規",
+      "copyToClipboard": "クリップボードにコピー",
+      "copied": "コピーしました！",
+      "emptyState": "{{hotkey}} を長押しして会話を開始",
+      "errorPrefix": "エラー"
+    },
+    "titleBar": {
+      "label": "エージェント",
+      "newChat": "新しい会話",
+      "close": "閉じる"
+    },
+    "input": {
+      "holdToSpeak": "長押しして話す",
+      "toClose": "閉じる",
+      "listening": "聞いています...",
+      "transcribing": "文字起こし中...",
+      "thinking": "考え中..."
+    }
+  },
+  "integrations": {
+    "title": "連携",
+    "description": "サービスを接続してワークフローを強化",
+    "googleCalendar": {
+      "title": "Google カレンダー",
+      "description": "カレンダーを接続して、会議を自動検出し文字起こしを録音します。",
+      "connect": "Google カレンダーを接続",
+      "connecting": "接続中...",
+      "connected": "接続済み",
+      "addAnother": "別のカレンダーを追加",
+      "disconnect": "切断",
+      "disconnectConfirm": "{{email}} を切断しますか？",
+      "disconnectDescription": "このカレンダーからの会議メモは記録されなくなります。"
+    },
+    "plan": {
+      "title": "プラン",
+      "current": "現在",
+      "free": "無料",
+      "freeLimit": "月5回の会議",
+      "essential": "Essential",
+      "essentialLimit": "月20回の会議",
+      "pro": "Pro",
+      "proLimit": "無制限",
+      "upgrade": "アップグレード"
+    }
+  },
+  "upcoming": {
+    "title": "今後の会議",
+    "transcriptions": "文字起こし",
+    "tomorrow": "明日",
+    "noMoreMeetings": "今日の予定はありません",
+    "now": "進行中",
+    "join": "参加",
+    "untitledEvent": "無題のイベント"
   },
   "notesView": {
     "searchPlaceholder": "ノートを検索…",

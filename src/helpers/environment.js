@@ -20,6 +20,7 @@ const PERSISTED_KEYS = [
   "LLAMA_GPU_BACKEND",
   "LLAMA_VULKAN_ENABLED",
   "DICTATION_KEY",
+  "AGENT_KEY",
   "ACTIVATION_MODE",
   "FLOATING_ICON_AUTO_HIDE",
   "UI_LANGUAGE",
@@ -127,6 +128,16 @@ class EnvironmentManager {
 
   saveDictationKey(key) {
     const result = this._saveKey("DICTATION_KEY", key);
+    this.saveAllKeysToEnvFile().catch(() => {});
+    return result;
+  }
+
+  getAgentKey() {
+    return this._getKey("AGENT_KEY");
+  }
+
+  saveAgentKey(key) {
+    const result = this._saveKey("AGENT_KEY", key);
     this.saveAllKeysToEnvFile().catch(() => {});
     return result;
   }

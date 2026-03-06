@@ -51,6 +51,7 @@ import { useDialogs } from "../hooks/useDialogs";
 import { useAgentName } from "../utils/agentName";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
+import { useScreenRecordingPermission } from "../hooks/useScreenRecordingPermission";
 import { useClipboard } from "../hooks/useClipboard";
 import { useUpdater } from "../hooks/useUpdater";
 
@@ -65,6 +66,7 @@ import { getDefaultHotkey, formatHotkeyLabel } from "../utils/hotkeys";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
+import AgentModeSettings from "./settings/AgentModeSettings";
 import LanguageSelector from "./ui/LanguageSelector";
 import { Skeleton } from "./ui/skeleton";
 import { Progress } from "./ui/progress";
@@ -89,7 +91,8 @@ export type SettingsSectionType =
   | "system"
   | "aiModels"
   | "agentConfig"
-  | "prompts";
+  | "prompts"
+  | "agentMode";
 
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;
@@ -691,6 +694,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setAudioCuesEnabled,
     pauseMediaOnDictation,
     setPauseMediaOnDictation,
+    autoPasteEnabled,
+    setAutoPasteEnabled,
     floatingIconAutoHide,
     setFloatingIconAutoHide,
     panelStartPosition,
@@ -736,6 +741,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
   const whisperHook = useWhisper();
   const permissionsHook = usePermissions(showAlertDialog);
+  const screenRecording = useScreenRecordingPermission();
   useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
   const [agentNameInput, setAgentNameInput] = useState(agentName);
@@ -1278,9 +1284,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           {t("settingsPage.account.pricing.free.period")}
                         </span>
                       </div>
-                      <p className="text-[9px] font-medium text-primary/80 mt-1.5">
-                        {t("settingsPage.account.pricing.free.trialNote")}
-                      </p>
                       <ul className="space-y-0.5 mt-2 flex-1">
                         {(
                           t("settingsPage.account.pricing.free.features", {
@@ -1763,6 +1766,21 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     description={t("settingsPage.general.soundEffects.pauseMediaDescription")}
                   >
                     <Toggle checked={pauseMediaOnDictation} onChange={setPauseMediaOnDictation} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Clipboard */}
+            <div>
+              <SectionHeader title={t("settingsPage.general.clipboard.title")} />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.general.clipboard.autoPaste")}
+                    description={t("settingsPage.general.clipboard.autoPasteDescription")}
+                  >
+                    <Toggle checked={autoPasteEnabled} onChange={setAutoPasteEnabled} />
                   </SettingsRow>
                 </SettingsPanelRow>
               </SettingsPanel>
@@ -2789,15 +2807,27 @@ EOF`,
                 />
 
                 {platform === "darwin" && (
-                  <PermissionCard
-                    icon={Shield}
-                    title={t("settingsPage.permissions.accessibilityTitle")}
-                    description={t("settingsPage.permissions.accessibilityDescription")}
-                    granted={permissionsHook.accessibilityPermissionGranted}
-                    onRequest={permissionsHook.testAccessibilityPermission}
-                    buttonText={t("settingsPage.permissions.testAndGrant")}
-                    onOpenSettings={permissionsHook.openAccessibilitySettings}
-                  />
+                  <>
+                    <PermissionCard
+                      icon={Shield}
+                      title={t("settingsPage.permissions.accessibilityTitle")}
+                      description={t("settingsPage.permissions.accessibilityDescription")}
+                      granted={permissionsHook.accessibilityPermissionGranted}
+                      onRequest={permissionsHook.testAccessibilityPermission}
+                      buttonText={t("settingsPage.permissions.testAndGrant")}
+                      onOpenSettings={permissionsHook.openAccessibilitySettings}
+                    />
+                    <PermissionCard
+                      icon={Monitor}
+                      title={t("settingsPage.permissions.screenRecordingTitle")}
+                      description={t("settingsPage.permissions.screenRecordingDescription")}
+                      granted={screenRecording.granted}
+                      onRequest={screenRecording.request}
+                      buttonText={t("settingsPage.permissions.test")}
+                      onOpenSettings={screenRecording.openSettings}
+                      badge={t("settingsPage.permissions.optional")}
+                    />
+                  </>
                 )}
               </div>
 
@@ -3140,6 +3170,9 @@ EOF`,
             </div>
           </div>
         );
+
+      case "agentMode":
+        return <AgentModeSettings />;
 
       default:
         return null;

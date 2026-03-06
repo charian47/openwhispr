@@ -60,6 +60,15 @@ export interface ThemeSettings {
   theme: "light" | "dark" | "auto";
 }
 
+export interface AgentModeSettings {
+  agentModel: string;
+  agentProvider: string;
+  agentKey: string;
+  agentSystemPrompt: string;
+  agentEnabled: boolean;
+  cloudAgentMode: string;
+}
+
 function useSettingsInternal() {
   const store = useSettingsStore();
 
@@ -226,6 +235,8 @@ function useSettingsInternal() {
     setSelectedMicDeviceId: store.setSelectedMicDeviceId,
     autoLearnCorrections,
     setAutoLearnCorrections,
+    autoPasteEnabled: store.autoPasteEnabled,
+    setAutoPasteEnabled: store.setAutoPasteEnabled,
     cloudBackupEnabled: store.cloudBackupEnabled,
     setCloudBackupEnabled: store.setCloudBackupEnabled,
     telemetryEnabled: store.telemetryEnabled,

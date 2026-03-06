@@ -10,6 +10,7 @@ interface PermissionCardProps {
   onRequest: () => void;
   buttonText?: string;
   onOpenSettings?: () => void;
+  badge?: string;
   openSettingsText?: string;
 }
 
@@ -21,6 +22,7 @@ export default function PermissionCard({
   onRequest,
   buttonText = "Grant Access",
   onOpenSettings,
+  badge,
   openSettingsText,
 }: PermissionCardProps) {
   return (
@@ -52,7 +54,14 @@ export default function PermissionCard({
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-xs font-medium text-foreground">{title}</h3>
+          <h3 className="text-xs font-medium text-foreground">
+            {title}
+            {badge && (
+              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground">
+                {badge}
+              </span>
+            )}
+          </h3>
           <p className="text-xs text-muted-foreground leading-snug mt-0.5">{description}</p>
         </div>
 

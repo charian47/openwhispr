@@ -223,7 +223,17 @@
       "dateGroups": {
         "today": "今天",
         "yesterday": "昨天"
-      }
+      },
+      "transcriptionFailed": "轉錄失敗",
+      "failedCtaSettings": "設定您的轉錄服務供應商",
+      "failedCtaAndRetry": "然後點擊重試",
+      "failedCtaSettingsOnly": "在設定中配置您的轉錄服務供應商",
+      "clearAll": "全部清除",
+      "clearAllTitle": "清除所有轉錄",
+      "clearAllDescription": "所有轉錄和音訊檔案將被永久刪除。",
+      "clearAllSuccess": "歷史紀錄已清除",
+      "clearAllErrorTitle": "無法清除歷史紀錄",
+      "clearAllErrorDescription": "發生錯誤，請重試。"
     },
     "cloudMigration": {
       "title": "歡迎使用 OpenWhispr Pro",
@@ -597,7 +607,7 @@
     },
     "title": "重設你的密碼"
   },
-  "fullPrompt": "完整提示詞",
+  "actionPrompt": "動作提示詞",
   "hotkeyGuidance": {
     "blockedDescription": "這些快捷鍵已被封鎖，因為它們通常是系統保留的。",
     "blockedTitle": "已封鎖的快捷鍵",
@@ -832,6 +842,10 @@
       "system": {
         "description": "更新、儲存與開發者工具",
         "label": "系統"
+      },
+      "agentMode": {
+        "label": "智慧助手模式",
+        "description": "語音聊天助手"
       }
     },
     "title": "設定"
@@ -1078,6 +1092,11 @@
         "pauseMedia": "暫停媒體",
         "pauseMediaDescription": "開始聽寫時自動暫停音樂",
         "title": "音效"
+      },
+      "clipboard": {
+        "title": "剪貼簿",
+        "autoPaste": "語音輸入後自動貼上",
+        "autoPasteDescription": "自動將轉錄文字貼上到使用中的應用程式"
       },
       "startup": {
         "launchAtLogin": "登入時啟動",
@@ -1422,7 +1441,10 @@
       "wordsCount": "{{count}} 個字",
       "startWriting": "開始撰寫...",
       "staleIndicator": "內容在增強後已變更",
-      "live": "即時"
+      "live": "即時",
+      "transcript": "轉錄",
+      "notes": "筆記",
+      "generateNotes": "生成筆記"
     },
     "upload": {
       "title": "上傳音訊",
@@ -1470,8 +1492,9 @@
     },
     "meeting": {
       "title": "會議筆記",
-      "description": "說話者辨識與結構化摘要",
-      "comingSoon": "即將推出"
+      "description": "轉錄與結構化摘要",
+      "comingSoon": "即將推出",
+      "back": "返回"
     },
     "context": {
       "moveToFolder": "移動到資料夾",
@@ -1576,6 +1599,7 @@
     "upgradeTitle": "升級至 Pro",
     "upgradeDescription": "無限轉錄、即時轉錄等更多功能。",
     "learnMore": "瞭解更多",
+    "integrations": "整合",
     "defaultUser": "使用者",
     "notSignedIn": "尚未登入"
   },
@@ -1657,6 +1681,83 @@
       "redirectTitle": "正在跳轉到應用程式...",
       "closeTab": "您可以關閉此分頁。"
     }
+  },
+  "agentMode": {
+    "settings": {
+      "title": "智慧助手模式",
+      "description": "使用獨立AI模型的語音聊天助手",
+      "enabled": "啟用智慧助手模式",
+      "enabledDescription": "使用獨立熱鍵開啟語音聊天覆蓋層",
+      "hotkey": "助手熱鍵",
+      "hotkeyDescription": "切換助手覆蓋層的熱鍵",
+      "model": "助手模型",
+      "modelDescription": "用於助手對話的AI模型",
+      "systemPrompt": "系統提示詞",
+      "systemPromptDescription": "助手的自訂指令",
+      "systemPromptPlaceholder": "輸入自訂系統提示詞...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "使用 OpenWhispr 的雲端 AI 進行助手對話",
+      "customSetup": "自訂配置 (BYOK)",
+      "customSetupDescription": "使用自己的 API 金鑰並選擇偏好的模型"
+    },
+    "chat": {
+      "placeholder": "按 {{hotkey}} 開始說話",
+      "thinking": "思考中...",
+      "transcribing": "轉錄中...",
+      "listening": "正在聆聽...",
+      "newConversation": "新建",
+      "copyToClipboard": "複製到剪貼簿",
+      "copied": "已複製！",
+      "emptyState": "按住 {{hotkey}} 開始對話",
+      "errorPrefix": "錯誤"
+    },
+    "titleBar": {
+      "label": "助手",
+      "newChat": "新對話",
+      "close": "關閉"
+    },
+    "input": {
+      "holdToSpeak": "按住說話",
+      "toClose": "關閉",
+      "listening": "正在聆聽...",
+      "transcribing": "正在轉錄...",
+      "thinking": "正在思考..."
+    }
+  },
+  "integrations": {
+    "title": "整合",
+    "description": "連接服務以增強您的工作流程",
+    "googleCalendar": {
+      "title": "Google 日曆",
+      "description": "連接日曆以自動偵測會議並錄製轉錄。",
+      "connect": "連接 Google 日曆",
+      "connecting": "連接中...",
+      "connected": "已連接",
+      "addAnother": "新增其他日曆",
+      "disconnect": "中斷連接",
+      "disconnectConfirm": "中斷 {{email}} 的連接？",
+      "disconnectDescription": "將不再從此日曆記錄會議筆記。"
+    },
+    "plan": {
+      "title": "您的方案",
+      "current": "目前",
+      "free": "免費",
+      "freeLimit": "每月5次會議",
+      "essential": "Essential",
+      "essentialLimit": "每月20次會議",
+      "pro": "Pro",
+      "proLimit": "無限",
+      "upgrade": "升級"
+    }
+  },
+  "upcoming": {
+    "title": "即將開始的會議",
+    "transcriptions": "轉錄",
+    "tomorrow": "明天",
+    "noMoreMeetings": "今天沒有更多會議了",
+    "now": "進行中",
+    "join": "加入",
+    "untitledEvent": "無標題事件"
   },
   "notesView": {
     "searchPlaceholder": "搜尋筆記…",

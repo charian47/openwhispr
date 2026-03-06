@@ -223,7 +223,17 @@
       "dateGroups": {
         "today": "Aujourd'hui",
         "yesterday": "Hier"
-      }
+      },
+      "transcriptionFailed": "La transcription a échoué",
+      "failedCtaSettings": "Configurez votre fournisseur de transcription",
+      "failedCtaAndRetry": "puis cliquez sur réessayer",
+      "failedCtaSettingsOnly": "Configurez votre fournisseur de transcription dans les Paramètres",
+      "clearAll": "Tout effacer",
+      "clearAllTitle": "Effacer toutes les transcriptions",
+      "clearAllDescription": "Toutes les transcriptions et fichiers audio seront définitivement supprimés.",
+      "clearAllSuccess": "Historique effacé",
+      "clearAllErrorTitle": "Impossible d'effacer l'historique",
+      "clearAllErrorDescription": "Une erreur est survenue. Veuillez réessayer."
     },
     "cloudMigration": {
       "title": "Bienvenue sur OpenWhispr Pro",
@@ -597,7 +607,7 @@
     },
     "title": "Réinitialiser votre mot de passe"
   },
-  "fullPrompt": "Prompt complet",
+  "actionPrompt": "Prompt d'action",
   "hotkeyGuidance": {
     "blockedDescription": "Ces raccourcis sont bloqués car ils sont couramment utilisés par le système.",
     "blockedTitle": "Raccourcis bloqués",
@@ -832,6 +842,10 @@
       "system": {
         "description": "Mises à jour, stockage & outils de développement",
         "label": "Système"
+      },
+      "agentMode": {
+        "label": "Mode Agent",
+        "description": "Assistant vocal de chat"
       }
     },
     "title": "Paramètres"
@@ -1082,6 +1096,11 @@
         "pauseMedia": "Mettre en pause le média",
         "pauseMediaDescription": "Mettre automatiquement la musique en pause au début de la dictée",
         "title": "Effets sonores"
+      },
+      "clipboard": {
+        "title": "Presse-papiers",
+        "autoPaste": "Coller automatiquement après la dictée",
+        "autoPasteDescription": "Coller automatiquement le texte transcrit dans l'application active"
       },
       "startup": {
         "launchAtLogin": "Lancer au démarrage",
@@ -1334,6 +1353,7 @@
     "upgradeTitle": "Passer à Pro",
     "upgradeDescription": "Transcriptions illimitées et fonctionnalités premium.",
     "learnMore": "En savoir plus",
+    "integrations": "Intégrations",
     "defaultUser": "Utilisateur",
     "notSignedIn": "Non connecté"
   },
@@ -1462,7 +1482,10 @@
       "wordsCount": "{{count}} mots",
       "startWriting": "Commencez à écrire...",
       "staleIndicator": "Le contenu a changé depuis l'amélioration",
-      "live": "En direct"
+      "live": "En direct",
+      "transcript": "Transcription",
+      "notes": "Notes",
+      "generateNotes": "Générer des notes"
     },
     "upload": {
       "title": "Téléverser un fichier audio",
@@ -1510,8 +1533,9 @@
     },
     "meeting": {
       "title": "Notes de réunion",
-      "description": "Identification des intervenants et résumés structurés",
-      "comingSoon": "Bientôt disponible"
+      "description": "Transcriptions et résumés structurés",
+      "comingSoon": "Bientôt disponible",
+      "back": "Retour"
     },
     "empty": {
       "title": "Aucune note ici pour l'instant",
@@ -1661,6 +1685,83 @@
       "redirectTitle": "Redirection vers l'app...",
       "closeTab": "Vous pouvez fermer cet onglet."
     }
+  },
+  "agentMode": {
+    "settings": {
+      "title": "Mode Agent",
+      "description": "Assistant vocal de chat avec un modèle IA séparé",
+      "enabled": "Activer le Mode Agent",
+      "enabledDescription": "Utiliser un raccourci clavier séparé pour ouvrir une fenêtre de chat vocal",
+      "hotkey": "Raccourci Agent",
+      "hotkeyDescription": "Raccourci clavier pour basculer la fenêtre agent",
+      "model": "Modèle Agent",
+      "modelDescription": "Modèle IA utilisé pour les conversations agent",
+      "systemPrompt": "Prompt système",
+      "systemPromptDescription": "Instructions personnalisées pour l'agent",
+      "systemPromptPlaceholder": "Entrez un prompt système personnalisé...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "Utiliser l'IA cloud d'OpenWhispr pour les conversations agent",
+      "customSetup": "Configuration personnalisée (BYOK)",
+      "customSetupDescription": "Utiliser vos propres clés API et choisir votre modèle préféré"
+    },
+    "chat": {
+      "placeholder": "Appuyez sur {{hotkey}} pour parler",
+      "thinking": "Réflexion...",
+      "transcribing": "Transcription...",
+      "listening": "Écoute...",
+      "newConversation": "Nouveau",
+      "copyToClipboard": "Copier dans le presse-papiers",
+      "copied": "Copié !",
+      "emptyState": "Maintenez {{hotkey}} pour démarrer une conversation",
+      "errorPrefix": "Erreur"
+    },
+    "titleBar": {
+      "label": "Agent",
+      "newChat": "Nouvelle conversation",
+      "close": "Fermer"
+    },
+    "input": {
+      "holdToSpeak": "Maintenez pour parler",
+      "toClose": "fermer",
+      "listening": "Écoute...",
+      "transcribing": "Transcription...",
+      "thinking": "Réflexion..."
+    }
+  },
+  "integrations": {
+    "title": "Intégrations",
+    "description": "Connectez des services pour booster votre productivité",
+    "googleCalendar": {
+      "title": "Google Calendar",
+      "description": "Connectez votre calendrier pour détecter automatiquement les réunions et enregistrer les transcriptions.",
+      "connect": "Connecter Google Calendar",
+      "connecting": "Connexion...",
+      "connected": "Connecté",
+      "addAnother": "Ajouter un autre calendrier",
+      "disconnect": "Déconnecter",
+      "disconnectConfirm": "Déconnecter {{email}} ?",
+      "disconnectDescription": "Les notes de réunion ne seront plus enregistrées depuis ce calendrier."
+    },
+    "plan": {
+      "title": "Votre forfait",
+      "current": "Actuel",
+      "free": "Gratuit",
+      "freeLimit": "5 réunions / mois",
+      "essential": "Essential",
+      "essentialLimit": "20 réunions / mois",
+      "pro": "Pro",
+      "proLimit": "Illimité",
+      "upgrade": "Passer au supérieur"
+    }
+  },
+  "upcoming": {
+    "title": "Réunions à venir",
+    "transcriptions": "Transcriptions",
+    "tomorrow": "Demain",
+    "noMoreMeetings": "Plus de réunions aujourd'hui",
+    "now": "En cours",
+    "join": "Rejoindre",
+    "untitledEvent": "Événement sans titre"
   },
   "notesView": {
     "searchPlaceholder": "Rechercher des notes…",

@@ -1,6 +1,14 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, Loader2, FileText, Sparkles, AlignLeft, Radio } from "lucide-react";
+import {
+  Download,
+  Loader2,
+  FileText,
+  Sparkles,
+  AlignLeft,
+  Radio,
+  MessageSquareText,
+} from "lucide-react";
 import { MarkdownTextarea } from "../ui/MarkdownTextarea";
 import {
   DropdownMenu,
@@ -34,6 +42,8 @@ export interface Enhancement {
   onChange: (content: string) => void;
 }
 
+type MeetingViewMode = "raw" | "transcript" | "enhanced";
+
 interface NoteEditorProps {
   note: NoteItem;
   onTitleChange: (title: string) => void;
@@ -53,6 +63,10 @@ interface NoteEditorProps {
   actionPicker?: React.ReactNode;
   actionProcessingState?: ActionProcessingState;
   actionName?: string | null;
+  isMeetingRecording?: boolean;
+  meetingTranscript?: string;
+  onStopMeetingRecording?: () => void;
+  onGenerateNotes?: () => void;
 }
 
 interface DictationRange {
@@ -145,9 +159,13 @@ export default function NoteEditor({
   actionPicker,
   actionProcessingState,
   actionName,
+  isMeetingRecording,
+  meetingTranscript,
+  onStopMeetingRecording,
+  onGenerateNotes,
 }: NoteEditorProps) {
   const { t } = useTranslation();
-  const [viewMode, setViewMode] = useState<"raw" | "enhanced">("raw");
+  const [viewMode, setViewMode] = useState<MeetingViewMode>("raw");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const prevNoteIdRef = useRef<number>(note.id);
@@ -347,18 +365,21 @@ export default function NoteEditor({
   const segmentContainerRef = useRef<HTMLDivElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({ opacity: 0 });
 
+  const effectiveTranscript = meetingTranscript || note.transcript || "";
+  const hasMeetingTranscript = !isMeetingRecording && !!effectiveTranscript;
+
   const updateSegmentIndicator = useCallback(() => {
     const container = segmentContainerRef.current;
     if (!container) return;
 
-    const idx = viewMode === "raw" ? 0 : 1;
-
     const buttons = container.querySelectorAll<HTMLButtonElement>("[data-segment-button]");
-    const btn = buttons[idx];
-    if (!btn) return;
+    const activeBtn = Array.from(buttons).find(
+      (btn) => btn.dataset.segmentValue === viewMode
+    );
+    if (!activeBtn) return;
 
     const cr = container.getBoundingClientRect();
-    const br = btn.getBoundingClientRect();
+    const br = activeBtn.getBoundingClientRect();
     setIndicatorStyle({
       width: br.width,
       height: br.height,
@@ -615,6 +636,30 @@ export default function NoteEditor({
 
   const noteDate = formatNoteDate(note.created_at);
 
+  const generateNotesButton = onGenerateNotes ? (
+    <button
+      onClick={onGenerateNotes}
+      disabled={actionProcessingState === "processing"}
+      className={cn(
+        "flex items-center gap-2 h-11 px-5 rounded-xl",
+        "bg-accent/8 dark:bg-accent/12",
+        "backdrop-blur-xl",
+        "border border-accent/15 dark:border-accent/20",
+        "shadow-sm hover:shadow-md",
+        "text-accent/70 hover:text-accent",
+        "transition-[background-color,color,transform] duration-200",
+        "hover:bg-accent/12 dark:hover:bg-accent/18",
+        "active:scale-[0.98]",
+        "disabled:opacity-40 disabled:pointer-events-none"
+      )}
+    >
+      <Sparkles size={14} />
+      <span className="text-xs font-semibold tracking-tight">
+        {t("notes.editor.generateNotes")}
+      </span>
+    </button>
+  ) : null;
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="px-5 pt-4 pb-0">
@@ -645,7 +690,7 @@ export default function NoteEditor({
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-1">
-            {enhancement && (
+            {(enhancement || hasMeetingTranscript) && (
               <div
                 ref={segmentContainerRef}
                 className="relative flex items-center shrink-0 rounded-md bg-foreground/3 dark:bg-white/3 p-0.5"
@@ -654,8 +699,25 @@ export default function NoteEditor({
                   className="absolute top-0.5 left-0 rounded bg-background dark:bg-surface-2 shadow-sm transition-[width,height,transform,opacity] duration-200 ease-out pointer-events-none"
                   style={indicatorStyle}
                 />
+                {hasMeetingTranscript && (
+                  <button
+                    data-segment-button
+                    data-segment-value="transcript"
+                    onClick={() => setViewMode("transcript")}
+                    className={cn(
+                      "relative z-1 px-1.5 h-5 rounded text-xs font-medium transition-colors duration-150 flex items-center gap-1",
+                      viewMode === "transcript"
+                        ? "text-foreground/60"
+                        : "text-foreground/25 hover:text-foreground/40"
+                    )}
+                  >
+                    <MessageSquareText size={10} />
+                    {t("notes.editor.transcript")}
+                  </button>
+                )}
                 <button
                   data-segment-button
+                  data-segment-value="raw"
                   onClick={() => setViewMode("raw")}
                   className={cn(
                     "relative z-1 px-1.5 h-5 rounded text-xs font-medium transition-colors duration-150 flex items-center gap-1",
@@ -665,27 +727,32 @@ export default function NoteEditor({
                   )}
                 >
                   <AlignLeft size={10} />
-                  {t("notes.editor.raw")}
+                  {hasMeetingTranscript
+                    ? t("notes.editor.notes")
+                    : t("notes.editor.raw")}
                 </button>
-                <button
-                  data-segment-button
-                  onClick={() => setViewMode("enhanced")}
-                  className={cn(
-                    "relative z-1 px-1.5 h-5 rounded text-xs font-medium transition-colors duration-150 flex items-center gap-1",
-                    viewMode === "enhanced"
-                      ? "text-foreground/60"
-                      : "text-foreground/25 hover:text-foreground/40"
-                  )}
-                >
-                  <Sparkles size={9} />
-                  {t("notes.editor.enhanced")}
-                  {enhancement.isStale && (
-                    <span
-                      className="w-1 h-1 rounded-full bg-amber-400/60"
-                      title={t("notes.editor.staleIndicator")}
-                    />
-                  )}
-                </button>
+                {enhancement && (
+                  <button
+                    data-segment-button
+                    data-segment-value="enhanced"
+                    onClick={() => setViewMode("enhanced")}
+                    className={cn(
+                      "relative z-1 px-1.5 h-5 rounded text-xs font-medium transition-colors duration-150 flex items-center gap-1",
+                      viewMode === "enhanced"
+                        ? "text-foreground/60"
+                        : "text-foreground/25 hover:text-foreground/40"
+                    )}
+                  >
+                    <Sparkles size={9} />
+                    {t("notes.editor.enhanced")}
+                    {enhancement.isStale && (
+                      <span
+                        className="w-1 h-1 rounded-full bg-amber-400/60"
+                        title={t("notes.editor.staleIndicator")}
+                      />
+                    )}
+                  </button>
+                )}
               </div>
             )}
             {canStream && (
@@ -731,7 +798,9 @@ export default function NoteEditor({
 
       <div className="flex-1 relative min-h-0">
         <div className="h-full overflow-y-auto">
-          {viewMode === "enhanced" && enhancement ? (
+          {viewMode === "transcript" && hasMeetingTranscript ? (
+            <MarkdownTextarea value={effectiveTranscript} disabled />
+          ) : viewMode === "enhanced" && enhancement ? (
             <MarkdownTextarea value={enhancement.content} onChange={handleEnhancedChange} />
           ) : (
             <MarkdownTextarea
@@ -753,11 +822,17 @@ export default function NoteEditor({
           style={{ background: "linear-gradient(to bottom, transparent, var(--color-background))" }}
         />
         <DictationWidget
-          isRecording={isRecording}
+          isRecording={isRecording || !!isMeetingRecording}
           isProcessing={isProcessing}
           onStart={handleStartRecording}
-          onStop={onStopRecording}
-          actionPicker={actionPicker}
+          onStop={isMeetingRecording ? onStopMeetingRecording! : onStopRecording}
+          actionPicker={
+            isMeetingRecording
+              ? undefined
+              : hasMeetingTranscript && !enhancement
+                ? generateNotesButton
+                : actionPicker
+          }
         />
       </div>
     </div>

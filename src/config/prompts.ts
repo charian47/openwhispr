@@ -5,9 +5,8 @@ import { getLanguageInstruction } from "../utils/languageSupport";
 
 export const CLEANUP_PROMPT = promptData.CLEANUP_PROMPT;
 export const FULL_PROMPT = promptData.FULL_PROMPT;
-/** @deprecated Use FULL_PROMPT instead — kept for PromptStudio backwards compat */
+/** @deprecated Use FULL_PROMPT — kept for PromptStudio compat */
 export const UNIFIED_SYSTEM_PROMPT = promptData.FULL_PROMPT;
-export const LEGACY_PROMPTS = promptData.LEGACY_PROMPTS;
 
 function getPromptBundle(uiLanguage?: string): PromptBundle {
   const locale = normalizeUiLanguage(uiLanguage || "en");
@@ -108,9 +107,7 @@ export function getSystemPrompt(
     if (customPrompt) {
       try {
         promptTemplate = JSON.parse(customPrompt);
-      } catch {
-        // Use default if parsing fails
-      }
+      } catch {}
     }
   }
 
@@ -142,11 +139,15 @@ export function getWordBoost(customDictionary?: string[]): string[] {
   return customDictionary.filter((w) => w.trim());
 }
 
-export default {
-  CLEANUP_PROMPT,
-  FULL_PROMPT,
-  UNIFIED_SYSTEM_PROMPT,
-  getSystemPrompt,
-  getWordBoost,
-  LEGACY_PROMPTS,
-};
+const DEFAULT_AGENT_SYSTEM_PROMPT =
+  "You are a helpful voice assistant. Respond concisely and conversationally. " +
+  "Keep answers brief unless the user asks for detail. " +
+  "You may be given a transcription of spoken input, so handle informal phrasing gracefully.";
+
+export function getAgentSystemPrompt(): string {
+  if (typeof window !== "undefined" && window.localStorage) {
+    const custom = window.localStorage.getItem("agentSystemPrompt");
+    if (custom) return custom;
+  }
+  return DEFAULT_AGENT_SYSTEM_PROMPT;
+}
