@@ -29,6 +29,33 @@ class DatabaseManager {
         )
       `);
 
+      // Audio retention columns
+      try {
+        this.db.exec("ALTER TABLE transcriptions ADD COLUMN raw_text TEXT");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
+      try {
+        this.db.exec("ALTER TABLE transcriptions ADD COLUMN has_audio INTEGER NOT NULL DEFAULT 0");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
+      try {
+        this.db.exec("ALTER TABLE transcriptions ADD COLUMN audio_duration_ms INTEGER");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
+      try {
+        this.db.exec("ALTER TABLE transcriptions ADD COLUMN provider TEXT");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
+      try {
+        this.db.exec("ALTER TABLE transcriptions ADD COLUMN model TEXT");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
+
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS custom_dictionary (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,6 +92,54 @@ class DatabaseManager {
       } catch (err) {
         if (!err.message.includes("duplicate column")) throw err;
       }
+      try {
+        this.db.exec("ALTER TABLE notes ADD COLUMN cloud_id TEXT");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
+
+      this.db.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
+          title,
+          content,
+          enhanced_content,
+          content='notes',
+          content_rowid='id'
+        )
+      `);
+
+      this.db.exec(`
+        CREATE TRIGGER IF NOT EXISTS notes_fts_insert AFTER INSERT ON notes BEGIN
+          INSERT INTO notes_fts(rowid, title, content, enhanced_content)
+          VALUES (new.id, new.title, new.content, new.enhanced_content);
+        END
+      `);
+
+      this.db.exec(`
+        CREATE TRIGGER IF NOT EXISTS notes_fts_update AFTER UPDATE ON notes BEGIN
+          INSERT INTO notes_fts(notes_fts, rowid, title, content, enhanced_content)
+          VALUES ('delete', old.id, old.title, old.content, old.enhanced_content);
+          INSERT INTO notes_fts(rowid, title, content, enhanced_content)
+          VALUES (new.id, new.title, new.content, new.enhanced_content);
+        END
+      `);
+
+      this.db.exec(`
+        CREATE TRIGGER IF NOT EXISTS notes_fts_delete AFTER DELETE ON notes BEGIN
+          INSERT INTO notes_fts(notes_fts, rowid, title, content, enhanced_content)
+          VALUES ('delete', old.id, old.title, old.content, old.enhanced_content);
+        END
+      `);
+
+      this.db
+        .prepare(
+          `
+        INSERT OR IGNORE INTO notes_fts(rowid, title, content, enhanced_content)
+        SELECT id, COALESCE(title, ''), COALESCE(content, ''), COALESCE(enhanced_content, '')
+        FROM notes
+      `
+        )
+        .run();
 
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS folders (
@@ -252,13 +327,13 @@ class DatabaseManager {
     }
   }
 
-  saveTranscription(text) {
+  saveTranscription(text, rawText = null) {
     try {
       if (!this.db) {
         throw new Error("Database not initialized");
       }
-      const stmt = this.db.prepare("INSERT INTO transcriptions (text) VALUES (?)");
-      const result = stmt.run(text);
+      const stmt = this.db.prepare("INSERT INTO transcriptions (text, raw_text) VALUES (?, ?)");
+      const result = stmt.run(text, rawText);
 
       const fetchStmt = this.db.prepare("SELECT * FROM transcriptions WHERE id = ?");
       const transcription = fetchStmt.get(result.lastInsertRowid);
@@ -308,6 +383,61 @@ class DatabaseManager {
       return { success: result.changes > 0, id };
     } catch (error) {
       debugLogger.error("Error deleting transcription", { error: error.message }, "database");
+      throw error;
+    }
+  }
+
+  updateTranscriptionAudio(id, { hasAudio, audioDurationMs, provider, model }) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const stmt = this.db.prepare(
+        "UPDATE transcriptions SET has_audio = ?, audio_duration_ms = ?, provider = ?, model = ? WHERE id = ?"
+      );
+      stmt.run(hasAudio, audioDurationMs, provider, model, id);
+      return { success: true };
+    } catch (error) {
+      debugLogger.error("Error updating transcription audio", { error: error.message }, "database");
+      throw error;
+    }
+  }
+
+  updateTranscriptionText(id, text, rawText) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const stmt = this.db.prepare("UPDATE transcriptions SET text = ?, raw_text = ? WHERE id = ?");
+      stmt.run(text, rawText, id);
+      return { success: true };
+    } catch (error) {
+      debugLogger.error("Error updating transcription text", { error: error.message }, "database");
+      throw error;
+    }
+  }
+
+  getTranscriptionById(id) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const stmt = this.db.prepare("SELECT * FROM transcriptions WHERE id = ?");
+      return stmt.get(id) || null;
+    } catch (error) {
+      debugLogger.error("Error getting transcription by id", { error: error.message }, "database");
+      throw error;
+    }
+  }
+
+  clearAudioFlags(ids) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      if (!ids || ids.length === 0) return { success: true };
+      const transaction = this.db.transaction((idList) => {
+        const stmt = this.db.prepare("UPDATE transcriptions SET has_audio = 0 WHERE id = ?");
+        for (const id of idList) {
+          stmt.run(id);
+        }
+      });
+      transaction(ids);
+      return { success: true };
+    } catch (error) {
+      debugLogger.error("Error clearing audio flags", { error: error.message }, "database");
       throw error;
     }
   }
@@ -966,6 +1096,32 @@ class DatabaseManager {
     }
   }
 
+  searchNotes(query, limit = 50) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const term = query
+        .trim()
+        .replace(/[^\w\s]/g, " ")
+        .trim();
+      if (!term) return [];
+      return this.db
+        .prepare(
+          `
+        SELECT n.*
+        FROM notes n
+        JOIN notes_fts ON notes_fts.rowid = n.id
+        WHERE notes_fts MATCH ?
+        ORDER BY notes_fts.rank
+        LIMIT ?
+      `
+        )
+        .all(term + "*", limit);
+    } catch (error) {
+      debugLogger.error("Error searching notes", { error: error.message }, "database");
+      throw error;
+    }
+  }
+
   getUpcomingEvents(windowMinutes = 1440) {
     try {
       if (!this.db) throw new Error("Database not initialized");
@@ -1031,6 +1187,17 @@ class DatabaseManager {
       );
     } catch (error) {
       debugLogger.error("Error getting meetings folder", { error: error.message }, "gcal");
+      throw error;
+    }
+  }
+
+  updateNoteCloudId(id, cloudId) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      this.db.prepare("UPDATE notes SET cloud_id = ? WHERE id = ?").run(cloudId, id);
+      return this.db.prepare("SELECT * FROM notes WHERE id = ?").get(id);
+    } catch (error) {
+      debugLogger.error("Error updating note cloud_id", { error: error.message }, "database");
       throw error;
     }
   }

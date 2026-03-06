@@ -93,7 +93,7 @@
     "updatePayment": "Aggiorna metodo di pagamento",
     "updatePaymentDescription": "Torna alle trascrizioni Pro illimitate.",
     "upgradeToPro": "Passa a Pro",
-    "upgradeDescription": "Passa a un piano a pagamento a partire da soli $8/mese.",
+    "upgradeDescription": "Trascrizioni illimitate a partire da soli $8/mese.",
     "useApiKey": "Usa la tua chiave API",
     "useApiKeyDescription": "Porta la tua chiave per un uso illimitato.",
     "switchToLocal": "Passa a locale",
@@ -1082,6 +1082,8 @@
       "soundEffects": {
         "dictationSounds": "Suoni di dettatura",
         "dictationSoundsDescription": "Riproduci un tono quando la registrazione inizia e finisce",
+        "pauseMedia": "Pausa multimedia",
+        "pauseMediaDescription": "Metti automaticamente in pausa la musica quando inizia la dettatura",
         "title": "Effetti sonori"
       },
       "startup": {
@@ -1166,7 +1168,9 @@
     },
     "privacy": {
       "cloudBackup": "Backup cloud",
-      "cloudBackupDescription": "Salva le trascrizioni nel cloud per non perderle mai.",
+      "cloudBackupDescription": "Salva trascrizioni e note nel cloud per un accesso senza interruzioni da tutti i dispositivi.",
+      "cloudNotesMigration": "Backup delle note in corso… {{done}} / {{total}}",
+      "cloudNotesMigrationDone": "Tutte le note salvate nel cloud",
       "description": "Controlla quali dati escono dal tuo dispositivo. Tutto è disattivato per impostazione predefinita.",
       "title": "Privacy",
       "usageAnalytics": "Analisi dell'utilizzo",
@@ -1682,5 +1686,46 @@
     "now": "In corso",
     "join": "Partecipa",
     "untitledEvent": "Evento senza titolo"
+  },
+  "notesView": {
+    "searchPlaceholder": "Cerca note…",
+    "newNote": "Nuova nota",
+    "empty": {
+      "title": "Nessuna nota ancora",
+      "description": "Crea la tua prima nota per iniziare."
+    },
+    "searchEmpty": {
+      "title": "Nessun risultato",
+      "description": "Nessuna nota trovata per «{{query}}»."
+    },
+    "noteType": {
+      "personal": "personale",
+      "meeting": "riunione",
+      "upload": "caricamento"
+    }
+  },
+  "noteEditor": {
+    "saved": "Salvato",
+    "deleteNote": "Elimina nota",
+    "deleteConfirmTitle": "Eliminare la nota?",
+    "deleteConfirmDescription": "Questa nota verrà eliminata definitivamente e non potrà essere recuperata.",
+    "deleteConfirm": "Elimina"
+  },
+  "commandSearch": {
+    "title": "Cerca",
+    "description": "Cerca tra note e trascrizioni",
+    "shortPlaceholder": "Cerca",
+    "placeholder": "Cerca note e trascrizioni…",
+    "sections": {
+      "notes": "Note",
+      "transcripts": "Trascrizioni"
+    },
+    "noResults": "Nessun risultato",
+    "emptyState": "Inizia a digitare per cercare",
+    "footer": {
+      "navigate": "Naviga",
+      "open": "Apri",
+      "dismiss": "Chiudi"
+    }
   }
 }

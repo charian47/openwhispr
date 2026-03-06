@@ -15,6 +15,7 @@ import {
   useTranscriptions,
   initializeTranscriptions,
   removeTranscription as removeFromStore,
+  updateTranscription as updateInStore,
 } from "../stores/transcriptionStore";
 import ControlPanelSidebar, { type ControlPanelView } from "./ControlPanelSidebar";
 import WindowControls from "./WindowControls";
@@ -31,6 +32,7 @@ const PersonalNotesView = React.lazy(() => import("./notes/PersonalNotesView"));
 const DictionaryView = React.lazy(() => import("./DictionaryView"));
 const UploadAudioView = React.lazy(() => import("./notes/UploadAudioView"));
 const IntegrationsView = React.lazy(() => import("./IntegrationsView"));
+const CommandSearch = React.lazy(() => import("./CommandSearch"));
 
 export default function ControlPanel() {
   const { t } = useTranslation();
@@ -45,6 +47,7 @@ export default function ControlPanel() {
     () => localStorage.getItem("aiCTADismissed") === "true"
   );
   const [showReferrals, setShowReferrals] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const [showCloudMigrationBanner, setShowCloudMigrationBanner] = useState(false);
   const [activeView, setActiveView] = useState<ControlPanelView>("home");
   const [isMeetingMode, setIsMeetingMode] = useState(false);
@@ -94,6 +97,18 @@ export default function ControlPanel() {
 
   useEffect(() => {
     loadTranscriptions();
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const mod = platform === "darwin" ? e.metaKey : e.ctrlKey;
+      if (mod && e.key === "k") {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   useEffect(() => {
@@ -272,6 +287,84 @@ export default function ControlPanel() {
     [showConfirmDialog, showAlertDialog, t]
   );
 
+  const showAudioInFolder = useCallback(
+    async (id: number) => {
+      try {
+        const result = await window.electronAPI.showAudioInFolder(id);
+        if (!result?.success) {
+          toast({
+            title: t("controlPanel.history.audioNotFound"),
+            variant: "destructive",
+          });
+        }
+      } catch {
+        toast({
+          title: t("controlPanel.history.audioNotFound"),
+          variant: "destructive",
+        });
+      }
+    },
+    [toast, t]
+  );
+
+  const retryTranscription = useCallback(
+    async (id: number) => {
+      try {
+        const result = await window.electronAPI.retryTranscription(id);
+        if (result.success && result.transcription) {
+          const rawText = result.transcription.text;
+          let finalTranscription = result.transcription;
+
+          // Apply AI reasoning if enabled
+          if (useReasoningModel) {
+            try {
+              const [
+                { default: ReasoningService },
+                { getEffectiveReasoningModel, isCloudReasoningMode },
+              ] = await Promise.all([
+                import("../services/ReasoningService"),
+                import("../stores/settingsStore"),
+              ]);
+              const model = getEffectiveReasoningModel();
+              const isCloud = isCloudReasoningMode();
+              if (model || isCloud) {
+                const agentName = localStorage.getItem("agentName") || null;
+                const reasonedText = await ReasoningService.processText(rawText, model, agentName);
+                if (reasonedText && reasonedText !== rawText) {
+                  const updated = await window.electronAPI.updateTranscriptionText(
+                    id,
+                    reasonedText,
+                    rawText
+                  );
+                  if (updated.success && updated.transcription) {
+                    finalTranscription = updated.transcription;
+                  }
+                }
+              }
+            } catch {
+              // Reasoning failed — keep the raw STT result
+            }
+          }
+
+          updateInStore(finalTranscription);
+          toast({ title: t("controlPanel.history.retrySuccess") });
+        } else {
+          toast({
+            title: t("controlPanel.history.retryError"),
+            description: result.error,
+            variant: "destructive",
+          });
+        }
+      } catch {
+        toast({
+          title: t("controlPanel.history.retryError"),
+          variant: "destructive",
+        });
+      }
+    },
+    [toast, t, useReasoningModel]
+  );
+
   const handleUpdateClick = async () => {
     if (updateStatus.updateDownloaded) {
       showConfirmDialog({
@@ -383,6 +476,23 @@ export default function ControlPanel() {
         </Suspense>
       )}
 
+      {showSearch && (
+        <Suspense fallback={null}>
+          <CommandSearch
+            open={showSearch}
+            onOpenChange={setShowSearch}
+            transcriptions={history}
+            onNoteSelect={(id) => {
+              setActiveNoteId(id);
+              setActiveView("personal-notes");
+            }}
+            onTranscriptSelect={() => {
+              setActiveView("home");
+            }}
+          />
+        </Suspense>
+      )}
+
       <div className="flex flex-1 overflow-hidden">
         <div
           className="shrink-0 overflow-hidden transition-[width] duration-300 ease-out"
@@ -391,6 +501,7 @@ export default function ControlPanel() {
           <ControlPanelSidebar
             activeView={activeView}
             onViewChange={setActiveView}
+            onOpenSearch={() => setShowSearch(true)}
             onOpenSettings={() => {
               setSettingsSection(undefined);
               setShowSettings(true);
@@ -546,6 +657,8 @@ export default function ControlPanel() {
                 useReasoningModel={useReasoningModel}
                 copyToClipboard={copyToClipboard}
                 deleteTranscription={deleteTranscription}
+                onShowAudioInFolder={showAudioInFolder}
+                onRetryTranscription={retryTranscription}
                 onOpenSettings={(section) => {
                   setSettingsSection(section);
                   setShowSettings(true);

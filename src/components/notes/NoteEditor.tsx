@@ -169,7 +169,7 @@ export default function NoteEditor({
 
   const [liveMode, setLiveMode] = useState(() => {
     const pref = localStorage.getItem("notesStreamingPreference");
-    return pref === "streaming" || (pref !== "batch" && canStream);
+    return pref === "streaming";
   });
 
   const handleLiveToggle = useCallback(() => {

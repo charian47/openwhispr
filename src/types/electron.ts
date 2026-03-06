@@ -3,8 +3,13 @@ export type LocalTranscriptionProvider = "whisper" | "nvidia";
 export interface TranscriptionItem {
   id: number;
   text: string;
+  raw_text: string | null;
   timestamp: string;
   created_at: string;
+  has_audio: number;
+  audio_duration_ms: number | null;
+  provider: string | null;
+  model: string | null;
 }
 
 export interface NoteItem {
@@ -20,6 +25,7 @@ export interface NoteItem {
   folder_id: number | null;
   transcript: string | null;
   calendar_event_id: string | null;
+  cloud_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -281,10 +287,35 @@ declare global {
       } | null>;
 
       // Database operations
-      saveTranscription: (text: string) => Promise<{ id: number; success: boolean }>;
+      saveTranscription: (
+        text: string,
+        rawText?: string | null
+      ) => Promise<{ id: number; success: boolean; transcription?: TranscriptionItem }>;
       getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
       clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
       deleteTranscription: (id: number) => Promise<{ success: boolean }>;
+      getTranscriptionById: (id: number) => Promise<TranscriptionItem | null>;
+
+      // Audio retention operations
+      saveTranscriptionAudio: (
+        id: number,
+        audioBuffer: ArrayBuffer,
+        metadata?: { durationMs?: number; provider?: string; model?: string }
+      ) => Promise<{ success: boolean; path?: string }>;
+      getAudioPath: (id: number) => Promise<string | null>;
+      showAudioInFolder: (id: number) => Promise<{ success: boolean }>;
+      getAudioBuffer: (id: number) => Promise<ArrayBuffer | null>;
+      deleteTranscriptionAudio: (id: number) => Promise<{ success: boolean }>;
+      getAudioStorageUsage: () => Promise<{ fileCount: number; totalBytes: number }>;
+      deleteAllAudio: () => Promise<{ deleted: number }>;
+      retryTranscription: (
+        id: number
+      ) => Promise<{ success: boolean; transcription?: TranscriptionItem; error?: string }>;
+      updateTranscriptionText: (
+        id: number,
+        text: string,
+        rawText: string
+      ) => Promise<{ success: boolean; transcription?: TranscriptionItem; error?: string }>;
 
       // Dictionary operations
       getDictionary: () => Promise<string[]>;
@@ -327,6 +358,8 @@ declare global {
         noteId: number,
         format: "txt" | "md"
       ) => Promise<{ success: boolean; error?: string }>;
+      searchNotes: (query: string, limit?: number) => Promise<NoteItem[]>;
+      updateNoteCloudId: (id: number, cloudId: string) => Promise<NoteItem>;
 
       // Folder operations
       getFolders: () => Promise<FolderItem[]>;
@@ -672,6 +705,9 @@ declare global {
       openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
+      toggleMediaPlayback?: () => Promise<boolean>;
+      pauseMediaPlayback?: () => Promise<boolean>;
+      resumeMediaPlayback?: () => Promise<boolean>;
       openWhisperModelsFolder?: () => Promise<{ success: boolean; error?: string }>;
 
       // Windows Push-to-Talk notifications
@@ -679,6 +715,7 @@ declare global {
       notifyHotkeyChanged?: (hotkey: string) => void;
       notifyFloatingIconAutoHideChanged?: (enabled: boolean) => void;
       onFloatingIconAutoHideChanged?: (callback: (enabled: boolean) => void) => () => void;
+      notifyPanelStartPositionChanged?: (position: string) => void;
 
       // Auto-start at login
       getAutoStartEnabled?: () => Promise<boolean>;

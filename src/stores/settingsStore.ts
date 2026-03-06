@@ -56,6 +56,7 @@ const BOOLEAN_SETTINGS = new Set([
   "cloudBackupEnabled",
   "telemetryEnabled",
   "audioCuesEnabled",
+  "pauseMediaOnDictation",
   "floatingIconAutoHide",
   "meetingProcessDetection",
   "meetingAudioDetection",
@@ -64,6 +65,8 @@ const BOOLEAN_SETTINGS = new Set([
 ]);
 
 const ARRAY_SETTINGS = new Set(["customDictionary", "gcalAccounts"]);
+
+const NUMERIC_SETTINGS = new Set(["audioRetentionDays"]);
 
 const LANGUAGE_MIGRATIONS: Record<string, string> = { zh: "zh-CN" };
 
@@ -89,12 +92,14 @@ export interface SettingsState
     AgentModeSettings {
   isSignedIn: boolean;
   audioCuesEnabled: boolean;
+  pauseMediaOnDictation: boolean;
   floatingIconAutoHide: boolean;
   gcalAccounts: GoogleCalendarAccount[];
   gcalConnected: boolean;
   gcalEmail: string;
   meetingProcessDetection: boolean;
   meetingAudioDetection: boolean;
+  panelStartPosition: "bottom-right" | "center" | "bottom-left";
 
   setUseLocalWhisper: (value: boolean) => void;
   setWhisperModel: (value: string) => void;
@@ -134,11 +139,14 @@ export interface SettingsState
   setTheme: (value: "light" | "dark" | "auto") => void;
   setCloudBackupEnabled: (value: boolean) => void;
   setTelemetryEnabled: (value: boolean) => void;
+  setAudioRetentionDays: (days: number) => void;
   setAudioCuesEnabled: (value: boolean) => void;
+  setPauseMediaOnDictation: (value: boolean) => void;
   setFloatingIconAutoHide: (enabled: boolean) => void;
   setGcalAccounts: (accounts: GoogleCalendarAccount[]) => void;
   setMeetingProcessDetection: (value: boolean) => void;
   setMeetingAudioDetection: (value: boolean) => void;
+  setPanelStartPosition: (position: "bottom-right" | "center" | "bottom-left") => void;
   setIsSignedIn: (value: boolean) => void;
 
   setAgentModel: (value: string) => void;
@@ -256,7 +264,15 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   })(),
   cloudBackupEnabled: readBoolean("cloudBackupEnabled", false),
   telemetryEnabled: readBoolean("telemetryEnabled", false),
+  audioRetentionDays: (() => {
+    if (!isBrowser) return 30;
+    const stored = localStorage.getItem("audioRetentionDays");
+    if (stored === null) return 30;
+    const parsed = parseInt(stored, 10);
+    return isNaN(parsed) ? 30 : parsed;
+  })(),
   audioCuesEnabled: readBoolean("audioCuesEnabled", true),
+  pauseMediaOnDictation: readBoolean("pauseMediaOnDictation", false),
   floatingIconAutoHide: readBoolean("floatingIconAutoHide", false),
   ...(() => {
     let accounts: GoogleCalendarAccount[] = [];
@@ -274,6 +290,11 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   })(),
   meetingProcessDetection: readBoolean("meetingProcessDetection", true),
   meetingAudioDetection: readBoolean("meetingAudioDetection", true),
+  panelStartPosition: (() => {
+    const v = readString("panelStartPosition", "bottom-right");
+    if (v === "bottom-right" || v === "center" || v === "bottom-left") return v;
+    return "bottom-right" as const;
+  })(),
   isSignedIn: readBoolean("isSignedIn", false),
 
   agentModel: readString("agentModel", "openai/gpt-oss-120b"),
@@ -403,7 +424,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
   setCloudBackupEnabled: createBooleanSetter("cloudBackupEnabled"),
   setTelemetryEnabled: createBooleanSetter("telemetryEnabled"),
+  setAudioRetentionDays: (days: number) => {
+    if (isBrowser) localStorage.setItem("audioRetentionDays", String(days));
+    set({ audioRetentionDays: days });
+  },
   setAudioCuesEnabled: createBooleanSetter("audioCuesEnabled"),
+  setPauseMediaOnDictation: createBooleanSetter("pauseMediaOnDictation"),
 
   setFloatingIconAutoHide: (enabled: boolean) => {
     if (get().floatingIconAutoHide === enabled) return;
@@ -424,6 +450,14 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
   setMeetingProcessDetection: createBooleanSetter("meetingProcessDetection"),
   setMeetingAudioDetection: createBooleanSetter("meetingAudioDetection"),
+  setPanelStartPosition: (position: "bottom-right" | "center" | "bottom-left") => {
+    if (get().panelStartPosition === position) return;
+    if (isBrowser) localStorage.setItem("panelStartPosition", position);
+    set({ panelStartPosition: position });
+    if (isBrowser) {
+      window.electronAPI?.notifyPanelStartPositionChanged?.(position);
+    }
+  },
 
   setIsSignedIn: (value: boolean) => {
     if (isBrowser) localStorage.setItem("isSignedIn", String(value));
@@ -703,6 +737,9 @@ export async function initializeSettings(): Promise<void> {
       } catch {
         value = [];
       }
+    } else if (NUMERIC_SETTINGS.has(key)) {
+      const parsed = parseInt(newValue, 10);
+      value = isNaN(parsed) ? 30 : parsed;
     } else {
       value = newValue;
     }

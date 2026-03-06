@@ -93,7 +93,7 @@
     "updatePayment": "Zahlungsmethode aktualisieren",
     "updatePaymentDescription": "Zurück zu unbegrenzten Pro-Transkriptionen.",
     "upgradeToPro": "Auf Pro upgraden",
-    "upgradeDescription": "Unbegrenzte Transkriptionen. 9 $/Monat.",
+    "upgradeDescription": "Unbegrenzte Transkriptionen ab $8/Monat.",
     "useApiKey": "Eigenen API-Schlüssel verwenden",
     "useApiKeyDescription": "Verwenden Sie Ihren eigenen Schlüssel für unbegrenzte Nutzung.",
     "switchToLocal": "Zu lokal wechseln",
@@ -1078,6 +1078,8 @@
       "soundEffects": {
         "dictationSounds": "Diktat-Signaltöne",
         "dictationSoundsDescription": "Ton abspielen, wenn die Aufnahme startet und stoppt",
+        "pauseMedia": "Medien pausieren",
+        "pauseMediaDescription": "Musik beim Starten der Diktat automatisch pausieren",
         "title": "Soundeffekte"
       },
       "startup": {
@@ -1162,7 +1164,9 @@
     },
     "privacy": {
       "cloudBackup": "Cloud-Backup",
-      "cloudBackupDescription": "Speichern Sie Ihre Transkriptionen in der Cloud, damit sie nicht verloren gehen.",
+      "cloudBackupDescription": "Sichern Sie Ihre Transkriptionen und Notizen in der Cloud für nahtlosen Zugriff auf allen Geräten.",
+      "cloudNotesMigration": "Notizen werden gesichert… {{done}} / {{total}}",
+      "cloudNotesMigrationDone": "Alle Notizen gesichert",
       "description": "Steuern Sie, welche Daten Ihr Gerät verlassen. Standardmäßig ist alles deaktiviert.",
       "title": "Datenschutz",
       "usageAnalytics": "Nutzungsanalysen",
@@ -1678,5 +1682,46 @@
     "now": "Jetzt",
     "join": "Beitreten",
     "untitledEvent": "Unbenanntes Ereignis"
+  },
+  "notesView": {
+    "searchPlaceholder": "Notizen durchsuchen…",
+    "newNote": "Neue Notiz",
+    "empty": {
+      "title": "Noch keine Notizen",
+      "description": "Erstellen Sie Ihre erste Notiz, um zu beginnen."
+    },
+    "searchEmpty": {
+      "title": "Keine Ergebnisse",
+      "description": "Keine Notizen für „{{query}}“ gefunden."
+    },
+    "noteType": {
+      "personal": "persönlich",
+      "meeting": "Meeting",
+      "upload": "Upload"
+    }
+  },
+  "noteEditor": {
+    "saved": "Gespeichert",
+    "deleteNote": "Notiz löschen",
+    "deleteConfirmTitle": "Notiz löschen?",
+    "deleteConfirmDescription": "Diese Notiz wird dauerhaft gelöscht und kann nicht wiederhergestellt werden.",
+    "deleteConfirm": "Löschen"
+  },
+  "commandSearch": {
+    "title": "Suche",
+    "description": "In Notizen und Transkripten suchen",
+    "shortPlaceholder": "Suche",
+    "placeholder": "Notizen und Transkripte durchsuchen…",
+    "sections": {
+      "notes": "Notizen",
+      "transcripts": "Transkripte"
+    },
+    "noResults": "Keine Ergebnisse",
+    "emptyState": "Tippen, um zu suchen",
+    "footer": {
+      "navigate": "Navigieren",
+      "open": "Öffnen",
+      "dismiss": "Schließen"
+    }
   }
 }
