@@ -1164,7 +1164,9 @@
     },
     "privacy": {
       "cloudBackup": "Облачное резервное копирование",
-      "cloudBackupDescription": "Сохраняйте транскрипции в облаке, чтобы никогда их не потерять.",
+      "cloudBackupDescription": "Сохраняйте транскрипции и заметки в облаке для удобного доступа со всех устройств.",
+      "cloudNotesMigration": "Резервное копирование заметок… {{done}} / {{total}}",
+      "cloudNotesMigrationDone": "Все заметки скопированы в облако",
       "description": "Контролируйте, какие данные покидают ваше устройство. По умолчанию всё отключено.",
       "title": "Конфиденциальность",
       "usageAnalytics": "Аналитика использования",
@@ -1600,6 +1602,47 @@
     "oauth": {
       "redirectTitle": "Перенаправление в приложение...",
       "closeTab": "Можете закрыть эту вкладку."
+    }
+  },
+  "notesView": {
+    "searchPlaceholder": "Поиск заметок…",
+    "newNote": "Новая заметка",
+    "empty": {
+      "title": "Заметок пока нет",
+      "description": "Создайте первую заметку, чтобы начать."
+    },
+    "searchEmpty": {
+      "title": "Нет результатов",
+      "description": "По запросу «{{query}}» заметки не найдены."
+    },
+    "noteType": {
+      "personal": "личная",
+      "meeting": "встреча",
+      "upload": "загрузка"
+    }
+  },
+  "noteEditor": {
+    "saved": "Сохранено",
+    "deleteNote": "Удалить заметку",
+    "deleteConfirmTitle": "Удалить заметку?",
+    "deleteConfirmDescription": "Эта заметка будет удалена безвозвратно.",
+    "deleteConfirm": "Удалить"
+  },
+  "commandSearch": {
+    "title": "Поиск",
+    "description": "Поиск по заметкам и транскрипциям",
+    "shortPlaceholder": "Поиск",
+    "placeholder": "Поиск по заметкам и транскрипциям…",
+    "sections": {
+      "notes": "Заметки",
+      "transcripts": "Транскрипции"
+    },
+    "noResults": "Нет результатов",
+    "emptyState": "Начните ввод для поиска",
+    "footer": {
+      "navigate": "Навигация",
+      "open": "Открыть",
+      "dismiss": "Закрыть"
     }
   }
 }

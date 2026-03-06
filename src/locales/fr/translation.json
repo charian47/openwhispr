@@ -1164,7 +1164,9 @@
     },
     "privacy": {
       "cloudBackup": "Sauvegarde cloud",
-      "cloudBackupDescription": "Sauvegardez vos transcriptions dans le cloud pour ne jamais les perdre.",
+      "cloudBackupDescription": "Sauvegardez vos transcriptions et notes dans le cloud pour un accès fluide sur tous vos appareils.",
+      "cloudNotesMigration": "Sauvegarde des notes… {{done}} / {{total}}",
+      "cloudNotesMigrationDone": "Toutes les notes sauvegardées",
       "description": "Contrôlez quelles données quittent votre appareil. Tout est désactivé par défaut.",
       "title": "Confidentialité",
       "usageAnalytics": "Analyse d'utilisation",
@@ -1600,6 +1602,47 @@
     "oauth": {
       "redirectTitle": "Redirection vers l'app...",
       "closeTab": "Vous pouvez fermer cet onglet."
+    }
+  },
+  "notesView": {
+    "searchPlaceholder": "Rechercher des notes…",
+    "newNote": "Nouvelle note",
+    "empty": {
+      "title": "Aucune note pour l'instant",
+      "description": "Créez votre première note pour commencer."
+    },
+    "searchEmpty": {
+      "title": "Aucun résultat",
+      "description": "Aucune note trouvée pour « {{query}} »."
+    },
+    "noteType": {
+      "personal": "personnel",
+      "meeting": "réunion",
+      "upload": "import"
+    }
+  },
+  "noteEditor": {
+    "saved": "Enregistré",
+    "deleteNote": "Supprimer la note",
+    "deleteConfirmTitle": "Supprimer la note ?",
+    "deleteConfirmDescription": "Cette note sera supprimée définitivement et ne pourra pas être récupérée.",
+    "deleteConfirm": "Supprimer"
+  },
+  "commandSearch": {
+    "title": "Rechercher",
+    "description": "Rechercher dans les notes et transcriptions",
+    "shortPlaceholder": "Rechercher",
+    "placeholder": "Rechercher notes et transcriptions…",
+    "sections": {
+      "notes": "Notes",
+      "transcripts": "Transcriptions"
+    },
+    "noResults": "Aucun résultat",
+    "emptyState": "Commencez à taper pour rechercher",
+    "footer": {
+      "navigate": "Naviguer",
+      "open": "Ouvrir",
+      "dismiss": "Fermer"
     }
   }
 }

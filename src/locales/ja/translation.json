@@ -1160,7 +1160,9 @@
     },
     "privacy": {
       "cloudBackup": "クラウドバックアップ",
-      "cloudBackupDescription": "文字起こしをクラウドに保存してデータを失わないようにします。",
+      "cloudBackupDescription": "文字起こしとノートをクラウドにバックアップして、すべてのデバイスからシームレスにアクセスできます。",
+      "cloudNotesMigration": "ノートをバックアップ中… {{done}} / {{total}}",
+      "cloudNotesMigrationDone": "すべてのノートがバックアップされました",
       "description": "デバイスからのデータ送信を管理します。初期設定ではすべてオフです。",
       "title": "プライバシー",
       "usageAnalytics": "使用状況の分析",
@@ -1596,6 +1598,47 @@
     "oauth": {
       "redirectTitle": "アプリにリダイレクト中...",
       "closeTab": "このタブを閉じてください。"
+    }
+  },
+  "notesView": {
+    "searchPlaceholder": "ノートを検索…",
+    "newNote": "新しいノート",
+    "empty": {
+      "title": "ノートがまだありません",
+      "description": "最初のノートを作成してください。"
+    },
+    "searchEmpty": {
+      "title": "結果なし",
+      "description": "「{{query}}」に一致するノートが見つかりませんでした。"
+    },
+    "noteType": {
+      "personal": "個人",
+      "meeting": "会議",
+      "upload": "アップロード"
+    }
+  },
+  "noteEditor": {
+    "saved": "保存済み",
+    "deleteNote": "ノートを削除",
+    "deleteConfirmTitle": "ノートを削除しますか？",
+    "deleteConfirmDescription": "このノートは完全に削除され、復元できません。",
+    "deleteConfirm": "削除"
+  },
+  "commandSearch": {
+    "title": "検索",
+    "description": "ノートと文字起こしを検索",
+    "shortPlaceholder": "検索",
+    "placeholder": "ノートと文字起こしを検索…",
+    "sections": {
+      "notes": "ノート",
+      "transcripts": "文字起こし"
+    },
+    "noResults": "結果なし",
+    "emptyState": "入力して検索",
+    "footer": {
+      "navigate": "移動",
+      "open": "開く",
+      "dismiss": "閉じる"
     }
   }
 }
