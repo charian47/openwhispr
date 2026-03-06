@@ -1245,9 +1245,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           {t("settingsPage.account.pricing.free.period")}
                         </span>
                       </div>
-                      <p className="text-[9px] font-medium text-primary/80 mt-1.5">
-                        {t("settingsPage.account.pricing.free.trialNote")}
-                      </p>
                       <ul className="space-y-0.5 mt-2 flex-1">
                         {(
                           t("settingsPage.account.pricing.free.features", {
