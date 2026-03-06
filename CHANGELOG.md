@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-03-06
+
+### Added
+
+- **Agent Mode**: Glassmorphism chat overlay with real-time AI streaming — resizable window (8 edge/corner handles), dedicated hotkey, conversation history stored in SQLite, customizable system prompt, and support for all cloud/local AI providers
+- **Google Calendar Integration**: Connect multiple Google accounts via OAuth 2.0 (PKCE), view upcoming meetings in the sidebar, and receive notifications when meetings are detected
+- **Meeting Recording & Live Transcription**: Automatic meeting detection via process monitoring (Zoom, Teams, FaceTime) and sustained audio activity, with live transcription powered by OpenAI Realtime API over WebSocket
+- **Cloud Notes with Sync**: Local-first note storage with FTS5 full-text search, folder organization, cloud sync, and semantic search — all notes are instantly searchable across title, content, and enhanced content
+- **Audio Retention & Retry**: Transcription audio is now saved locally with configurable retention (default 30 days), enabling playback from history and one-click retry of failed transcriptions through the full pipeline
+- **Cmd+K Command Search**: Global command palette to search across notes, transcripts, and folders with real-time results, keyboard navigation, and type-grouped display
+- **Auto-Pause Media Playback**: Automatically pauses media (Spotify, Apple Music, etc.) during dictation and resumes afterward — uses MediaRemote framework on macOS, GSMTC on Windows, and MPRIS2 on Linux
+- **Screen Recording Permission Flow (macOS)**: Optional onboarding step and in-app prompts for screen recording permission, required for meeting audio capture on macOS
+- **Configurable Recorder Position**: Choose where the voice recorder panel appears on screen (top, bottom, center)
+- **Auto-Paste Toggle**: New toggle in clipboard settings to enable/disable automatic pasting after transcription
+- **Prompt Architecture Overhaul**: Centralized prompt definitions in `src/config/prompts.ts` with customizable agent system prompts
+- **Dynamic Agent Window**: Agent overlay starts at full screen height with drag-to-resize support, persisted window bounds across sessions
+- **Save Failed Transcriptions**: Failed transcriptions are now saved with their audio for later retry instead of being lost
+- **Cloud Backup Toggle**: Unified cloud backup into a single toggle for simpler settings
+
+### Changed
+
+- **Removed Input Monitoring Requirement (macOS)**: Replaced CGEvent tap with NSEvent monitor for Globe/Fn key detection, eliminating the need for Input Monitoring privacy permission
+- **Unified Screen Recording Permission UX**: Consolidated screen recording permission prompts across onboarding, meetings, and integrations into a consistent experience
+
+### Fixed
+
+- **Agent Panel Readability**: Made agent panel fully opaque for better text readability
+- **Local Model Streaming**: Fixed local model support in agent streaming and resolved Metal OOM crash on macOS
+- **Mic Auto-Gain**: Enabled microphone auto-gain and skip silent system audio chunks during meeting recording
+- **Meeting Audio**: Fixed simultaneous system and mic audio capture for meetings
+- **KDE Wayland Paste**: Fixed portal exit code 0 with no token being treated as success on KDE Wayland
+- **Meeting Detection**: Suppressed false meeting detection when no active calendar meeting exists
+- **OpenAI Realtime Session**: Fixed session configuration timing — now sends config after session created event with pcm16 format and VAD
+- **Agent Hotkey Persistence**: Agent hotkey now properly persists to `.env` file across restarts
+- **Sidebar Height**: Fixed sidebar not extending full window height
+- **Empty Transcription Handling**: Silent return on empty transcription instead of pasting fallback string
+- **Command Search Styling**: Fixed input styling, note type icons, sidebar spacing, and added deleted_at column support
+- **Onboarding Accessibility UX**: Show device name in mic settings and improve accessibility permission guidance
+- **Orphaned Trial Note**: Removed orphaned trialNote reference from free plan pricing
+- **Portal-Based Tooltips**: Fixed tooltip positioning and replaced download action with reveal-in-folder
+- **State-Aware Media Pause**: Don't unpause media that was already paused before dictation started
+- **WebSocket Audio Buffering**: Parallelized WebSocket connection and audio capture, buffer early audio to prevent data loss at meeting start
+- **Video Track Loopback**: Keep video tracks alive for loopback audio capture, remove invalid dispose call
+
 ## [1.5.5] - 2026-03-01
 
 ### Added
