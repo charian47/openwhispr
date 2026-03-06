@@ -55,6 +55,18 @@ class DatabaseManager {
       } catch (err) {
         if (!err.message.includes("duplicate column")) throw err;
       }
+      try {
+        this.db.exec(
+          "ALTER TABLE transcriptions ADD COLUMN status TEXT NOT NULL DEFAULT 'completed'"
+        );
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
+      try {
+        this.db.exec("ALTER TABLE transcriptions ADD COLUMN error_message TEXT");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
 
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS custom_dictionary (
@@ -327,13 +339,15 @@ class DatabaseManager {
     }
   }
 
-  saveTranscription(text, rawText = null) {
+  saveTranscription(text, rawText = null, { status = "completed", errorMessage = null } = {}) {
     try {
       if (!this.db) {
         throw new Error("Database not initialized");
       }
-      const stmt = this.db.prepare("INSERT INTO transcriptions (text, raw_text) VALUES (?, ?)");
-      const result = stmt.run(text, rawText);
+      const stmt = this.db.prepare(
+        "INSERT INTO transcriptions (text, raw_text, status, error_message) VALUES (?, ?, ?, ?)"
+      );
+      const result = stmt.run(text, rawText, status, errorMessage);
 
       const fetchStmt = this.db.prepare("SELECT * FROM transcriptions WHERE id = ?");
       const transcription = fetchStmt.get(result.lastInsertRowid);
@@ -409,6 +423,24 @@ class DatabaseManager {
       return { success: true };
     } catch (error) {
       debugLogger.error("Error updating transcription text", { error: error.message }, "database");
+      throw error;
+    }
+  }
+
+  updateTranscriptionStatus(id, status, errorMessage = null) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const stmt = this.db.prepare(
+        "UPDATE transcriptions SET status = ?, error_message = ? WHERE id = ?"
+      );
+      stmt.run(status, errorMessage, id);
+      return { success: true };
+    } catch (error) {
+      debugLogger.error(
+        "Error updating transcription status",
+        { error: error.message },
+        "database"
+      );
       throw error;
     }
   }

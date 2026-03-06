@@ -1,5 +1,7 @@
 export type LocalTranscriptionProvider = "whisper" | "nvidia";
 
+export type TranscriptionStatus = "completed" | "failed" | "pending";
+
 export interface TranscriptionItem {
   id: number;
   text: string;
@@ -10,6 +12,8 @@ export interface TranscriptionItem {
   audio_duration_ms: number | null;
   provider: string | null;
   model: string | null;
+  status: TranscriptionStatus;
+  error_message: string | null;
 }
 
 export interface NoteItem {
@@ -289,7 +293,8 @@ declare global {
       // Database operations
       saveTranscription: (
         text: string,
-        rawText?: string | null
+        rawText?: string | null,
+        options?: { status?: TranscriptionStatus; errorMessage?: string | null }
       ) => Promise<{ id: number; success: boolean; transcription?: TranscriptionItem }>;
       getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
       clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
@@ -418,6 +423,7 @@ declare global {
 
       // Database event listeners
       onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => () => void;
+      onTranscriptionUpdated?: (callback: (item: TranscriptionItem) => void) => () => void;
       onTranscriptionDeleted?: (callback: (payload: { id: number }) => void) => () => void;
       onTranscriptionsCleared?: (callback: (payload: { cleared: number }) => void) => () => void;
 

@@ -222,7 +222,8 @@
       "dateGroups": {
         "today": "今日",
         "yesterday": "昨日"
-      }
+      },
+      "transcriptionFailed": "文字起こしに失敗しました"
     },
     "cloudMigration": {
       "title": "OpenWhispr Pro へようこそ",

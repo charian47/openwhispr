@@ -222,7 +222,8 @@
       "dateGroups": {
         "today": "今天",
         "yesterday": "昨天"
-      }
+      },
+      "transcriptionFailed": "轉錄失敗"
     },
     "cloudMigration": {
       "title": "歡迎使用 OpenWhispr Pro",

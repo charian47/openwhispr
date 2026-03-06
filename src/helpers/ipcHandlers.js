@@ -348,8 +348,8 @@ class IPCHandlers {
       return this.environmentManager.createProductionEnvFile(apiKey);
     });
 
-    ipcMain.handle("db-save-transcription", async (event, text, rawText) => {
-      const result = this.databaseManager.saveTranscription(text, rawText);
+    ipcMain.handle("db-save-transcription", async (event, text, rawText, options) => {
+      const result = this.databaseManager.saveTranscription(text, rawText, options);
       if (result?.success && result?.transcription) {
         setImmediate(() => {
           this.broadcastToWindows("transcription-added", result.transcription);
@@ -2162,6 +2162,7 @@ class IPCHandlers {
         }
 
         this.databaseManager.updateTranscriptionText(id, result.text, result.text);
+        this.databaseManager.updateTranscriptionStatus(id, "completed");
         const provider = result.source || "local";
         const model = result.model || null;
         this.databaseManager.updateTranscriptionAudio(id, {
@@ -2171,6 +2172,11 @@ class IPCHandlers {
           model,
         });
         const updated = this.databaseManager.getTranscriptionById(id);
+        if (updated) {
+          setImmediate(() => {
+            this.broadcastToWindows("transcription-updated", updated);
+          });
+        }
         return { success: true, transcription: updated };
       } catch (error) {
         debugLogger.error(

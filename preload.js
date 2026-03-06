@@ -31,7 +31,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onStopDictation: registerListener("stop-dictation", (callback) => () => callback()),
 
   // Database functions
-  saveTranscription: (text, rawText) => ipcRenderer.invoke("db-save-transcription", text, rawText),
+  saveTranscription: (text, rawText, options) =>
+    ipcRenderer.invoke("db-save-transcription", text, rawText, options),
   getTranscriptions: (limit) => ipcRenderer.invoke("db-get-transcriptions", limit),
   clearTranscriptions: () => ipcRenderer.invoke("db-clear-transcriptions"),
   deleteTranscription: (id) => ipcRenderer.invoke("db-delete-transcription", id),
@@ -154,6 +155,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     const listener = (_event, data) => callback?.(data);
     ipcRenderer.on("transcriptions-cleared", listener);
     return () => ipcRenderer.removeListener("transcriptions-cleared", listener);
+  },
+  onTranscriptionUpdated: (callback) => {
+    const listener = (_event, transcription) => callback?.(transcription);
+    ipcRenderer.on("transcription-updated", listener);
+    return () => ipcRenderer.removeListener("transcription-updated", listener);
   },
 
   // Environment variables

@@ -194,7 +194,8 @@
       "dateGroups": {
         "today": "Hoje",
         "yesterday": "Ontem"
-      }
+      },
+      "transcriptionFailed": "A transcrição falhou"
     },
     "cloudMigration": {
       "title": "Boas-vindas ao OpenWhispr Pro",
