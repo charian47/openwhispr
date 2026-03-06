@@ -1899,6 +1899,15 @@ class IPCHandlers {
       return { granted };
     });
 
+    ipcMain.handle("check-screen-recording-access", () => {
+      if (process.platform !== "darwin") {
+        return { granted: true };
+      }
+      const { systemPreferences } = require("electron");
+      const status = systemPreferences.getMediaAccessStatus("screen");
+      return { granted: status === "granted" };
+    });
+
     // Auth: clear all session cookies for sign-out.
     // This clears every cookie in the renderer session rather than targeting
     // individual auth cookies, which is acceptable because the app only sets

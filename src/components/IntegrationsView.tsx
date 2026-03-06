@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Loader2, Plus, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { ConfirmDialog } from "./ui/dialog";
 import { useSettingsStore } from "../stores/settingsStore";
+import { useScreenRecordingPermission } from "../hooks/useScreenRecordingPermission";
 import googleCalendarIcon from "../assets/icons/google-calendar.svg";
 
 function SettingsPanel({ children }: { children: React.ReactNode }) {
@@ -23,9 +25,11 @@ export default function IntegrationsView() {
   const { gcalAccounts, setGcalAccounts } = useSettingsStore();
   const [isConnecting, setIsConnecting] = useState(false);
   const [disconnectingEmail, setDisconnectingEmail] = useState<string | null>(null);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+  const screenRecording = useScreenRecordingPermission();
   const hasAccounts = gcalAccounts.length > 0;
 
-  const handleConnect = useCallback(async () => {
+  const startOAuth = useCallback(async () => {
     setIsConnecting(true);
     try {
       const result = await window.electronAPI?.gcalStartOAuth?.();
@@ -40,6 +44,21 @@ export default function IntegrationsView() {
       setIsConnecting(false);
     }
   }, [setGcalAccounts]);
+
+  const handleConnect = useCallback(async () => {
+    if (screenRecording.isMacOS && !screenRecording.granted) {
+      setShowPermissionDialog(true);
+      return;
+    }
+    await startOAuth();
+  }, [screenRecording.isMacOS, screenRecording.granted, startOAuth]);
+
+  const handleGrantAndConnect = useCallback(async () => {
+    const wasGranted = await screenRecording.request();
+    if (wasGranted) {
+      await startOAuth();
+    }
+  }, [screenRecording, startOAuth]);
 
   const handleDisconnect = useCallback(
     async (email: string) => {
@@ -160,6 +179,15 @@ export default function IntegrationsView() {
           </SettingsPanelRow>
         )}
       </SettingsPanel>
+
+      <ConfirmDialog
+        open={showPermissionDialog}
+        onOpenChange={setShowPermissionDialog}
+        title={t("integrations.googleCalendar.screenRecordingRequired")}
+        description={t("integrations.googleCalendar.screenRecordingDescription")}
+        confirmText={t("integrations.googleCalendar.grantPermission")}
+        onConfirm={handleGrantAndConnect}
+      />
     </div>
   );
 }

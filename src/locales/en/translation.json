@@ -548,7 +548,9 @@
     "noMoreMeetings": "No more meetings today",
     "now": "Now",
     "join": "Join",
-    "untitledEvent": "Untitled event"
+    "untitledEvent": "Untitled event",
+    "screenRecordingRequired": "Enable Screen & Audio Recording to use meeting transcription.",
+    "enablePermission": "Enable Permission"
   },
   "cleanupPrompt": "Cleanup",
   "developerSection": {
@@ -1731,7 +1733,10 @@
       "addAnother": "Add another calendar",
       "disconnect": "Disconnect",
       "disconnectConfirm": "Disconnect {{email}}?",
-      "disconnectDescription": "Meeting notes will no longer be recorded from this calendar."
+      "disconnectDescription": "Meeting notes will no longer be recorded from this calendar.",
+      "screenRecordingRequired": "Screen & Audio Recording Required",
+      "screenRecordingDescription": "Meeting transcription requires the Screen & Audio Recording permission to capture meeting audio. Grant the permission to continue.",
+      "grantPermission": "Grant Permission"
     },
     "plan": {
       "title": "Your Plan",
@@ -1752,7 +1757,9 @@
     "noMoreMeetings": "No more meetings today",
     "now": "Now",
     "join": "Join",
-    "untitledEvent": "Untitled Event"
+    "untitledEvent": "Untitled Event",
+    "screenRecordingRequired": "Enable Screen & Audio Recording to use meeting transcription.",
+    "enablePermission": "Enable Permission"
   },
   "notesView": {
     "searchPlaceholder": "Search notes…",
