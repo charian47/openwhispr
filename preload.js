@@ -354,6 +354,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
   openSoundInputSettings: () => ipcRenderer.invoke("open-sound-input-settings"),
   openAccessibilitySettings: () => ipcRenderer.invoke("open-accessibility-settings"),
+  openScreenRecordingSettings: () => ipcRenderer.invoke("open-screen-recording-settings"),
   toggleMediaPlayback: () => ipcRenderer.invoke("toggle-media-playback"),
   pauseMediaPlayback: () => ipcRenderer.invoke("pause-media-playback"),
   resumeMediaPlayback: () => ipcRenderer.invoke("resume-media-playback"),

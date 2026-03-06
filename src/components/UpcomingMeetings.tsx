@@ -111,10 +111,10 @@ export default function UpcomingMeetings({ events, isLoading }: UpcomingMeetings
               <Button
                 size="sm"
                 variant="outline"
-                onClick={screenRecording.request}
+                onClick={screenRecording.openSettings}
                 className="text-xs h-7"
               >
-                {t("upcoming.enablePermission")}
+                {t("upcoming.openSettings")}
               </Button>
             </>
           ) : (

@@ -53,13 +53,6 @@ export default function IntegrationsView() {
     await startOAuth();
   }, [screenRecording.isMacOS, screenRecording.granted, startOAuth]);
 
-  const handleGrantAndConnect = useCallback(async () => {
-    const wasGranted = await screenRecording.request();
-    if (wasGranted) {
-      await startOAuth();
-    }
-  }, [screenRecording, startOAuth]);
-
   const handleDisconnect = useCallback(
     async (email: string) => {
       if (!window.confirm(t("integrations.googleCalendar.disconnectConfirm", { email }))) return;
@@ -185,8 +178,8 @@ export default function IntegrationsView() {
         onOpenChange={setShowPermissionDialog}
         title={t("integrations.googleCalendar.screenRecordingRequired")}
         description={t("integrations.googleCalendar.screenRecordingDescription")}
-        confirmText={t("integrations.googleCalendar.grantPermission")}
-        onConfirm={handleGrantAndConnect}
+        confirmText={t("integrations.googleCalendar.openSettings")}
+        onConfirm={screenRecording.openSettings}
       />
     </div>
   );

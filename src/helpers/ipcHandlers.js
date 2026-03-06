@@ -1836,6 +1836,8 @@ class IPCHandlers {
         sound: "x-apple.systempreferences:com.apple.preference.sound?input",
         accessibility:
           "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        screenRecording:
+          "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
       },
       win32: {
         microphone: "ms-settings:privacy-microphone",
@@ -1874,6 +1876,7 @@ class IPCHandlers {
     ipcMain.handle("open-microphone-settings", () => openSystemSettings("microphone"));
     ipcMain.handle("open-sound-input-settings", () => openSystemSettings("sound"));
     ipcMain.handle("open-accessibility-settings", () => openSystemSettings("accessibility"));
+    ipcMain.handle("open-screen-recording-settings", () => openSystemSettings("screenRecording"));
 
     ipcMain.handle("toggle-media-playback", () => {
       const mediaPlayer = require("./mediaPlayer");
