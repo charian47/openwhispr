@@ -12,6 +12,7 @@ import {
   Shield,
   Command,
   UserCircle,
+  Monitor,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
 import WindowControls from "./WindowControls";
@@ -123,6 +124,18 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const permissionsHook = usePermissions(showAlertDialog);
   useClipboard(showAlertDialog); // Initialize clipboard hook for permission checks
+
+  const [screenRecordingGranted, setScreenRecordingGranted] = useState(false);
+
+  const requestScreenRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
+      stream.getTracks().forEach((t) => t.stop());
+      setScreenRecordingGranted(true);
+    } catch {
+      // User denied or dismissed — not blocking since this is optional
+    }
+  }, []);
 
   // For signed-in users, merge setup and permissions into one step
   const steps =
@@ -384,15 +397,26 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   />
 
                   {isMacOS && (
-                    <PermissionCard
-                      icon={Shield}
-                      title={t("onboarding.permissions.accessibilityTitle")}
-                      description={t("onboarding.permissions.accessibilityDescription")}
-                      granted={permissionsHook.accessibilityPermissionGranted}
-                      onRequest={permissionsHook.testAccessibilityPermission}
-                      buttonText={t("onboarding.permissions.testAndGrant")}
-                      onOpenSettings={permissionsHook.openAccessibilitySettings}
-                    />
+                    <>
+                      <PermissionCard
+                        icon={Shield}
+                        title={t("onboarding.permissions.accessibilityTitle")}
+                        description={t("onboarding.permissions.accessibilityDescription")}
+                        granted={permissionsHook.accessibilityPermissionGranted}
+                        onRequest={permissionsHook.testAccessibilityPermission}
+                        buttonText={t("onboarding.permissions.testAndGrant")}
+                        onOpenSettings={permissionsHook.openAccessibilitySettings}
+                      />
+                      <PermissionCard
+                        icon={Monitor}
+                        title={t("onboarding.permissions.screenRecordingTitle")}
+                        description={t("onboarding.permissions.screenRecordingDescription")}
+                        granted={screenRecordingGranted}
+                        onRequest={requestScreenRecording}
+                        buttonText={t("onboarding.permissions.grant")}
+                        badge={t("onboarding.permissions.optional")}
+                      />
+                    </>
                   )}
                 </div>
 
@@ -527,15 +551,26 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               />
 
               {isMacOS && (
-                <PermissionCard
-                  icon={Shield}
-                  title={t("onboarding.permissions.accessibilityTitle")}
-                  description={t("onboarding.permissions.accessibilityDescription")}
-                  granted={permissionsHook.accessibilityPermissionGranted}
-                  onRequest={permissionsHook.testAccessibilityPermission}
-                  buttonText={t("onboarding.permissions.testAndGrant")}
-                  onOpenSettings={permissionsHook.openAccessibilitySettings}
-                />
+                <>
+                  <PermissionCard
+                    icon={Shield}
+                    title={t("onboarding.permissions.accessibilityTitle")}
+                    description={t("onboarding.permissions.accessibilityDescription")}
+                    granted={permissionsHook.accessibilityPermissionGranted}
+                    onRequest={permissionsHook.testAccessibilityPermission}
+                    buttonText={t("onboarding.permissions.testAndGrant")}
+                    onOpenSettings={permissionsHook.openAccessibilitySettings}
+                  />
+                  <PermissionCard
+                    icon={Monitor}
+                    title={t("onboarding.permissions.screenRecordingTitle")}
+                    description={t("onboarding.permissions.screenRecordingDescription")}
+                    granted={screenRecordingGranted}
+                    onRequest={requestScreenRecording}
+                    buttonText={t("onboarding.permissions.grant")}
+                    badge={t("onboarding.permissions.optional")}
+                  />
+                </>
               )}
             </div>
 

@@ -158,7 +158,10 @@
       "accessibilityDescription": "To paste text into apps",
       "testAndGrant": "Test & Grant",
       "requiredForApp": "Required for OpenWhispr to work",
-      "microphoneRequired": "Microphone access required"
+      "microphoneRequired": "Microphone access required",
+      "screenRecordingTitle": "Screen & Audio Recording",
+      "screenRecordingDescription": "Required only for meeting transcription. You can enable this later in Settings.",
+      "optional": "Optional"
     },
     "transcription": {
       "title": "Transcription Setup",
