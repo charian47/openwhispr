@@ -165,8 +165,12 @@ export default function IntegrationsView() {
 
       <ConfirmDialog
         open={!!confirmDisconnectEmail}
-        onOpenChange={(open) => { if (!open) setConfirmDisconnectEmail(null); }}
-        title={t("integrations.googleCalendar.disconnectConfirm", { email: confirmDisconnectEmail })}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDisconnectEmail(null);
+        }}
+        title={t("integrations.googleCalendar.disconnectConfirm", {
+          email: confirmDisconnectEmail,
+        })}
         description={t("integrations.googleCalendar.disconnectDescription")}
         confirmText={t("integrations.googleCalendar.disconnect")}
         variant="destructive"
