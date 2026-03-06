@@ -2682,6 +2682,11 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("get-ydotool-status", () => {
+      const { getYdotoolStatus } = require("./ensureYdotool");
+      return getYdotoolStatus();
+    });
+
     ipcMain.handle("get-debug-state", async () => {
       try {
         return {

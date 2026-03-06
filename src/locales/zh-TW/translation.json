@@ -1084,6 +1084,63 @@
         "launchAtLoginDescription": "登入時自動啟動 OpenWhispr",
         "title": "啟動"
       },
+      "waylandPaste": {
+        "title": "Wayland 貼上設定",
+        "description": "Wayland 下的自動貼上需要 ydotool。請檢查以下各元件的狀態。",
+        "allGoodDesc": "自動貼上已就緒。",
+        "recheck": "重新檢查",
+        "copy": "複製",
+        "ydotoolDesc": "Wayland 輸入自動化工具",
+        "ydotooldDesc": "ydotool 常駐程式（Ubuntu/Pop!_OS 上為獨立套件）",
+        "uinputDesc": "核心輸入裝置存取",
+        "uinputRuleFound": "規則已存在但未生效，重新開機應可解決。",
+        "uinputRuleMissing": "未找到 udev 規則",
+        "inputGroup": "input 群組",
+        "inputGroupDesc": "使用者必須屬於 input 群組（需重新登入）",
+        "service": "systemd 服務",
+        "serviceDesc": "用於自動啟動 ydotoold 的使用者服務檔案",
+        "daemon": "ydotoold 常駐程式",
+        "daemonDesc": "背景服務必須正在執行",
+        "guide": {
+          "open": "指南",
+          "ydotool": {
+            "step1Title": "安裝 ydotool",
+            "step1Desc": "使用你的發行版套件管理員安裝 ydotool。",
+            "step2Title": "驗證安裝",
+            "step2Desc": "檢查 ydotool 是否在你的 PATH 中可用。"
+          },
+          "ydotoold": {
+            "step1Title": "安裝 ydotoold",
+            "step1Desc": "在 Ubuntu 和 Pop!_OS 上，ydotoold 是獨立的套件。在 Fedora 上它包含在 ydotool 中。"
+          },
+          "uinput": {
+            "ruleFoundTitle": "udev 規則已設定",
+            "ruleFoundDesc": "/dev/uinput 的 udev 規則已在系統中，但尚未生效。嘗試重新載入：",
+            "rebootTitle": "如果重新載入無效，請重新開機",
+            "rebootDesc": "在某些發行版上，udev 的變更只有在完全重新開機後才會生效。重新啟動電腦後回來重新檢查。",
+            "step1Title": "建立 udev 規則",
+            "step1Desc": "此規則為 input 群組使用者授予 /dev/uinput 的存取權限。",
+            "step2Title": "重新載入 udev 規則",
+            "step2Desc": "無需重新開機即可套用新規則。"
+          },
+          "group": {
+            "step1Title": "將你的使用者新增至 input 群組",
+            "step2Title": "登出並重新登入",
+            "step2Desc": "群組變更僅在新工作階段後生效。從桌面登出，重新登入，然後重新開啟 OpenWhispr。"
+          },
+          "service": {
+            "step1Title": "建立服務目錄",
+            "step2Title": "建立服務檔案",
+            "step2Desc": "建立一個使用者層級的 systemd 服務，在登入時自動啟動 ydotoold。",
+            "step3Title": "重新載入並啟用"
+          },
+          "daemon": {
+            "step1Title": "啟動常駐程式",
+            "step1Desc": "啟動 ydotoold 並設定為每次登入時自動執行。",
+            "step2Title": "驗證是否正在執行"
+          }
+        }
+      },
       "updates": {
         "badges": {
           "dev": "Dev",

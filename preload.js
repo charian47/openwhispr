@@ -342,6 +342,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getLogLevel: () => ipcRenderer.invoke("get-log-level"),
   log: (entry) => ipcRenderer.invoke("app-log", entry),
 
+  // ydotool status check
+  getYdotoolStatus: () => ipcRenderer.invoke("get-ydotool-status"),
+
   // Debug logging management
   getDebugState: () => ipcRenderer.invoke("get-debug-state"),
   setDebugLogging: (enabled) => ipcRenderer.invoke("set-debug-logging", enabled),
