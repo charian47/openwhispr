@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { getSettings } from "../stores/settingsStore";
+import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 import logger from "../utils/logger";
 
 interface UseMeetingTranscriptionReturn {
@@ -10,8 +12,171 @@ interface UseMeetingTranscriptionReturn {
   stopTranscription: () => Promise<void>;
 }
 
+const MEETING_AUDIO_BUFFER_SIZE = 800;
+const MEETING_STOP_FLUSH_TIMEOUT_MS = 50;
+
+const getMeetingWorkletBlobUrl = (() => {
+  let blobUrl: string | null = null;
+
+  return () => {
+    if (blobUrl) return blobUrl;
+
+    const code = `
+const BUFFER_SIZE = ${MEETING_AUDIO_BUFFER_SIZE};
+class MeetingPCMProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this._buffer = new Int16Array(BUFFER_SIZE);
+    this._offset = 0;
+    this._stopped = false;
+    this.port.onmessage = (event) => {
+      if (event.data === "stop") {
+        if (this._offset > 0) {
+          const partial = this._buffer.slice(0, this._offset);
+          this.port.postMessage(partial.buffer, [partial.buffer]);
+          this._buffer = new Int16Array(BUFFER_SIZE);
+          this._offset = 0;
+        }
+        this._stopped = true;
+      }
+    };
+  }
+  process(inputs) {
+    if (this._stopped) return false;
+    const input = inputs[0]?.[0];
+    if (!input) return true;
+    for (let i = 0; i < input.length; i++) {
+      const s = Math.max(-1, Math.min(1, input[i]));
+      this._buffer[this._offset++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      if (this._offset >= BUFFER_SIZE) {
+        this.port.postMessage(this._buffer.buffer, [this._buffer.buffer]);
+        this._buffer = new Int16Array(BUFFER_SIZE);
+        this._offset = 0;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor("meeting-pcm-processor", MeetingPCMProcessor);
+`;
+
+    blobUrl = URL.createObjectURL(new Blob([code], { type: "application/javascript" }));
+    return blobUrl;
+  };
+})();
+
+const getMeetingMicConstraints = async (): Promise<MediaStreamConstraints> => {
+  const { preferBuiltInMic, selectedMicDeviceId } = getSettings();
+  const noProcessing = {
+    echoCancellation: false,
+    noiseSuppression: false,
+    autoGainControl: false,
+  };
+
+  if (preferBuiltInMic) {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const builtInMic = devices.find(
+        (device) => device.kind === "audioinput" && isBuiltInMicrophone(device.label)
+      );
+
+      if (builtInMic?.deviceId) {
+        return {
+          audio: {
+            deviceId: { exact: builtInMic.deviceId },
+            ...noProcessing,
+          },
+        };
+      }
+    } catch (err) {
+      logger.debug(
+        "Failed to enumerate microphones for meeting transcription",
+        { error: (err as Error).message },
+        "meeting"
+      );
+    }
+  }
+
+  if (selectedMicDeviceId && selectedMicDeviceId !== "default") {
+    return {
+      audio: {
+        deviceId: { exact: selectedMicDeviceId },
+        ...noProcessing,
+      },
+    };
+  }
+
+  return { audio: noProcessing };
+};
+
+const createAudioPipeline = async ({
+  stream,
+  context,
+  label,
+  onChunk,
+}: {
+  stream: MediaStream;
+  context: AudioContext;
+  label: string;
+  onChunk: (chunk: ArrayBuffer) => void;
+}) => {
+  if (context.state === "suspended") {
+    await context.resume();
+  }
+
+  await context.audioWorklet.addModule(getMeetingWorkletBlobUrl());
+
+  const source = context.createMediaStreamSource(stream);
+  const processor = new AudioWorkletNode(context, "meeting-pcm-processor");
+  let chunkCount = 0;
+
+  processor.port.onmessage = (event) => {
+    const chunk = event.data;
+    if (!(chunk instanceof ArrayBuffer)) return;
+
+    if (chunkCount < 10 || chunkCount % 50 === 0) {
+      const samples = new Int16Array(chunk);
+      let maxAmplitude = 0;
+      for (let i = 0; i < samples.length; i++) {
+        const normalized = Math.abs(samples[i]) / 0x7fff;
+        if (normalized > maxAmplitude) maxAmplitude = normalized;
+      }
+
+      logger.debug(
+        `${label} audio chunk`,
+        { maxAmplitude: maxAmplitude.toFixed(6), samples: samples.length },
+        "meeting"
+      );
+    }
+
+    chunkCount++;
+    onChunk(chunk);
+  };
+
+  source.connect(processor);
+  processor.connect(context.destination);
+
+  return { source, processor };
+};
+
+const flushAndDisconnectProcessor = async (processor: AudioWorkletNode | null) => {
+  if (!processor) return;
+
+  try {
+    processor.port.postMessage("stop");
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, MEETING_STOP_FLUSH_TIMEOUT_MS);
+    });
+  } catch {}
+
+  processor.port.onmessage = null;
+  processor.disconnect();
+};
+
 const getSystemAudioStream = async (): Promise<MediaStream | null> => {
   try {
+    // Use getDisplayMedia (handled by setDisplayMediaRequestHandler in main process)
+    // which properly captures system audio via macOS ScreenCaptureKit loopback.
     const stream = await navigator.mediaDevices.getDisplayMedia({
       audio: true,
       video: true,
@@ -55,23 +220,36 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
   const [error, setError] = useState<string | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
+  const micContextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const scriptNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const processorRef = useRef<AudioWorkletNode | null>(null);
+  const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const micProcessorRef = useRef<AudioWorkletNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
   const isRecordingRef = useRef(false);
   const isStartingRef = useRef(false);
   const ipcCleanupsRef = useRef<Array<() => void>>([]);
 
   const cleanup = useCallback(async () => {
-    if (scriptNodeRef.current) {
-      scriptNodeRef.current.onaudioprocess = null;
-      scriptNodeRef.current.disconnect();
-      scriptNodeRef.current = null;
+    if (processorRef.current) {
+      await flushAndDisconnectProcessor(processorRef.current);
+      processorRef.current = null;
     }
 
     if (sourceRef.current) {
       sourceRef.current.disconnect();
       sourceRef.current = null;
+    }
+
+    if (micProcessorRef.current) {
+      await flushAndDisconnectProcessor(micProcessorRef.current);
+      micProcessorRef.current = null;
+    }
+
+    if (micSourceRef.current) {
+      micSourceRef.current.disconnect();
+      micSourceRef.current = null;
     }
 
     if (streamRef.current) {
@@ -81,11 +259,25 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
       streamRef.current = null;
     }
 
+    if (micStreamRef.current) {
+      try {
+        micStreamRef.current.getTracks().forEach((t) => t.stop());
+      } catch {}
+      micStreamRef.current = null;
+    }
+
     if (audioContextRef.current) {
       try {
         await audioContextRef.current.close();
       } catch {}
       audioContextRef.current = null;
+    }
+
+    if (micContextRef.current) {
+      try {
+        await micContextRef.current.close();
+      } catch {}
+      micContextRef.current = null;
     }
 
     ipcCleanupsRef.current.forEach((fn) => fn());
@@ -94,10 +286,10 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
 
   const stopTranscription = useCallback(async () => {
     if (!isRecordingRef.current) return;
-    isRecordingRef.current = false;
     setIsRecording(false);
 
     await cleanup();
+    isRecordingRef.current = false;
 
     try {
       const result = await window.electronAPI?.meetingTranscriptionStop?.();
@@ -123,7 +315,6 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
     isStartingRef.current = true;
 
     logger.info("Meeting transcription starting...", {}, "meeting");
-
     setTranscript("");
     setPartialTranscript("");
     setError(null);
@@ -136,14 +327,13 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
         }),
         getSystemAudioStream(),
       ]);
-
       if (!startResult?.success) {
         logger.error(
           "Meeting transcription IPC start failed",
           { error: startResult?.error },
           "meeting"
         );
-        stream?.getTracks().forEach((t) => t.stop());
+        stream?.getTracks().forEach((track) => track.stop());
         isStartingRef.current = false;
         return;
       }
@@ -158,16 +348,6 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
 
       const audioContext = new AudioContext({ sampleRate: 24000 });
       audioContextRef.current = audioContext;
-
-      if (audioContext.state === "suspended") {
-        await audioContext.resume();
-      }
-
-      const source = audioContext.createMediaStreamSource(stream);
-      sourceRef.current = source;
-
-      const scriptNode = audioContext.createScriptProcessor(4096, 1, 1);
-      scriptNodeRef.current = scriptNode;
 
       const partialCleanup = window.electronAPI?.onMeetingTranscriptionPartial?.((text) => {
         setPartialTranscript(text);
@@ -186,51 +366,79 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
       });
       if (errorCleanup) ipcCleanupsRef.current.push(errorCleanup);
 
-      const audioBuffer: ArrayBuffer[] = [];
+      const pendingAudioChunks: ArrayBuffer[] = [];
       let socketReady = false;
 
-      let audioCheckCount = 0;
-      scriptNode.onaudioprocess = (event) => {
-        if (!isRecordingRef.current) return;
-        const input = event.inputBuffer.getChannelData(0);
-        const pcm = new Int16Array(input.length);
-        let maxAmplitude = 0;
-        for (let i = 0; i < input.length; i++) {
-          const s = Math.max(-1, Math.min(1, input[i]));
-          pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-          const abs = Math.abs(input[i]);
-          if (abs > maxAmplitude) maxAmplitude = abs;
-        }
-        if (audioCheckCount < 10 || audioCheckCount % 50 === 0) {
-          logger.debug(
-            "Meeting audio chunk",
-            { maxAmplitude: maxAmplitude.toFixed(6), samples: input.length },
-            "meeting"
-          );
-        }
-        audioCheckCount++;
+      const { source, processor } = await createAudioPipeline({
+        stream,
+        context: audioContext,
+        label: "Meeting system",
+        onChunk: (chunk) => {
+          if (!isRecordingRef.current) return;
+          if (socketReady) {
+            window.electronAPI?.meetingTranscriptionSend?.(chunk);
+            return;
+          }
+          pendingAudioChunks.push(chunk.slice(0));
+        },
+      });
+      sourceRef.current = source;
+      processorRef.current = processor;
 
-        if (socketReady) {
-          window.electronAPI?.meetingTranscriptionSend?.(pcm.buffer);
-        } else {
-          audioBuffer.push(pcm.buffer.slice(0));
-        }
-      };
+      try {
+        const micStream = await navigator.mediaDevices.getUserMedia(
+          await getMeetingMicConstraints()
+        );
+        micStreamRef.current = micStream;
 
-      source.connect(scriptNode);
-      scriptNode.connect(audioContext.destination);
+        const micContext = new AudioContext({ sampleRate: 24000 });
+        micContextRef.current = micContext;
+
+        const { source: micSource, processor: micProcessor } = await createAudioPipeline({
+          stream: micStream,
+          context: micContext,
+          label: "Meeting mic",
+          onChunk: (chunk) => {
+            if (!isRecordingRef.current) return;
+            if (socketReady) {
+              window.electronAPI?.meetingTranscriptionSend?.(chunk);
+              return;
+            }
+            pendingAudioChunks.push(chunk.slice(0));
+          },
+        });
+        micSourceRef.current = micSource;
+        micProcessorRef.current = micProcessor;
+
+        const micTrack = micStream.getAudioTracks()[0];
+        logger.info(
+          "Mic capture started for meeting transcription",
+          {
+            label: micTrack?.label,
+            settings: micTrack?.getSettings(),
+          },
+          "meeting"
+        );
+      } catch (micErr) {
+        logger.error(
+          "Mic capture failed, continuing with system audio only",
+          { error: (micErr as Error).message },
+          "meeting"
+        );
+      }
 
       isRecordingRef.current = true;
       isStartingRef.current = false;
       setIsRecording(true);
+      socketReady = true;
 
-      for (const chunk of audioBuffer) {
+      for (const chunk of pendingAudioChunks) {
         window.electronAPI?.meetingTranscriptionSend?.(chunk);
       }
-      socketReady = true;
+
       logger.info(
         "Meeting transcription started successfully",
-        { bufferedChunks: audioBuffer.length },
+        { bufferedChunks: pendingAudioChunks.length },
         "meeting"
       );
     } catch (err) {
@@ -247,8 +455,9 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
   useEffect(() => {
     return () => {
       if (isRecordingRef.current) {
-        isRecordingRef.current = false;
-        cleanup();
+        void cleanup().finally(() => {
+          isRecordingRef.current = false;
+        });
       }
     };
   }, [cleanup]);
