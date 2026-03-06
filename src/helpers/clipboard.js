@@ -79,6 +79,7 @@ class ClipboardManager {
     this.winFastPasteChecked = false;
     this.linuxFastPastePath = null;
     this.linuxFastPasteChecked = false;
+    this.portalDenied = false;
   }
 
   _isWayland() {
@@ -345,13 +346,16 @@ class ClipboardManager {
           if (newToken) {
             this._savePortalToken(newToken);
           }
-          // If no token existed before and none was returned, the portal
-          // exited 0 without actually pasting (observed on KDE Wayland).
+          // Exit 0 without token: dialog was dismissed without approving (e.g. clicked outside).
+          // Reject with a recognizable message so the caller can retry.
           if (!restoreToken && !newToken) {
-            reject(new Error("linux-fast-paste --portal exited 0 but produced no token"));
+            reject(new Error("portal-dismissed"));
             return;
           }
           resolve(newToken || null);
+        } else if (code === 3) {
+          // User explicitly clicked "Deny" in the portal dialog.
+          reject(new Error("portal-denied"));
         } else if (code === 5) {
           reject(new Error("portal support not compiled in"));
         } else {
@@ -1042,23 +1046,40 @@ class ClipboardManager {
         // On GNOME/KDE Wayland, try portal mode first (RemoteDesktop D-Bus portal).
         // uinput events are accepted by the kernel but Mutter doesn't reliably
         // route them to focused native Wayland windows (issue #292).
-        if ((isGnome || isKde) && linuxFastPaste) {
-          try {
-            const portalResult = await this._runPortalPaste(linuxFastPaste, earlyIsTerminal);
-            this.safeLog("✅ Paste successful using linux-fast-paste --portal (RemoteDesktop)");
-            debugLogger.info(
-              "Paste successful",
-              { tool: "linux-fast-paste", method: "portal", token: !!portalResult },
-              "clipboard"
-            );
-            restoreClipboard();
-            return "portal";
-          } catch (portalError) {
-            debugLogger.warn(
-              "linux-fast-paste --portal failed, falling back to uinput",
-              { error: portalError?.message },
-              "clipboard"
-            );
+        if ((isGnome || isKde) && linuxFastPaste && !this.portalDenied) {
+          const MAX_PORTAL_RETRIES = 3;
+          for (let attempt = 0; attempt < MAX_PORTAL_RETRIES; attempt++) {
+            try {
+              const portalResult = await this._runPortalPaste(linuxFastPaste, earlyIsTerminal);
+              this.safeLog("✅ Paste successful using linux-fast-paste --portal (RemoteDesktop)");
+              debugLogger.info(
+                "Paste successful",
+                { tool: "linux-fast-paste", method: "portal", token: !!portalResult },
+                "clipboard"
+              );
+              restoreClipboard();
+              return "portal";
+            } catch (portalError) {
+              if (portalError?.message === "portal-dismissed") {
+                debugLogger.warn(
+                  "Portal dialog dismissed without response, retrying",
+                  { attempt: attempt + 1, maxRetries: MAX_PORTAL_RETRIES },
+                  "clipboard"
+                );
+                continue;
+              }
+              if (portalError?.message === "portal-denied") {
+                this.portalDenied = true;
+                debugLogger.warn("User denied portal access, skipping portal for this session", {}, "clipboard");
+              } else {
+                debugLogger.warn(
+                  "linux-fast-paste --portal failed, falling back to uinput",
+                  { error: portalError?.message },
+                  "clipboard"
+                );
+              }
+              break;
+            }
           }
         }
 
