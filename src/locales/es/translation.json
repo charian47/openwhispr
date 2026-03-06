@@ -1752,6 +1752,15 @@
       "pro": "Pro",
       "proLimit": "Ilimitado",
       "upgrade": "Mejorar"
+    },
+    "meetingGate": {
+      "title": "La grabación de reuniones requiere un plan de pago",
+      "description": "Actualiza para grabar reuniones, obtener transcripciones en tiempo real y generar notas de reunión con AI.",
+      "upgrade": "Actualizar plan"
+    },
+    "notABot": {
+      "title": "OpenWhispr es un grabador de reuniones, no un bot",
+      "description": "OpenWhispr captura el audio directamente de tu sistema — nunca se une a tus reuniones como participante. Solo conecta tu calendario y toma notas con normalidad."
     }
   },
   "upcoming": {
@@ -1761,7 +1770,14 @@
     "noMoreMeetings": "No hay más reuniones hoy",
     "now": "Ahora",
     "join": "Unirse",
-    "untitledEvent": "Evento sin título"
+    "untitledEvent": "Evento sin título",
+    "paidOnly": "La grabación de reuniones es una función de pago",
+    "paidOnlyDescription": "Actualiza tu plan para grabar y transcribir reuniones en tiempo real.",
+    "upgrade": "Actualizar plan",
+    "connectCalendar": "Conecta tu calendario",
+    "connectCalendarDescription": "Vincula tu Google Calendar para ver próximas reuniones y grabar notas automáticamente.",
+    "notABot": "OpenWhispr graba usando el audio de tu sistema — nunca se une a las reuniones como un bot.",
+    "connectCalendarButton": "Conectar calendario"
   },
   "notesView": {
     "searchPlaceholder": "Buscar notas…",

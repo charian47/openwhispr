@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Calendar, Loader2, Monitor, Video } from "lucide-react";
+import { Calendar, Loader2, Lock, Monitor, Video } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "./lib/utils";
 import type { CalendarEvent } from "../types/calendar";
 import { formatUpcomingDateGroup } from "../utils/dateFormatting";
 import { useScreenRecordingPermission } from "../hooks/useScreenRecordingPermission";
+import { useUsage } from "../hooks/useUsage";
 
 interface UpcomingMeetingsProps {
   events: CalendarEvent[];
@@ -39,6 +40,8 @@ export default function UpcomingMeetings({ events, isLoading }: UpcomingMeetings
   const { t, i18n } = useTranslation();
   const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
   const screenRecording = useScreenRecordingPermission();
+  const usage = useUsage();
+  const isProUser = !!(usage?.isSubscribed || usage?.isTrial);
 
   const now = useMemo(() => new Date(), []);
 
@@ -115,6 +118,24 @@ export default function UpcomingMeetings({ events, isLoading }: UpcomingMeetings
                 className="text-xs h-7"
               >
                 {t("upcoming.openSettings")}
+              </Button>
+            </>
+          ) : !isProUser ? (
+            <>
+              <Lock size={24} className="text-muted-foreground/30 mb-2.5" />
+              <p className="text-xs font-medium text-muted-foreground/70 text-center mb-1">
+                {t("upcoming.paidOnly")}
+              </p>
+              <p className="text-xs text-muted-foreground/50 text-center mb-3">
+                {t("upcoming.paidOnlyDescription")}
+              </p>
+              <Button
+                size="sm"
+                onClick={() => usage?.openCheckout()}
+                disabled={usage?.checkoutLoading}
+                className="text-xs h-7"
+              >
+                {t("upcoming.upgrade")}
               </Button>
             </>
           ) : (

@@ -370,19 +370,24 @@ export default function PersonalNotesView({
 
   // Pre-warm WebSocket when entering meeting mode (before user hits record)
   useEffect(() => {
-    if (isMeetingMode) {
+    if (isMeetingMode && isProUser) {
       prepareMeetingTranscription();
     }
-  }, [isMeetingMode, prepareMeetingTranscription]);
+  }, [isMeetingMode, isProUser, prepareMeetingTranscription]);
 
   useEffect(() => {
     if (!meetingRecordingRequest || activeNoteId !== meetingRecordingRequest.noteId) return;
+    if (!isProUser) {
+      onMeetingRecordingRequestHandled?.();
+      return;
+    }
     meetingNoteIdRef.current = meetingRecordingRequest.noteId;
     startMeetingTranscription();
     onMeetingRecordingRequestHandled?.();
   }, [
     meetingRecordingRequest,
     activeNoteId,
+    isProUser,
     startMeetingTranscription,
     onMeetingRecordingRequestHandled,
   ]);

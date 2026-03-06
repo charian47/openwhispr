@@ -1748,6 +1748,15 @@
       "pro": "Pro",
       "proLimit": "無制限",
       "upgrade": "アップグレード"
+    },
+    "meetingGate": {
+      "title": "会議の録音には有料プランが必要です",
+      "description": "アップグレードして、会議を録音し、リアルタイムの文字起こしと AI 会議メモを生成できます。",
+      "upgrade": "プランをアップグレード"
+    },
+    "notABot": {
+      "title": "OpenWhispr はミーティング録音ツールであり、ボットではありません",
+      "description": "OpenWhispr はシステムから直接オーディオをキャプチャします — 参加者としてミーティングに参加することはありません。カレンダーを接続して、通常通りノートを取るだけです。"
     }
   },
   "upcoming": {
@@ -1757,7 +1766,14 @@
     "noMoreMeetings": "今日の予定はありません",
     "now": "進行中",
     "join": "参加",
-    "untitledEvent": "無題のイベント"
+    "untitledEvent": "無題のイベント",
+    "paidOnly": "会議の録音は有料機能です",
+    "paidOnlyDescription": "プランをアップグレードして、会議をリアルタイムで録音・文字起こしできます。",
+    "upgrade": "プランをアップグレード",
+    "connectCalendar": "カレンダーを接続",
+    "connectCalendarDescription": "Google カレンダーを連携して、今後のミーティングを確認し、自動的にノートを記録します。",
+    "notABot": "OpenWhispr はシステムオーディオで録音します — ボットとしてミーティングに参加することはありません。",
+    "connectCalendarButton": "カレンダーを接続"
   },
   "notesView": {
     "searchPlaceholder": "ノートを検索…",

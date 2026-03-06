@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Mail, Plus, Unlink } from "lucide-react";
+import { Info, Loader2, Lock, Mail, Plus, Unlink } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { SettingsPanel, SettingsPanelRow } from "./ui/SettingsSection";
 import { ConfirmDialog } from "./ui/dialog";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useScreenRecordingPermission } from "../hooks/useScreenRecordingPermission";
+import { useUsage } from "../hooks/useUsage";
 import googleCalendarIcon from "../assets/icons/google-calendar.svg";
 
 export default function IntegrationsView() {
@@ -17,6 +18,8 @@ export default function IntegrationsView() {
   const [confirmDisconnectEmail, setConfirmDisconnectEmail] = useState<string | null>(null);
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const screenRecording = useScreenRecordingPermission();
+  const usage = useUsage();
+  const isProUser = !!(usage?.isSubscribed || usage?.isTrial);
   const hasAccounts = gcalAccounts.length > 0;
 
   const startOAuth = useCallback(async () => {
@@ -162,6 +165,42 @@ export default function IntegrationsView() {
           </SettingsPanelRow>
         )}
       </SettingsPanel>
+
+      {!hasAccounts && (
+        <div className="rounded-lg border border-border/40 dark:border-border-subtle/40 bg-muted/20 dark:bg-surface-2/30 p-4 flex items-start gap-3">
+          <Info size={15} className="text-primary/60 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-foreground/80">
+              {t("integrations.notABot.title")}
+            </p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5 leading-relaxed">
+              {t("integrations.notABot.description")}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!isProUser && (
+        <div className="rounded-lg border border-border/40 dark:border-border-subtle/40 bg-muted/30 dark:bg-surface-2/40 p-4 flex items-start gap-3">
+          <Lock size={15} className="text-muted-foreground/50 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-foreground/80">
+              {t("integrations.meetingGate.title")}
+            </p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5 leading-relaxed">
+              {t("integrations.meetingGate.description")}
+            </p>
+            <Button
+              size="sm"
+              onClick={() => usage?.openCheckout()}
+              disabled={usage?.checkoutLoading}
+              className="mt-2.5 text-xs h-7"
+            >
+              {t("integrations.meetingGate.upgrade")}
+            </Button>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={!!confirmDisconnectEmail}
