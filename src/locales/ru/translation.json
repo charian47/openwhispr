@@ -224,7 +224,13 @@
         "today": "Сегодня",
         "yesterday": "Вчера"
       },
-      "transcriptionFailed": "Транскрипция не удалась"
+      "transcriptionFailed": "Транскрипция не удалась",
+      "clearAll": "Очистить все",
+      "clearAllTitle": "Очистить все транскрипции",
+      "clearAllDescription": "Все транскрипции и аудиофайлы будут безвозвратно удалены.",
+      "clearAllSuccess": "История очищена",
+      "clearAllErrorTitle": "Не удалось очистить историю",
+      "clearAllErrorDescription": "Что-то пошло не так. Попробуйте ещё раз."
     },
     "cloudMigration": {
       "title": "Добро пожаловать в OpenWhispr Pro",

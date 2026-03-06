@@ -224,7 +224,13 @@
         "today": "Heute",
         "yesterday": "Gestern"
       },
-      "transcriptionFailed": "Transkription fehlgeschlagen"
+      "transcriptionFailed": "Transkription fehlgeschlagen",
+      "clearAll": "Alle löschen",
+      "clearAllTitle": "Alle Transkriptionen löschen",
+      "clearAllDescription": "Alle Transkriptionen und Audiodateien werden dauerhaft entfernt.",
+      "clearAllSuccess": "Verlauf gelöscht",
+      "clearAllErrorTitle": "Verlauf konnte nicht gelöscht werden",
+      "clearAllErrorDescription": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
     },
     "cloudMigration": {
       "title": "Willkommen bei OpenWhispr Pro",

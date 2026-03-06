@@ -16,6 +16,7 @@ import {
   initializeTranscriptions,
   removeTranscription as removeFromStore,
   updateTranscription as updateInStore,
+  clearTranscriptions as clearStore,
 } from "../stores/transcriptionStore";
 import ControlPanelSidebar, { type ControlPanelView } from "./ControlPanelSidebar";
 import WindowControls from "./WindowControls";
@@ -286,6 +287,37 @@ export default function ControlPanel() {
     },
     [showConfirmDialog, showAlertDialog, t]
   );
+
+  const clearAllTranscriptions = useCallback(() => {
+    showConfirmDialog({
+      title: t("controlPanel.history.clearAllTitle"),
+      description: t("controlPanel.history.clearAllDescription"),
+      onConfirm: async () => {
+        try {
+          const result = await window.electronAPI.clearTranscriptions();
+          if (result.success) {
+            clearStore();
+            toast({
+              title: t("controlPanel.history.clearAllSuccess"),
+              variant: "success",
+              duration: 2000,
+            });
+          } else {
+            showAlertDialog({
+              title: t("controlPanel.history.clearAllErrorTitle"),
+              description: t("controlPanel.history.clearAllErrorDescription"),
+            });
+          }
+        } catch {
+          showAlertDialog({
+            title: t("controlPanel.history.clearAllErrorTitle"),
+            description: t("controlPanel.history.clearAllErrorDescription"),
+          });
+        }
+      },
+      variant: "destructive",
+    });
+  }, [showConfirmDialog, showAlertDialog, toast, t]);
 
   const showAudioInFolder = useCallback(
     async (id: number) => {
@@ -657,6 +689,7 @@ export default function ControlPanel() {
                 useReasoningModel={useReasoningModel}
                 copyToClipboard={copyToClipboard}
                 deleteTranscription={deleteTranscription}
+                clearAllTranscriptions={clearAllTranscriptions}
                 onShowAudioInFolder={showAudioInFolder}
                 onRetryTranscription={retryTranscription}
                 onOpenSettings={(section) => {

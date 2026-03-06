@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
-import { Loader2, Sparkles, Cloud, X, Mic } from "lucide-react";
+import { Loader2, Sparkles, Cloud, X, Mic, Trash2 } from "lucide-react";
 import TranscriptionItem from "./ui/TranscriptionItem";
 import type { TranscriptionItem as TranscriptionItemType } from "../types/electron";
 import { formatHotkeyLabel } from "../utils/hotkeys";
@@ -21,6 +21,7 @@ interface HistoryViewProps {
   useReasoningModel: boolean;
   copyToClipboard: (text: string) => void;
   deleteTranscription: (id: number) => void;
+  clearAllTranscriptions: () => void;
   onOpenSettings: (section?: string) => void;
   onShowAudioInFolder: (id: number) => void;
   onRetryTranscription: (id: number) => Promise<void>;
@@ -37,6 +38,7 @@ export default function HistoryView({
   useReasoningModel,
   copyToClipboard,
   deleteTranscription,
+  clearAllTranscriptions,
   onOpenSettings,
   onShowAudioInFolder,
   onRetryTranscription,
@@ -260,13 +262,22 @@ export default function HistoryView({
                 </div>
               </div>
             ) : (
-              <div>
+              <div className="group">
                 {groupedHistory.map((group, index) => (
                   <div key={group.label} className={index > 0 ? "mt-4" : ""}>
-                    <div className="sticky -top-1 z-10 -mx-4 px-5 pt-2 pb-2 bg-background">
+                    <div className="sticky -top-1 z-10 -mx-4 px-5 pt-2 pb-2 bg-background flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wide">
                         {group.label}
                       </span>
+                      {index === 0 && (
+                        <button
+                          onClick={clearAllTranscriptions}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] text-muted-foreground/60 opacity-0 group-hover:opacity-100 hover:!text-destructive hover:!bg-destructive/8 dark:hover:!bg-destructive/10 active:scale-[0.98] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/30 transition-all duration-200"
+                        >
+                          <Trash2 size={11} />
+                          <span>{t("controlPanel.history.clearAll")}</span>
+                        </button>
+                      )}
                     </div>
                     <div className="space-y-1.5 relative z-0">
                       {group.items.map((item) => (

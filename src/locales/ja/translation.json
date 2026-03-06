@@ -224,7 +224,13 @@
         "today": "今日",
         "yesterday": "昨日"
       },
-      "transcriptionFailed": "文字起こしに失敗しました"
+      "transcriptionFailed": "文字起こしに失敗しました",
+      "clearAll": "すべて削除",
+      "clearAllTitle": "すべての文字起こしを削除",
+      "clearAllDescription": "すべての文字起こしと音声ファイルが完全に削除されます。",
+      "clearAllSuccess": "履歴を削除しました",
+      "clearAllErrorTitle": "履歴を削除できませんでした",
+      "clearAllErrorDescription": "問題が発生しました。もう一度お試しください。"
     },
     "cloudMigration": {
       "title": "OpenWhispr Pro へようこそ",

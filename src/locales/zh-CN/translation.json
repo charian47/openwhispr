@@ -224,7 +224,13 @@
         "today": "今天",
         "yesterday": "昨天"
       },
-      "transcriptionFailed": "转录失败"
+      "transcriptionFailed": "转录失败",
+      "clearAll": "全部清除",
+      "clearAllTitle": "清除所有转录",
+      "clearAllDescription": "所有转录和音频文件将被永久删除。",
+      "clearAllSuccess": "历史记录已清除",
+      "clearAllErrorTitle": "无法清除历史记录",
+      "clearAllErrorDescription": "出了点问题，请重试。"
     },
     "cloudMigration": {
       "title": "欢迎使用 OpenWhispr Pro",

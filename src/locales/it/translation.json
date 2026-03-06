@@ -224,7 +224,13 @@
         "today": "Oggi",
         "yesterday": "Ieri"
       },
-      "transcriptionFailed": "La trascrizione è fallita"
+      "transcriptionFailed": "La trascrizione è fallita",
+      "clearAll": "Cancella tutto",
+      "clearAllTitle": "Cancella tutte le trascrizioni",
+      "clearAllDescription": "Tutte le trascrizioni e i file audio verranno rimossi definitivamente.",
+      "clearAllSuccess": "Cronologia cancellata",
+      "clearAllErrorTitle": "Impossibile cancellare la cronologia",
+      "clearAllErrorDescription": "Qualcosa è andato storto. Riprova."
     },
     "cloudMigration": {
       "title": "Benvenuto in OpenWhispr Pro",

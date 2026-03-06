@@ -224,7 +224,13 @@
         "today": "Hoy",
         "yesterday": "Ayer"
       },
-      "transcriptionFailed": "La transcripción falló"
+      "transcriptionFailed": "La transcripción falló",
+      "clearAll": "Borrar todo",
+      "clearAllTitle": "Borrar todas las transcripciones",
+      "clearAllDescription": "Todas las transcripciones y archivos de audio se eliminarán permanentemente.",
+      "clearAllSuccess": "Historial borrado",
+      "clearAllErrorTitle": "No se pudo borrar el historial",
+      "clearAllErrorDescription": "Algo salió mal. Inténtalo de nuevo."
     },
     "cloudMigration": {
       "title": "Bienvenido a OpenWhispr Pro",
