@@ -90,7 +90,7 @@ export default function ControlPanelSidebar({
       />
 
       {onOpenSearch && (
-        <div className="px-2 pb-1">
+        <div className="px-2 pt-2 pb-1">
           <button
             onClick={onOpenSearch}
             className="group flex items-center w-full h-7 px-2.5 rounded-md border border-border/25 dark:border-white/8 bg-foreground/3 dark:bg-white/3 hover:bg-foreground/5 dark:hover:bg-white/5 transition-colors gap-2 outline-none focus-visible:ring-1 focus-visible:ring-primary/30"

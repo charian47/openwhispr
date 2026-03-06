@@ -593,7 +593,6 @@ class DatabaseManager {
         FROM notes n
         JOIN notes_fts ON notes_fts.rowid = n.id
         WHERE notes_fts MATCH ?
-          AND n.deleted_at IS NULL
         ORDER BY notes_fts.rank
         LIMIT ?
       `

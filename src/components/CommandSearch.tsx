@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Search, FileText, Mic, Folder } from "lucide-react";
+import { Search, FileText, Mic, Folder, Users, Upload } from "lucide-react";
 import { cn } from "./lib/utils";
 import type { NoteItem, FolderItem, TranscriptionItem } from "../types/electron.js";
 import { normalizeDbDate } from "../utils/dateFormatting";
@@ -213,7 +213,14 @@ export default function CommandSearch({
               onKeyDown={handleKeyDown}
               placeholder={t("commandSearch.placeholder")}
               autoFocus
-              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 outline-none"
+              className="flex-1 text-sm text-foreground placeholder:text-muted-foreground/40"
+              style={{
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                boxShadow: "none",
+                padding: 0,
+              }}
             />
             {query && (
               <button
@@ -332,6 +339,8 @@ function NoteRow({
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const preview = stripMarkdownPreview(note.content).slice(0, 90);
+  const NoteIcon =
+    note.note_type === "meeting" ? Users : note.note_type === "upload" ? Upload : FileText;
   return (
     <button
       type="button"
@@ -345,7 +354,7 @@ function NoteRow({
           : "hover:bg-foreground/4 dark:hover:bg-white/4"
       )}
     >
-      <FileText
+      <NoteIcon
         size={13}
         className={cn(
           "shrink-0 mt-px transition-colors",
