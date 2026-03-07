@@ -7,6 +7,13 @@ const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const CALENDAR_SCOPE = "openid email https://www.googleapis.com/auth/calendar.readonly";
 const OAUTH_TIMEOUT_MS = 120000;
+const DEFAULT_DESKTOP_CALLBACK_URL = "https://openwhispr.com/auth/desktop-callback";
+
+const PROTOCOL_BY_CHANNEL = {
+  development: "openwhispr-dev",
+  staging: "openwhispr-staging",
+  production: "openwhispr",
+};
 
 class GoogleCalendarOAuth {
   constructor(databaseManager) {
@@ -19,6 +26,29 @@ class GoogleCalendarOAuth {
 
   getClientSecret() {
     return process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
+  }
+
+  _getDesktopCallbackUrl() {
+    return process.env.VITE_OPENWHISPR_OAUTH_CALLBACK_URL || DEFAULT_DESKTOP_CALLBACK_URL;
+  }
+
+  _getProtocol() {
+    const channel = process.env.OPENWHISPR_CHANNEL || "production";
+    return PROTOCOL_BY_CHANNEL[channel] || PROTOCOL_BY_CHANNEL.production;
+  }
+
+  _buildCallbackRedirect(params) {
+    const url = new URL(this._getDesktopCallbackUrl());
+    url.searchParams.set("protocol", this._getProtocol());
+    for (const [key, value] of Object.entries(params)) {
+      url.searchParams.set(key, value);
+    }
+    return url.toString();
+  }
+
+  _redirect(res, params) {
+    res.writeHead(302, { Location: this._buildCallbackRedirect(params) });
+    res.end();
   }
 
   startOAuthFlow() {
@@ -35,10 +65,7 @@ class GoogleCalendarOAuth {
           const error = url.searchParams.get("error");
 
           if (error) {
-            res.writeHead(200, { "Content-Type": "text/html" });
-            res.end(
-              "<html><body><h3>Authentication failed. You can close this tab.</h3></body></html>"
-            );
+            this._redirect(res, { gcal_error: error });
             cleanup();
             reject(new Error(`OAuth error: ${error}`));
             return;
@@ -46,7 +73,7 @@ class GoogleCalendarOAuth {
 
           if (!code || returnedState !== state) {
             res.writeHead(400, { "Content-Type": "text/html" });
-            res.end("<html><body><h3>Invalid request. You can close this tab.</h3></body></html>");
+            res.end("<html><body><h3>Invalid request.</h3></body></html>");
             return;
           }
 
@@ -54,10 +81,7 @@ class GoogleCalendarOAuth {
           const tokenData = await this.exchangeCodeForTokens(code, redirectUri, codeVerifier);
 
           if (tokenData.error) {
-            res.writeHead(200, { "Content-Type": "text/html" });
-            res.end(
-              "<html><body><h3>Authentication failed. You can close this tab.</h3></body></html>"
-            );
+            this._redirect(res, { gcal_error: "token_exchange_failed" });
             cleanup();
             reject(
               new Error(`Token exchange failed: ${tokenData.error_description || tokenData.error}`)
@@ -76,10 +100,7 @@ class GoogleCalendarOAuth {
           }
 
           if (!email) {
-            res.writeHead(200, { "Content-Type": "text/html" });
-            res.end(
-              "<html><body><h3>Authentication failed — could not retrieve email. You can close this tab.</h3></body></html>"
-            );
+            this._redirect(res, { gcal_error: "no_email" });
             cleanup();
             reject(new Error("Could not extract email from Google OAuth response"));
             return;
@@ -94,15 +115,11 @@ class GoogleCalendarOAuth {
             scope: tokenData.scope || CALENDAR_SCOPE,
           });
 
-          res.writeHead(200, { "Content-Type": "text/html" });
-          res.end(
-            "<html><body><h3>Authentication successful! You can close this tab.</h3></body></html>"
-          );
+          this._redirect(res, { gcal_connected: "true" });
           cleanup();
           resolve({ success: true, email });
         } catch (err) {
-          res.writeHead(500, { "Content-Type": "text/html" });
-          res.end("<html><body><h3>An error occurred. You can close this tab.</h3></body></html>");
+          this._redirect(res, { gcal_error: "server_error" });
           cleanup();
           reject(err);
         }
