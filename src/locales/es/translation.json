@@ -1105,7 +1105,10 @@
       "startup": {
         "launchAtLogin": "Abrir al iniciar sesión",
         "launchAtLoginDescription": "Inicia OpenWhispr automáticamente al iniciar sesión",
-        "title": "Inicio"
+        "title": "Inicio",
+        "description": "Controla el comportamiento de OpenWhispr al iniciar",
+        "startMinimized": "Iniciar minimizado",
+        "startMinimizedDescription": "Iniciar sin mostrar la ventana del panel de control"
       },
       "waylandPaste": {
         "title": "Configuración de pegado en Wayland",

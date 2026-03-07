@@ -737,6 +737,7 @@ declare global {
       notifyHotkeyChanged?: (hotkey: string) => void;
       notifyFloatingIconAutoHideChanged?: (enabled: boolean) => void;
       onFloatingIconAutoHideChanged?: (callback: (enabled: boolean) => void) => () => void;
+      notifyStartMinimizedChanged?: (enabled: boolean) => void;
       notifyPanelStartPositionChanged?: (position: string) => void;
 
       // Auto-start at login

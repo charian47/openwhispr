@@ -698,6 +698,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setAutoPasteEnabled,
     floatingIconAutoHide,
     setFloatingIconAutoHide,
+    startMinimized,
+    setStartMinimized,
     panelStartPosition,
     setPanelStartPosition,
     cloudBackupEnabled,
@@ -1867,10 +1869,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             </div>
 
             {/* Startup */}
-            {platform !== "linux" && (
-              <div>
-                <SectionHeader title={t("settingsPage.general.startup.title")} />
-                <SettingsPanel>
+            <div>
+              <SectionHeader
+                title={t("settingsPage.general.startup.title")}
+                description={t("settingsPage.general.startup.description")}
+              />
+              <SettingsPanel>
+                {platform !== "linux" && (
                   <SettingsPanelRow>
                     <SettingsRow
                       label={t("settingsPage.general.startup.launchAtLogin")}
@@ -1883,9 +1888,17 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       />
                     </SettingsRow>
                   </SettingsPanelRow>
-                </SettingsPanel>
-              </div>
-            )}
+                )}
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.general.startup.startMinimized")}
+                    description={t("settingsPage.general.startup.startMinimizedDescription")}
+                  >
+                    <Toggle checked={startMinimized} onChange={setStartMinimized} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
 
             {/* Microphone */}
             <div>

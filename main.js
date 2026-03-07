@@ -531,6 +531,11 @@ async function startApp() {
     }
   });
 
+  ipcMain.on("start-minimized-changed", (_event, enabled) => {
+    if (debugLogger) debugLogger.info("Start minimized changed", { enabled });
+    environmentManager.saveStartMinimized(enabled);
+  });
+
   ipcMain.on("panel-start-position-changed", (_event, position) => {
     windowManager.setPanelStartPosition(position);
   });
@@ -545,8 +550,12 @@ async function startApp() {
   }
 
   // Create windows FIRST so the user sees UI as soon as possible
+  const startMinimized = environmentManager.getStartMinimized();
+  if (debugLogger) debugLogger.info("Start minimized", { enabled: startMinimized });
   await windowManager.createMainWindow();
-  await windowManager.createControlPanelWindow();
+  if (!startMinimized) {
+    await windowManager.createControlPanelWindow();
+  }
 
   // Create agent window (hidden) and set up agent hotkey
   await windowManager.createAgentWindow();

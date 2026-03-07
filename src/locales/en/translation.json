@@ -1164,7 +1164,10 @@
       "startup": {
         "launchAtLogin": "Launch at login",
         "launchAtLoginDescription": "Start OpenWhispr automatically when you log in",
-        "title": "Startup"
+        "title": "Startup",
+        "description": "Control how OpenWhispr behaves when it launches",
+        "startMinimized": "Start minimized",
+        "startMinimizedDescription": "Launch without showing the control panel window"
       },
       "waylandPaste": {
         "title": "Wayland Paste Setup",

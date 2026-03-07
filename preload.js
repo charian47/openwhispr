@@ -513,6 +513,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   notifyPanelStartPositionChanged: (position) =>
     ipcRenderer.send("panel-start-position-changed", position),
 
+  // Start minimized
+  notifyStartMinimizedChanged: (enabled) =>
+    ipcRenderer.send("start-minimized-changed", enabled),
+
   // Auto-start management
   getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),
   setAutoStartEnabled: (enabled) => ipcRenderer.invoke("set-auto-start-enabled", enabled),

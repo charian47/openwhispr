@@ -58,6 +58,7 @@ const BOOLEAN_SETTINGS = new Set([
   "audioCuesEnabled",
   "pauseMediaOnDictation",
   "floatingIconAutoHide",
+  "startMinimized",
   "meetingProcessDetection",
   "meetingAudioDetection",
   "isSignedIn",
@@ -95,6 +96,7 @@ export interface SettingsState
   audioCuesEnabled: boolean;
   pauseMediaOnDictation: boolean;
   floatingIconAutoHide: boolean;
+  startMinimized: boolean;
   gcalAccounts: GoogleCalendarAccount[];
   gcalConnected: boolean;
   gcalEmail: string;
@@ -145,6 +147,7 @@ export interface SettingsState
   setAudioCuesEnabled: (value: boolean) => void;
   setPauseMediaOnDictation: (value: boolean) => void;
   setFloatingIconAutoHide: (enabled: boolean) => void;
+  setStartMinimized: (enabled: boolean) => void;
   setGcalAccounts: (accounts: GoogleCalendarAccount[]) => void;
   setMeetingProcessDetection: (value: boolean) => void;
   setMeetingAudioDetection: (value: boolean) => void;
@@ -277,6 +280,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   audioCuesEnabled: readBoolean("audioCuesEnabled", true),
   pauseMediaOnDictation: readBoolean("pauseMediaOnDictation", false),
   floatingIconAutoHide: readBoolean("floatingIconAutoHide", false),
+  startMinimized: readBoolean("startMinimized", false),
   ...(() => {
     let accounts: GoogleCalendarAccount[] = [];
     try {
@@ -441,6 +445,15 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     set({ floatingIconAutoHide: enabled });
     if (isBrowser) {
       window.electronAPI?.notifyFloatingIconAutoHideChanged?.(enabled);
+    }
+  },
+
+  setStartMinimized: (enabled: boolean) => {
+    if (get().startMinimized === enabled) return;
+    if (isBrowser) localStorage.setItem("startMinimized", String(enabled));
+    set({ startMinimized: enabled });
+    if (isBrowser) {
+      window.electronAPI?.notifyStartMinimizedChanged?.(enabled);
     }
   },
 

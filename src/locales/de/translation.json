@@ -1101,7 +1101,10 @@
       "startup": {
         "launchAtLogin": "Beim Anmelden starten",
         "launchAtLoginDescription": "OpenWhispr automatisch starten, wenn Sie sich anmelden",
-        "title": "Autostart"
+        "title": "Autostart",
+        "description": "Steuern Sie das Verhalten von OpenWhispr beim Start",
+        "startMinimized": "Minimiert starten",
+        "startMinimizedDescription": "Starten, ohne das Einstellungsfenster anzuzeigen"
       },
       "waylandPaste": {
         "title": "Wayland-Einfügen einrichten",

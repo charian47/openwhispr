@@ -1105,7 +1105,10 @@
       "startup": {
         "launchAtLogin": "Avvia all'accesso",
         "launchAtLoginDescription": "Avvia OpenWhispr automaticamente all'accesso",
-        "title": "Avvio"
+        "title": "Avvio",
+        "description": "Controlla il comportamento di OpenWhispr all'avvio",
+        "startMinimized": "Avvia ridotto a icona",
+        "startMinimizedDescription": "Avvia senza mostrare la finestra del pannello di controllo"
       },
       "waylandPaste": {
         "title": "Configurazione incolla su Wayland",

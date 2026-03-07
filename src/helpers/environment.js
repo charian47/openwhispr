@@ -23,6 +23,7 @@ const PERSISTED_KEYS = [
   "AGENT_KEY",
   "ACTIVATION_MODE",
   "FLOATING_ICON_AUTO_HIDE",
+  "START_MINIMIZED",
   "UI_LANGUAGE",
   "WHISPER_CUDA_ENABLED",
 ];
@@ -160,6 +161,16 @@ class EnvironmentManager {
 
   saveFloatingIconAutoHide(enabled) {
     const result = this._saveKey("FLOATING_ICON_AUTO_HIDE", String(enabled));
+    this.saveAllKeysToEnvFile().catch(() => {});
+    return result;
+  }
+
+  getStartMinimized() {
+    return this._getKey("START_MINIMIZED") === "true";
+  }
+
+  saveStartMinimized(enabled) {
+    const result = this._saveKey("START_MINIMIZED", String(enabled));
     this.saveAllKeysToEnvFile().catch(() => {});
     return result;
   }

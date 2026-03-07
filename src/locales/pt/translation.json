@@ -1077,7 +1077,10 @@
       "startup": {
         "launchAtLogin": "Iniciar ao fazer login",
         "launchAtLoginDescription": "Iniciar o OpenWhispr automaticamente ao fazer login",
-        "title": "Inicialização"
+        "title": "Inicialização",
+        "description": "Controle o comportamento do OpenWhispr ao iniciar",
+        "startMinimized": "Iniciar minimizado",
+        "startMinimizedDescription": "Iniciar sem mostrar a janela do painel de controle"
       },
       "waylandPaste": {
         "title": "Configuração de colagem no Wayland",

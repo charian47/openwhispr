@@ -1105,7 +1105,10 @@
       "startup": {
         "launchAtLogin": "Запускать при входе",
         "launchAtLoginDescription": "Автоматически запускать OpenWhispr при входе в систему",
-        "title": "Автозапуск"
+        "title": "Автозапуск",
+        "description": "Управляйте поведением OpenWhispr при запуске",
+        "startMinimized": "Запуск в свёрнутом виде",
+        "startMinimizedDescription": "Запускать без отображения окна панели управления"
       },
       "waylandPaste": {
         "title": "Настройка вставки в Wayland",

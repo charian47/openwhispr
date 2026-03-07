@@ -1105,7 +1105,10 @@
       "startup": {
         "launchAtLogin": "Lancer au démarrage",
         "launchAtLoginDescription": "Démarrer OpenWhispr automatiquement à la connexion",
-        "title": "Démarrage"
+        "title": "Démarrage",
+        "description": "Contrôlez le comportement d'OpenWhispr au lancement",
+        "startMinimized": "Démarrer réduit",
+        "startMinimizedDescription": "Lancer sans afficher la fenêtre du panneau de contrôle"
       },
       "waylandPaste": {
         "title": "Configuration du collage Wayland",

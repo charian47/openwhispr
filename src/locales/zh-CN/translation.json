@@ -1101,7 +1101,10 @@
       "startup": {
         "launchAtLogin": "登录时启动",
         "launchAtLoginDescription": "登录时自动启动 OpenWhispr",
-        "title": "启动"
+        "title": "启动",
+        "description": "控制 OpenWhispr 启动时的行为",
+        "startMinimized": "启动时最小化",
+        "startMinimizedDescription": "启动时不显示控制面板窗口"
       },
       "waylandPaste": {
         "title": "Wayland 粘贴设置",
