@@ -215,26 +215,24 @@ class OpenAIRealtimeStreaming {
         try {
           this.ws.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
         } catch {}
+
+        const prevOnFinal = this.onFinalTranscript;
+        await new Promise((resolve) => {
+          const tid = setTimeout(() => {
+            debugLogger.debug("OpenAI Realtime commit timeout, using accumulated text");
+            this.onFinalTranscript = prevOnFinal;
+            resolve();
+          }, DISCONNECT_TIMEOUT_MS);
+          this.onFinalTranscript = (text) => {
+            this.onFinalTranscript = prevOnFinal;
+            prevOnFinal?.(text);
+            clearTimeout(tid);
+            resolve();
+          };
+        });
       }
 
-      let timeoutId;
-      const result = await Promise.race([
-        new Promise((resolve) => {
-          this.closeResolve = resolve;
-          this.ws.close();
-        }),
-        new Promise((resolve) => {
-          timeoutId = setTimeout(() => {
-            debugLogger.debug("OpenAI Realtime close timeout, using accumulated text");
-            resolve({ text: this.getFullTranscript() });
-          }, DISCONNECT_TIMEOUT_MS);
-        }),
-      ]);
-      clearTimeout(timeoutId);
-      this.closeResolve = null;
-      this.cleanup();
-      this.isDisconnecting = false;
-      return result;
+      this.ws.close();
     }
 
     const result = { text: this.getFullTranscript() };
