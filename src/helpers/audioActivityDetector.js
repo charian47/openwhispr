@@ -8,8 +8,7 @@ const debugLogger = require("./debugLogger");
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
-// Windows uses tasklist (process spawn) which is heavier than macOS native binary / Linux pactl,
-// so poll less frequently to avoid input pipeline stalls from repeated process spawning.
+// Windows uses tasklist (process spawn) per check; poll less frequently to reduce overhead.
 const CHECK_INTERVAL_MS = process.platform === "win32" ? 15 * 1000 : 5 * 1000;
 const SUSTAINED_THRESHOLD_CHECKS = process.platform === "win32" ? 2 : 3;
 const COOLDOWN_MS = 30 * 60 * 1000;
@@ -193,10 +192,6 @@ class AudioActivityDetector extends EventEmitter {
   }
 
   async _checkWin32() {
-    // Use tasklist instead of PowerShell to avoid expensive .NET runtime startup
-    // that causes system-wide input stalls (mouse freezes) every poll cycle.
-    // Note: tasklist /FI uses AND logic for multiple filters, so we use a single
-    // unfiltered call and check the output for any matching process name.
     try {
       const { stdout } = await execAsync("tasklist /NH /FO CSV", EXEC_OPTS);
       const lower = stdout.toLowerCase();

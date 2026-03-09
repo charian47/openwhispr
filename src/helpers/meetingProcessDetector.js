@@ -10,10 +10,6 @@ const EXEC_OPTS = { timeout: 3000, encoding: "utf8" };
 
 async function hasProcess(name) {
   try {
-    if (process.platform === "win32") {
-      const { stdout } = await execAsync(`tasklist | findstr /I "${name}"`, EXEC_OPTS);
-      return stdout.trim().length > 0;
-    }
     await execAsync(`pgrep -f "${name}"`, EXEC_OPTS);
     return true;
   } catch {
@@ -58,8 +54,7 @@ const MEETING_APPS = {
     },
     { processKey: "webex", appName: "Webex", check: () => hasProcess("webexmeetingsapp") },
   ],
-  // Windows: uses a single tasklist call in _pollWin32() instead of per-app checks
-  // to minimize process spawning and avoid input pipeline stalls (mouse freezes).
+  // Windows: single tasklist call in _pollWin32() to avoid per-app process spawns.
   win32: [
     { processKey: "zoom", appName: "Zoom", imageName: "cpthost.exe" },
     { processKey: "teams", appName: "Microsoft Teams", imageName: "ms-teams_modulehost.exe" },
@@ -140,10 +135,6 @@ class MeetingProcessDetector extends EventEmitter {
     }
   }
 
-  /**
-   * Windows: single tasklist call to check all meeting processes at once,
-   * avoiding multiple process spawns that cause input pipeline stalls.
-   */
   async _pollWin32() {
     const apps = MEETING_APPS.win32 || [];
     let tasklistOutput = "";
