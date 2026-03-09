@@ -268,12 +268,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     localStorage.setItem("onboardingCompleted", "true");
     localStorage.setItem("skipAuth", skippedAuth.toString());
 
-    // Non-signed-in users using cloud mode need BYOK mode set,
-    // otherwise audioManager routes to OpenWhispr Cloud and demands sign-in.
-    // This covers users with their own API keys as well as users pointing at
-    // local inference appliances on another device (e.g. lemonade-server.ai)
-    // via a custom base URL — a future UI update should better surface this
-    // "local-but-remote" use case.
+    // Non-signed-in users in cloud mode default to BYOK to avoid
+    // "OpenWhispr Cloud requires sign-in" errors.
     if (!isSignedIn && !useLocalWhisper) {
       updateTranscriptionSettings({ cloudTranscriptionMode: "byok" });
     }
@@ -285,7 +281,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
 
     return true;
-  }, [hotkey, agentName, setDictationKey, ensureHotkeyRegistered]);
+  }, [hotkey, agentName, setDictationKey, ensureHotkeyRegistered, isSignedIn, useLocalWhisper, updateTranscriptionSettings]);
 
   const nextStep = useCallback(async () => {
     if (currentStep >= steps.length - 1) {
@@ -487,10 +483,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               }
               useLocalWhisper={useLocalWhisper}
               onModeChange={(isLocal) => {
-                updateTranscriptionSettings({ useLocalWhisper: isLocal });
-                if (!isLocal) {
-                  updateTranscriptionSettings({ cloudTranscriptionMode: "byok" });
-                }
+                updateTranscriptionSettings({
+                  useLocalWhisper: isLocal,
+                  ...(!isLocal && !isSignedIn ? { cloudTranscriptionMode: "byok" } : {}),
+                });
               }}
               openaiApiKey={openaiApiKey}
               setOpenaiApiKey={setOpenaiApiKey}
