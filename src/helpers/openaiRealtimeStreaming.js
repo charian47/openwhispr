@@ -211,6 +211,12 @@ class OpenAIRealtimeStreaming {
     this.isDisconnecting = true;
 
     if (this.ws.readyState === WebSocket.OPEN) {
+      if (this.audioBytesSent > 0) {
+        try {
+          this.ws.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
+        } catch {}
+      }
+
       let timeoutId;
       const result = await Promise.race([
         new Promise((resolve) => {
