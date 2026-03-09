@@ -794,8 +794,8 @@ class IPCHandlers {
       return result;
     });
 
-    ipcMain.handle("check-accessibility-permission", async () => {
-      return this.clipboardManager.checkAccessibilityPermissions();
+    ipcMain.handle("check-accessibility-permission", async (_event, silent = false) => {
+      return this.clipboardManager.checkAccessibilityPermissions(silent);
     });
 
     ipcMain.handle("read-clipboard", async (event) => {
@@ -2261,10 +2261,12 @@ class IPCHandlers {
     };
 
     const setupDictationCallbacks = (streaming, event) => {
-      streaming.onPartialTranscript = (text) => event.sender.send("dictation-realtime-partial", text);
+      streaming.onPartialTranscript = (text) =>
+        event.sender.send("dictation-realtime-partial", text);
       streaming.onFinalTranscript = (text) => event.sender.send("dictation-realtime-final", text);
       streaming.onError = (err) => event.sender.send("dictation-realtime-error", err.message);
-      streaming.onSessionEnd = (data) => event.sender.send("dictation-realtime-session-end", data || {});
+      streaming.onSessionEnd = (data) =>
+        event.sender.send("dictation-realtime-session-end", data || {});
     };
 
     const connectDictationStreaming = async (event, options) => {
