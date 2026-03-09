@@ -2255,6 +2255,7 @@ class IPCHandlers {
         apiKey: clientSecret,
         model: options.model,
         language: options.language,
+        preconfigured: options.mode !== "byok",
       });
 
       return win;
@@ -2274,10 +2275,15 @@ class IPCHandlers {
         await this._dictationStreaming.disconnect().catch(() => {});
         this._dictationStreaming = null;
       }
+      const isCloud = options.mode !== "byok";
       const apiKey = await fetchRealtimeToken(event, { mode: options.mode });
       const streaming = new OpenAIRealtimeStreaming();
       setupDictationCallbacks(streaming, event);
-      await streaming.connect({ apiKey, model: options.model || "gpt-4o-mini-transcribe" });
+      await streaming.connect({
+        apiKey,
+        model: options.model || "gpt-4o-mini-transcribe",
+        preconfigured: isCloud,
+      });
       this._dictationStreaming = streaming;
     };
 

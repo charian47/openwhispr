@@ -150,7 +150,7 @@ export const useAudioRecording = (toast, options = {}) => {
             });
           }
 
-          if (audioManagerRef.current.sttConfig?.dictation?.mode === "streaming") {
+          if (audioManagerRef.current.shouldUseStreaming()) {
             audioManagerRef.current.warmupStreamingConnection();
           }
         }
@@ -161,7 +161,7 @@ export const useAudioRecording = (toast, options = {}) => {
     window.electronAPI.getSttConfig?.().then((config) => {
       if (config && audioManagerRef.current) {
         audioManagerRef.current.setSttConfig(config);
-        if (config.dictation?.mode === "streaming") {
+        if (audioManagerRef.current.shouldUseStreaming()) {
           audioManagerRef.current.warmupStreamingConnection();
         }
       }

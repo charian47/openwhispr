@@ -28,7 +28,7 @@ class OpenAIRealtimeStreaming {
   }
 
   async connect(options = {}) {
-    const { apiKey, model } = options;
+    const { apiKey, model, preconfigured } = options;
     if (!apiKey) throw new Error("OpenAI API key is required");
 
     if (this.isConnected) {
@@ -37,6 +37,7 @@ class OpenAIRealtimeStreaming {
     }
 
     this.model = model || "gpt-4o-mini-transcribe";
+    this.preconfigured = !!preconfigured;
     this.completedSegments = [];
     this.currentPartial = "";
     this.audioBytesSent = 0;
@@ -108,26 +109,41 @@ class OpenAIRealtimeStreaming {
 
       switch (event.type) {
         case "transcription_session.created": {
-          debugLogger.debug("OpenAI Realtime session created, sending configuration", {
-            model: this.model,
-          });
-          this.ws.send(
-            JSON.stringify({
-              type: "transcription_session.update",
-              session: {
-                input_audio_format: "pcm16",
-                input_audio_transcription: {
-                  model: this.model,
+          if (this.preconfigured) {
+            // Server-side ephemeral token already configured the session;
+            // sending an update would strip language and noise-reduction.
+            debugLogger.debug("OpenAI Realtime session created (preconfigured)", {
+              model: this.model,
+            });
+            this.isConnected = true;
+            clearTimeout(this.connectionTimeout);
+            if (this.pendingResolve) {
+              this.pendingResolve();
+              this.pendingResolve = null;
+              this.pendingReject = null;
+            }
+          } else {
+            debugLogger.debug("OpenAI Realtime session created, sending configuration", {
+              model: this.model,
+            });
+            this.ws.send(
+              JSON.stringify({
+                type: "transcription_session.update",
+                session: {
+                  input_audio_format: "pcm16",
+                  input_audio_transcription: {
+                    model: this.model,
+                  },
+                  turn_detection: {
+                    type: "server_vad",
+                    threshold: 0.5,
+                    silence_duration_ms: 800,
+                    prefix_padding_ms: 300,
+                  },
                 },
-                turn_detection: {
-                  type: "server_vad",
-                  threshold: 0.5,
-                  silence_duration_ms: 800,
-                  prefix_padding_ms: 300,
-                },
-              },
-            })
-          );
+              })
+            );
+          }
           break;
         }
 
@@ -212,23 +228,42 @@ class OpenAIRealtimeStreaming {
 
     if (this.ws.readyState === WebSocket.OPEN) {
       if (this.audioBytesSent > 0) {
-        try {
-          this.ws.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
-        } catch {}
-
         const prevOnFinal = this.onFinalTranscript;
+        const prevOnError = this.onError;
+
         await new Promise((resolve) => {
           const tid = setTimeout(() => {
             debugLogger.debug("OpenAI Realtime commit timeout, using accumulated text");
-            this.onFinalTranscript = prevOnFinal;
             resolve();
           }, DISCONNECT_TIMEOUT_MS);
-          this.onFinalTranscript = (text) => {
-            this.onFinalTranscript = prevOnFinal;
-            prevOnFinal?.(text);
+
+          const done = () => {
             clearTimeout(tid);
+            this.onFinalTranscript = prevOnFinal;
+            this.onError = prevOnError;
             resolve();
           };
+
+          this.onFinalTranscript = (text) => {
+            prevOnFinal?.(text);
+            done();
+          };
+
+          // Server VAD may have already committed all audio, causing an
+          // empty-buffer error. Resolve immediately instead of waiting for timeout.
+          this.onError = (err) => {
+            if (err?.message?.includes("buffer too small") || err?.message?.includes("commit_empty")) {
+              done();
+            } else {
+              prevOnError?.(err);
+            }
+          };
+
+          try {
+            this.ws.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
+          } catch {
+            done();
+          }
         });
       }
 
