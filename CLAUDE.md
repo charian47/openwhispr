@@ -15,6 +15,7 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **UI Components**: shadcn/ui with Radix primitives
 - **Speech Processing**: whisper.cpp + NVIDIA Parakeet (via sherpa-onnx) + OpenAI API
 - **Audio Processing**: FFmpeg (bundled via ffmpeg-static)
+- **Node.js**: 22 LTS (pinned in `.nvmrc` — CI uses Node 22, do NOT regenerate `package-lock.json` with a different major version)
 
 ### Key Architectural Decisions
 
@@ -532,6 +533,7 @@ const { t } = useTranslation();
    - Run `npm run download:whisper-cpp` before packaging (current platform)
    - Use `npm run download:whisper-cpp:all` for multi-platform packaging
    - afterSign.js automatically skips signing when CSC_IDENTITY_AUTO_DISCOVERY=false
+   - **Lockfile**: Always use Node 22 when running `npm install` (matches CI). If your local Node version differs, use `nvm exec 22 npm install`. Running `npm install` with a different major version (e.g. Node 24) will produce an incompatible `package-lock.json` that breaks `npm ci` in CI.
 
 5. **Windows Push-to-Talk Binary**:
    - Prebuilt binary downloaded automatically on Windows during build
