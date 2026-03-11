@@ -60,6 +60,15 @@ export interface ThemeSettings {
   theme: "light" | "dark" | "auto";
 }
 
+export interface AgentModeSettings {
+  agentModel: string;
+  agentProvider: string;
+  agentKey: string;
+  agentSystemPrompt: string;
+  agentEnabled: boolean;
+  cloudAgentMode: string;
+}
+
 function useSettingsInternal() {
   const store = useSettingsStore();
 
@@ -218,6 +227,8 @@ function useSettingsInternal() {
     setPauseMediaOnDictation: store.setPauseMediaOnDictation,
     floatingIconAutoHide: store.floatingIconAutoHide,
     setFloatingIconAutoHide: store.setFloatingIconAutoHide,
+    startMinimized: store.startMinimized,
+    setStartMinimized: store.setStartMinimized,
     panelStartPosition: store.panelStartPosition,
     setPanelStartPosition: store.setPanelStartPosition,
     preferBuiltInMic: store.preferBuiltInMic,
@@ -226,6 +237,8 @@ function useSettingsInternal() {
     setSelectedMicDeviceId: store.setSelectedMicDeviceId,
     autoLearnCorrections,
     setAutoLearnCorrections,
+    keepTranscriptionInClipboard: store.keepTranscriptionInClipboard,
+    setKeepTranscriptionInClipboard: store.setKeepTranscriptionInClipboard,
     cloudBackupEnabled: store.cloudBackupEnabled,
     setCloudBackupEnabled: store.setCloudBackupEnabled,
     telemetryEnabled: store.telemetryEnabled,

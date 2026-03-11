@@ -112,11 +112,12 @@ export const useAudioRecording = (toast, options = {}) => {
           setTranscript(result.text);
 
           const isStreaming = result.source?.includes("streaming");
+          const { keepTranscriptionInClipboard } = getSettings();
           const pasteStart = performance.now();
-          await audioManagerRef.current.safePaste(
-            result.text,
-            isStreaming ? { fromStreaming: true } : {}
-          );
+          await audioManagerRef.current.safePaste(result.text, {
+            ...(isStreaming ? { fromStreaming: true } : {}),
+            restoreClipboard: !keepTranscriptionInClipboard,
+          });
           logger.info(
             "Paste timing",
             {
@@ -149,7 +150,7 @@ export const useAudioRecording = (toast, options = {}) => {
             });
           }
 
-          if (audioManagerRef.current.sttConfig?.dictation?.mode === "streaming") {
+          if (audioManagerRef.current.shouldUseStreaming()) {
             audioManagerRef.current.warmupStreamingConnection();
           }
         }
@@ -160,7 +161,7 @@ export const useAudioRecording = (toast, options = {}) => {
     window.electronAPI.getSttConfig?.().then((config) => {
       if (config && audioManagerRef.current) {
         audioManagerRef.current.setSttConfig(config);
-        if (config.dictation?.mode === "streaming") {
+        if (audioManagerRef.current.shouldUseStreaming()) {
           audioManagerRef.current.warmupStreamingConnection();
         }
       }

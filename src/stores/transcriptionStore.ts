@@ -40,6 +40,17 @@ function ensureIpcListeners() {
     }
   }
 
+  if (window.electronAPI?.onTranscriptionUpdated) {
+    const dispose = window.electronAPI.onTranscriptionUpdated((item) => {
+      if (item) {
+        updateTranscription(item);
+      }
+    });
+    if (typeof dispose === "function") {
+      disposers.push(dispose);
+    }
+  }
+
   if (window.electronAPI?.onTranscriptionsCleared) {
     const dispose = window.electronAPI.onTranscriptionsCleared(() => {
       clearTranscriptions();
