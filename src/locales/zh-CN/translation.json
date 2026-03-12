@@ -864,6 +864,7 @@
         "limitReached": "已达上限",
         "pastDue": "逾期未付",
         "pro": "Pro",
+        "business": "Business",
         "trial": "试用"
       },
       "billing": {
@@ -900,6 +901,7 @@
       "planLabels": {
         "free": "免费版",
         "pro": "Pro",
+        "business": "Business",
         "trial": "试用"
       },
       "planTitle": "套餐",
@@ -925,20 +927,18 @@
       },
       "pricing": {
         "title": "套餐",
-        "monthly": "按月",
-        "annual": "按年",
-        "annualBadge": "省 17%",
+        "billedYearly": "按年计费",
         "free": {
-          "name": "免费版",
+          "name": "Free",
           "price": "$0",
           "period": "永久",
           "features": [
-            "每周 2,000 字",
-            "本地 AI 模型",
-            "自带 API Key",
-            "词典和片段",
-            "支持 100+ 种语言",
-            "零数据留存"
+            "Up to 2,000 words/week",
+            "5 hours of meetings per month",
+            "Local AI models included",
+            "Bring your own API keys",
+            "Zero data retention",
+            "Community support"
           ]
         },
         "pro": {
@@ -947,25 +947,66 @@
           "monthlyPeriod": "/月",
           "annualPrice": "$80",
           "annualPeriod": "/年",
+          "annualEquivalent": "$6.67",
+          "includesPrefix": "所有 Free 功能 +",
           "features": [
-            "包含免费版所有功能",
-            "无限使用",
-            "实时转录",
-            "最新音频和 AI 模型",
-            "iOS/Android（即将推出）",
-            "零数据留存",
-            "优先支持"
+            "Unlimited words per week",
+            "20 hours of meetings per month",
+            "Email support",
+            "Zero data retention"
+          ],
+          "cta": "开始使用",
+          "switchToAnnual": "切换为年付"
+        },
+        "business": {
+          "name": "Business",
+          "monthlyPrice": "$20",
+          "monthlyPeriod": "/月",
+          "annualPrice": "$200",
+          "annualPeriod": "/年",
+          "annualEquivalent": "$16.67",
+          "includesPrefix": "所有 Pro 功能 +",
+          "badge": "最受欢迎",
+          "features": [
+            "Unlimited usage",
+            "Unlimited meeting recordings",
+            "Priority support",
+            "Zero data retention"
           ],
           "cta": "开始使用",
           "switchToAnnual": "切换为年付"
         },
         "enterprise": {
-          "name": "企业版",
+          "name": "Enterprise",
           "price": "自定义",
-          "features": ["云端同步", "团队功能（即将推出）", "SSO 与合规"],
+          "subtitle": "仅限年付",
+          "includesPrefix": "所有 Business 功能 +",
+          "features": [
+            "Managed API credits",
+            "Cloud sync across devices",
+            "Team features & admin",
+            "SSO & compliance"
+          ],
           "cta": "联系我们"
         },
-        "currentPlan": "当前套餐"
+        "currentPlan": "当前套餐",
+        "upgrade": "升级",
+        "downgrade": "降级",
+        "planSwitched": "套餐已成功更新",
+        "confirmSwitch": {
+          "title": "确认更换套餐",
+          "description": "切换至 {{plan}}（{{interval}}）",
+          "monthly": "月付",
+          "yearly": "年付",
+          "chargeToday": "今日收费",
+          "accountCredit": "账户余额",
+          "newPrice": "新价格",
+          "nextBilling": "下次计费",
+          "mo": "mo",
+          "yr": "yr",
+          "cancel": "取消",
+          "confirm": "确认"
+        }
       },
       "signedOutPlans": {
         "button": "免费创建账户"
@@ -1456,8 +1497,7 @@
       "staleIndicator": "内容在增强后已更改",
       "live": "实时",
       "transcript": "转录",
-      "notes": "笔记",
-      "generateNotes": "生成笔记"
+      "notes": "笔记"
     },
     "upload": {
       "title": "上传音频",
@@ -1534,9 +1574,9 @@
       "selectAction": "选择操作",
       "done": "完成",
       "builtin": {
-        "cleanupNotes": {
-          "name": "整理笔记",
-          "description": "修正语法、结构和格式"
+        "generateNotes": {
+          "name": "生成笔记",
+          "description": "清理、结构化和增强您的笔记"
         }
       },
       "errors": {
@@ -1629,6 +1669,7 @@
     "trial": "试用期（剩余 {{days}} 天）",
     "trial_other": "试用期（剩余 {{days}} 天）",
     "pro": "Pro",
+    "business": "Business",
     "unlimitedTrial": "试用期间无限转录",
     "unlimited": "无限转录",
     "manageSubscription": "管理订阅",

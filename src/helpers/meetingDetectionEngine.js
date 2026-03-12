@@ -181,6 +181,12 @@ class MeetingDetectionEngine {
           });
         }
 
+        if (detection.source === "audio") {
+          this.audioActivityDetector.resetPrompt();
+        } else if (detection.source === "process") {
+          this.meetingProcessDetector.dismiss(detection.key);
+        }
+
         this.activeDetections.delete(detectionId);
       } else if (action === "dismiss") {
         if (detection) {
@@ -191,6 +197,17 @@ class MeetingDetectionEngine {
     } finally {
       this.windowManager.dismissMeetingNotification();
     }
+  }
+
+  handleNotificationTimeout() {
+    for (const [detectionId, detection] of this.activeDetections) {
+      if (!detection.dismissed) {
+        this._dismiss(detection.source, detection.key);
+        detection.dismissed = true;
+      }
+    }
+    this.activeDetections.clear();
+    debugLogger.info("Notification auto-dismissed, detections cleared", {}, "meeting");
   }
 
   _flushNotificationQueue() {

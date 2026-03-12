@@ -347,6 +347,11 @@ app.on("open-url", (event, url) => {
   event.preventDefault();
   if (!url.startsWith(`${OAUTH_PROTOCOL}://`)) return;
 
+  if (url.includes("upgrade-success")) {
+    handleUpgradeDeepLink();
+    return;
+  }
+
   handleOAuthDeepLink(url);
 
   if (windowManager && isLiveWindow(windowManager.controlPanelWindow)) {
@@ -393,6 +398,16 @@ function handleOAuthDeepLink(deepLinkUrl) {
     navigateControlPanelWithVerifier(verifier);
   } catch (err) {
     if (debugLogger) debugLogger.error("Failed to handle OAuth deep link:", err);
+  }
+}
+
+function handleUpgradeDeepLink() {
+  if (isLiveWindow(windowManager?.controlPanelWindow)) {
+    windowManager.controlPanelWindow.webContents.executeJavaScript(
+      'window.dispatchEvent(new Event("upgrade-success"))'
+    );
+    windowManager.controlPanelWindow.show();
+    windowManager.controlPanelWindow.focus();
   }
 }
 
@@ -985,7 +1000,11 @@ if (gotSingleInstanceLock) {
     // Check for OAuth protocol URL in command line arguments (Windows/Linux)
     const url = commandLine.find((arg) => arg.startsWith(`${OAUTH_PROTOCOL}://`));
     if (url) {
-      handleOAuthDeepLink(url);
+      if (url.includes("upgrade-success")) {
+        handleUpgradeDeepLink();
+      } else {
+        handleOAuthDeepLink(url);
+      }
     }
   });
 

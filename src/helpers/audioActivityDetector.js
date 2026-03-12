@@ -7,10 +7,10 @@ const debugLogger = require("./debugLogger");
 
 const execAsync = promisify(exec);
 
-const CHECK_INTERVAL_MS = process.platform === "win32" ? 15 * 1000 : 5 * 1000;
-const SUSTAINED_THRESHOLD_CHECKS = process.platform === "win32" ? 2 : 3;
-const SUSTAINED_EVENT_DRIVEN_MS = 15 * 1000;
-const COOLDOWN_MS = 30 * 60 * 1000;
+const CHECK_INTERVAL_MS = process.platform === "win32" ? 15 * 1000 : 3 * 1000;
+const SUSTAINED_THRESHOLD_CHECKS = 2;
+const SUSTAINED_EVENT_DRIVEN_MS = 2 * 1000;
+const COOLDOWN_MS = 5 * 60 * 1000;
 const EXEC_OPTS = { timeout: 5000, encoding: "utf8" };
 
 class AudioActivityDetector extends EventEmitter {
@@ -87,6 +87,13 @@ class AudioActivityDetector extends EventEmitter {
       { cooldownMs: COOLDOWN_MS },
       "meeting"
     );
+  }
+
+  resetPrompt() {
+    this.hasPrompted = false;
+    this._clearSustainedTimer();
+    this.audioActiveStart = null;
+    debugLogger.info("Audio detection prompt reset (no cooldown)", {}, "meeting");
   }
 
   _reset() {

@@ -819,7 +819,10 @@ declare global {
         error?: string;
         code?: string;
       }>;
-      cloudCheckout?: (plan?: "monthly" | "annual") => Promise<{
+      cloudCheckout?: (opts?: {
+        plan?: "monthly" | "annual";
+        tier?: "pro" | "business";
+      }) => Promise<{
         success: boolean;
         url?: string;
         error?: string;
@@ -830,6 +833,29 @@ declare global {
         url?: string;
         error?: string;
         code?: string;
+      }>;
+      cloudSwitchPlan?: (opts: {
+        plan: "monthly" | "annual";
+        tier: "pro" | "business";
+      }) => Promise<{
+        success: boolean;
+        alreadyOnPlan?: boolean;
+        error?: string;
+      }>;
+      cloudPreviewSwitch?: (opts: {
+        plan: "monthly" | "annual";
+        tier: "pro" | "business";
+      }) => Promise<{
+        success: boolean;
+        immediateAmount?: number;
+        currency?: string;
+        currentPriceAmount?: number;
+        currentInterval?: string;
+        newPriceAmount?: number;
+        newInterval?: string;
+        nextBillingDate?: string;
+        alreadyOnPlan?: boolean;
+        error?: string;
       }>;
 
       // Cloud audio file transcription
@@ -1142,6 +1168,7 @@ declare global {
       onMeetingDetectedStartRecording?: (callback: (data: any) => void) => () => void;
       onMeetingNotificationData?: (callback: (data: any) => void) => () => void;
       getMeetingNotificationData?: () => Promise<any>;
+      meetingNotificationReady?: () => Promise<void>;
       meetingNotificationRespond?: (
         detectionId: string,
         action: string
