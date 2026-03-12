@@ -37,6 +37,11 @@ const ELECTRON_TO_HYPRLAND_KEY = {
   " ": "space",
 };
 
+// Valid Electron-format hotkey: modifiers joined by +, ending with an optional key
+// Supports: letters, digits, function keys (F1-F24), navigation, special keys, and modifier-only combos
+const VALID_HOTKEY_PATTERN =
+  /^(CommandOrControl|CmdOrCtrl|Control|Ctrl|Alt|Option|Shift|Super|Meta|Win|Command|Cmd)(\+(CommandOrControl|CmdOrCtrl|Control|Ctrl|Alt|Option|Shift|Super|Meta|Win|Command|Cmd))*(\+(F([1-9]|1[0-9]|2[0-4])|[A-Za-z0-9]|Space|Escape|Tab|Backspace|Delete|Insert|Home|End|PageUp|PageDown|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Enter|PrintScreen|ScrollLock|Pause|Backquote|`))?$/i;
+
 let dbus = null;
 
 function getDBus() {
@@ -142,6 +147,13 @@ class HyprlandShortcutManager {
     return OpenWhisprInterface;
   }
 
+  static isValidHotkey(hotkey) {
+    if (!hotkey || typeof hotkey !== "string") {
+      return false;
+    }
+    return VALID_HOTKEY_PATTERN.test(hotkey);
+  }
+
   /**
    * Convert an Electron-format hotkey string to Hyprland bind format.
    *
@@ -226,6 +238,11 @@ class HyprlandShortcutManager {
   async registerKeybinding(hotkey) {
     if (!HyprlandShortcutManager.isHyprland()) {
       debugLogger.log("[HyprlandShortcut] Not running on Hyprland, skipping registration");
+      return false;
+    }
+
+    if (!HyprlandShortcutManager.isValidHotkey(hotkey)) {
+      debugLogger.log(`[HyprlandShortcut] Invalid hotkey format: "${hotkey}"`);
       return false;
     }
 
