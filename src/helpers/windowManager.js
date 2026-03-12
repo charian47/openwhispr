@@ -956,14 +956,22 @@ class WindowManager {
 
     this._pendingNotificationData = promptData;
 
-    setTimeout(() => {
+    const sendAndShow = () => {
       if (this.notificationWindow && !this.notificationWindow.isDestroyed()) {
         this.notificationWindow.webContents.send("meeting-notification-data", promptData);
         this.notificationWindow.showInactive();
       }
-    }, 300);
+    };
+    if (this.notificationWindow.webContents.isLoading()) {
+      this.notificationWindow.webContents.once("did-finish-load", sendAndShow);
+    } else {
+      sendAndShow();
+    }
 
     this._notificationTimeout = setTimeout(() => {
+      if (this.meetingDetectionEngine) {
+        this.meetingDetectionEngine.handleNotificationTimeout();
+      }
       this.dismissMeetingNotification();
     }, 30000);
 

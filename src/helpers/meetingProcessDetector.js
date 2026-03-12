@@ -119,6 +119,29 @@ class MeetingProcessDetector extends EventEmitter {
       },
       "meeting"
     );
+
+    this._initialScanDarwin();
+  }
+
+  async _initialScanDarwin() {
+    try {
+      const processList = await processListCache.getProcessList();
+      const darwinProcessNames = [
+        { match: "zoom.us", processKey: "zoom" },
+        { match: "microsoft teams", processKey: "teams" },
+        { match: "webex", processKey: "webex" },
+        { match: "facetime", processKey: "facetime" },
+      ];
+      for (const { match, processKey } of darwinProcessNames) {
+        if (processList.some((p) => p.includes(match))) {
+          const appName = BUNDLE_APP_NAMES[processKey] || processKey;
+          debugLogger.info("Initial scan: already running", { processKey, appName }, "meeting");
+          this._updateDetection(processKey, appName, true);
+        }
+      }
+    } catch (err) {
+      debugLogger.warn("Initial scan failed", { error: err.message }, "meeting");
+    }
   }
 
   _startPollingFallback() {
@@ -155,6 +178,7 @@ class MeetingProcessDetector extends EventEmitter {
     }
 
     this.detectedProcesses.clear();
+    this.dismissedProcesses.clear();
     debugLogger.info("Stopped meeting process detector", {}, "meeting");
   }
 
@@ -208,6 +232,7 @@ class MeetingProcessDetector extends EventEmitter {
       }
     } else if (this.detectedProcesses.has(processKey)) {
       this.detectedProcesses.delete(processKey);
+      this.dismissedProcesses.delete(processKey);
       debugLogger.info("Meeting process ended", { processKey, appName }, "meeting");
       this.emit("meeting-process-ended", { processKey, appName });
     }
