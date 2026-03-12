@@ -134,11 +134,25 @@ export function useUsage(): UseUsageResult | null {
       lastFetchRef.current = 0;
       fetchUsage();
     };
+    const handleUpgradeSuccess = async () => {
+      lastFetchRef.current = 0;
+      await fetchUsage();
+      // Retry if webhook hasn't updated DB yet
+      for (let i = 0; i < 3; i++) {
+        const result = await window.electronAPI.cloudUsage();
+        if (result.success && result.isSubscribed) break;
+        await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+        lastFetchRef.current = 0;
+        await fetchUsage();
+      }
+    };
     window.addEventListener("focus", handleFocus);
     window.addEventListener("usage-changed", handleUsageChanged);
+    window.addEventListener("upgrade-success", handleUpgradeSuccess);
     return () => {
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("usage-changed", handleUsageChanged);
+      window.removeEventListener("upgrade-success", handleUpgradeSuccess);
     };
   }, [isLoaded, isSignedIn, fetchUsage]);
 
