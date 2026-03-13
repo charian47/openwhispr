@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **better-sqlite3 12**: Upgraded from v11 to v12 for Electron 39 V8 compatibility
 - **Localized in all 10 languages**: All permission copy changes translated across en, pt, de, es, fr, it, ru, ja, zh-CN, zh-TW
 
+### Added
+
+- **Hyprland Wayland Support**: Native global shortcut support for Hyprland using `hyprctl` keybindings + D-Bus, matching the existing GNOME Wayland approach (#416)
+
+### Fixed
+
+- **Soft Voice Recognition**: Enabled Auto Gain Control (AGC) for dictation microphone input to automatically boost quiet speech — previously disabled, now matches meeting mode behavior
+- **OpenAI Realtime VAD Sensitivity**: Lowered voice activity detection threshold from 0.5 to 0.3 (both client and API) so soft-spoken audio is no longer missed
+- **Speech Onset Clipping**: Increased VAD prefix padding from 300ms to 500ms to capture the quiet beginning of soft speech that was previously cut off
+- **Wayland Clipboard Paste**: Fixed `wl-copy` failing silently due to 1ms `spawnSync` timeout killing the fork before it completed — increased to 50ms (#416)
+
 ## [1.6.2] - 2026-03-11
 
 ### Added
