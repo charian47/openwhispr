@@ -416,8 +416,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
   setActivationMode: (mode: "tap" | "push") => {
     // Linux has no native key listener for push-to-talk — force tap
-    const effective =
-      isBrowser && window.electronAPI?.getPlatform?.() === "linux" ? "tap" : mode;
+    const effective = isBrowser && window.electronAPI?.getPlatform?.() === "linux" ? "tap" : mode;
     if (isBrowser) localStorage.setItem("activationMode", effective);
     set({ activationMode: effective });
     if (isBrowser) {
