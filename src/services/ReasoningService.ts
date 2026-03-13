@@ -1284,6 +1284,15 @@ class ReasoningService extends BaseReasoningService {
         return true;
       }
 
+      const settings = getSettings();
+      if (settings.reasoningProvider === "custom" && settings.cloudReasoningBaseUrl?.trim()) {
+        logger.logReasoning("API_KEY_CHECK", {
+          customProvider: true,
+          hasCustomEndpoint: true,
+        });
+        return true;
+      }
+
       const openaiKey = await window.electronAPI?.getOpenAIKey?.();
       const anthropicKey = await window.electronAPI?.getAnthropicKey?.();
       const geminiKey = await window.electronAPI?.getGeminiKey?.();
