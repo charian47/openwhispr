@@ -2632,7 +2632,7 @@ EOF`,
                   )}
                 </SettingsPanelRow>
 
-                {!isUsingGnomeHotkeys && (
+                {platform !== "linux" && !isUsingGnomeHotkeys && (
                   <SettingsPanelRow>
                     <p className="text-xs font-medium text-muted-foreground/80 mb-2">
                       {t("settingsPage.general.hotkey.activationMode")}

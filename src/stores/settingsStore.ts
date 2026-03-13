@@ -415,10 +415,13 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
 
   setActivationMode: (mode: "tap" | "push") => {
-    if (isBrowser) localStorage.setItem("activationMode", mode);
-    set({ activationMode: mode });
+    // Linux has no native key listener for push-to-talk — force tap
+    const effective =
+      isBrowser && window.electronAPI?.getPlatform?.() === "linux" ? "tap" : mode;
+    if (isBrowser) localStorage.setItem("activationMode", effective);
+    set({ activationMode: effective });
     if (isBrowser) {
-      window.electronAPI?.notifyActivationModeChanged?.(mode);
+      window.electronAPI?.notifyActivationModeChanged?.(effective);
     }
   },
 
@@ -676,9 +679,10 @@ export async function initializeSettings(): Promise<void> {
       );
     }
 
-    // Sync activation mode from main process
+    // Sync activation mode from main process (Linux forces tap — no native key listener)
     try {
-      const envMode = await window.electronAPI.getActivationMode?.();
+      let envMode = await window.electronAPI.getActivationMode?.();
+      if (window.electronAPI?.getPlatform?.() === "linux") envMode = "tap";
       if (envMode && envMode !== state.activationMode) {
         if (isBrowser) localStorage.setItem("activationMode", envMode);
         useSettingsStore.setState({ activationMode: envMode });

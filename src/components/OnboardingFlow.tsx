@@ -652,7 +652,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         </div>
 
         {/* Mode section - inline with hotkey */}
-        {!isUsingGnomeHotkeys && (
+        {getPlatform() !== "linux" && !isUsingGnomeHotkeys && (
           <div className="p-4 flex items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
