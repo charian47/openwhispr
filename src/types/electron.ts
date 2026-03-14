@@ -665,6 +665,7 @@ declare global {
       onHotkeyRegistrationFailed?: (
         callback: (data: { hotkey: string; error: string; suggestions: string[] }) => void
       ) => () => void;
+      onSettingUpdated?: (callback: (data: { key: string; value: unknown }) => void) => () => void;
 
       // Accessibility permission events (macOS)
       onAccessibilityMissing?: (callback: () => void) => () => void;

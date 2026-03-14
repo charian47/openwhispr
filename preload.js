@@ -520,6 +520,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("hotkey-registration-failed", listener);
     return () => ipcRenderer.removeListener("hotkey-registration-failed", listener);
   },
+  onSettingUpdated: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("setting-updated", listener);
+    return () => ipcRenderer.removeListener("setting-updated", listener);
+  },
   onWindowsPushToTalkUnavailable: registerListener("windows-ptt-unavailable"),
 
   // Accessibility permission events (macOS)

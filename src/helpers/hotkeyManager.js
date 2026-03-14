@@ -573,26 +573,19 @@ class HotkeyManager {
   }
 
   async saveHotkeyToRenderer(hotkey) {
-    const escapedHotkey = hotkey.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-
     await this._persistHotkeyToEnvFile(hotkey);
 
-    // Also save to localStorage for backwards compatibility
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       try {
-        await this.mainWindow.webContents.executeJavaScript(
-          `localStorage.setItem("dictationKey", "${escapedHotkey}"); true;`
-        );
-        debugLogger.log(`[HotkeyManager] Saved hotkey "${hotkey}" to localStorage`);
+        this.mainWindow.webContents.send("setting-updated", { key: "dictationKey", value: hotkey });
+        debugLogger.log(`[HotkeyManager] Sent dictationKey update to main window`);
         return true;
       } catch (err) {
-        debugLogger.error("[HotkeyManager] Failed to save hotkey to localStorage:", err.message);
+        debugLogger.error("[HotkeyManager] Failed to send dictationKey update:", err.message);
         return false;
       }
     } else {
-      debugLogger.warn(
-        "[HotkeyManager] Main window not available for saving hotkey to localStorage"
-      );
+      debugLogger.warn("[HotkeyManager] Main window not available for setting sync");
       return false;
     }
   }

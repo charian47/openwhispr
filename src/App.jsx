@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useToast } from "./components/ui/Toast";
 import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
+import { formatHotkeyLabel } from "./utils/hotkeys";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
 import { useSettingsStore } from "./stores/settingsStore";
@@ -46,7 +47,7 @@ const VoiceWaveIndicator = ({ isListening }) => {
   );
 };
 
-// Enhanced Tooltip Component
+// Tooltip Component
 const Tooltip = ({ children, content, emoji }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -56,10 +57,7 @@ const Tooltip = ({ children, content, emoji }) => {
         {children}
       </div>
       {isVisible && (
-        <div
-          className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-1 py-1 text-popover-foreground bg-popover border border-border rounded-md whitespace-nowrap z-10 transition-opacity duration-150 shadow-lg"
-          style={{ fontSize: "9.7px", maxWidth: "96px" }}
-        >
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-1.5 py-1 text-[10px] text-popover-foreground bg-popover border border-border rounded-md whitespace-nowrap z-10 shadow-lg transition-opacity duration-150">
           {emoji && <span className="mr-1">{emoji}</span>}
           {content}
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-popover"></div>
@@ -279,7 +277,7 @@ export default function App() {
       case "hover":
         return {
           className: `${baseClasses} bg-black/50 cursor-pointer`,
-          tooltip: t("app.mic.hotkeyToSpeak", { hotkey }),
+          tooltip: formatHotkeyLabel(hotkey),
         };
       case "recording":
         return {
