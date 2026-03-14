@@ -48,8 +48,14 @@ const VoiceWaveIndicator = ({ isListening }) => {
 };
 
 // Tooltip Component
-const Tooltip = ({ children, content, emoji }) => {
+const Tooltip = ({ children, content, emoji, align = "center" }) => {
   const [isVisible, setIsVisible] = useState(false);
+
+  const alignClass =
+    align === "right" ? "right-0" : align === "left" ? "left-0" : "left-1/2 -translate-x-1/2";
+
+  const arrowClass =
+    align === "right" ? "right-3" : align === "left" ? "left-3" : "left-1/2 -translate-x-1/2";
 
   return (
     <div className="relative inline-block">
@@ -57,10 +63,14 @@ const Tooltip = ({ children, content, emoji }) => {
         {children}
       </div>
       {isVisible && (
-        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-1.5 py-1 text-[10px] text-popover-foreground bg-popover border border-border rounded-md z-10 shadow-lg transition-opacity duration-150 max-w-[88px] text-center leading-tight">
+        <div
+          className={`absolute bottom-full ${alignClass} mb-2 px-1.5 py-1 text-[10px] text-popover-foreground bg-popover border border-border rounded-md z-10 shadow-lg transition-opacity duration-150 whitespace-nowrap`}
+        >
           {emoji && <span className="mr-1">{emoji}</span>}
           {content}
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-popover"></div>
+          <div
+            className={`absolute top-full ${arrowClass} w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-popover`}
+          ></div>
         </div>
       )}
     </div>
@@ -343,7 +353,16 @@ export default function App() {
               />
             </button>
           )}
-          <Tooltip content={micProps.tooltip}>
+          <Tooltip
+            content={micProps.tooltip}
+            align={
+              panelStartPosition === "bottom-left"
+                ? "left"
+                : panelStartPosition === "center"
+                  ? "center"
+                  : "right"
+            }
+          >
             <button
               ref={buttonRef}
               onMouseDown={(e) => {
