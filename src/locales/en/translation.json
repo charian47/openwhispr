@@ -1437,7 +1437,7 @@
         "groq_kimi_k2_0905": "Moonshot AI's 1T MoE, 256K context"
       },
       "local": {
-        "qwen_qwen3_5_9b_q4_k_m": "Powerful Qwen3.5 with hybrid architecture",
+        "qwen_qwen3_5_9b_q4_k_m": "Powerful hybrid model",
         "qwen_qwen3_5_4b_q4_k_m": "Balanced Qwen3.5 for general use",
         "qwen_qwen3_5_2b_q4_k_m": "Small Qwen3.5 for quick tasks",
         "qwen_qwen3_8b_q4_k_m": "Latest Qwen3 with thinking mode support",

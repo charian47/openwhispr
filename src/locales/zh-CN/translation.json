@@ -1367,7 +1367,7 @@
         "groq_kimi_k2_0905": "Moonshot AI 1T MoE，256K 上下文"
       },
       "local": {
-        "qwen_qwen3_5_9b_q4_k_m": "强大的 Qwen3.5，混合架构",
+        "qwen_qwen3_5_9b_q4_k_m": "强大的混合模型",
         "qwen_qwen3_5_4b_q4_k_m": "均衡的 Qwen3.5，通用用途",
         "qwen_qwen3_5_2b_q4_k_m": "紧凑的 Qwen3.5，快速任务",
         "qwen_qwen3_8b_q4_k_m": "最新 Qwen3，支持思维模式",
