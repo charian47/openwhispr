@@ -29,7 +29,8 @@
   },
   "window": {
     "voiceRecorderTitle": "录音器",
-    "controlPanelTitle": "控制面板"
+    "controlPanelTitle": "控制面板",
+    "agentChatTitle": "智能助手聊天"
   },
   "dialog": {
     "openLink": {

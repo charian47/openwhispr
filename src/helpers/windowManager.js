@@ -653,6 +653,10 @@ class WindowManager {
       WindowPositionUtil.setupAlwaysOnTop(this.agentWindow);
     });
 
+    this.agentWindow.webContents.on("did-finish-load", () => {
+      this.agentWindow.setTitle(i18nMain.t("window.agentChatTitle"));
+    });
+
     this.agentWindow.on("closed", () => {
       this.agentWindow = null;
     });
@@ -1099,6 +1103,10 @@ class WindowManager {
 
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.setTitle(i18nMain.t("window.voiceRecorderTitle"));
+    }
+
+    if (this.agentWindow && !this.agentWindow.isDestroyed()) {
+      this.agentWindow.setTitle(i18nMain.t("window.agentChatTitle"));
     }
   }
 

@@ -29,7 +29,8 @@
   },
   "window": {
     "voiceRecorderTitle": "Gravador de voz",
-    "controlPanelTitle": "Painel de controle"
+    "controlPanelTitle": "Painel de controle",
+    "agentChatTitle": "Chat do agente"
   },
   "dialog": {
     "openLink": {

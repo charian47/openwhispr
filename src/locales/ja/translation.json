@@ -29,7 +29,8 @@
   },
   "window": {
     "voiceRecorderTitle": "ボイスレコーダー",
-    "controlPanelTitle": "コントロールパネル"
+    "controlPanelTitle": "コントロールパネル",
+    "agentChatTitle": "エージェントチャット"
   },
   "dialog": {
     "openLink": {

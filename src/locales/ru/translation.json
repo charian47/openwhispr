@@ -29,7 +29,8 @@
   },
   "window": {
     "voiceRecorderTitle": "Диктофон",
-    "controlPanelTitle": "Панель управления"
+    "controlPanelTitle": "Панель управления",
+    "agentChatTitle": "Чат агента"
   },
   "dialog": {
     "openLink": {
