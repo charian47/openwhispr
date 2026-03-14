@@ -37,24 +37,6 @@ function formatModifierPart(part: string, platform: Platform): string {
   }
 }
 
-const MODIFIER_SYMBOLS: Record<string, string> = {
-  CommandOrControl: "⌘",
-  Command: "⌘",
-  Cmd: "⌘",
-  Control: "⌃",
-  Ctrl: "⌃",
-  Alt: "⌥",
-  Option: "⌥",
-  Shift: "⇧",
-  Super: "⌘",
-  Meta: "⌘",
-  Fn: "Fn",
-};
-
-function formatModifierSymbol(part: string): string {
-  return MODIFIER_SYMBOLS[part] ?? part;
-}
-
 /**
  * Formats an Electron accelerator string into a user-friendly display label.
  *
@@ -70,26 +52,6 @@ function formatModifierSymbol(part: string): string {
 export function formatHotkeyLabel(hotkey?: string | null): string {
   const platform = getPlatform();
   const resolvedHotkey = hotkey && hotkey.trim() !== "" ? hotkey : getDefaultHotkey();
-  return formatHotkeyLabelForPlatform(resolvedHotkey, platform);
-}
-
-/**
- * Compact hotkey label using symbols on macOS (e.g., "⌘⇧K") and short text elsewhere.
- * Designed for tight UI spaces like the 96px overlay tooltip.
- */
-export function formatHotkeyCompact(hotkey?: string | null): string {
-  const platform = getPlatform();
-  const resolvedHotkey = hotkey && hotkey.trim() !== "" ? hotkey : getDefaultHotkey();
-
-  if (!resolvedHotkey || resolvedHotkey.trim() === "") return "";
-  if (isGlobeLikeHotkey(resolvedHotkey)) return "Globe/Fn";
-
-  if (platform === "darwin" && resolvedHotkey.includes("+")) {
-    const parts = resolvedHotkey.split("+");
-    const symbols = parts.map((p) => formatModifierSymbol(p));
-    return symbols.join("");
-  }
-
   return formatHotkeyLabelForPlatform(resolvedHotkey, platform);
 }
 
