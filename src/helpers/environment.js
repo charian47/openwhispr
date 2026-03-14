@@ -175,6 +175,18 @@ class EnvironmentManager {
     return result;
   }
 
+  getPanelStartPosition() {
+    const v = this._getKey("PANEL_START_POSITION");
+    if (v === "bottom-right" || v === "center" || v === "bottom-left") return v;
+    return "bottom-right";
+  }
+
+  savePanelStartPosition(position) {
+    const result = this._saveKey("PANEL_START_POSITION", position);
+    this.saveAllKeysToEnvFile().catch(() => {});
+    return result;
+  }
+
   getUiLanguage() {
     return normalizeUiLanguage(this._getKey("UI_LANGUAGE"));
   }
