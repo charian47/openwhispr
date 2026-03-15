@@ -214,6 +214,7 @@ class MeetingDetectionEngine {
 
     if (noteResult?.note?.id && meetingsFolder?.id) {
       await this.windowManager.createControlPanelWindow();
+      await new Promise((resolve) => setTimeout(resolve, 50));
       this.windowManager.snapControlPanelToMeetingMode();
       this.windowManager.sendToControlPanel("navigate-to-meeting-note", {
         noteId: noteResult.note.id,
