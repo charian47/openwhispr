@@ -553,13 +553,15 @@ try {
 
     if (result.status === 0) {
       const output = (result.stdout?.toString() || "").trim();
-      if (output && output !== "GSMTC_FAIL") {
+      if (output === "GSMTC_FAIL") {
+        debugLogger.debug("GSMTC reported failure, falling through to media key", {}, "media");
+      } else {
         this._pausedWinApps = output.split("|").filter(Boolean);
         if (this._pausedWinApps.length > 0) {
           debugLogger.debug("Media paused via GSMTC", { apps: this._pausedWinApps }, "media");
           return true;
         }
-        // GSMTC worked but nothing was playing
+        debugLogger.debug("GSMTC found no playing sessions", {}, "media");
         return false;
       }
     }
