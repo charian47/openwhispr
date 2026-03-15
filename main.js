@@ -617,21 +617,28 @@ async function startApp() {
   // Set up meeting mode hotkey
   const meetingHotkeyCallback = () => {
     if (hotkeyManager.isInListeningMode()) return;
+    debugLogger.info("Meeting hotkey triggered", {}, "meeting");
     meetingDetectionEngine?.startManualMeeting();
   };
 
   const savedMeetingKey = environmentManager.getMeetingKey?.() || "";
   if (savedMeetingKey) {
-    hotkeyManager.registerSlot("meeting", savedMeetingKey, meetingHotkeyCallback);
+    const result = hotkeyManager.registerSlot("meeting", savedMeetingKey, meetingHotkeyCallback);
+    debugLogger.info("Meeting hotkey startup registration", { savedMeetingKey, ...result }, "meeting");
   }
 
-  ipcMain.on("meeting-hotkey-changed", (_event, hotkey) => {
+  ipcMain.handle("register-meeting-hotkey", (_event, hotkey) => {
     if (hotkey) {
-      hotkeyManager.registerSlot("meeting", hotkey, meetingHotkeyCallback);
-      environmentManager.saveMeetingKey(hotkey);
+      const result = hotkeyManager.registerSlot("meeting", hotkey, meetingHotkeyCallback);
+      if (result.success) {
+        environmentManager.saveMeetingKey(hotkey);
+        return { success: true };
+      }
+      return { success: false, message: result.error };
     } else {
       hotkeyManager.unregisterSlot("meeting");
       environmentManager.saveMeetingKey("");
+      return { success: true };
     }
   });
 

@@ -418,9 +418,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setMeetingKey: (key: string) => {
     if (isBrowser) localStorage.setItem("meetingKey", key);
     set({ meetingKey: key });
-    if (isBrowser) {
-      window.electronAPI?.notifyMeetingHotkeyChanged?.(key);
-    }
   },
 
   setActivationMode: (mode: "tap" | "push") => {

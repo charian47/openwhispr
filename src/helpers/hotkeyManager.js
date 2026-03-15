@@ -221,6 +221,9 @@ class HotkeyManager {
     }
 
     try {
+      const conflict = this._findSlotConflict(slotName, hotkey);
+      if (conflict) return conflict;
+
       if (isGlobeLikeHotkey(hotkey)) {
         if (process.platform !== "darwin") {
           debugLogger.log("[HotkeyManager] GLOBE key rejected - not on macOS");
@@ -299,6 +302,34 @@ class HotkeyManager {
       this._restorePreviousHotkey(previousHotkey, callback);
       return { success: false, error: error.message };
     }
+  }
+
+  _findSlotConflict(slotName, hotkey) {
+    const accelerator =
+      isGlobeLikeHotkey(hotkey) || isRightSideModifier(hotkey) || isModifierOnlyHotkey(hotkey)
+        ? null
+        : normalizeToAccelerator(hotkey);
+
+    for (const [otherSlotName, otherSlot] of this.slots) {
+      if (otherSlotName === slotName) continue;
+      const match =
+        otherSlot.hotkey === hotkey || (accelerator && otherSlot.accelerator === accelerator);
+      if (match) {
+        debugLogger.warn(
+          `[HotkeyManager] Hotkey "${hotkey}" conflicts with slot "${otherSlotName}"`
+        );
+        return {
+          success: false,
+          error: i18nMain.t("hotkey.errors.slotConflict", {
+            slot: otherSlotName,
+            defaultValue: `This hotkey is already used for ${otherSlotName}`,
+          }),
+          reason: "slot_conflict",
+          conflictSlot: otherSlotName,
+        };
+      }
+    }
+    return null;
   }
 
   _restorePreviousHotkey(previousHotkey, callback) {

@@ -865,6 +865,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     showAlert: showAlertDialog,
   });
 
+  const meetingRegisterFn = useCallback(async (hotkey: string) => {
+    const result = await window.electronAPI?.registerMeetingHotkey?.(hotkey);
+    return result ?? { success: false, message: "Electron API unavailable" };
+  }, []);
+
   const { registerHotkey: registerMeetingHotkey, isRegistering: isMeetingHotkeyRegistering } =
     useHotkeyRegistration({
       onSuccess: (registeredHotkey) => {
@@ -873,6 +878,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       showSuccessToast: false,
       showErrorToast: true,
       showAlert: showAlertDialog,
+      registerFn: meetingRegisterFn,
     });
 
   const validateHotkeyForInput = useCallback(
@@ -2770,7 +2776,8 @@ EOF`,
                   />
                   {meetingKey && (
                     <button
-                      onClick={() => {
+                      onClick={async () => {
+                        await window.electronAPI?.registerMeetingHotkey?.("");
                         setMeetingKey("");
                       }}
                       disabled={isMeetingHotkeyRegistering}

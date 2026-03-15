@@ -195,6 +195,8 @@ class MeetingDetectionEngine {
   }
 
   async startManualMeeting() {
+    debugLogger.info("Starting manual meeting", {}, "meeting");
+
     const event = {
       id: `manual-${Date.now()}`,
       calendar_id: "__manual__",
@@ -212,16 +214,23 @@ class MeetingDetectionEngine {
     const noteResult = this.databaseManager.saveNote(event.summary, "", "meeting");
     const meetingsFolder = this.databaseManager.getMeetingsFolder();
 
-    if (noteResult?.note?.id && meetingsFolder?.id) {
-      await this.windowManager.createControlPanelWindow();
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      this.windowManager.snapControlPanelToMeetingMode();
-      this.windowManager.sendToControlPanel("navigate-to-meeting-note", {
-        noteId: noteResult.note.id,
-        folderId: meetingsFolder.id,
-        event,
-      });
+    if (!noteResult?.note?.id || !meetingsFolder?.id) {
+      debugLogger.error(
+        "Manual meeting failed — missing note or folder",
+        { noteId: noteResult?.note?.id, folderId: meetingsFolder?.id },
+        "meeting"
+      );
+      return;
     }
+
+    await this.windowManager.createControlPanelWindow();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    this.windowManager.snapControlPanelToMeetingMode();
+    this.windowManager.sendToControlPanel("navigate-to-meeting-note", {
+      noteId: noteResult.note.id,
+      folderId: meetingsFolder.id,
+      event,
+    });
   }
 
   handleNotificationTimeout() {

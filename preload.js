@@ -538,7 +538,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Notify main process of activation mode changes (for Windows Push-to-Talk)
   notifyActivationModeChanged: (mode) => ipcRenderer.send("activation-mode-changed", mode),
   notifyHotkeyChanged: (hotkey) => ipcRenderer.send("hotkey-changed", hotkey),
-  notifyMeetingHotkeyChanged: (hotkey) => ipcRenderer.send("meeting-hotkey-changed", hotkey),
+  registerMeetingHotkey: (hotkey) => ipcRenderer.invoke("register-meeting-hotkey", hotkey),
 
   // Floating icon auto-hide
   notifyFloatingIconAutoHideChanged: (enabled) =>
