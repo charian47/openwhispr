@@ -970,10 +970,14 @@
           "price": "$0",
           "period": "forever",
           "features": [
-            "Up to 2,000 words/week",
-            "5 hours of meetings per month",
-            "Local AI models included",
-            "Bring your own API keys",
+            "## OpenWhispr Cloud",
+            "2,000 words/week transcription",
+            "5 hours of meeting recordings/month",
+            "## Always free",
+            "Unlimited local AI models",
+            "Unlimited cloud transcription with your own API keys",
+            "100+ languages supported",
+            "Custom dictionary",
             "Zero data retention",
             "Community support"
           ]
@@ -987,10 +991,10 @@
           "annualEquivalent": "$6.67",
           "includesPrefix": "All Free features +",
           "features": [
-            "Unlimited words per week",
-            "20 hours of meetings per month",
-            "Email support",
-            "Zero data retention"
+            "Unlimited cloud transcription",
+            "20 hours of meeting recordings/month",
+            "Mobile app (iOS Coming Soon)",
+            "Email support"
           ],
           "cta": "Get Started",
           "switchToAnnual": "Switch to Annual"
@@ -1005,10 +1009,10 @@
           "includesPrefix": "All Pro features +",
           "badge": "Most Popular",
           "features": [
-            "Unlimited usage",
             "Unlimited meeting recordings",
-            "Priority support",
-            "Zero data retention"
+            "Agent mode",
+            "Chat over your data (Coming Soon)",
+            "Priority support"
           ],
           "cta": "Get Started",
           "switchToAnnual": "Switch to Annual"
@@ -1016,15 +1020,16 @@
         "enterprise": {
           "name": "Enterprise",
           "price": "Custom",
-          "subtitle": "Annual billing only",
+          "subtitle": "For advanced security & support",
           "includesPrefix": "All Business features +",
           "features": [
             "Managed API credits",
             "Cloud sync across devices",
             "Team features & admin",
-            "SSO & compliance"
+            "SSO & compliance",
+            "Dedicated support"
           ],
-          "cta": "Contact Us"
+          "cta": "Contact Sales"
         },
         "currentPlan": "Current plan",
         "upgrade": "Upgrade",

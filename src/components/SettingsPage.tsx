@@ -1400,15 +1400,24 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         t("settingsPage.account.pricing.free.features", {
                           returnObjects: true,
                         }) as string[]
-                      ).map((feature, i) => (
-                        <li
-                          key={i}
-                          className="flex items-start gap-1 text-[10px] text-muted-foreground leading-tight"
-                        >
-                          <Check size={9} className="mt-[2px] text-primary/70 shrink-0" />
-                          {feature}
-                        </li>
-                      ))}
+                      ).map((feature, i) =>
+                        feature.startsWith("## ") ? (
+                          <li
+                            key={i}
+                            className={`text-[8px] font-semibold uppercase tracking-wide text-muted-foreground/60 ${i > 0 ? "pt-1.5" : ""}`}
+                          >
+                            {feature.slice(3)}
+                          </li>
+                        ) : (
+                          <li
+                            key={i}
+                            className="flex items-start gap-1 text-[10px] text-muted-foreground leading-tight"
+                          >
+                            <Check size={9} className="mt-[2px] text-primary/70 shrink-0" />
+                            {feature}
+                          </li>
+                        )
+                      )}
                     </ul>
                     {!isSignedIn ? (
                       <Button
