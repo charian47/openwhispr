@@ -1334,10 +1334,14 @@ class IPCHandlers {
           const needsListener =
             effectiveHotkey &&
             !isGlobeLikeHotkey(effectiveHotkey) &&
-            (activationMode === "push" || isModifierOnlyHotkey(effectiveHotkey));
+            (activationMode === "push" ||
+              isModifierOnlyHotkey(effectiveHotkey) ||
+              isRightSideModifier(effectiveHotkey));
           if (needsListener) {
             debugLogger.log(`[IPC] Restarting Windows key listener for hotkey: ${effectiveHotkey}`);
             this.windowsKeyManager.start(effectiveHotkey);
+          } else {
+            this.windowsKeyManager.stop();
           }
         }
 
