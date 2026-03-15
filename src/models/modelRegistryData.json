@@ -167,40 +167,60 @@
       "name": "OpenAI",
       "models": [
         {
+          "id": "gpt-5.4",
+          "name": "GPT-5.4",
+          "description": "Frontier model for complex reasoning",
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_5_4",
+          "tokenParam": "max_completion_tokens",
+          "supportsTemperature": false
+        },
+        {
           "id": "gpt-5.2",
           "name": "GPT-5.2",
-          "description": "Latest flagship reasoning model",
-          "descriptionKey": "models.descriptions.cloud.openai_gpt_5_2"
+          "description": "Strong reasoning model",
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_5_2",
+          "tokenParam": "max_completion_tokens",
+          "supportsTemperature": false
         },
         {
           "id": "gpt-5-mini",
           "name": "GPT-5 Mini",
           "description": "Fast and cost-efficient",
-          "descriptionKey": "models.descriptions.cloud.openai_gpt_5_mini"
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_5_mini",
+          "tokenParam": "max_completion_tokens",
+          "supportsTemperature": false
         },
         {
           "id": "gpt-5-nano",
           "name": "GPT-5 Nano",
           "description": "Ultra-fast, low latency",
-          "descriptionKey": "models.descriptions.cloud.openai_gpt_5_nano"
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_5_nano",
+          "tokenParam": "max_completion_tokens",
+          "supportsTemperature": false
         },
         {
           "id": "gpt-4.1",
           "name": "GPT-4.1",
           "description": "Strong baseline, 1M context",
-          "descriptionKey": "models.descriptions.cloud.openai_gpt_4_1"
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_4_1",
+          "tokenParam": "max_completion_tokens",
+          "supportsTemperature": true
         },
         {
           "id": "gpt-4.1-mini",
           "name": "GPT-4.1 Mini",
           "description": "Smaller GPT-4.1 model",
-          "descriptionKey": "models.descriptions.cloud.openai_gpt_4_1_mini"
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_4_1_mini",
+          "tokenParam": "max_completion_tokens",
+          "supportsTemperature": true
         },
         {
           "id": "gpt-4.1-nano",
           "name": "GPT-4.1 Nano",
           "description": "Lowest latency GPT-4.1",
-          "descriptionKey": "models.descriptions.cloud.openai_gpt_4_1_nano"
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_4_1_nano",
+          "tokenParam": "max_completion_tokens",
+          "supportsTemperature": true
         }
       ]
     },
