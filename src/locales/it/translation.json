@@ -71,7 +71,8 @@
       "alreadyRegistered": "\"{{hotkey}}\" è già registrata da un'altra applicazione.",
       "osReserved": "\"{{hotkey}}\" potrebbe essere riservata dal sistema operativo.",
       "registrationFailed": "Impossibile registrare \"{{hotkey}}\". Potrebbe essere in uso da un'altra applicazione.",
-      "trySuggestions": "Prova: {{suggestions}}"
+      "trySuggestions": "Prova: {{suggestions}}",
+      "slotConflict": "Questa scorciatoia è già utilizzata per {{slot}}."
     }
   },
   "systemSettings": {

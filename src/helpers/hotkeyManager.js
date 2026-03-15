@@ -647,6 +647,11 @@ class HotkeyManager {
     }
 
     try {
+      const conflict = this._findSlotConflict("dictation", hotkey);
+      if (conflict) {
+        return { success: false, message: conflict.error, reason: conflict.reason };
+      }
+
       if (this.useGnome && this.gnomeManager) {
         debugLogger.log(`[HotkeyManager] Updating GNOME hotkey to "${hotkey}"`);
         const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(hotkey);

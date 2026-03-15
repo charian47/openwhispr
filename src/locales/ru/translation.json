@@ -71,7 +71,8 @@
       "alreadyRegistered": "«{{hotkey}}» уже зарегистрирована другим приложением.",
       "osReserved": "«{{hotkey}}» может быть зарезервирована вашей операционной системой.",
       "registrationFailed": "Не удалось зарегистрировать «{{hotkey}}». Возможно, она используется другим приложением.",
-      "trySuggestions": "Попробуйте: {{suggestions}}"
+      "trySuggestions": "Попробуйте: {{suggestions}}",
+      "slotConflict": "Эта горячая клавиша уже используется для {{slot}}."
     }
   },
   "systemSettings": {

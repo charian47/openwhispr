@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.4] - 2026-03-15
+
+### Added
+
+- **Meeting Mode Hotkey**: Dedicated hotkey to start/stop meeting transcription directly from the keyboard, independent of the dictation hotkey
+- **Account Deletion**: Users can now delete their account from within the app
+- **Qwen3.5 Local Models**: Added Qwen3.5 local models to the model registry; removed sub-1B models that were too small for practical use
+- **Model Descriptions in Picker**: Local model picker now shows model descriptions to help users choose the right model
+- **Meeting Detection Toggle**: New setting to enable/disable automatic meeting detection
+- **Dependabot**: Automated weekly npm dependency updates via Dependabot
+- **CodeQL Static Analysis**: GitHub Actions workflow for automated security scanning
+- **Zod Dependency**: Added Zod for input validation and sanitization
+
+### Changed
+
+- **Multi-Monitor Floating Icon**: The dictation floating icon now appears on the monitor where the cursor is, instead of always on the primary display
+- **Persistent Panel Position**: Panel start position now persists across app restarts
+- **Compact Hotkey Tooltip**: Overlay tooltip uses compact modifier symbols (e.g., ⌘⇧K instead of Cmd+Shift+K), wraps for long combos, and aligns to window edge based on panel position
+- **Cross-Window Settings Sync**: Settings changes now sync across all open windows in real time
+- **Agent Chat Title**: Renamed agent mode window title from "Agent Mode" to "Agent Chat"
+- **Windows Model Preservation**: Local LLM models are now preserved during Windows app updates instead of being deleted
+
+### Fixed
+
+- **Meeting Hotkey Overwrite**: Fixed meeting hotkey accidentally overwriting the dictation hotkey on save
+- **Meeting Snap Timing (macOS)**: Fixed meeting mode snap timing on macOS causing incorrect window positioning
+- **Meeting Detection False Positives**: Reduced false-positive meeting detection notifications
+- **Hotkey Tooltip Display**: Fixed hotkey tooltip not updating after changing the hotkey in settings
+- **Silence Detection Threshold**: Lowered silence detection threshold to avoid rejecting valid speech that was previously considered too quiet (#411)
+
 ## [1.6.3] - 2026-03-12
 
 ### Changed

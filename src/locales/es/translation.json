@@ -71,7 +71,8 @@
       "alreadyRegistered": "\"{{hotkey}}\" ya está registrada por otra aplicación.",
       "osReserved": "\"{{hotkey}}\" puede estar reservada por tu entorno de escritorio.",
       "registrationFailed": "No se pudo registrar \"{{hotkey}}\". Puede estar en uso por otra aplicación.",
-      "trySuggestions": "Prueba: {{suggestions}}"
+      "trySuggestions": "Prueba: {{suggestions}}",
+      "slotConflict": "Este atajo ya está asignado a {{slot}}."
     }
   },
   "systemSettings": {
