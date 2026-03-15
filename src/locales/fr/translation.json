@@ -1297,7 +1297,8 @@
         "mistral_voxtral_mini_latest": "Transcription multilingue rapide"
       },
       "cloud": {
-        "openai_gpt_5_2": "Dernier modèle phare pour le raisonnement",
+        "openai_gpt_5_4": "Modèle frontier pour le raisonnement complexe",
+        "openai_gpt_5_2": "Modèle de raisonnement performant",
         "openai_gpt_5_mini": "Rapide et économique",
         "openai_gpt_5_nano": "Ultra-rapide, faible latence",
         "openai_gpt_4_1": "Base solide, contexte 1M",
