@@ -711,6 +711,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setTelemetryEnabled,
     audioRetentionDays,
     setAudioRetentionDays,
+    textRetentionEnabled,
+    setTextRetentionEnabled,
     customDictionary,
     setCustomDictionary,
   } = useSettings();
@@ -3242,6 +3244,28 @@ EOF`,
                     >
                       {t("settingsPage.privacy.clearAllAudio")}
                     </Button>
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Text Retention */}
+            <div className="border-t border-border/40 pt-6">
+              <SectionHeader
+                title={t("settingsPage.privacy.textRetention")}
+                description={t("settingsPage.privacy.textRetentionDescription")}
+              />
+
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.privacy.textRetention")}
+                    description={t("settingsPage.privacy.textRetentionDescription")}
+                  >
+                    <Toggle
+                      checked={textRetentionEnabled}
+                      onChange={setTextRetentionEnabled}
+                    />
                   </SettingsRow>
                 </SettingsPanelRow>
               </SettingsPanel>
