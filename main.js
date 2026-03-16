@@ -279,6 +279,7 @@ function initializeCoreManagers() {
   );
   windowManager.meetingDetectionEngine = meetingDetectionEngine;
   updateManager = new UpdateManager();
+  updateManager.setWindowManager(windowManager);
   windowsKeyManager = new WindowsKeyManager();
   textEditMonitor = new TextEditMonitor();
   windowManager.textEditMonitor = textEditMonitor;

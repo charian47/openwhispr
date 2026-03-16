@@ -4021,6 +4021,26 @@ class IPCHandlers {
       this.windowManager?.showNotificationWindow();
     });
 
+    ipcMain.handle("get-update-notification-data", async () => {
+      return this.windowManager?._pendingUpdateNotificationData ?? null;
+    });
+
+    ipcMain.handle("update-notification-ready", async () => {
+      this.windowManager?.showUpdateNotificationWindow();
+    });
+
+    ipcMain.handle("update-notification-respond", async (_event, action) => {
+      this.windowManager?.dismissUpdateNotification();
+      if (action === "update") {
+        try {
+          await this.updateManager?.downloadUpdate();
+        } catch (error) {
+          console.error("Failed to start update download from notification:", error);
+        }
+      }
+      return { success: true };
+    });
+
     ipcMain.handle("get-desktop-sources", async (_event, types) => {
       try {
         const { desktopCapturer } = require("electron");

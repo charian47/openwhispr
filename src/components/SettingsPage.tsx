@@ -3382,7 +3382,15 @@ EOF`,
                     <Button
                       onClick={async () => {
                         try {
-                          await checkForUpdates();
+                          const result = await checkForUpdates();
+                          if (result && !result.updateAvailable) {
+                            toast({
+                              title: t("settingsPage.general.updates.dialogs.noUpdates.title"),
+                              description: t(
+                                "settingsPage.general.updates.dialogs.noUpdates.description"
+                              ),
+                            });
+                          }
                         } catch {}
                       }}
                       disabled={checkingForUpdates || updateStatus.isDevelopment}

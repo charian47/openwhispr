@@ -1943,5 +1943,10 @@
       "open": "Abrir",
       "dismiss": "Cerrar"
     }
+  },
+  "updateNotification": {
+    "title": "Actualización disponible",
+    "body": "La versión {{version}} está lista",
+    "cta": "Actualizar ahora"
   }
 }

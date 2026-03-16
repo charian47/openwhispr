@@ -65,6 +65,8 @@ export default function ControlPanel() {
     () => localStorage.getItem("gpuBannerDismissedUnified") === "true"
   );
   const cloudMigrationProcessed = useRef(false);
+  const updateReadyToastShown = useRef(false);
+  const updateErrorToastShown = useRef<Error | null>(null);
   const { hotkey } = useHotkey();
   const { toast } = useToast();
   const {
@@ -114,21 +116,30 @@ export default function ControlPanel() {
 
   useEffect(() => {
     if (updateStatus.updateDownloaded && !isDownloading) {
-      toast({
-        title: t("controlPanel.update.readyTitle"),
-        description: t("controlPanel.update.readyDescription"),
-        variant: "success",
-      });
+      if (!updateReadyToastShown.current) {
+        updateReadyToastShown.current = true;
+        toast({
+          title: t("controlPanel.update.readyTitle"),
+          description: t("controlPanel.update.readyDescription"),
+          variant: "success",
+        });
+      }
+    } else {
+      updateReadyToastShown.current = false;
     }
   }, [updateStatus.updateDownloaded, isDownloading, toast, t]);
 
   useEffect(() => {
-    if (updateError) {
+    if (updateError && updateError !== updateErrorToastShown.current) {
+      updateErrorToastShown.current = updateError;
       toast({
         title: t("controlPanel.update.problemTitle"),
         description: t("controlPanel.update.problemDescription"),
         variant: "destructive",
       });
+    }
+    if (!updateError) {
+      updateErrorToastShown.current = null;
     }
   }, [updateError, toast, t]);
 

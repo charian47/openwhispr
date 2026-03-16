@@ -659,4 +659,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
     "navigate-to-meeting-note",
     (callback) => (_event, data) => callback(data)
   ),
+
+  onUpdateNotificationData: registerListener(
+    "update-notification-data",
+    (callback) => (_event, data) => callback(data)
+  ),
+  getUpdateNotificationData: () => ipcRenderer.invoke("get-update-notification-data"),
+  updateNotificationReady: () => ipcRenderer.invoke("update-notification-ready"),
+  updateNotificationRespond: (action) =>
+    ipcRenderer.invoke("update-notification-respond", action),
 });

@@ -1982,5 +1982,10 @@
       "open": "Open",
       "dismiss": "Dismiss"
     }
+  },
+  "updateNotification": {
+    "title": "Update Available",
+    "body": "Version {{version}} is ready",
+    "cta": "Update Now"
   }
 }

@@ -1943,5 +1943,10 @@
       "open": "開啟",
       "dismiss": "關閉"
     }
+  },
+  "updateNotification": {
+    "title": "有可用更新",
+    "body": "版本 {{version}} 已就緒",
+    "cta": "立即更新"
   }
 }

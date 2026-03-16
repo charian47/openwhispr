@@ -20,6 +20,7 @@ const ControlPanel = React.lazy(controlPanelImport);
 const OnboardingFlow = React.lazy(onboardingFlowImport);
 const AgentOverlay = React.lazy(agentOverlayImport);
 import MeetingNotificationOverlay from "./components/MeetingNotificationOverlay.tsx";
+import UpdateNotificationOverlay from "./components/UpdateNotificationOverlay.tsx";
 
 let root = null;
 
@@ -273,10 +274,14 @@ if (!isOAuthBrowserRedirect()) {
 
 function AppRouter() {
   useTheme();
-  const isMeetingNotification = window.location.search.includes("meeting-notification=true");
+  const params = window.location.search;
 
-  if (isMeetingNotification) {
+  if (params.includes("meeting-notification=true")) {
     return <MeetingNotificationOverlay />;
+  }
+
+  if (params.includes("update-notification=true")) {
+    return <UpdateNotificationOverlay />;
   }
 
   return <MainApp />;
