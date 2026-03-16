@@ -585,6 +585,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     (callback) => (_event, chunk) => callback(chunk)
   ),
   onAgentStreamDone: registerListener("agent-stream-done", (callback) => () => callback()),
+  agentWebSearch: (query, numResults) => ipcRenderer.invoke("agent-web-search", query, numResults),
 
   // Agent conversation persistence
   createAgentConversation: (title) => ipcRenderer.invoke("db-create-agent-conversation", title),

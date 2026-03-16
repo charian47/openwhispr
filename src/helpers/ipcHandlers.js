@@ -2712,6 +2712,43 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("agent-web-search", async (event, query, numResults = 5) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        debugLogger.debug("Agent web search request", { query, numResults }, "cloud-api");
+
+        const response = await fetch(`${apiUrl}/api/agent/web-search`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: cookieHeader,
+          },
+          body: JSON.stringify({ query, numResults }),
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          const errorData = await response.json().catch(() => ({}));
+          return {
+            success: false,
+            error: errorData.error || `API error: ${response.status}`,
+          };
+        }
+
+        return await response.json();
+      } catch (error) {
+        debugLogger.error("Agent web search error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
     ipcMain.handle(
       "cloud-streaming-usage",
       async (event, text, audioDurationSeconds, opts = {}) => {

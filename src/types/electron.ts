@@ -1078,6 +1078,19 @@ declare global {
       ) => Promise<{ success: boolean; error?: string; code?: string }>;
       onAgentStreamChunk?: (callback: (chunk: string) => void) => () => void;
       onAgentStreamDone?: (callback: () => void) => () => void;
+      agentWebSearch?: (
+        query: string,
+        numResults?: number
+      ) => Promise<{
+        success: boolean;
+        results?: Array<{
+          title: string;
+          url: string;
+          text: string;
+          publishedDate?: string;
+        }>;
+        error?: string;
+      }>;
 
       // Google Calendar
       gcalStartOAuth?: () => Promise<{ success: boolean; email?: string; error?: string }>;

@@ -1812,7 +1812,24 @@
       "toClose": "fermer",
       "listening": "Écoute...",
       "transcribing": "Transcription...",
-      "thinking": "Réflexion..."
+      "thinking": "Réflexion...",
+      "typeMessage": "Écrivez un message...",
+      "send": "Envoyer"
+    },
+    "tools": {
+      "search_notesStatus": "Recherche de notes...",
+      "web_searchStatus": "Recherche sur le web...",
+      "copy_to_clipboardStatus": "Copie dans le presse-papiers...",
+      "get_calendar_eventsStatus": "Vérification du calendrier...",
+      "foundNotes": "{{count}} note trouvée",
+      "foundNotes_plural": "{{count}} notes trouvées",
+      "searchResults": "{{count}} résultat trouvé",
+      "searchResults_plural": "{{count}} résultats trouvés",
+      "copiedToClipboard": "Copié dans le presse-papiers",
+      "calendarEvents": "{{count}} événement trouvé",
+      "calendarEvents_plural": "{{count}} événements trouvés",
+      "noResults": "Aucun résultat",
+      "error": "Erreur d'outil"
     }
   },
   "integrations": {

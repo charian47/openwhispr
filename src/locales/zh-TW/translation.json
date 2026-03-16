@@ -1812,7 +1812,24 @@
       "toClose": "關閉",
       "listening": "正在聆聽...",
       "transcribing": "正在轉錄...",
-      "thinking": "正在思考..."
+      "thinking": "正在思考...",
+      "typeMessage": "輸入訊息...",
+      "send": "傳送"
+    },
+    "tools": {
+      "search_notesStatus": "正在搜尋筆記...",
+      "web_searchStatus": "正在搜尋網頁...",
+      "copy_to_clipboardStatus": "正在複製到剪貼簿...",
+      "get_calendar_eventsStatus": "正在查看行事曆...",
+      "foundNotes": "找到 {{count}} 則筆記",
+      "foundNotes_plural": "找到 {{count}} 則筆記",
+      "searchResults": "找到 {{count}} 項結果",
+      "searchResults_plural": "找到 {{count}} 項結果",
+      "copiedToClipboard": "已複製到剪貼簿",
+      "calendarEvents": "找到 {{count}} 個行程",
+      "calendarEvents_plural": "找到 {{count}} 個行程",
+      "noResults": "未找到結果",
+      "error": "工具錯誤"
     }
   },
   "integrations": {

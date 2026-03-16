@@ -5,11 +5,20 @@ import { AgentMessage } from "./AgentMessage";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { formatHotkeyLabel } from "../../utils/hotkeys";
 
-interface Message {
+export interface ToolCallInfo {
   id: string;
-  role: "user" | "assistant";
+  name: string;
+  arguments: string;
+  status: "executing" | "completed" | "error";
+  result?: string;
+}
+
+export interface Message {
+  id: string;
+  role: "user" | "assistant" | "tool";
   content: string;
   isStreaming: boolean;
+  toolCalls?: ToolCallInfo[];
 }
 
 interface AgentChatProps {
@@ -39,14 +48,17 @@ export function AgentChat({ messages }: AgentChatProps) {
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {messages.map((msg) => (
-            <AgentMessage
-              key={msg.id}
-              role={msg.role}
-              content={msg.content}
-              isStreaming={msg.isStreaming}
-            />
-          ))}
+          {messages
+            .filter((msg) => msg.role !== "tool")
+            .map((msg) => (
+              <AgentMessage
+                key={msg.id}
+                role={msg.role as "user" | "assistant"}
+                content={msg.content}
+                isStreaming={msg.isStreaming}
+                toolCalls={msg.toolCalls}
+              />
+            ))}
         </div>
       )}
     </div>

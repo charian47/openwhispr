@@ -1812,7 +1812,24 @@
       "toClose": "閉じる",
       "listening": "聞いています...",
       "transcribing": "文字起こし中...",
-      "thinking": "考え中..."
+      "thinking": "考え中...",
+      "typeMessage": "メッセージを入力...",
+      "send": "送信"
+    },
+    "tools": {
+      "search_notesStatus": "ノートを検索中...",
+      "web_searchStatus": "ウェブを検索中...",
+      "copy_to_clipboardStatus": "クリップボードにコピー中...",
+      "get_calendar_eventsStatus": "カレンダーを確認中...",
+      "foundNotes": "{{count}}件のノートが見つかりました",
+      "foundNotes_plural": "{{count}}件のノートが見つかりました",
+      "searchResults": "{{count}}件の結果が見つかりました",
+      "searchResults_plural": "{{count}}件の結果が見つかりました",
+      "copiedToClipboard": "クリップボードにコピーしました",
+      "calendarEvents": "{{count}}件の予定が見つかりました",
+      "calendarEvents_plural": "{{count}}件の予定が見つかりました",
+      "noResults": "結果が見つかりません",
+      "error": "ツールエラー"
     }
   },
   "integrations": {

@@ -1,14 +1,23 @@
-import { Mic } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { Mic, SendHorizontal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../lib/utils";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { formatHotkeyLabel, isGlobeLikeHotkey } from "../../utils/hotkeys";
 
-type AgentState = "idle" | "listening" | "transcribing" | "thinking" | "streaming";
+type AgentState =
+  | "idle"
+  | "listening"
+  | "transcribing"
+  | "thinking"
+  | "streaming"
+  | "tool-executing";
 
 interface AgentInputProps {
   agentState: AgentState;
   partialTranscript: string;
+  toolStatus?: string;
+  onTextSubmit?: (text: string) => void;
 }
 
 function Kbd({ children }: { children: React.ReactNode }) {
@@ -80,37 +89,81 @@ function InputLoadingDots() {
   );
 }
 
-export function AgentInput({ agentState, partialTranscript }: AgentInputProps) {
+export function AgentInput({
+  agentState,
+  partialTranscript,
+  toolStatus,
+  onTextSubmit,
+}: AgentInputProps) {
   const { t } = useTranslation();
   const agentKey = useSettingsStore((s) => s.agentKey);
+  const [inputText, setInputText] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleSubmit = useCallback(() => {
+    const text = inputText.trim();
+    if (!text || !onTextSubmit) return;
+    onTextSubmit(text);
+    setInputText("");
+  }, [inputText, onTextSubmit]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [handleSubmit]
+  );
+
+  const isIdle = agentState === "idle";
 
   return (
     <div
       className={cn(
-        "flex items-center gap-3 h-12 px-3 py-2 shrink-0",
+        "flex items-center gap-2 min-h-12 px-3 py-2 shrink-0",
         "bg-surface-1 border-t border-border/30"
       )}
     >
-      {agentState === "idle" && (
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2">
-            <div
-              className="text-muted-foreground/50"
-              style={{ animation: "agent-mic-pulse 2.5s ease-in-out infinite" }}
+      {isIdle && (
+        <div className="flex items-center gap-2 w-full">
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t("agentMode.input.typeMessage")}
+            className={cn(
+              "bg-transparent border-none outline-none flex-1",
+              "text-[13px] text-foreground placeholder:text-muted-foreground/40",
+              "min-w-0"
+            )}
+          />
+          {inputText.trim() ? (
+            <button
+              onClick={handleSubmit}
+              className={cn(
+                "p-1 rounded-sm shrink-0",
+                "text-primary hover:text-primary/80",
+                "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/30",
+                "transition-colors duration-100"
+              )}
             >
-              <Mic size={14} />
+              <SendHorizontal size={14} />
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 shrink-0">
+              <div
+                className="text-muted-foreground/50"
+                style={{ animation: "agent-mic-pulse 2.5s ease-in-out infinite" }}
+              >
+                <Mic size={14} />
+              </div>
+              <HotkeyKeys hotkey={agentKey} />
             </div>
-            <span className="text-[11px] text-muted-foreground/50 select-none">
-              {t("agentMode.input.holdToSpeak")}
-            </span>
-            <HotkeyKeys hotkey={agentKey} />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Kbd>Esc</Kbd>
-            <span className="text-[10px] text-muted-foreground/35 select-none">
-              {t("agentMode.input.toClose")}
-            </span>
-          </div>
+          )}
         </div>
       )}
 
@@ -137,6 +190,15 @@ export function AgentInput({ agentState, partialTranscript }: AgentInputProps) {
           <InputLoadingDots />
           <span className="text-[12px] text-muted-foreground select-none">
             {t("agentMode.input.thinking")}
+          </span>
+        </>
+      )}
+
+      {agentState === "tool-executing" && (
+        <>
+          <InputLoadingDots />
+          <span className="text-[12px] text-muted-foreground select-none">
+            {toolStatus || t("agentMode.input.thinking")}
           </span>
         </>
       )}

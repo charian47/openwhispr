@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "./lib/utils";
 import { AgentTitleBar } from "./agent/AgentTitleBar";
 import { AgentChat } from "./agent/AgentChat";
@@ -7,23 +8,42 @@ import AudioManager from "../helpers/audioManager";
 import ReasoningService from "../services/ReasoningService";
 import { getSettings } from "../stores/settingsStore";
 import { getAgentSystemPrompt } from "../config/prompts";
+import { run as runAgentLoop } from "../services/AgentLoop";
+import { createToolRegistry } from "../services/tools";
 
-type AgentState = "idle" | "listening" | "transcribing" | "thinking" | "streaming";
+type AgentState =
+  | "idle"
+  | "listening"
+  | "transcribing"
+  | "thinking"
+  | "streaming"
+  | "tool-executing";
+
+interface ToolCallEntry {
+  id: string;
+  name: string;
+  arguments: string;
+  status: "executing" | "completed" | "error";
+  result?: string;
+}
 
 interface Message {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "tool";
   content: string;
   isStreaming: boolean;
+  toolCalls?: ToolCallEntry[];
 }
 
 const MIN_HEIGHT = 200;
 const MIN_WIDTH = 360;
 
 export default function AgentOverlay() {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [agentState, setAgentState] = useState<AgentState>("idle");
   const [partialTranscript, setPartialTranscript] = useState("");
+  const [toolStatus, setToolStatus] = useState("");
   const audioManagerRef = useRef<InstanceType<typeof AudioManager> | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const agentStateRef = useRef<AgentState>("idle");
@@ -44,94 +64,175 @@ export default function AgentOverlay() {
     ]);
   }, []);
 
-  const handleTranscriptionComplete = useCallback(async (text: string) => {
-    if (!text.trim()) {
-      setAgentState("idle");
-      return;
-    }
+  const handleTranscriptionComplete = useCallback(
+    async (text: string) => {
+      if (!text.trim()) {
+        setAgentState("idle");
+        return;
+      }
 
-    // Create conversation on first message
-    if (!conversationIdRef.current) {
-      const conv = await window.electronAPI?.createAgentConversation?.("New conversation");
-      conversationIdRef.current = conv?.id ?? null;
-    }
+      // Create conversation on first message
+      if (!conversationIdRef.current) {
+        const conv = await window.electronAPI?.createAgentConversation?.("New conversation");
+        conversationIdRef.current = conv?.id ?? null;
+      }
 
-    const userMsg: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: text,
-      isStreaming: false,
-    };
-    setMessages((prev) => [...prev, userMsg]);
+      const userMsg: Message = {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: text,
+        isStreaming: false,
+      };
+      setMessages((prev) => [...prev, userMsg]);
 
-    if (conversationIdRef.current) {
-      window.electronAPI?.addAgentMessage?.(conversationIdRef.current, "user", text);
-    }
+      if (conversationIdRef.current) {
+        window.electronAPI?.addAgentMessage?.(conversationIdRef.current, "user", text);
+      }
 
-    // Auto-title after first user message
-    const allMessages = messagesRef.current;
-    if (conversationIdRef.current && allMessages.length === 0) {
-      const title = text.slice(0, 50) + (text.length > 50 ? "..." : "");
-      window.electronAPI?.updateAgentConversationTitle?.(conversationIdRef.current, title);
-    }
+      // Auto-title after first user message
+      const allMessages = messagesRef.current;
+      if (conversationIdRef.current && allMessages.length === 0) {
+        const title = text.slice(0, 50) + (text.length > 50 ? "..." : "");
+        window.electronAPI?.updateAgentConversationTitle?.(conversationIdRef.current, title);
+      }
 
-    setAgentState("thinking");
+      setAgentState("thinking");
 
-    const settings = getSettings();
-    const systemPrompt = getAgentSystemPrompt();
+      const settings = getSettings();
 
-    const llmMessages = [
-      { role: "system", content: systemPrompt },
-      ...[...allMessages, userMsg].slice(-20).map((m) => ({ role: m.role, content: m.content })),
-    ];
+      const isCloudAgent = settings.isSignedIn && settings.cloudAgentMode === "openwhispr";
+      const toolSupportedProviders = ["openai", "groq", "custom"];
+      const supportsTools =
+        !isCloudAgent && toolSupportedProviders.includes(settings.agentProvider);
 
-    const assistantId = crypto.randomUUID();
-    setMessages((prev) => [
-      ...prev,
-      { id: assistantId, role: "assistant", content: "", isStreaming: true },
-    ]);
-    setAgentState("streaming");
+      const registry = supportsTools
+        ? createToolRegistry({
+            isSignedIn: settings.isSignedIn,
+            gcalConnected: settings.gcalConnected,
+          })
+        : null;
+      const systemPrompt = getAgentSystemPrompt(registry?.getAll().map((t) => t.name));
 
-    const isCloudAgent = settings.isSignedIn && settings.cloudAgentMode === "openwhispr";
+      const llmMessages = [
+        { role: "system", content: systemPrompt },
+        ...[...allMessages, userMsg].slice(-20).map((m) => ({ role: m.role, content: m.content })),
+      ];
 
-    try {
-      let fullContent = "";
+      const assistantId = crypto.randomUUID();
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantId, role: "assistant", content: "", isStreaming: true },
+      ]);
+      setAgentState("streaming");
 
-      const streamSource = isCloudAgent
-        ? ReasoningService.processTextStreamingCloud(llmMessages, { systemPrompt })
-        : ReasoningService.processTextStreaming(
-            llmMessages,
-            settings.agentModel,
-            settings.agentProvider,
-            { systemPrompt }
-          );
+      try {
+        let fullContent = "";
 
-      for await (const chunk of streamSource) {
-        fullContent += chunk;
+        if (supportsTools && registry) {
+          await runAgentLoop({
+            messages: llmMessages,
+            model: settings.agentModel,
+            provider: settings.agentProvider,
+            systemPrompt,
+            tools: registry,
+            callbacks: {
+              onContentChunk: (text) => {
+                fullContent += text;
+                setMessages((prev) =>
+                  prev.map((m) => (m.id === assistantId ? { ...m, content: fullContent } : m))
+                );
+              },
+              onToolStart: (toolName) => {
+                setAgentState("tool-executing");
+                setToolStatus(
+                  t(`agentMode.tools.${toolName}Status`, { defaultValue: `Using ${toolName}...` })
+                );
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? {
+                          ...m,
+                          toolCalls: [
+                            ...(m.toolCalls || []),
+                            {
+                              id: crypto.randomUUID(),
+                              name: toolName,
+                              arguments: "",
+                              status: "executing" as const,
+                            },
+                          ],
+                        }
+                      : m
+                  )
+                );
+              },
+              onToolComplete: (toolName, result) => {
+                setAgentState("streaming");
+                setToolStatus("");
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? {
+                          ...m,
+                          toolCalls: m.toolCalls?.map((tc) =>
+                            tc.name === toolName && tc.status === "executing"
+                              ? { ...tc, status: "completed" as const, result: result.displayText }
+                              : tc
+                          ),
+                        }
+                      : m
+                  )
+                );
+              },
+              onError: (error) => {
+                console.error("Agent loop error:", error);
+              },
+            },
+            maxIterations: 5,
+          });
+        } else {
+          const streamSource = isCloudAgent
+            ? ReasoningService.processTextStreamingCloud(llmMessages, { systemPrompt })
+            : ReasoningService.processTextStreaming(
+                llmMessages,
+                settings.agentModel,
+                settings.agentProvider,
+                { systemPrompt }
+              );
+
+          for await (const chunk of streamSource) {
+            fullContent += chunk;
+            setMessages((prev) =>
+              prev.map((m) => (m.id === assistantId ? { ...m, content: fullContent } : m))
+            );
+          }
+        }
+
         setMessages((prev) =>
-          prev.map((m) => (m.id === assistantId ? { ...m, content: fullContent } : m))
+          prev.map((m) => (m.id === assistantId ? { ...m, isStreaming: false } : m))
+        );
+
+        if (conversationIdRef.current) {
+          window.electronAPI?.addAgentMessage?.(
+            conversationIdRef.current,
+            "assistant",
+            fullContent
+          );
+        }
+      } catch (error) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: `Error: ${(error as Error).message}`, isStreaming: false }
+              : m
+          )
         );
       }
 
-      setMessages((prev) =>
-        prev.map((m) => (m.id === assistantId ? { ...m, isStreaming: false } : m))
-      );
-
-      if (conversationIdRef.current) {
-        window.electronAPI?.addAgentMessage?.(conversationIdRef.current, "assistant", fullContent);
-      }
-    } catch (error) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, content: `Error: ${(error as Error).message}`, isStreaming: false }
-            : m
-        )
-      );
-    }
-
-    setAgentState("idle");
-  }, []);
+      setAgentState("idle");
+    },
+    [t]
+  );
 
   useEffect(() => {
     const am = new AudioManager();
@@ -244,10 +345,18 @@ export default function AgentOverlay() {
     };
   }, []);
 
+  const handleTextSubmit = useCallback(
+    (text: string) => {
+      handleTranscriptionComplete(text);
+    },
+    [handleTranscriptionComplete]
+  );
+
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setAgentState("idle");
     setPartialTranscript("");
+    setToolStatus("");
     conversationIdRef.current = null;
   }, []);
 
@@ -268,7 +377,12 @@ export default function AgentOverlay() {
       >
         <AgentTitleBar onNewChat={handleNewChat} onClose={handleClose} />
         <AgentChat messages={messages} />
-        <AgentInput agentState={agentState} partialTranscript={partialTranscript} />
+        <AgentInput
+          agentState={agentState}
+          partialTranscript={partialTranscript}
+          toolStatus={toolStatus}
+          onTextSubmit={handleTextSubmit}
+        />
       </div>
 
       {/* Resize handles — edges */}

@@ -144,10 +144,31 @@ const DEFAULT_AGENT_SYSTEM_PROMPT =
   "Keep answers brief unless the user asks for detail. " +
   "You may be given a transcription of spoken input, so handle informal phrasing gracefully.";
 
-export function getAgentSystemPrompt(): string {
+const TOOL_INSTRUCTIONS: Record<string, string> = {
+  search_notes:
+    "Use search_notes to find information from the user's past meetings, discussions, or personal notes before answering from memory.",
+  web_search:
+    "Use web_search for questions about current events, facts you're unsure about, or anything requiring up-to-date information.",
+  copy_to_clipboard:
+    "Use copy_to_clipboard when the user asks you to copy something to their clipboard.",
+  get_calendar_events:
+    "Use get_calendar_events to check the user's schedule, upcoming meetings, or calendar events.",
+};
+
+export function getAgentSystemPrompt(availableTools?: string[]): string {
   if (typeof window !== "undefined" && window.localStorage) {
     const custom = window.localStorage.getItem("agentSystemPrompt");
     if (custom) return custom;
   }
-  return DEFAULT_AGENT_SYSTEM_PROMPT;
+
+  let prompt = DEFAULT_AGENT_SYSTEM_PROMPT;
+
+  if (availableTools && availableTools.length > 0) {
+    const toolLines = availableTools.map((name) => TOOL_INSTRUCTIONS[name]).filter(Boolean);
+    if (toolLines.length > 0) {
+      prompt += "\n\nYou have access to tools. " + toolLines.join(" ");
+    }
+  }
+
+  return prompt;
 }

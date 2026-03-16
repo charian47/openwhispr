@@ -1,15 +1,74 @@
 import { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Search, Globe, ClipboardCopy, Calendar } from "lucide-react";
 import { cn } from "../lib/utils";
 import { MarkdownRenderer } from "../ui/MarkdownRenderer";
+import type { ToolCallInfo } from "./AgentChat";
 
 interface AgentMessageProps {
   role: "user" | "assistant";
   content: string;
   isStreaming: boolean;
+  toolCalls?: ToolCallInfo[];
 }
 
-export function AgentMessage({ role, content, isStreaming }: AgentMessageProps) {
+const toolIcons: Record<string, typeof Search> = {
+  search_notes: Search,
+  web_search: Globe,
+  copy_to_clipboard: ClipboardCopy,
+  get_calendar_events: Calendar,
+};
+
+function ToolCallPill({ toolCall }: { toolCall: ToolCallInfo }) {
+  const [expanded, setExpanded] = useState(false);
+  const Icon = toolIcons[toolCall.name] || Search;
+  const isExecuting = toolCall.status === "executing";
+  const isError = toolCall.status === "error";
+  const resultLines = toolCall.result?.split("\n") ?? [];
+  const isExpandable = resultLines.length > 3;
+
+  return (
+    <div
+      className={cn(
+        "bg-surface-1 border border-border/20 rounded-md px-2.5 py-1.5 mb-1.5",
+        isExpandable && !isExecuting && "cursor-pointer"
+      )}
+      onClick={isExpandable && !isExecuting ? () => setExpanded((v) => !v) : undefined}
+    >
+      <div className="flex items-center gap-1.5">
+        <Icon size={12} className="text-muted-foreground/60 shrink-0" />
+        {isExecuting ? (
+          <div className="flex items-center gap-1">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-1 h-1 rounded-full bg-muted-foreground/50"
+                style={{ animation: `agent-loading-dot 1.2s ease-in-out ${i * 0.2}s infinite` }}
+              />
+            ))}
+          </div>
+        ) : (
+          <span
+            className={cn("text-[11px]", isError ? "text-destructive/70" : "text-muted-foreground")}
+          >
+            {toolCall.result || toolCall.name}
+          </span>
+        )}
+      </div>
+      {!isExecuting && isExpandable && (
+        <div
+          className="overflow-hidden transition-all duration-200"
+          style={{ maxHeight: expanded ? `${resultLines.length * 18 + 8}px` : "0px" }}
+        >
+          <pre className="text-[10px] text-muted-foreground/70 mt-1 whitespace-pre-wrap">
+            {toolCall.result}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function AgentMessage({ role, content, isStreaming, toolCalls }: AgentMessageProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -64,6 +123,14 @@ export function AgentMessage({ role, content, isStreaming }: AgentMessageProps) 
         >
           {copied ? <Check size={14} /> : <Copy size={14} />}
         </button>
+
+        {toolCalls && toolCalls.length > 0 && (
+          <div className="mb-1">
+            {toolCalls.map((tc) => (
+              <ToolCallPill key={tc.id} toolCall={tc} />
+            ))}
+          </div>
+        )}
 
         <MarkdownRenderer
           content={content}

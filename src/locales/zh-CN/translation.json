@@ -1812,7 +1812,24 @@
       "toClose": "关闭",
       "listening": "正在聆听...",
       "transcribing": "正在转录...",
-      "thinking": "正在思考..."
+      "thinking": "正在思考...",
+      "typeMessage": "输入消息...",
+      "send": "发送"
+    },
+    "tools": {
+      "search_notesStatus": "正在搜索笔记...",
+      "web_searchStatus": "正在搜索网页...",
+      "copy_to_clipboardStatus": "正在复制到剪贴板...",
+      "get_calendar_eventsStatus": "正在查看日历...",
+      "foundNotes": "找到 {{count}} 条笔记",
+      "foundNotes_plural": "找到 {{count}} 条笔记",
+      "searchResults": "找到 {{count}} 条结果",
+      "searchResults_plural": "找到 {{count}} 条结果",
+      "copiedToClipboard": "已复制到剪贴板",
+      "calendarEvents": "找到 {{count}} 个日程",
+      "calendarEvents_plural": "找到 {{count}} 个日程",
+      "noResults": "未找到结果",
+      "error": "工具错误"
     }
   },
   "integrations": {
