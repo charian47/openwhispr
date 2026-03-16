@@ -37,8 +37,12 @@ export class ToolRegistry {
         description: def.description,
         inputSchema: jsonSchema(def.parameters),
         execute: async (args: unknown) => {
-          const toolResult = await def.execute(args as Record<string, unknown>);
-          return toolResult.data;
+          try {
+            const toolResult = await def.execute(args as Record<string, unknown>);
+            return toolResult.success ? toolResult.data : { error: toolResult.displayText };
+          } catch (error) {
+            return { error: (error as Error).message || "Tool execution failed" };
+          }
         },
       } as Tool;
     }

@@ -13,6 +13,7 @@ import { getAIModel } from "./ai/providers";
 export type AgentStreamChunk =
   | { type: "content"; text: string }
   | { type: "tool_calls"; calls: Array<{ id: string; name: string; arguments: string }> }
+  | { type: "tool_result"; callId: string; toolName: string; displayText: string }
   | { type: "done"; finishReason?: string };
 
 class ReasoningService extends BaseReasoningService {
@@ -1334,6 +1335,15 @@ class ReasoningService extends BaseReasoningService {
             },
           ],
         };
+      } else if (chunk.type === "tool-result") {
+        const output = chunk.output;
+        const displayText =
+          typeof output === "string"
+            ? output
+            : output?.error
+              ? String(output.error)
+              : "Done";
+        yield { type: "tool_result", callId: chunk.toolCallId, toolName: chunk.toolName, displayText };
       } else if (chunk.type === "finish") {
         yield { type: "done", finishReason: chunk.finishReason };
       }

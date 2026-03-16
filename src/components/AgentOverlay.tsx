@@ -47,6 +47,7 @@ export default function AgentOverlay() {
   const messagesRef = useRef<Message[]>([]);
   const agentStateRef = useRef<AgentState>("idle");
   const conversationIdRef = useRef<number | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -55,6 +56,12 @@ export default function AgentOverlay() {
   useEffect(() => {
     agentStateRef.current = agentState;
   }, [agentState]);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const addSystemMessage = useCallback((content: string) => {
     setMessages((prev) => [
@@ -138,6 +145,7 @@ export default function AgentOverlay() {
           );
 
           for await (const chunk of stream) {
+            if (!mountedRef.current) break;
             if (chunk.type === "content") {
               fullContent += chunk.text;
               setMessages((prev) =>
@@ -160,17 +168,31 @@ export default function AgentOverlay() {
                               id: call.id,
                               name: call.name,
                               arguments: call.arguments,
-                              status: "completed" as const,
-                              result: "Done",
+                              status: "executing" as const,
                             },
                           ],
                         }
                       : m
                   )
                 );
-                setAgentState("streaming");
-                setToolStatus("");
               }
+            } else if (chunk.type === "tool_result") {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId && m.toolCalls
+                    ? {
+                        ...m,
+                        toolCalls: m.toolCalls.map((tc) =>
+                          tc.id === chunk.callId
+                            ? { ...tc, status: "completed" as const, result: chunk.displayText }
+                            : tc
+                        ),
+                      }
+                    : m
+                )
+              );
+              setAgentState("streaming");
+              setToolStatus("");
             }
           }
         } else if (isCloudAgent) {
@@ -178,6 +200,7 @@ export default function AgentOverlay() {
             systemPrompt,
           });
           for await (const chunk of streamSource) {
+            if (!mountedRef.current) break;
             fullContent += chunk;
             setMessages((prev) =>
               prev.map((m) => (m.id === assistantId ? { ...m, content: fullContent } : m))
@@ -191,6 +214,7 @@ export default function AgentOverlay() {
             { systemPrompt }
           );
           for await (const chunk of stream) {
+            if (!mountedRef.current) break;
             if (chunk.type === "content") {
               fullContent += chunk.text;
               setMessages((prev) =>
@@ -256,6 +280,7 @@ export default function AgentOverlay() {
     });
     audioManagerRef.current = am;
     return () => {
+      am.cleanup?.();
       window.removeEventListener("api-key-changed", (am as any)._onApiKeyChanged);
     };
   }, [addSystemMessage, handleTranscriptionComplete]);

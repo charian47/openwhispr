@@ -2742,7 +2742,8 @@ class IPCHandlers {
           };
         }
 
-        return await response.json();
+        const data = await response.json();
+        return { success: true, ...data };
       } catch (error) {
         debugLogger.error("Agent web search error:", error);
         return { success: false, error: error.message };
