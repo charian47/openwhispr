@@ -412,6 +412,15 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
 
       const segmentCleanup = window.electronAPI?.onMeetingTranscriptionSegment?.(
         (data: { text: string; source: "mic" | "system"; type: "partial" | "final" }) => {
+          logger.debug(
+            "Meeting segment received in renderer",
+            {
+              source: data.source,
+              type: data.type,
+              text: data.text?.slice(0, 80),
+            },
+            "meeting"
+          );
           const setPartialForSource = partialSetters[data.source];
 
           if (data.type === "partial") {

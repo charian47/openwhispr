@@ -2341,7 +2341,15 @@ class IPCHandlers {
 
     const attachMeetingStreamingHandlers = (streaming, win, source) => {
       const send = (channel, data) => {
-        if (win && !win.isDestroyed()) win.webContents.send(channel, data);
+        if (!win || win.isDestroyed()) {
+          debugLogger.error("Meeting segment send failed: window unavailable", {
+            channel,
+            source,
+            winExists: !!win,
+          });
+          return;
+        }
+        win.webContents.send(channel, data);
       };
 
       streaming.onPartialTranscript = (text) => {
@@ -2350,6 +2358,11 @@ class IPCHandlers {
       streaming.onFinalTranscript = (text) => {
         const segments = streaming.completedSegments;
         const latestSegment = segments.length > 0 ? segments[segments.length - 1] : text;
+        debugLogger.debug("Meeting segment sending to renderer", {
+          source,
+          text: latestSegment.slice(0, 80),
+          segmentCount: segments.length,
+        });
         send("meeting-transcription-segment", { text: latestSegment, source, type: "final" });
       };
       streaming.onError = (error) => {

@@ -9,13 +9,33 @@ export async function getSystemAudioStream(): Promise<MediaStream | null> {
   try {
     // Use getDisplayMedia (handled by setDisplayMediaRequestHandler in main process)
     // which properly captures system audio via macOS ScreenCaptureKit loopback.
+    // Disable all audio processing — echo cancellation and noise suppression
+    // on loopback audio can cancel out the captured system audio entirely,
+    // especially when Bluetooth headphones change the audio routing.
     const stream = await navigator.mediaDevices.getDisplayMedia({
-      audio: true,
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      },
       video: true,
     });
 
     const audioTracks = stream.getAudioTracks();
     const videoTracks = stream.getVideoTracks();
+
+    // Belt-and-suspenders: also apply constraints directly on the track
+    // in case getDisplayMedia ignored the initial constraints.
+    if (audioTracks[0]) {
+      try {
+        await audioTracks[0].applyConstraints({
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        });
+      } catch {}
+    }
+
     logger.debug(
       "Display media stream obtained",
       {

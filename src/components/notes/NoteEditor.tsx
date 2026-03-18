@@ -429,7 +429,9 @@ export default function NoteEditor({
   useEffect(() => {
     if (note.id !== prevNoteIdRef.current) {
       prevNoteIdRef.current = note.id;
-      setViewMode("raw");
+      if (!isMeetingRecording) {
+        setViewMode("raw");
+      }
       if (titleRef.current && titleRef.current.textContent !== note.title) {
         titleRef.current.textContent = note.title || "";
       }
@@ -442,7 +444,7 @@ export default function NoteEditor({
       pendingSelectionRestoreRef.current = null;
       beforeInputSelectionRef.current = null;
     }
-  }, [note.id, syncSelectionRefs]);
+  }, [note.id, isMeetingRecording, syncSelectionRefs]);
 
   useEffect(() => {
     if (titleRef.current && titleRef.current.textContent !== note.title) {
