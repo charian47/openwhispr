@@ -1,5 +1,5 @@
 import { ToolRegistry } from "./ToolRegistry";
-import { searchNotesTool } from "./searchNotesTool";
+import { createSearchNotesTool } from "./searchNotesTool";
 import { getNoteTool } from "./getNoteTool";
 import { createNoteTool } from "./createNoteTool";
 import { updateNoteTool } from "./updateNoteTool";
@@ -13,12 +13,14 @@ export type { ToolDefinition, ToolResult } from "./ToolRegistry";
 interface ToolRegistrySettings {
   isSignedIn: boolean;
   gcalConnected: boolean;
+  cloudBackupEnabled: boolean;
 }
 
 export function createToolRegistry(settings: ToolRegistrySettings): ToolRegistry {
   const registry = new ToolRegistry();
 
-  registry.register(searchNotesTool);
+  const useCloudSearch = settings.isSignedIn && settings.cloudBackupEnabled;
+  registry.register(createSearchNotesTool({ useCloudSearch }));
   registry.register(getNoteTool);
   registry.register(createNoteTool);
   registry.register(updateNoteTool);

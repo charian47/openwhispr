@@ -115,6 +115,7 @@ export default function AgentOverlay() {
         ? createToolRegistry({
             isSignedIn: settings.isSignedIn,
             gcalConnected: settings.gcalConnected,
+            cloudBackupEnabled: settings.cloudBackupEnabled,
           })
         : null;
       const systemPrompt = getAgentSystemPrompt(registry?.getAll().map((t) => t.name));
