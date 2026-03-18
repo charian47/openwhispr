@@ -608,18 +608,12 @@ async function startApp() {
 
   const savedAgentKey = environmentManager.getAgentKey?.() || "";
   if (savedAgentKey) {
-    hotkeyManager.registerSlot("agent", savedAgentKey, agentHotkeyCallback);
+    const result = await hotkeyManager.registerSlot("agent", savedAgentKey, agentHotkeyCallback);
+    if (!result.success) {
+      debugLogger.warn("Failed to restore agent hotkey", { hotkey: savedAgentKey }, "hotkey");
+    }
   }
 
-  ipcMain.on("agent-hotkey-changed", (_event, hotkey) => {
-    if (hotkey) {
-      hotkeyManager.registerSlot("agent", hotkey, agentHotkeyCallback);
-      environmentManager.saveAgentKey(hotkey);
-    } else {
-      hotkeyManager.unregisterSlot("agent");
-      environmentManager.saveAgentKey("");
-    }
-  });
 
   // Set up meeting mode hotkey
   const meetingHotkeyCallback = () => {
