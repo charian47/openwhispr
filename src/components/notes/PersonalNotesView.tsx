@@ -87,6 +87,9 @@ export default function PersonalNotesView({
   const {
     isRecording: isMeetingRecording,
     transcript: meetingTranscript,
+    segments: meetingSegments,
+    micPartial: meetingMicPartial,
+    systemPartial: meetingSystemPartial,
     prepareTranscription: prepareMeetingTranscription,
     startTranscription: startMeetingTranscription,
     stopTranscription: stopMeetingTranscription,
@@ -406,15 +409,19 @@ export default function PersonalNotesView({
       prevMeetingRecordingRef.current &&
       !isMeetingRecording &&
       meetingNoteIdRef.current &&
-      meetingTranscript
+      (meetingTranscript || meetingSegments.length > 0)
     ) {
+      const transcript =
+        meetingSegments.length > 0
+          ? JSON.stringify(meetingSegments.map(({ text, source }) => ({ text, source })))
+          : meetingTranscript;
       window.electronAPI.updateNote(meetingNoteIdRef.current, {
-        transcript: meetingTranscript,
+        transcript,
       });
       meetingNoteIdRef.current = null;
     }
     prevMeetingRecordingRef.current = isMeetingRecording;
-  }, [isMeetingRecording, meetingTranscript]);
+  }, [isMeetingRecording, meetingTranscript, meetingSegments]);
 
   const editorNote = activeNote
     ? { ...activeNote, title: localTitle, content: localContent }
@@ -751,6 +758,9 @@ export default function PersonalNotesView({
               }
               isMeetingRecording={isMeetingRecording}
               meetingTranscript={meetingTranscript}
+              meetingSegments={meetingSegments}
+              meetingMicPartial={meetingMicPartial}
+              meetingSystemPartial={meetingSystemPartial}
               onStopMeetingRecording={stopMeetingTranscription}
               liveTranscript={liveTranscript}
               actionProcessingState={actionProcessingState}

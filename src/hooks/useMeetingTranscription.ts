@@ -4,10 +4,19 @@ import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 import { getSystemAudioStream } from "../utils/systemAudio";
 import logger from "../utils/logger";
 
+export interface TranscriptSegment {
+  id: string;
+  text: string;
+  source: "mic" | "system";
+}
+
 interface UseMeetingTranscriptionReturn {
   isRecording: boolean;
   transcript: string;
   partialTranscript: string;
+  segments: TranscriptSegment[];
+  micPartial: string;
+  systemPartial: string;
   error: string | null;
   prepareTranscription: () => Promise<void>;
   startTranscription: () => Promise<void>;
@@ -186,12 +195,15 @@ const flushAndDisconnectProcessor = async (processor: AudioWorkletNode | null) =
   processor.disconnect();
 };
 
-// getSystemAudioStream imported from ../utils/systemAudio
+let segmentCounter = 0;
 
 export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [partialTranscript, setPartialTranscript] = useState("");
+  const [segments, setSegments] = useState<TranscriptSegment[]>([]);
+  const [micPartial, setMicPartial] = useState("");
+  const [systemPartial, setSystemPartial] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -209,52 +221,30 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
   const ipcCleanupsRef = useRef<Array<() => void>>([]);
 
   const cleanup = useCallback(async () => {
-    if (processorRef.current) {
-      await flushAndDisconnectProcessor(processorRef.current);
-      processorRef.current = null;
-    }
+    const processors = [processorRef, micProcessorRef];
+    const sources = [sourceRef, micSourceRef];
+    const streams = [streamRef, micStreamRef];
+    const contexts = [audioContextRef, micContextRef];
 
-    if (sourceRef.current) {
-      sourceRef.current.disconnect();
-      sourceRef.current = null;
+    for (const ref of processors) {
+      await flushAndDisconnectProcessor(ref.current);
+      ref.current = null;
     }
-
-    if (micProcessorRef.current) {
-      await flushAndDisconnectProcessor(micProcessorRef.current);
-      micProcessorRef.current = null;
+    for (const ref of sources) {
+      ref.current?.disconnect();
+      ref.current = null;
     }
-
-    if (micSourceRef.current) {
-      micSourceRef.current.disconnect();
-      micSourceRef.current = null;
-    }
-
-    if (streamRef.current) {
+    for (const ref of streams) {
       try {
-        streamRef.current.getTracks().forEach((t) => t.stop());
+        ref.current?.getTracks().forEach((t) => t.stop());
       } catch {}
-      streamRef.current = null;
+      ref.current = null;
     }
-
-    if (micStreamRef.current) {
+    for (const ref of contexts) {
       try {
-        micStreamRef.current.getTracks().forEach((t) => t.stop());
+        await ref.current?.close();
       } catch {}
-      micStreamRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      try {
-        await audioContextRef.current.close();
-      } catch {}
-      audioContextRef.current = null;
-    }
-
-    if (micContextRef.current) {
-      try {
-        await micContextRef.current.close();
-      } catch {}
-      micContextRef.current = null;
+      ref.current = null;
     }
 
     ipcCleanupsRef.current.forEach((fn) => fn());
@@ -295,7 +285,7 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
     if (isPreparedRef.current || isRecordingRef.current || isStartingRef.current) return;
     if (preparePromiseRef.current) return; // already preparing
 
-    logger.info("Meeting transcription preparing (pre-warming WebSocket)...", {}, "meeting");
+    logger.info("Meeting transcription preparing (pre-warming WebSockets)...", {}, "meeting");
 
     const promise = (async () => {
       try {
@@ -335,6 +325,9 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
     logger.info("Meeting transcription starting...", {}, "meeting");
     setTranscript("");
     setPartialTranscript("");
+    setSegments([]);
+    setMicPartial("");
+    setSystemPartial("");
     setError(null);
 
     // Set recording state immediately for instant UI feedback
@@ -401,16 +394,27 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
       }
       streamRef.current = stream;
 
-      const partialCleanup = window.electronAPI?.onMeetingTranscriptionPartial?.((text) => {
-        setPartialTranscript(text);
-      });
-      if (partialCleanup) ipcCleanupsRef.current.push(partialCleanup);
+      const partialSetters = { mic: setMicPartial, system: setSystemPartial };
 
-      const finalCleanup = window.electronAPI?.onMeetingTranscriptionFinal?.((text) => {
-        setTranscript(text);
-        setPartialTranscript("");
-      });
-      if (finalCleanup) ipcCleanupsRef.current.push(finalCleanup);
+      const segmentCleanup = window.electronAPI?.onMeetingTranscriptionSegment?.(
+        (data: { text: string; source: "mic" | "system"; type: "partial" | "final" }) => {
+          const setPartialForSource = partialSetters[data.source];
+
+          if (data.type === "partial") {
+            setPartialForSource(data.text);
+            setPartialTranscript(data.text);
+          } else {
+            setSegments((prev) => [
+              ...prev,
+              { id: `seg-${++segmentCounter}`, text: data.text, source: data.source },
+            ]);
+            setPartialForSource("");
+            setTranscript((prev) => (prev ? prev + " " + data.text : data.text));
+            setPartialTranscript("");
+          }
+        }
+      );
+      if (segmentCleanup) ipcCleanupsRef.current.push(segmentCleanup);
 
       const errorCleanup = window.electronAPI?.onMeetingTranscriptionError?.((err) => {
         setError(err);
@@ -418,7 +422,8 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
       });
       if (errorCleanup) ipcCleanupsRef.current.push(errorCleanup);
 
-      const pendingAudioChunks: ArrayBuffer[] = [];
+      const pendingSystemChunks: ArrayBuffer[] = [];
+      const pendingMicChunks: ArrayBuffer[] = [];
       let socketReady = false;
 
       const audioContext = new AudioContext({ sampleRate: 24000 });
@@ -440,10 +445,10 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
           }
           if (!hasSignal) return;
           if (socketReady) {
-            window.electronAPI?.meetingTranscriptionSend?.(chunk);
+            window.electronAPI?.meetingTranscriptionSend?.(chunk, "system");
             return;
           }
-          pendingAudioChunks.push(chunk.slice(0));
+          pendingSystemChunks.push(chunk.slice(0));
         },
       });
 
@@ -460,10 +465,10 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
           onChunk: (chunk) => {
             if (!isRecordingRef.current) return;
             if (socketReady) {
-              window.electronAPI?.meetingTranscriptionSend?.(chunk);
+              window.electronAPI?.meetingTranscriptionSend?.(chunk, "mic");
               return;
             }
-            pendingAudioChunks.push(chunk.slice(0));
+            pendingMicChunks.push(chunk.slice(0));
           },
         }).then(({ source, processor }) => {
           micSourceRef.current = source;
@@ -505,15 +510,18 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
       isStartingRef.current = false;
       socketReady = true;
 
-      for (const chunk of pendingAudioChunks) {
-        window.electronAPI?.meetingTranscriptionSend?.(chunk);
+      for (const chunk of pendingSystemChunks) {
+        window.electronAPI?.meetingTranscriptionSend?.(chunk, "system");
+      }
+      for (const chunk of pendingMicChunks) {
+        window.electronAPI?.meetingTranscriptionSend?.(chunk, "mic");
       }
 
       const totalMs = performance.now() - startTime;
       logger.info(
         "Meeting transcription started successfully",
         {
-          bufferedChunks: pendingAudioChunks.length,
+          bufferedChunks: pendingSystemChunks.length + pendingMicChunks.length,
           streamsMs: Math.round(streamsMs),
           totalMs: Math.round(totalMs),
           wasPrepared: isPreparedRef.current,
@@ -550,6 +558,9 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
     isRecording,
     transcript,
     partialTranscript,
+    segments,
+    micPartial,
+    systemPartial,
     error,
     prepareTranscription,
     startTranscription,

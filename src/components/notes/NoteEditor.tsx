@@ -10,6 +10,8 @@ import {
   MessageSquareText,
 } from "lucide-react";
 import { MarkdownTextarea } from "../ui/MarkdownTextarea";
+import { MeetingTranscriptChat } from "./MeetingTranscriptChat";
+import type { TranscriptSegment } from "../../hooks/useMeetingTranscription";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -65,6 +67,9 @@ interface NoteEditorProps {
   actionName?: string | null;
   isMeetingRecording?: boolean;
   meetingTranscript?: string;
+  meetingSegments?: TranscriptSegment[];
+  meetingMicPartial?: string;
+  meetingSystemPartial?: string;
   onStopMeetingRecording?: () => void;
   liveTranscript?: string;
 }
@@ -161,6 +166,9 @@ export default function NoteEditor({
   actionName,
   isMeetingRecording,
   meetingTranscript,
+  meetingSegments,
+  meetingMicPartial,
+  meetingSystemPartial,
   onStopMeetingRecording,
   liveTranscript,
 }: NoteEditorProps) {
@@ -368,6 +376,20 @@ export default function NoteEditor({
   const effectiveTranscript = liveTranscript || meetingTranscript || note.transcript || "";
   const hasMeetingTranscript = !isMeetingRecording && !!effectiveTranscript;
 
+  const displaySegments = useMemo<TranscriptSegment[]>(() => {
+    if (meetingSegments && meetingSegments.length > 0) return meetingSegments;
+    const raw = note.transcript || "";
+    if (raw.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(raw) as Array<{ text: string; source: "mic" | "system" }>;
+        return parsed.map((s, i) => ({ id: `stored-${i}`, text: s.text, source: s.source }));
+      } catch {}
+    }
+    return [];
+  }, [meetingSegments, note.transcript]);
+
+  const hasChatSegments = displaySegments.length > 0;
+
   const updateSegmentIndicator = useCallback(() => {
     const container = segmentContainerRef.current;
     if (!container) return;
@@ -454,6 +476,14 @@ export default function NoteEditor({
     }
     onStartRecording();
   }, [onStartRecording, syncSelectionRefs]);
+
+  const prevMeetingRecRef = useRef(false);
+  useEffect(() => {
+    if (isMeetingRecording && !prevMeetingRecRef.current) {
+      setViewMode("transcript");
+    }
+    prevMeetingRecRef.current = !!isMeetingRecording;
+  }, [isMeetingRecording]);
 
   const pendingTranscriptSwitchRef = useRef(false);
 
@@ -676,7 +706,7 @@ export default function NoteEditor({
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-1">
-            {(enhancement || hasMeetingTranscript) && (
+            {(enhancement || hasMeetingTranscript || hasChatSegments || isMeetingRecording) && (
               <div
                 ref={segmentContainerRef}
                 className="relative flex items-center shrink-0 rounded-md bg-foreground/3 dark:bg-white/3 p-0.5"
@@ -685,7 +715,7 @@ export default function NoteEditor({
                   className="absolute top-0.5 left-0 rounded bg-background dark:bg-surface-2 shadow-sm transition-[width,height,transform,opacity] duration-200 ease-out pointer-events-none"
                   style={indicatorStyle}
                 />
-                {hasMeetingTranscript && (
+                {(hasMeetingTranscript || hasChatSegments || isMeetingRecording) && (
                   <button
                     data-segment-button
                     data-segment-value="transcript"
@@ -782,7 +812,13 @@ export default function NoteEditor({
 
       <div className="flex-1 relative min-h-0">
         <div className="h-full overflow-y-auto">
-          {viewMode === "transcript" && hasMeetingTranscript ? (
+          {viewMode === "transcript" && (hasChatSegments || isMeetingRecording) ? (
+            <MeetingTranscriptChat
+              segments={displaySegments}
+              micPartial={isMeetingRecording ? meetingMicPartial : undefined}
+              systemPartial={isMeetingRecording ? meetingSystemPartial : undefined}
+            />
+          ) : viewMode === "transcript" && hasMeetingTranscript ? (
             <MarkdownTextarea value={effectiveTranscript} disabled />
           ) : viewMode === "enhanced" && enhancement ? (
             <MarkdownTextarea value={enhancement.content} onChange={handleEnhancedChange} />
