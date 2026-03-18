@@ -2658,7 +2658,7 @@ class IPCHandlers {
 
         debugLogger.debug(
           "Cloud agent stream request",
-          { messageCount: messages?.length || 0 },
+          { messageCount: messages?.length || 0, toolCount: opts.tools?.length || 0 },
           "cloud-api"
         );
 
@@ -2671,6 +2671,7 @@ class IPCHandlers {
           body: JSON.stringify({
             messages,
             systemPrompt: opts.systemPrompt,
+            tools: opts.tools,
             sessionId: this.sessionId,
             clientType: "desktop",
             appVersion: app.getVersion(),
@@ -2690,24 +2691,42 @@ class IPCHandlers {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let buffer = "";
+        const events = [];
 
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const text = decoder.decode(value, { stream: true });
-            if (text) event.sender.send("agent-stream-chunk", text);
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              try {
+                events.push(JSON.parse(line));
+              } catch {
+                // Non-JSON line, skip
+              }
+            }
+          }
+          if (buffer.trim()) {
+            try {
+              events.push(JSON.parse(buffer));
+            } catch {
+              // Non-JSON remainder, skip
+            }
           }
         } finally {
           reader.releaseLock();
         }
 
-        event.sender.send("agent-stream-done");
-        return { success: true };
+        debugLogger.debug("Agent stream complete", { eventCount: events.length }, "cloud-api");
+        return { success: true, events };
       } catch (error) {
         debugLogger.error("Cloud agent stream error:", error);
-        event.sender.send("agent-stream-done");
         return { success: false, error: error.message };
       }
     });

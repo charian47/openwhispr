@@ -3,7 +3,7 @@ import type { ToolDefinition, ToolResult } from "./ToolRegistry";
 export const webSearchTool: ToolDefinition = {
   name: "web_search",
   description:
-    "Search the web for current information. Returns relevant web results with titles and snippets.",
+    "Search the web for current information. Returns relevant web results with titles, URLs, and article text.",
   parameters: {
     type: "object",
     properties: {

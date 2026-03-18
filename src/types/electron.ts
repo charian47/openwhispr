@@ -1073,11 +1073,24 @@ declare global {
 
       // Agent cloud streaming
       cloudAgentStream?: (
-        messages: Array<{ role: string; content: string }>,
-        opts?: { systemPrompt?: string }
-      ) => Promise<{ success: boolean; error?: string; code?: string }>;
-      onAgentStreamChunk?: (callback: (chunk: string) => void) => () => void;
-      onAgentStreamDone?: (callback: () => void) => () => void;
+        messages: Array<{ role: string; content: string | Array<unknown> }>,
+        opts?: {
+          systemPrompt?: string;
+          tools?: Array<{ name: string; description: string; parameters: Record<string, unknown> }>;
+        }
+      ) => Promise<{
+        success: boolean;
+        error?: string;
+        code?: string;
+        events?: Array<{
+          type: "content" | "tool_call" | "done";
+          text?: string;
+          id?: string;
+          name?: string;
+          arguments?: string;
+          finishReason?: string;
+        }>;
+      }>;
       agentWebSearch?: (
         query: string,
         numResults?: number

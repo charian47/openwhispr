@@ -5,7 +5,7 @@ import { AgentTitleBar } from "./agent/AgentTitleBar";
 import { AgentChat } from "./agent/AgentChat";
 import { AgentInput } from "./agent/AgentInput";
 import AudioManager from "../helpers/audioManager";
-import ReasoningService from "../services/ReasoningService";
+import ReasoningService, { type AgentStreamChunk } from "../services/ReasoningService";
 import { getSettings } from "../stores/settingsStore";
 import { getAgentSystemPrompt } from "../config/prompts";
 import { createToolRegistry } from "../services/tools";
@@ -58,6 +58,7 @@ export default function AgentOverlay() {
   }, [agentState]);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };
@@ -108,8 +109,7 @@ export default function AgentOverlay() {
 
       const isCloudAgent = settings.isSignedIn && settings.cloudAgentMode === "openwhispr";
       const toolSupportedProviders = ["openai", "groq", "custom", "anthropic", "gemini"];
-      const supportsTools =
-        !isCloudAgent && toolSupportedProviders.includes(settings.agentProvider);
+      const supportsTools = isCloudAgent || toolSupportedProviders.includes(settings.agentProvider);
 
       const registry = supportsTools
         ? createToolRegistry({
@@ -133,94 +133,89 @@ export default function AgentOverlay() {
 
       try {
         let fullContent = "";
+        let stream: AsyncGenerator<AgentStreamChunk>;
 
-        if (supportsTools && registry) {
-          const aiTools = registry.toAISDKFormat();
-          const stream = ReasoningService.processTextStreamingAI(
+        if (isCloudAgent) {
+          const executeToolCall = registry
+            ? async (name: string, argsJson: string) => {
+                const tool = registry.get(name);
+                if (!tool) return `Unknown tool: ${name}`;
+                const args = JSON.parse(argsJson);
+                const result = await tool.execute(args);
+                if (!result.success) return result.displayText;
+                return typeof result.data === "string" ? result.data : JSON.stringify(result.data);
+              }
+            : undefined;
+
+          stream = ReasoningService.processTextStreamingCloud(llmMessages, {
+            systemPrompt,
+            tools: registry?.getAll().map((t) => ({
+              name: t.name,
+              description: t.description,
+              parameters: t.parameters,
+            })),
+            executeToolCall,
+          });
+        } else {
+          const aiTools = registry?.toAISDKFormat();
+          stream = ReasoningService.processTextStreamingAI(
             llmMessages,
             settings.agentModel,
             settings.agentProvider,
             { systemPrompt },
             aiTools
           );
+        }
 
-          for await (const chunk of stream) {
-            if (!mountedRef.current) break;
-            if (chunk.type === "content") {
-              fullContent += chunk.text;
-              setMessages((prev) =>
-                prev.map((m) => (m.id === assistantId ? { ...m, content: fullContent } : m))
+        for await (const chunk of stream) {
+          if (!mountedRef.current) break;
+          if (chunk.type === "content") {
+            fullContent += chunk.text;
+            setMessages((prev) =>
+              prev.map((m) => (m.id === assistantId ? { ...m, content: fullContent } : m))
+            );
+          } else if (chunk.type === "tool_calls") {
+            for (const call of chunk.calls) {
+              setAgentState("tool-executing");
+              setToolStatus(
+                t(`agentMode.tools.${call.name}Status`, { defaultValue: `Using ${call.name}...` })
               );
-            } else if (chunk.type === "tool_calls") {
-              for (const call of chunk.calls) {
-                setAgentState("tool-executing");
-                setToolStatus(
-                  t(`agentMode.tools.${call.name}Status`, { defaultValue: `Using ${call.name}...` })
-                );
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantId
-                      ? {
-                          ...m,
-                          toolCalls: [
-                            ...(m.toolCalls || []),
-                            {
-                              id: call.id,
-                              name: call.name,
-                              arguments: call.arguments,
-                              status: "executing" as const,
-                            },
-                          ],
-                        }
-                      : m
-                  )
-                );
-              }
-            } else if (chunk.type === "tool_result") {
               setMessages((prev) =>
                 prev.map((m) =>
-                  m.id === assistantId && m.toolCalls
+                  m.id === assistantId
                     ? {
                         ...m,
-                        toolCalls: m.toolCalls.map((tc) =>
-                          tc.id === chunk.callId
-                            ? { ...tc, status: "completed" as const, result: chunk.displayText }
-                            : tc
-                        ),
+                        toolCalls: [
+                          ...(m.toolCalls || []),
+                          {
+                            id: call.id,
+                            name: call.name,
+                            arguments: call.arguments,
+                            status: "executing" as const,
+                          },
+                        ],
                       }
                     : m
                 )
               );
-              setAgentState("streaming");
-              setToolStatus("");
             }
-          }
-        } else if (isCloudAgent) {
-          const streamSource = ReasoningService.processTextStreamingCloud(llmMessages, {
-            systemPrompt,
-          });
-          for await (const chunk of streamSource) {
-            if (!mountedRef.current) break;
-            fullContent += chunk;
+          } else if (chunk.type === "tool_result") {
             setMessages((prev) =>
-              prev.map((m) => (m.id === assistantId ? { ...m, content: fullContent } : m))
+              prev.map((m) =>
+                m.id === assistantId && m.toolCalls
+                  ? {
+                      ...m,
+                      toolCalls: m.toolCalls.map((tc) =>
+                        tc.id === chunk.callId
+                          ? { ...tc, status: "completed" as const, result: chunk.displayText }
+                          : tc
+                      ),
+                    }
+                  : m
+              )
             );
-          }
-        } else {
-          const stream = ReasoningService.processTextStreamingAI(
-            llmMessages,
-            settings.agentModel,
-            settings.agentProvider,
-            { systemPrompt }
-          );
-          for await (const chunk of stream) {
-            if (!mountedRef.current) break;
-            if (chunk.type === "content") {
-              fullContent += chunk.text;
-              setMessages((prev) =>
-                prev.map((m) => (m.id === assistantId ? { ...m, content: fullContent } : m))
-              );
-            }
+            setAgentState("streaming");
+            setToolStatus("");
           }
         }
 

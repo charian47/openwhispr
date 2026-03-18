@@ -20,6 +20,7 @@ class ReasoningService extends BaseReasoningService {
   private apiKeyCache: SecureCache<string>;
   private openAiEndpointPreference = new Map<string, "responses" | "chat">();
   private static readonly OPENAI_ENDPOINT_PREF_STORAGE_KEY = "openAiEndpointPreference";
+  private static readonly MAX_TOOL_STEPS = 5;
   private cacheCleanupStop: (() => void) | undefined;
 
   constructor() {
@@ -1280,7 +1281,6 @@ class ReasoningService extends BaseReasoningService {
     const cloudProviders = ["openai", "groq", "gemini", "anthropic", "custom"];
     const isLocalProvider = !cloudProviders.includes(provider);
 
-    // Local models don't work with AI SDK — fall back to content-only streaming
     if (isLocalProvider) {
       const contentGen = this.processTextStreaming(messages, model, provider, config);
       for await (const text of contentGen) {
@@ -1315,7 +1315,7 @@ class ReasoningService extends BaseReasoningService {
         content: m.content,
       })),
       tools: tools || undefined,
-      stopWhen: stepCountIs(tools ? 5 : 1),
+      stopWhen: stepCountIs(tools ? ReasoningService.MAX_TOOL_STEPS : 1),
       ...(apiConfig.supportsTemperature ? { temperature: config.temperature ?? 0.3 } : {}),
       maxOutputTokens: config.maxTokens || 4096,
       ...(needsDisableThinking ? { providerOptions: { groq: { reasoningEffort: "none" } } } : {}),
@@ -1352,45 +1352,91 @@ class ReasoningService extends BaseReasoningService {
   }
 
   async *processTextStreamingCloud(
-    messages: Array<{ role: string; content: string }>,
-    config: { systemPrompt: string }
-  ): AsyncGenerator<string, void, unknown> {
-    const chunks: string[] = [];
-    let done = false;
-    let waiting: (() => void) | null = null;
+    messages: Array<{ role: string; content: string | Array<unknown> }>,
+    config: {
+      systemPrompt: string;
+      tools?: Array<{ name: string; description: string; parameters: Record<string, unknown> }>;
+      executeToolCall?: (name: string, args: string) => Promise<string>;
+    }
+  ): AsyncGenerator<AgentStreamChunk, void, unknown> {
+    const maxSteps = config.tools?.length ? ReasoningService.MAX_TOOL_STEPS : 1;
+    let currentMessages = [...messages];
 
-    const unsubChunk = window.electronAPI?.onAgentStreamChunk?.((chunk: string) => {
-      chunks.push(chunk);
-      waiting?.();
-    });
-    const unsubDone = window.electronAPI?.onAgentStreamDone?.(() => {
-      done = true;
-      waiting?.();
-    });
-
-    try {
-      const result = await window.electronAPI?.cloudAgentStream?.(messages, {
+    for (let step = 0; step < maxSteps; step++) {
+      const result = await window.electronAPI?.cloudAgentStream?.(currentMessages, {
         systemPrompt: config.systemPrompt,
+        tools: config.tools,
       });
 
-      if (result && !result.success) {
-        throw new Error(result.error || "Cloud agent streaming failed");
+      if (!result || !result.success) {
+        throw new Error(result?.error || "Cloud agent streaming failed");
       }
 
-      while (!done || chunks.length > 0) {
-        if (chunks.length > 0) {
-          yield chunks.shift()!;
-        } else if (!done) {
-          await new Promise<void>((r) => {
-            waiting = r;
-          });
-          waiting = null;
+      const events = result.events || [];
+      const pendingToolCalls: Array<{ id: string; name: string; arguments: string }> = [];
+
+      for (const ev of events) {
+        if (ev.type === "content") {
+          yield { type: "content", text: ev.text as string };
+        } else if (ev.type === "tool_call") {
+          const call = {
+            id: ev.id as string,
+            name: ev.name as string,
+            arguments: ev.arguments as string,
+          };
+          pendingToolCalls.push(call);
+          yield { type: "tool_calls", calls: [call] };
         }
       }
-    } finally {
-      unsubChunk?.();
-      unsubDone?.();
+
+      if (pendingToolCalls.length === 0 || !config.executeToolCall) {
+        yield { type: "done", finishReason: "stop" };
+        return;
+      }
+
+      for (const call of pendingToolCalls) {
+        let toolResult: string;
+        try {
+          toolResult = await config.executeToolCall(call.name, call.arguments);
+        } catch (error) {
+          toolResult = `Error: ${(error as Error).message}`;
+        }
+        yield {
+          type: "tool_result",
+          callId: call.id,
+          toolName: call.name,
+          displayText: toolResult,
+        };
+
+        currentMessages = [
+          ...currentMessages,
+          {
+            role: "assistant",
+            content: [
+              {
+                type: "tool-call",
+                toolCallId: call.id,
+                toolName: call.name,
+                input: JSON.parse(call.arguments),
+              },
+            ],
+          },
+          {
+            role: "tool",
+            content: [
+              {
+                type: "tool-result",
+                toolCallId: call.id,
+                toolName: call.name,
+                output: { type: "text", value: toolResult },
+              },
+            ],
+          },
+        ];
+      }
     }
+
+    yield { type: "done", finishReason: "stop" };
   }
 
   async isAvailable(): Promise<boolean> {
