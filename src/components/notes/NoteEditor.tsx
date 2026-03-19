@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Download,
@@ -9,8 +9,8 @@ import {
   Radio,
   MessageSquareText,
 } from "lucide-react";
-import { MarkdownTextarea } from "../ui/MarkdownTextarea";
 import { RichTextEditor } from "../ui/RichTextEditor";
+import type { Editor } from "@tiptap/react";
 import { MeetingTranscriptChat } from "./MeetingTranscriptChat";
 import type { TranscriptSegment } from "../../hooks/useMeetingTranscription";
 import {
@@ -82,70 +82,6 @@ interface DictationRange {
   committedChars: number;
 }
 
-interface TextSelectionRange {
-  start: number;
-  end: number;
-}
-
-interface PendingSelectionRestore extends TextSelectionRange {
-  version: number;
-}
-
-function transformSelectionForReplacement(
-  selection: TextSelectionRange,
-  replaceStart: number,
-  replaceEnd: number,
-  insertLength: number
-): TextSelectionRange {
-  const replacementEnd = replaceStart + insertLength;
-
-  const overlapsReplacement =
-    selection.start === selection.end
-      ? selection.start >= replaceStart && selection.start <= replaceEnd
-      : selection.start < replaceEnd && selection.end > replaceStart;
-
-  if (overlapsReplacement) {
-    return { start: replacementEnd, end: replacementEnd };
-  }
-
-  const delta = insertLength - (replaceEnd - replaceStart);
-  const shift = (index: number) => {
-    if (index > replaceEnd) return index + delta;
-    if (index === replaceEnd) return replacementEnd;
-    return index;
-  };
-
-  return {
-    start: shift(selection.start),
-    end: shift(selection.end),
-  };
-}
-
-function mapIndexThroughUserEdit(
-  index: number,
-  editStart: number,
-  editEnd: number,
-  insertLength: number
-): number {
-  const delta = insertLength - (editEnd - editStart);
-
-  if (editStart === editEnd) {
-    return index < editStart ? index : index + delta;
-  }
-
-  if (index < editStart) return index;
-  if (index > editEnd) return index + delta;
-  return editStart + insertLength;
-}
-
-function mapIndexAfterRangeRemoval(index: number, removeStart: number, removeEnd: number): number {
-  const removedLength = removeEnd - removeStart;
-
-  if (index < removeStart) return index;
-  if (index > removeEnd) return index - removedLength;
-  return removeStart;
-}
-
 export default function NoteEditor({
   note,
   onTitleChange,
@@ -175,7 +111,7 @@ export default function NoteEditor({
 }: NoteEditorProps) {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<MeetingViewMode>("raw");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<Editor | null>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const prevNoteIdRef = useRef<number>(note.id);
 
@@ -198,54 +134,17 @@ export default function NoteEditor({
   }, []);
 
   const cursorPosRef = useRef(0);
-  const selectionEndRef = useRef(0);
   const dictationRef = useRef<DictationRange | null>(null);
   const prevRecordingRef = useRef(false);
-  const expectedSelectionRef = useRef<TextSelectionRange>({ start: 0, end: 0 });
-  const selectionVersionRef = useRef(0);
-  const pendingSelectionRestoreRef = useRef<PendingSelectionRestore | null>(null);
-  const suppressSelectionCaptureRef = useRef(false);
-  const beforeInputSelectionRef = useRef<TextSelectionRange | null>(null);
   const contentRef = useRef(note.content);
   contentRef.current = note.content;
 
-  const syncSelectionRefs = useCallback((start: number, end: number) => {
-    cursorPosRef.current = start;
-    selectionEndRef.current = end;
-    expectedSelectionRef.current = { start, end };
-  }, []);
-
-  const queueSelectionRestore = useCallback(
-    (start: number, end: number, version = selectionVersionRef.current) => {
-      syncSelectionRefs(start, end);
-      pendingSelectionRestoreRef.current = { start, end, version };
-    },
-    [syncSelectionRefs]
-  );
-
-  const applyProgrammaticSelection = useCallback(
-    (start: number, end: number) => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-      suppressSelectionCaptureRef.current = true;
-      ta.setSelectionRange(start, end);
-      queueMicrotask(() => {
-        suppressSelectionCaptureRef.current = false;
-      });
-      syncSelectionRefs(start, end);
-    },
-    [syncSelectionRefs]
-  );
-
   const commitContentChange = useCallback(
-    (newContent: string, nextSelection?: TextSelectionRange, selectionVersion?: number) => {
-      if (nextSelection) {
-        queueSelectionRestore(nextSelection.start, nextSelection.end, selectionVersion);
-      }
+    (newContent: string) => {
       contentRef.current = newContent;
       onContentChange(newContent);
     },
-    [onContentChange, queueSelectionRestore]
+    [onContentChange]
   );
 
   const replaceContentRange = useCallback(
@@ -254,122 +153,11 @@ export default function NoteEditor({
       const before = currentContent.slice(0, replaceStart);
       const after = currentContent.slice(replaceEnd);
       const newContent = before + insertText + after;
-      const selectionBefore = expectedSelectionRef.current;
-      const selectionVersion = selectionVersionRef.current;
-      const nextSelection = transformSelectionForReplacement(
-        selectionBefore,
-        replaceStart,
-        replaceEnd,
-        insertText.length
-      );
-
-      commitContentChange(newContent, nextSelection, selectionVersion);
+      commitContentChange(newContent);
       return newContent;
     },
     [commitContentChange]
   );
-
-  const reanchorDictationToSelection = useCallback(
-    (anchorStart: number, anchorEnd: number, selectionVersion: number) => {
-      const range = dictationRef.current;
-      if (!range) return;
-
-      if (range.partialStart === range.end) {
-        range.start = anchorStart;
-        range.partialStart = anchorStart;
-        range.end = anchorEnd;
-        return;
-      }
-
-      const currentContent = contentRef.current;
-      const partialText = currentContent.slice(range.partialStart, range.end);
-
-      if (!partialText) {
-        range.start = anchorStart;
-        range.partialStart = anchorStart;
-        range.end = anchorEnd;
-        return;
-      }
-
-      const withoutPartial =
-        currentContent.slice(0, range.partialStart) + currentContent.slice(range.end);
-      const targetStart = mapIndexAfterRangeRemoval(anchorStart, range.partialStart, range.end);
-      const targetEnd = mapIndexAfterRangeRemoval(anchorEnd, range.partialStart, range.end);
-      const newContent =
-        withoutPartial.slice(0, targetStart) + partialText + withoutPartial.slice(targetEnd);
-
-      const newPartialStart = targetStart;
-      const newEnd = newPartialStart + partialText.length;
-
-      range.start = newPartialStart;
-      range.partialStart = newPartialStart;
-      range.end = newEnd;
-
-      commitContentChange(newContent, { start: newEnd, end: newEnd }, selectionVersion);
-    },
-    [commitContentChange]
-  );
-
-  const captureUserSelection = useCallback(
-    (start: number, end: number) => {
-      const prev = expectedSelectionRef.current;
-      const changed = prev.start !== start || prev.end !== end;
-
-      syncSelectionRefs(start, end);
-
-      if (!changed) return;
-
-      selectionVersionRef.current += 1;
-
-      if (dictationRef.current) {
-        reanchorDictationToSelection(start, end, selectionVersionRef.current);
-      }
-    },
-    [reanchorDictationToSelection, syncSelectionRefs]
-  );
-
-  useLayoutEffect(() => {
-    const pending = pendingSelectionRestoreRef.current;
-    if (!pending) return;
-    pendingSelectionRestoreRef.current = null;
-    if (pending.version !== selectionVersionRef.current) return;
-    applyProgrammaticSelection(pending.start, pending.end);
-  }, [note.content, applyProgrammaticSelection]);
-
-  // Capture selection before browser applies user edits so dictation range
-  // adjustments handle replacements/paste correctly.
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const handler = () => {
-      if (suppressSelectionCaptureRef.current) return;
-      beforeInputSelectionRef.current = {
-        start: ta.selectionStart,
-        end: ta.selectionEnd,
-      };
-    };
-    ta.addEventListener("beforeinput", handler);
-    return () => {
-      ta.removeEventListener("beforeinput", handler);
-    };
-  }, [viewMode]);
-
-  // Capture cursor on mouse interaction — click for positioning,
-  // mouseup for drag-selections (click may not fire if drag distance is large)
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const handler = () => {
-      if (suppressSelectionCaptureRef.current) return;
-      captureUserSelection(ta.selectionStart, ta.selectionEnd);
-    };
-    ta.addEventListener("click", handler);
-    ta.addEventListener("mouseup", handler);
-    return () => {
-      ta.removeEventListener("click", handler);
-      ta.removeEventListener("mouseup", handler);
-    };
-  }, [captureUserSelection, viewMode]);
 
   const segmentContainerRef = useRef<HTMLDivElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({ opacity: 0 });
@@ -445,16 +233,9 @@ export default function NoteEditor({
       if (titleRef.current && titleRef.current.textContent !== note.title) {
         titleRef.current.textContent = note.title || "";
       }
-      textareaRef.current?.focus();
-      if (textareaRef.current) {
-        const start = textareaRef.current.selectionStart;
-        const end = textareaRef.current.selectionEnd;
-        syncSelectionRefs(start, end);
-      }
-      pendingSelectionRestoreRef.current = null;
-      beforeInputSelectionRef.current = null;
+      editorRef.current?.commands.focus();
     }
-  }, [note.id, isMeetingRecording, syncSelectionRefs]);
+  }, [note.id, isMeetingRecording]);
 
   useEffect(() => {
     if (titleRef.current && titleRef.current.textContent !== note.title) {
@@ -472,7 +253,7 @@ export default function NoteEditor({
   const handleTitleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      textareaRef.current?.focus();
+      editorRef.current?.commands.focus();
     }
   }, []);
 
@@ -483,11 +264,13 @@ export default function NoteEditor({
   }, []);
 
   const handleStartRecording = useCallback(() => {
-    if (textareaRef.current) {
-      syncSelectionRefs(textareaRef.current.selectionStart, textareaRef.current.selectionEnd);
+    const ed = editorRef.current;
+    if (ed) {
+      const { from } = ed.state.selection;
+      cursorPosRef.current = ed.state.doc.textBetween(0, from, "\n").length;
     }
     onStartRecording();
-  }, [onStartRecording, syncSelectionRefs]);
+  }, [onStartRecording]);
 
   const prevMeetingRecRef = useRef(false);
   useEffect(() => {
@@ -498,12 +281,11 @@ export default function NoteEditor({
 
   useEffect(() => {
     if (isRecording && !prevRecordingRef.current) {
-      const selStart = cursorPosRef.current;
-      const selEnd = selectionEndRef.current;
+      const pos = cursorPosRef.current;
       dictationRef.current = {
-        start: selStart,
-        partialStart: selStart,
-        end: selEnd,
+        start: pos,
+        partialStart: pos,
+        end: pos,
         committedChars: 0,
       };
       if (viewMode === "enhanced") setViewMode("raw");
@@ -605,71 +387,33 @@ export default function NoteEditor({
     prevDictationProcessingRef.current = isProcessing;
   }, [isProcessing]);
 
-  const handleSelect = () => {
-    if (textareaRef.current && document.activeElement === textareaRef.current) {
-      if (suppressSelectionCaptureRef.current) return;
-      captureUserSelection(textareaRef.current.selectionStart, textareaRef.current.selectionEnd);
+  const handleSelect = useCallback(() => {
+    const ed = editorRef.current;
+    if (ed) {
+      const { from } = ed.state.selection;
+      cursorPosRef.current = ed.state.doc.textBetween(0, from, "\n").length;
     }
-  };
+  }, []);
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
+  const handleContentChange = useCallback(
+    (newValue: string) => {
+      if (newValue === contentRef.current) return;
 
-    // Skip no-op changes (e.g. React controlled-component echo during dictation)
-    if (newValue === note.content) return;
-
-    if (dictationRef.current) {
-      const beforeInput = beforeInputSelectionRef.current;
-      beforeInputSelectionRef.current = null;
-
-      if (beforeInput) {
-        const replacedLength = beforeInput.end - beforeInput.start;
-        const insertLength = newValue.length - (note.content.length - replacedLength);
-        const range = dictationRef.current;
-
-        const nextStart = mapIndexThroughUserEdit(
-          range.start,
-          beforeInput.start,
-          beforeInput.end,
-          insertLength
-        );
-        const nextPartialStart = mapIndexThroughUserEdit(
-          range.partialStart,
-          beforeInput.start,
-          beforeInput.end,
-          insertLength
-        );
-        const nextEnd = mapIndexThroughUserEdit(
-          range.end,
-          beforeInput.start,
-          beforeInput.end,
-          insertLength
-        );
-
-        range.start = Math.min(nextStart, newValue.length);
-        range.partialStart = Math.min(Math.max(nextPartialStart, range.start), newValue.length);
-        range.end = Math.min(Math.max(nextEnd, range.partialStart), newValue.length);
-      } else {
-        const delta = newValue.length - note.content.length;
-        const editPos = e.target.selectionStart - delta;
-        if (editPos <= dictationRef.current.start) {
-          dictationRef.current.start += delta;
-          dictationRef.current.partialStart += delta;
-          dictationRef.current.end += delta;
-        } else if (editPos <= dictationRef.current.partialStart) {
-          dictationRef.current.partialStart += delta;
-          dictationRef.current.end += delta;
-        } else if (editPos < dictationRef.current.end) {
-          dictationRef.current.end += delta;
+      if (dictationRef.current) {
+        const delta = newValue.length - contentRef.current.length;
+        if (delta !== 0) {
+          const range = dictationRef.current;
+          range.start = Math.max(0, range.start + delta);
+          range.partialStart = Math.max(range.start, range.partialStart + delta);
+          range.end = Math.max(range.partialStart, range.end + delta);
         }
       }
-    }
 
-    beforeInputSelectionRef.current = null;
-    contentRef.current = newValue;
-    onContentChange(newValue);
-    captureUserSelection(e.target.selectionStart, e.target.selectionEnd);
-  };
+      contentRef.current = newValue;
+      onContentChange(newValue);
+    },
+    [onContentChange]
+  );
 
   const handleEnhancedChange = useCallback(
     (value: string) => {
@@ -832,11 +576,11 @@ export default function NoteEditor({
           ) : viewMode === "enhanced" && enhancement ? (
             <RichTextEditor value={enhancement.content} onChange={handleEnhancedChange} />
           ) : (
-            <MarkdownTextarea
+            <RichTextEditor
               value={note.content}
               onChange={handleContentChange}
               onSelect={handleSelect}
-              textareaRef={textareaRef}
+              editorRef={editorRef}
               placeholder={t("notes.editor.startWriting")}
               disabled={actionProcessingState === "processing"}
             />
