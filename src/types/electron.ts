@@ -1213,6 +1213,9 @@ declare global {
       onNavigateToMeetingNote?: (
         callback: (data: { noteId: number; folderId: number; event: any }) => void
       ) => () => void;
+      onNavigateToNote?: (
+        callback: (data: { noteId: number }) => void
+      ) => () => void;
     };
 
     api?: {

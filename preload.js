@@ -661,4 +661,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     "navigate-to-meeting-note",
     (callback) => (_event, data) => callback(data)
   ),
+  onNavigateToNote: registerListener(
+    "navigate-to-note",
+    (callback) => (_event, data) => callback(data)
+  ),
 });

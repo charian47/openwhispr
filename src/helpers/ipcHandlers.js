@@ -2724,10 +2724,7 @@ class IPCHandlers {
     ipcMain.handle("agent-open-note", async (_event, noteId) => {
       try {
         await this.windowManager.createControlPanelWindow();
-        this.windowManager.sendToControlPanel("navigate-to-meeting-note", {
-          noteId,
-          folderId: null,
-        });
+        this.windowManager.sendToControlPanel("navigate-to-note", { noteId });
         return { success: true };
       } catch (error) {
         debugLogger.error("Failed to open note from agent:", error);

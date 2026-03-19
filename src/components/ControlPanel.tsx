@@ -214,6 +214,14 @@ export default function ControlPanel() {
     return () => cleanup?.();
   }, []);
 
+  useEffect(() => {
+    const cleanup = window.electronAPI?.onNavigateToNote?.((data) => {
+      setActiveNoteId(data.noteId);
+      setActiveView("personal-notes");
+    });
+    return () => cleanup?.();
+  }, []);
+
   // When accessibility is missing on macOS, open the permissions settings page
   useEffect(() => {
     const cleanup = window.electronAPI?.onAccessibilityMissing?.(() => {
