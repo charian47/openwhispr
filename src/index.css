@@ -888,32 +888,6 @@ body:has(.agent-overlay-window) #root {
   caret-color: var(--color-foreground);
 }
 
-.rich-text-editor-content h1,
-.rich-text-editor-content h2,
-.rich-text-editor-content h3 {
-  position: relative;
-}
-
-.rich-text-editor-content h1::before,
-.rich-text-editor-content h2::before,
-.rich-text-editor-content h3::before {
-  position: absolute;
-  right: 100%;
-  padding-right: 0.375rem;
-  font-weight: 400;
-  color: oklch(0.5 0 0 / 0.15);
-  font-size: 0.75rem;
-}
-
-.rich-text-editor-content h1::before {
-  content: "#";
-}
-.rich-text-editor-content h2::before {
-  content: "##";
-}
-.rich-text-editor-content h3::before {
-  content: "###";
-}
 
 .rich-text-editor-content h1 {
   font-size: 1.125rem;
@@ -1047,12 +1021,6 @@ body:has(.agent-overlay-window) #root {
 }
 
 /* Dark mode adjustments */
-.dark .rich-text-editor-content h1::before,
-.dark .rich-text-editor-content h2::before,
-.dark .rich-text-editor-content h3::before {
-  color: oklch(0.7 0 0 / 0.15);
-}
-
 .dark .rich-text-editor-content li::marker {
   color: oklch(0.7 0 0 / 0.4);
 }
