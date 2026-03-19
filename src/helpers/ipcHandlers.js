@@ -2721,6 +2721,20 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("agent-open-note", async (_event, noteId) => {
+      try {
+        await this.windowManager.createControlPanelWindow();
+        this.windowManager.sendToControlPanel("navigate-to-meeting-note", {
+          noteId,
+          folderId: null,
+        });
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Failed to open note from agent:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
     ipcMain.handle("agent-web-search", async (event, query, numResults = 5) => {
       try {
         const apiUrl = getApiUrl();

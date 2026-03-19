@@ -151,7 +151,11 @@ export default function AgentOverlay() {
                     ? result.data
                     : JSON.stringify(result.data)
                   : result.displayText;
-                return { data, displayText: result.displayText };
+                const metadata =
+                  result.success && result.data && typeof result.data === "object"
+                    ? (result.data as Record<string, unknown>)
+                    : undefined;
+                return { data, displayText: result.displayText, metadata };
               }
             : undefined;
 
@@ -219,7 +223,12 @@ export default function AgentOverlay() {
                       ...m,
                       toolCalls: m.toolCalls.map((tc) =>
                         tc.id === chunk.callId
-                          ? { ...tc, status: "completed" as const, result: chunk.displayText }
+                          ? {
+                              ...tc,
+                              status: "completed" as const,
+                              result: chunk.displayText,
+                              ...(chunk.metadata ? { metadata: chunk.metadata } : {}),
+                            }
                           : tc
                       ),
                     }

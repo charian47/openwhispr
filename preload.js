@@ -586,6 +586,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Agent cloud tools
   agentWebSearch: (query, numResults) => ipcRenderer.invoke("agent-web-search", query, numResults),
+  agentOpenNote: (noteId) => ipcRenderer.invoke("agent-open-note", noteId),
 
   // Agent conversation persistence
   createAgentConversation: (title) => ipcRenderer.invoke("db-create-agent-conversation", title),

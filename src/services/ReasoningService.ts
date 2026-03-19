@@ -13,14 +13,20 @@ import { getAIModel } from "./ai/providers";
 export type AgentStreamChunk =
   | { type: "content"; text: string }
   | { type: "tool_calls"; calls: Array<{ id: string; name: string; arguments: string }> }
-  | { type: "tool_result"; callId: string; toolName: string; displayText: string }
+  | {
+      type: "tool_result";
+      callId: string;
+      toolName: string;
+      displayText: string;
+      metadata?: Record<string, unknown>;
+    }
   | { type: "done"; finishReason?: string };
 
 class ReasoningService extends BaseReasoningService {
   private apiKeyCache: SecureCache<string>;
   private openAiEndpointPreference = new Map<string, "responses" | "chat">();
   private static readonly OPENAI_ENDPOINT_PREF_STORAGE_KEY = "openAiEndpointPreference";
-  private static readonly MAX_TOOL_STEPS = 5;
+  private static readonly MAX_TOOL_STEPS = 20;
   private cacheCleanupStop: (() => void) | undefined;
 
   constructor() {
@@ -1438,7 +1444,7 @@ class ReasoningService extends BaseReasoningService {
       executeToolCall?: (
         name: string,
         args: string
-      ) => Promise<{ data: string; displayText: string }>;
+      ) => Promise<{ data: string; displayText: string; metadata?: Record<string, unknown> }>;
     }
   ): AsyncGenerator<AgentStreamChunk, void, unknown> {
     const maxSteps = config.tools?.length ? ReasoningService.MAX_TOOL_STEPS : 1;
@@ -1472,7 +1478,7 @@ class ReasoningService extends BaseReasoningService {
       }
 
       for (const call of pendingToolCalls) {
-        let toolResult: { data: string; displayText: string };
+        let toolResult: { data: string; displayText: string; metadata?: Record<string, unknown> };
         try {
           toolResult = await config.executeToolCall(call.name, call.arguments);
         } catch (error) {
@@ -1484,6 +1490,7 @@ class ReasoningService extends BaseReasoningService {
           callId: call.id,
           toolName: call.name,
           displayText: toolResult.displayText,
+          ...(toolResult.metadata ? { metadata: toolResult.metadata } : {}),
         };
 
         currentMessages = [

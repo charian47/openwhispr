@@ -1095,6 +1095,7 @@ declare global {
       onAgentStreamEnd?: (callback: () => void) => () => void;
 
       // Agent cloud tools
+      agentOpenNote?: (noteId: number) => Promise<{ success: boolean; error?: string }>;
       agentWebSearch?: (
         query: string,
         numResults?: number

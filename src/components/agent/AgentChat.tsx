@@ -12,6 +12,7 @@ export interface ToolCallInfo {
   arguments: string;
   status: "executing" | "completed" | "error";
   result?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface Message {

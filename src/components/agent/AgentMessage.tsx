@@ -11,6 +11,7 @@ import {
   FilePlus,
   FilePen,
   ChevronDown,
+  ChevronRight,
   CircleAlert,
 } from "lucide-react";
 import { cn } from "../lib/utils";
@@ -34,6 +35,8 @@ const toolIcons: Record<string, typeof Search> = {
   update_note: FilePen,
 };
 
+const NOTE_TOOLS = new Set(["create_note", "update_note", "get_note"]);
+
 function ToolCallStep({ toolCall }: { toolCall: ToolCallInfo }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -43,8 +46,23 @@ function ToolCallStep({ toolCall }: { toolCall: ToolCallInfo }) {
   const isCompleted = toolCall.status === "completed";
   const isClipboard = toolCall.name === "copy_to_clipboard" && isCompleted;
 
+  const noteId =
+    isCompleted && NOTE_TOOLS.has(toolCall.name) && toolCall.metadata?.id
+      ? Number(toolCall.metadata.id)
+      : null;
+
   const resultLines = toolCall.result?.split("\n") ?? [];
   const hasDetail = resultLines.length > 1 && !isClipboard;
+
+  const handleClick = () => {
+    if (noteId) {
+      window.electronAPI?.agentOpenNote?.(noteId);
+    } else if (hasDetail && !isExecuting) {
+      setExpanded((v) => !v);
+    }
+  };
+
+  const isClickable = (noteId || hasDetail) && !isExecuting;
 
   return (
     <div
@@ -52,7 +70,8 @@ function ToolCallStep({ toolCall }: { toolCall: ToolCallInfo }) {
         "relative rounded-md mb-1 overflow-hidden",
         "border-l-2 transition-colors duration-300",
         isExecuting && "border-l-primary/60",
-        isCompleted && !isError && "border-l-muted-foreground/20",
+        isCompleted && !isError && !noteId && "border-l-muted-foreground/20",
+        isCompleted && !isError && noteId && "border-l-primary/30",
         isClipboard && "border-l-emerald-500/50",
         isError && "border-l-destructive/50"
       )}
@@ -68,9 +87,10 @@ function ToolCallStep({ toolCall }: { toolCall: ToolCallInfo }) {
         className={cn(
           "flex items-center gap-1.5 px-2.5 py-1.5",
           "bg-surface-1/60",
-          hasDetail && !isExecuting && "cursor-pointer"
+          isClickable && "cursor-pointer",
+          noteId && "hover:bg-surface-1 transition-colors duration-150"
         )}
-        onClick={hasDetail && !isExecuting ? () => setExpanded((v) => !v) : undefined}
+        onClick={isClickable ? handleClick : undefined}
       >
         <Icon
           size={12}
@@ -106,12 +126,17 @@ function ToolCallStep({ toolCall }: { toolCall: ToolCallInfo }) {
             />
           </div>
         ) : (
-          <span className="text-[11px] text-muted-foreground/70">
+          <span
+            className={cn("text-[11px]", noteId ? "text-primary/70" : "text-muted-foreground/70")}
+          >
             {toolCall.result || toolCall.name}
           </span>
         )}
 
-        {hasDetail && !isExecuting && (
+        {noteId && !isExecuting && (
+          <ChevronRight size={10} className="ml-auto text-primary/40 shrink-0" />
+        )}
+        {hasDetail && !noteId && !isExecuting && (
           <ChevronDown
             size={10}
             className={cn(
