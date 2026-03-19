@@ -1,4 +1,5 @@
 import {
+  useState,
   useRef,
   useMemo,
   useCallback,
@@ -39,9 +40,12 @@ function bulletChar(indent: string) {
   return BULLETS[Math.min(level, BULLETS.length - 1)];
 }
 
-function parseInline(text: string, lineKey: number): ReactNode[] {
+const SYN_ACTIVE = "text-foreground/15";
+
+function parseInline(text: string, lineKey: number, active = false): ReactNode[] {
   if (!text) return [];
 
+  const syn = active ? SYN_ACTIVE : "invisible";
   const tokens: ReactNode[] = [];
   RE_INLINE_MD.lastIndex = 0;
   let lastIdx = 0;
@@ -55,33 +59,33 @@ function parseInline(text: string, lineKey: number): ReactNode[] {
     if (m[1]) {
       tokens.push(
         <span key={k}>
-          <span className="invisible">{"***"}</span>
+          <span className={syn}>{"***"}</span>
           <span className="font-semibold italic">{m[2]}</span>
-          <span className="invisible">{"***"}</span>
+          <span className={syn}>{"***"}</span>
         </span>
       );
     } else if (m[3]) {
       tokens.push(
         <span key={k}>
-          <span className="invisible">{"**"}</span>
+          <span className={syn}>{"**"}</span>
           <span className="font-semibold">{m[4]}</span>
-          <span className="invisible">{"**"}</span>
+          <span className={syn}>{"**"}</span>
         </span>
       );
     } else if (m[5]) {
       tokens.push(
         <span key={k}>
-          <span className="invisible">{"*"}</span>
+          <span className={syn}>{"*"}</span>
           <span className="italic">{m[6]}</span>
-          <span className="invisible">{"*"}</span>
+          <span className={syn}>{"*"}</span>
         </span>
       );
     } else if (m[7]) {
       tokens.push(
         <span key={k}>
-          <span className="invisible">{"`"}</span>
+          <span className={syn}>{"`"}</span>
           <span className="bg-foreground/[0.04] dark:bg-white/[0.06] rounded-sm px-px">{m[8]}</span>
-          <span className="invisible">{"`"}</span>
+          <span className={syn}>{"`"}</span>
         </span>
       );
     }
@@ -93,7 +97,7 @@ function parseInline(text: string, lineKey: number): ReactNode[] {
   return tokens;
 }
 
-function renderOverlay(text: string): ReactNode[] {
+function renderOverlay(text: string, cursorLine = -1): ReactNode[] {
   if (!text) return [];
 
   const lines = text.split("\n");
@@ -105,14 +109,17 @@ function renderOverlay(text: string): ReactNode[] {
     const line = lines[i];
     if (!line) continue;
 
+    const active = i === cursorLine;
+    const syn = active ? SYN_ACTIVE : "invisible";
+
     // Header
     const hm = line.match(/^(#{1,3})\s/);
     if (hm) {
       const n = hm[1].length;
       out.push(
         <span key={`l${i}`} className="font-bold">
-          <span className="invisible">{line.slice(0, n + 1)}</span>
-          {parseInline(line.slice(n + 1), i)}
+          <span className={syn}>{line.slice(0, n + 1)}</span>
+          {parseInline(line.slice(n + 1), i, active)}
         </span>
       );
       continue;
@@ -144,9 +151,9 @@ function renderOverlay(text: string): ReactNode[] {
             </span>
           </span>{" "}
           {checked ? (
-            <span className="line-through">{parseInline(content, i)}</span>
+            <span className="line-through">{parseInline(content, i, active)}</span>
           ) : (
-            parseInline(content, i)
+            parseInline(content, i, active)
           )}
         </span>
       );
@@ -167,7 +174,7 @@ function renderOverlay(text: string): ReactNode[] {
             <span className="invisible">{marker}</span>
             <span className="absolute left-0 text-foreground/40">{bulletChar(indent)}</span>
           </span>{" "}
-          {parseInline(content, i)}
+          {parseInline(content, i, active)}
         </span>
       );
       continue;
@@ -186,9 +193,9 @@ function renderOverlay(text: string): ReactNode[] {
         <span key={`l${i}`}>
           {indent}
           <span className="text-foreground/45">{num}</span>
-          <span className="invisible">{dot}</span>
+          <span className={syn}>{dot}</span>
           {space}
-          {parseInline(content, i)}
+          {parseInline(content, i, active)}
         </span>
       );
       continue;
@@ -198,8 +205,8 @@ function renderOverlay(text: string): ReactNode[] {
     if (line.startsWith("> ")) {
       out.push(
         <span key={`l${i}`} className="text-foreground/50 italic">
-          <span className="invisible">{"> "}</span>
-          {parseInline(line.slice(2), i)}
+          <span className={syn}>{"> "}</span>
+          {parseInline(line.slice(2), i, active)}
         </span>
       );
       continue;
@@ -208,7 +215,7 @@ function renderOverlay(text: string): ReactNode[] {
     // Horizontal rule
     if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) {
       out.push(
-        <span key={`l${i}`} className="invisible">
+        <span key={`l${i}`} className={syn}>
           {line}
         </span>
       );
@@ -216,7 +223,7 @@ function renderOverlay(text: string): ReactNode[] {
     }
 
     // Regular line
-    const inlined = parseInline(line, i);
+    const inlined = parseInline(line, i, active);
     if (inlined.length === 1 && typeof inlined[0] === "string") {
       out.push(inlined[0]);
     } else {
@@ -242,6 +249,7 @@ export function MarkdownTextarea({
   const localRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const taRef = externalRef || localRef;
+  const [cursorLine, setCursorLine] = useState(-1);
 
   const syncScroll = useCallback(() => {
     if (taRef.current && overlayRef.current) {
@@ -249,7 +257,14 @@ export function MarkdownTextarea({
     }
   }, [taRef]);
 
-  const overlay = useMemo(() => renderOverlay(value), [value]);
+  const updateCursorLine = useCallback(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    const line = ta.value.slice(0, ta.selectionStart).split("\n").length - 1;
+    if (line !== cursorLine) setCursorLine(line);
+  }, [taRef, cursorLine]);
+
+  const overlay = useMemo(() => renderOverlay(value, cursorLine), [value, cursorLine]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -429,10 +444,21 @@ export function MarkdownTextarea({
       <textarea
         ref={taRef}
         value={value}
-        onChange={onChange}
-        onSelect={onSelect}
-        onBlur={onBlur}
+        onChange={(e) => {
+          onChange?.(e);
+          updateCursorLine();
+        }}
+        onSelect={() => {
+          onSelect?.();
+          updateCursorLine();
+        }}
+        onBlur={() => {
+          onBlur?.();
+          setCursorLine(-1);
+        }}
         onKeyDown={handleKeyDown}
+        onKeyUp={updateCursorLine}
+        onClick={updateCursorLine}
         onScroll={syncScroll}
         disabled={disabled}
         className={cn(
