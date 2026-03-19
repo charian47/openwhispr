@@ -490,9 +490,6 @@ export default function NoteEditor({
 
   const prevMeetingRecRef = useRef(false);
   useEffect(() => {
-    if (isMeetingRecording && !prevMeetingRecRef.current) {
-      setViewMode("transcript");
-    }
     prevMeetingRecRef.current = !!isMeetingRecording;
   }, [isMeetingRecording]);
 
@@ -754,7 +751,7 @@ export default function NoteEditor({
                   )}
                 >
                   <AlignLeft size={10} />
-                  {hasMeetingTranscript ? t("notes.editor.notes") : t("notes.editor.raw")}
+                  {t("notes.editor.notes")}
                 </button>
                 {enhancement && (
                   <button
