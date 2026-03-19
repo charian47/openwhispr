@@ -2,7 +2,13 @@ import { getModelProvider, getCloudModel, getOpenAiApiConfig } from "../models/M
 import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
-import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
+import {
+  API_ENDPOINTS,
+  TOKEN_LIMITS,
+  buildApiUrl,
+  normalizeBaseUrl,
+  OPENWHISPR_API_URL,
+} from "../config/constants";
 import logger from "../utils/logger";
 import { isSecureEndpoint } from "../utils/urlUtils";
 import { withSessionRefresh } from "../lib/neonAuth";
@@ -22,6 +28,7 @@ class ReasoningService extends BaseReasoningService {
   private static readonly OPENAI_ENDPOINT_PREF_STORAGE_KEY = "openAiEndpointPreference";
   private static readonly MAX_TOOL_STEPS = 5;
   private cacheCleanupStop: (() => void) | undefined;
+  private activeAbortController: AbortController | null = null;
 
   constructor() {
     super();
@@ -1351,6 +1358,11 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
+  cancelActiveStream(): void {
+    this.activeAbortController?.abort();
+    this.activeAbortController = null;
+  }
+
   async *processTextStreamingCloud(
     messages: Array<{ role: string; content: string | Array<unknown> }>,
     config: {
@@ -1363,30 +1375,66 @@ class ReasoningService extends BaseReasoningService {
     let currentMessages = [...messages];
 
     for (let step = 0; step < maxSteps; step++) {
-      const result = await window.electronAPI?.cloudAgentStream?.(currentMessages, {
-        systemPrompt: config.systemPrompt,
-        tools: config.tools,
+      const controller = new AbortController();
+      this.activeAbortController = controller;
+
+      const response = await fetch(`${OPENWHISPR_API_URL}/api/agent/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        signal: controller.signal,
+        body: JSON.stringify({
+          messages: currentMessages,
+          systemPrompt: config.systemPrompt,
+          tools: config.tools,
+          clientType: "desktop",
+        }),
       });
 
-      if (!result || !result.success) {
-        throw new Error(result?.error || "Cloud agent streaming failed");
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Session expired");
+        }
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `API error: ${response.status}`);
       }
 
-      const events = result.events || [];
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
       const pendingToolCalls: Array<{ id: string; name: string; arguments: string }> = [];
 
-      for (const ev of events) {
-        if (ev.type === "content") {
-          yield { type: "content", text: ev.text as string };
-        } else if (ev.type === "tool_call") {
-          const call = {
-            id: ev.id as string,
-            name: ev.name as string,
-            arguments: ev.arguments as string,
-          };
-          pendingToolCalls.push(call);
-          yield { type: "tool_calls", calls: [call] };
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const ev = JSON.parse(line);
+              if (ev.type === "content") {
+                yield { type: "content", text: ev.text };
+              } else if (ev.type === "tool_call") {
+                const call = {
+                  id: ev.id as string,
+                  name: ev.name as string,
+                  arguments: ev.arguments as string,
+                };
+                pendingToolCalls.push(call);
+                yield { type: "tool_calls", calls: [call] };
+              }
+            } catch {
+              // skip malformed NDJSON line
+            }
+          }
         }
+      } finally {
+        reader.releaseLock();
       }
 
       if (pendingToolCalls.length === 0 || !config.executeToolCall) {
@@ -1495,6 +1543,7 @@ class ReasoningService extends BaseReasoningService {
   }
 
   destroy(): void {
+    this.cancelActiveStream();
     if (this.cacheCleanupStop) {
       this.cacheCleanupStop();
     }

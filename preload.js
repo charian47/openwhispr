@@ -578,8 +578,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   acquireRecordingLock: (pipeline) => ipcRenderer.invoke("acquire-recording-lock", pipeline),
   releaseRecordingLock: (pipeline) => ipcRenderer.invoke("release-recording-lock", pipeline),
 
-  // Agent cloud streaming
-  cloudAgentStream: (messages, opts) => ipcRenderer.invoke("cloud-agent-stream", messages, opts),
+  // Agent cloud tools
   agentWebSearch: (query, numResults) => ipcRenderer.invoke("agent-web-search", query, numResults),
 
   // Agent conversation persistence

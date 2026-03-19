@@ -1071,26 +1071,7 @@ declare global {
       onAgentStopRecording?: (callback: () => void) => () => void;
       onAgentToggleRecording?: (callback: () => void) => () => void;
 
-      // Agent cloud streaming
-      cloudAgentStream?: (
-        messages: Array<{ role: string; content: string | Array<unknown> }>,
-        opts?: {
-          systemPrompt?: string;
-          tools?: Array<{ name: string; description: string; parameters: Record<string, unknown> }>;
-        }
-      ) => Promise<{
-        success: boolean;
-        error?: string;
-        code?: string;
-        events?: Array<{
-          type: "content" | "tool_call" | "done";
-          text?: string;
-          id?: string;
-          name?: string;
-          arguments?: string;
-          finishReason?: string;
-        }>;
-      }>;
+      // Agent cloud tools
       agentWebSearch?: (
         query: string,
         numResults?: number

@@ -61,6 +61,7 @@ export default function AgentOverlay() {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      ReasoningService.cancelActiveStream();
     };
   }, []);
 
@@ -169,7 +170,10 @@ export default function AgentOverlay() {
         }
 
         for await (const chunk of stream) {
-          if (!mountedRef.current) break;
+          if (!mountedRef.current) {
+            ReasoningService.cancelActiveStream();
+            break;
+          }
           if (chunk.type === "content") {
             fullContent += chunk.text;
             setMessages((prev) =>
