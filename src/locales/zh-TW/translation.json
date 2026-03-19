@@ -1830,7 +1830,7 @@
       "foundNotes_plural": "找到 {{count}} 則筆記",
       "searchResults": "找到 {{count}} 項結果",
       "searchResults_plural": "找到 {{count}} 項結果",
-      "copiedToClipboard": "已複製到剪貼簿",
+      "openNote": "開啟筆記",
       "calendarEvents": "找到 {{count}} 個行程",
       "calendarEvents_plural": "找到 {{count}} 個行程",
       "noResults": "未找到結果",

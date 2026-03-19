@@ -1830,7 +1830,7 @@
       "foundNotes_plural": "Найдено {{count}} заметок",
       "searchResults": "Найден {{count}} результат",
       "searchResults_plural": "Найдено {{count}} результатов",
-      "copiedToClipboard": "Скопировано в буфер обмена",
+      "openNote": "Открыть заметку",
       "calendarEvents": "Найдено {{count}} событие",
       "calendarEvents_plural": "Найдено {{count}} событий",
       "noResults": "Ничего не найдено",

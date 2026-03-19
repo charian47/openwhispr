@@ -1830,7 +1830,7 @@
       "foundNotes_plural": "找到 {{count}} 条笔记",
       "searchResults": "找到 {{count}} 条结果",
       "searchResults_plural": "找到 {{count}} 条结果",
-      "copiedToClipboard": "已复制到剪贴板",
+      "openNote": "打开笔记",
       "calendarEvents": "找到 {{count}} 个日程",
       "calendarEvents_plural": "找到 {{count}} 个日程",
       "noResults": "未找到结果",

@@ -1830,7 +1830,7 @@
       "foundNotes_plural": "{{count}}件のノートが見つかりました",
       "searchResults": "{{count}}件の結果が見つかりました",
       "searchResults_plural": "{{count}}件の結果が見つかりました",
-      "copiedToClipboard": "クリップボードにコピーしました",
+      "openNote": "ノートを開く",
       "calendarEvents": "{{count}}件の予定が見つかりました",
       "calendarEvents_plural": "{{count}}件の予定が見つかりました",
       "noResults": "結果が見つかりません",

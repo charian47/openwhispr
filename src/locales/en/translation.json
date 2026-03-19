@@ -1900,7 +1900,7 @@
       "foundNotes_plural": "Found {{count}} notes",
       "searchResults": "Found {{count}} result",
       "searchResults_plural": "Found {{count}} results",
-      "copiedToClipboard": "Copied to clipboard",
+      "openNote": "Open note",
       "calendarEvents": "Found {{count}} event",
       "calendarEvents_plural": "Found {{count}} events",
       "noResults": "No results found",

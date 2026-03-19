@@ -1830,7 +1830,7 @@
       "foundNotes_plural": "{{count}} notes trouvées",
       "searchResults": "{{count}} résultat trouvé",
       "searchResults_plural": "{{count}} résultats trouvés",
-      "copiedToClipboard": "Copié dans le presse-papiers",
+      "openNote": "Ouvrir la note",
       "calendarEvents": "{{count}} événement trouvé",
       "calendarEvents_plural": "{{count}} événements trouvés",
       "noResults": "Aucun résultat",

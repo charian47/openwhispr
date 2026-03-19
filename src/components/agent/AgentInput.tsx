@@ -77,27 +77,38 @@ function HotkeyKeys({ hotkey }: { hotkey: string }) {
   );
 }
 
-function WaveBars() {
+function RecordingIndicator() {
   return (
-    <div className="flex items-center justify-center gap-0.75 h-4">
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="w-0.75 bg-primary/70 rounded-full origin-center"
-          style={{
-            animation: `waveform-bar 0.8s ease-in-out ${i * 0.15}s infinite`,
-            height: "14px",
-          }}
-        />
-      ))}
+    <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
+      <div className="absolute inset-0 rounded-full border-2 border-primary/40 animate-pulse" />
+      <div className="w-2.5 h-2.5 rounded-full bg-primary" />
     </div>
   );
 }
 
-function ThinkingBar() {
+function ProcessingIndicator() {
+  return (
+    <div className="flex items-center justify-center w-5 h-5 shrink-0">
+      <div className="flex items-center gap-0.5">
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="w-0.5 bg-accent rounded-full"
+            style={{
+              height: "8px",
+              animation: `waveform-bar 0.6s ease-in-out ${i * 0.1}s infinite`,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ThinkingIndicator() {
   return (
     <div
-      className="w-12 h-0.75 rounded-full"
+      className="w-10 h-0.75 rounded-full shrink-0"
       style={{
         background: "linear-gradient(90deg, transparent, oklch(0.65 0.2 260 / 0.4), transparent)",
         backgroundSize: "200% 100%",
@@ -189,7 +200,7 @@ export function AgentInput({
 
       {agentState === "listening" && (
         <>
-          <WaveBars />
+          <RecordingIndicator />
           <span className="text-[12px] text-foreground/80 truncate flex-1">
             {partialTranscript || t("agentMode.input.listening")}
           </span>
@@ -198,7 +209,7 @@ export function AgentInput({
 
       {agentState === "transcribing" && (
         <>
-          <ThinkingBar />
+          <ProcessingIndicator />
           <span className="text-[12px] text-muted-foreground select-none">
             {t("agentMode.input.transcribing")}
           </span>
@@ -207,7 +218,7 @@ export function AgentInput({
 
       {(agentState === "thinking" || agentState === "streaming") && (
         <>
-          <ThinkingBar />
+          <ThinkingIndicator />
           <span className="text-[12px] text-muted-foreground select-none">
             {t("agentMode.input.thinking")}
           </span>
@@ -216,7 +227,11 @@ export function AgentInput({
 
       {agentState === "tool-executing" && (
         <>
-          {ToolIcon ? <ToolIcon size={12} className="text-primary/60 shrink-0" /> : <ThinkingBar />}
+          {ToolIcon ? (
+            <ToolIcon size={12} className="text-primary/60 shrink-0" />
+          ) : (
+            <ThinkingIndicator />
+          )}
           <span className="text-[12px] text-muted-foreground select-none truncate">
             {toolStatus || t("agentMode.input.thinking")}
           </span>

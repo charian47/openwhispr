@@ -46,23 +46,8 @@ function ToolCallStep({ toolCall }: { toolCall: ToolCallInfo }) {
   const isCompleted = toolCall.status === "completed";
   const isClipboard = toolCall.name === "copy_to_clipboard" && isCompleted;
 
-  const noteId =
-    isCompleted && NOTE_TOOLS.has(toolCall.name) && toolCall.metadata?.id
-      ? Number(toolCall.metadata.id)
-      : null;
-
   const resultLines = toolCall.result?.split("\n") ?? [];
   const hasDetail = resultLines.length > 1 && !isClipboard;
-
-  const handleClick = () => {
-    if (noteId) {
-      window.electronAPI?.agentOpenNote?.(noteId);
-    } else if (hasDetail && !isExecuting) {
-      setExpanded((v) => !v);
-    }
-  };
-
-  const isClickable = (noteId || hasDetail) && !isExecuting;
 
   return (
     <div
@@ -70,8 +55,7 @@ function ToolCallStep({ toolCall }: { toolCall: ToolCallInfo }) {
         "relative rounded-md mb-1 overflow-hidden",
         "border-l-2 transition-colors duration-300",
         isExecuting && "border-l-primary/60",
-        isCompleted && !isError && !noteId && "border-l-muted-foreground/20",
-        isCompleted && !isError && noteId && "border-l-primary/30",
+        isCompleted && !isError && "border-l-muted-foreground/20",
         isClipboard && "border-l-emerald-500/50",
         isError && "border-l-destructive/50"
       )}
@@ -87,10 +71,9 @@ function ToolCallStep({ toolCall }: { toolCall: ToolCallInfo }) {
         className={cn(
           "flex items-center gap-1.5 px-2.5 py-1.5",
           "bg-surface-1/60",
-          isClickable && "cursor-pointer",
-          noteId && "hover:bg-surface-1 transition-colors duration-150"
+          hasDetail && !isExecuting && "cursor-pointer"
         )}
-        onClick={isClickable ? handleClick : undefined}
+        onClick={hasDetail && !isExecuting ? () => setExpanded((v) => !v) : undefined}
       >
         <Icon
           size={12}
@@ -126,17 +109,12 @@ function ToolCallStep({ toolCall }: { toolCall: ToolCallInfo }) {
             />
           </div>
         ) : (
-          <span
-            className={cn("text-[11px]", noteId ? "text-primary/70" : "text-muted-foreground/70")}
-          >
+          <span className="text-[11px] text-muted-foreground/70">
             {toolCall.result || toolCall.name}
           </span>
         )}
 
-        {noteId && !isExecuting && (
-          <ChevronRight size={10} className="ml-auto text-primary/40 shrink-0" />
-        )}
-        {hasDetail && !noteId && !isExecuting && (
+        {hasDetail && !isExecuting && (
           <ChevronDown
             size={10}
             className={cn(
@@ -159,6 +137,55 @@ function ToolCallStep({ toolCall }: { toolCall: ToolCallInfo }) {
       )}
     </div>
   );
+}
+
+function NoteCard({ noteId, title }: { noteId: number; title: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <button
+      onClick={() => window.electronAPI?.agentOpenNote?.(noteId)}
+      className={cn(
+        "flex items-center gap-2 w-full mt-2 px-2.5 py-2 rounded-md",
+        "bg-primary/6 border border-primary/12",
+        "hover:bg-primary/10 hover:border-primary/20",
+        "active:scale-[0.99]",
+        "transition-all duration-150",
+        "text-left group/note"
+      )}
+    >
+      <div className={cn("shrink-0 p-1 rounded", "bg-primary/10")}>
+        <FileText size={12} className="text-primary/70" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[12px] font-medium text-foreground truncate">{title}</p>
+        <p className="text-[10px] text-muted-foreground/50">{t("agentMode.tools.openNote")}</p>
+      </div>
+      <ChevronRight
+        size={12}
+        className="text-muted-foreground/30 group-hover/note:text-primary/50 shrink-0 transition-colors duration-150"
+      />
+    </button>
+  );
+}
+
+function extractNoteCards(toolCalls?: ToolCallInfo[]): Array<{ noteId: number; title: string }> {
+  if (!toolCalls) return [];
+  const cards: Array<{ noteId: number; title: string }> = [];
+  const seen = new Set<number>();
+
+  for (const tc of toolCalls) {
+    if (tc.status !== "completed" || !NOTE_TOOLS.has(tc.name) || !tc.metadata?.id) continue;
+    const noteId = Number(tc.metadata.id);
+    if (seen.has(noteId)) continue;
+    seen.add(noteId);
+    const title =
+      (tc.metadata.title as string) ||
+      tc.result?.replace(/^(Created|Updated|Retrieved) note: "(.+)"$/, "$2") ||
+      "Note";
+    cards.push({ noteId, title });
+  }
+  return cards;
 }
 
 export function AgentMessage({ role, content, isStreaming, toolCalls }: AgentMessageProps) {
@@ -195,6 +222,7 @@ export function AgentMessage({ role, content, isStreaming, toolCalls }: AgentMes
 
   const hasToolCalls = toolCalls && toolCalls.length > 0;
   const hasContent = content.length > 0;
+  const noteCards = extractNoteCards(toolCalls);
 
   return (
     <div
@@ -209,7 +237,11 @@ export function AgentMessage({ role, content, isStreaming, toolCalls }: AgentMes
         )}
       >
         {hasToolCalls && (
-          <div className={cn(hasContent && "mb-2 pb-1.5 border-b border-border/15")}>
+          <div
+            className={cn(
+              (hasContent || noteCards.length > 0) && "mb-2 pb-1.5 border-b border-border/15"
+            )}
+          >
             {toolCalls.map((tc) => (
               <ToolCallStep key={tc.id} toolCall={tc} />
             ))}
@@ -228,6 +260,14 @@ export function AgentMessage({ role, content, isStreaming, toolCalls }: AgentMes
             className="inline-block w-[2px] h-[14px] bg-foreground/70 align-middle ml-0.5"
             style={{ animation: "agent-cursor-blink 1s ease-in-out infinite" }}
           />
+        )}
+
+        {noteCards.length > 0 && !isStreaming && (
+          <div>
+            {noteCards.map((card) => (
+              <NoteCard key={card.noteId} noteId={card.noteId} title={card.title} />
+            ))}
+          </div>
         )}
 
         {hasContent && !isStreaming && (
