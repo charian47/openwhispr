@@ -119,6 +119,41 @@ function renderOverlay(text: string): ReactNode[] {
       continue;
     }
 
+    // Checkbox: `- [ ] item` or `- [x] item`
+    const cbm = line.match(/^(\s*)([-*]) (\[[ x]\]) /);
+    if (cbm) {
+      const indent = cbm[1];
+      const marker = cbm[2];
+      const bracket = cbm[3];
+      const checked = bracket === "[x]";
+      const p = cbm[0].length;
+      const content = line.slice(p);
+      out.push(
+        <span key={`l${i}`} className={checked ? "text-foreground/40" : ""}>
+          {indent}
+          <span className="relative">
+            <span className="invisible">{`${marker} ${bracket}`}</span>
+            <span
+              className={cn(
+                "absolute left-0 top-0.5 inline-flex items-center justify-center w-3.5 h-3.5 rounded-sm border text-[9px] leading-none",
+                checked
+                  ? "bg-primary/80 border-primary/80 text-primary-foreground"
+                  : "border-foreground/25"
+              )}
+            >
+              {checked ? "✓" : ""}
+            </span>
+          </span>{" "}
+          {checked ? (
+            <span className="line-through">{parseInline(content, i)}</span>
+          ) : (
+            parseInline(content, i)
+          )}
+        </span>
+      );
+      continue;
+    }
+
     // Bullet list: `- item` or `* item` (with optional indent)
     const bm = line.match(/^(\s*)([-*])( )/);
     if (bm) {

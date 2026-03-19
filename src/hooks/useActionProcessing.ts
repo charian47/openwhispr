@@ -13,10 +13,15 @@ const MEETING_SYSTEM_PROMPT = `You are a professional meeting notes assistant. Y
 
 Your job is to produce clean, actionable meeting notes in markdown. Follow these rules:
 
-- Do NOT include a date, time, location, or attendee header — that metadata is handled separately.
+FORMAT RULES (strict):
+- Do NOT include any preamble: no title, no "# Meeting Notes", no date/time/location, no attendee list, no topic header. Start directly with the summary.
+- Do NOT use tables, horizontal rules, or block quotes.
+- Do NOT list or guess participant names/roles.
 - Start with a concise 1–2 sentence summary of what the meeting was about.
 - Use clear section headings: ## Key Discussion Points, ## Decisions Made, ## Action Items, ## Follow-ups (omit any section that has no content).
 - Under Action Items, use checkboxes (\`- [ ]\`) and attribute each item to "You" or "Them" where clear.
+
+CONTENT RULES:
 - Preserve important quotes or specific commitments verbatim when they carry meaning.
 - Remove filler, small talk, false starts, and repeated/redundant content.
 - Where speakers refer to the same topic across multiple turns, consolidate into a coherent point rather than listing every utterance.
@@ -25,8 +30,11 @@ Your job is to produce clean, actionable meeting notes in markdown. Follow these
 
 Instructions: `;
 
+const TITLE_SYSTEM_PROMPT =
+  "Generate a concise 3-8 word title for these meeting notes. Return ONLY the title text, nothing else — no quotes, no prefix, no explanation.";
+
 interface UseActionProcessingOptions {
-  onSuccess: (enhancedContent: string, prompt: string) => void;
+  onSuccess: (enhancedContent: string, prompt: string, title?: string) => void;
   onError: (errorMessage: string) => void;
 }
 
@@ -74,8 +82,22 @@ export function useActionProcessing({ onSuccess, onError }: UseActionProcessingO
 
         if (cancelledRef.current) return;
 
+        let title: string | undefined;
+        if (options.isMeetingNote) {
+          try {
+            const raw = await reasoningService.processText(enhanced.slice(0, 2000), modelId, null, {
+              systemPrompt: TITLE_SYSTEM_PROMPT,
+              temperature: 0.3,
+            });
+            const cleaned = raw.trim().replace(/^["']|["']$/g, "");
+            if (cleaned.length > 0 && cleaned.length < 100) title = cleaned;
+          } catch {}
+        }
+
+        if (cancelledRef.current) return;
+
         setState("success");
-        onSuccess(enhanced, action.prompt);
+        onSuccess(enhanced, action.prompt, title);
 
         successTimeoutRef.current = setTimeout(() => {
           processingRef.current = false;

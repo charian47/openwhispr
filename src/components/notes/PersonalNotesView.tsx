@@ -323,17 +323,22 @@ export default function PersonalNotesView({
   );
 
   const handleApplyEnhancement = useCallback(
-    async (enhancedContent: string, prompt: string) => {
+    async (enhancedContent: string, prompt: string, title?: string) => {
       if (!activeNoteId) return;
       setLocalEnhancedContent(enhancedContent);
       const hash = makeContentHash(localContentRef.current);
+      const updates: Record<string, string> = {
+        enhanced_content: enhancedContent,
+        enhancement_prompt: prompt,
+        enhanced_at_content_hash: hash,
+      };
+      if (title) {
+        updates.title = title;
+        setLocalTitle(title);
+      }
       setIsSaving(true);
       try {
-        await window.electronAPI.updateNote(activeNoteId, {
-          enhanced_content: enhancedContent,
-          enhancement_prompt: prompt,
-          enhanced_at_content_hash: hash,
-        });
+        await window.electronAPI.updateNote(activeNoteId, updates);
       } finally {
         setIsSaving(false);
       }
