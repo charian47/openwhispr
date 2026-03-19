@@ -235,6 +235,8 @@ class MeetingDetectionEngine {
       return;
     }
 
+    this.broadcastToWindows("note-added", noteResult.note);
+
     await this.windowManager.createControlPanelWindow();
     await new Promise((resolve) => setTimeout(resolve, 50));
     this.windowManager.snapControlPanelToMeetingMode();
