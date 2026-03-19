@@ -1800,6 +1800,7 @@
       "copyToClipboard": "Копировать в буфер обмена",
       "copied": "Скопировано!",
       "emptyState": "Удерживайте {{hotkey}}, чтобы начать разговор",
+      "orType": "или введите сообщение",
       "errorPrefix": "Ошибка"
     },
     "titleBar": {
@@ -1824,6 +1825,7 @@
       "get_noteStatus": "Чтение заметки...",
       "create_noteStatus": "Создание заметки...",
       "update_noteStatus": "Обновление заметки...",
+      "copiedToClipboard": "Скопировано в буфер обмена",
       "foundNotes": "Найдена {{count}} заметка",
       "foundNotes_plural": "Найдено {{count}} заметок",
       "searchResults": "Найден {{count}} результат",

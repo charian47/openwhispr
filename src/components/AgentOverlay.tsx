@@ -43,6 +43,7 @@ export default function AgentOverlay() {
   const [agentState, setAgentState] = useState<AgentState>("idle");
   const [partialTranscript, setPartialTranscript] = useState("");
   const [toolStatus, setToolStatus] = useState("");
+  const [activeToolName, setActiveToolName] = useState("");
   const audioManagerRef = useRef<InstanceType<typeof AudioManager> | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const agentStateRef = useRef<AgentState>("idle");
@@ -182,6 +183,7 @@ export default function AgentOverlay() {
           } else if (chunk.type === "tool_calls") {
             for (const call of chunk.calls) {
               setAgentState("tool-executing");
+              setActiveToolName(call.name);
               setToolStatus(
                 t(`agentMode.tools.${call.name}Status`, { defaultValue: `Using ${call.name}...` })
               );
@@ -221,6 +223,7 @@ export default function AgentOverlay() {
             );
             setAgentState("streaming");
             setToolStatus("");
+            setActiveToolName("");
           }
         }
 
@@ -374,6 +377,7 @@ export default function AgentOverlay() {
     setAgentState("idle");
     setPartialTranscript("");
     setToolStatus("");
+    setActiveToolName("");
     conversationIdRef.current = null;
   }, []);
 
@@ -398,6 +402,7 @@ export default function AgentOverlay() {
           agentState={agentState}
           partialTranscript={partialTranscript}
           toolStatus={toolStatus}
+          activeToolName={activeToolName}
           onTextSubmit={handleTextSubmit}
         />
       </div>

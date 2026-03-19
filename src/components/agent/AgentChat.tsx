@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import { Mic } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../lib/utils";
 import { AgentMessage } from "./AgentMessage";
@@ -41,13 +42,24 @@ export function AgentChat({ messages }: AgentChatProps) {
   return (
     <div ref={scrollRef} className={cn("flex-1 overflow-y-auto agent-chat-scroll", "px-3 py-2")}>
       {messages.length === 0 ? (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-[12px] text-muted-foreground/60 text-center select-none">
-            {t("agentMode.chat.emptyState", { hotkey: hotkeyLabel })}
-          </p>
+        <div className="flex flex-col items-center justify-center h-full gap-2 select-none">
+          <div
+            className="text-muted-foreground/30"
+            style={{ animation: "agent-mic-pulse 3s ease-in-out infinite" }}
+          >
+            <Mic size={20} />
+          </div>
+          <div className="text-center">
+            <p className="text-[12px] text-muted-foreground/50">
+              {t("agentMode.chat.emptyState", { hotkey: hotkeyLabel })}
+            </p>
+            <p className="text-[11px] text-muted-foreground/30 mt-0.5">
+              {t("agentMode.chat.orType")}
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           {messages
             .filter((msg) => msg.role !== "tool")
             .map((msg) => (

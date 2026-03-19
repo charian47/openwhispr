@@ -1,5 +1,15 @@
 import { useState, useRef, useCallback } from "react";
-import { Mic, SendHorizontal } from "lucide-react";
+import {
+  Mic,
+  SendHorizontal,
+  Search,
+  Globe,
+  ClipboardCheck,
+  Calendar,
+  FileText,
+  FilePlus,
+  FilePen,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../lib/utils";
 import { useSettingsStore } from "../../stores/settingsStore";
@@ -17,8 +27,19 @@ interface AgentInputProps {
   agentState: AgentState;
   partialTranscript: string;
   toolStatus?: string;
+  activeToolName?: string;
   onTextSubmit?: (text: string) => void;
 }
+
+const toolIcons: Record<string, typeof Search> = {
+  search_notes: Search,
+  web_search: Globe,
+  copy_to_clipboard: ClipboardCheck,
+  get_calendar_events: Calendar,
+  get_note: FileText,
+  create_note: FilePlus,
+  update_note: FilePen,
+};
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
@@ -58,14 +79,14 @@ function HotkeyKeys({ hotkey }: { hotkey: string }) {
 
 function WaveBars() {
   return (
-    <div className="flex items-center justify-center gap-[3px] h-4">
-      {[0, 1, 2, 3].map((i) => (
+    <div className="flex items-center justify-center gap-0.75 h-4">
+      {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="w-[3px] bg-primary rounded-full origin-center"
+          className="w-0.75 bg-primary/70 rounded-full origin-center"
           style={{
-            animation: `waveform-bar 0.8s ease-in-out ${i * 0.12}s infinite`,
-            height: "16px",
+            animation: `waveform-bar 0.8s ease-in-out ${i * 0.15}s infinite`,
+            height: "14px",
           }}
         />
       ))}
@@ -73,19 +94,16 @@ function WaveBars() {
   );
 }
 
-function InputLoadingDots() {
+function ThinkingBar() {
   return (
-    <div className="flex items-center gap-1">
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60"
-          style={{
-            animation: `agent-loading-dot 1.2s ease-in-out ${i * 0.2}s infinite`,
-          }}
-        />
-      ))}
-    </div>
+    <div
+      className="w-12 h-0.75 rounded-full"
+      style={{
+        background: "linear-gradient(90deg, transparent, oklch(0.65 0.2 260 / 0.4), transparent)",
+        backgroundSize: "200% 100%",
+        animation: "tool-status-sweep 1.5s ease-in-out infinite",
+      }}
+    />
   );
 }
 
@@ -93,6 +111,7 @@ export function AgentInput({
   agentState,
   partialTranscript,
   toolStatus,
+  activeToolName,
   onTextSubmit,
 }: AgentInputProps) {
   const { t } = useTranslation();
@@ -118,11 +137,12 @@ export function AgentInput({
   );
 
   const isIdle = agentState === "idle";
+  const ToolIcon = activeToolName ? toolIcons[activeToolName] : null;
 
   return (
     <div
       className={cn(
-        "flex items-center gap-2 min-h-12 px-3 py-2 shrink-0",
+        "flex items-center gap-2 min-h-11 px-3 py-2 shrink-0",
         "bg-surface-1 border-t border-border/30"
       )}
     >
@@ -178,7 +198,7 @@ export function AgentInput({
 
       {agentState === "transcribing" && (
         <>
-          <InputLoadingDots />
+          <ThinkingBar />
           <span className="text-[12px] text-muted-foreground select-none">
             {t("agentMode.input.transcribing")}
           </span>
@@ -187,7 +207,7 @@ export function AgentInput({
 
       {(agentState === "thinking" || agentState === "streaming") && (
         <>
-          <InputLoadingDots />
+          <ThinkingBar />
           <span className="text-[12px] text-muted-foreground select-none">
             {t("agentMode.input.thinking")}
           </span>
@@ -196,8 +216,8 @@ export function AgentInput({
 
       {agentState === "tool-executing" && (
         <>
-          <InputLoadingDots />
-          <span className="text-[12px] text-muted-foreground select-none">
+          {ToolIcon ? <ToolIcon size={12} className="text-primary/60 shrink-0" /> : <ThinkingBar />}
+          <span className="text-[12px] text-muted-foreground select-none truncate">
             {toolStatus || t("agentMode.input.thinking")}
           </span>
         </>

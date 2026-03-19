@@ -1800,6 +1800,7 @@
       "copyToClipboard": "复制到剪贴板",
       "copied": "已复制！",
       "emptyState": "按住 {{hotkey}} 开始对话",
+      "orType": "或输入消息",
       "errorPrefix": "错误"
     },
     "titleBar": {
@@ -1824,6 +1825,7 @@
       "get_noteStatus": "正在读取笔记...",
       "create_noteStatus": "正在创建笔记...",
       "update_noteStatus": "正在更新笔记...",
+      "copiedToClipboard": "已复制到剪贴板",
       "foundNotes": "找到 {{count}} 条笔记",
       "foundNotes_plural": "找到 {{count}} 条笔记",
       "searchResults": "找到 {{count}} 条结果",

@@ -1800,6 +1800,7 @@
       "copyToClipboard": "In Zwischenablage kopieren",
       "copied": "Kopiert!",
       "emptyState": "{{hotkey}} gedrückt halten, um eine Unterhaltung zu starten",
+      "orType": "oder eine Nachricht eingeben",
       "errorPrefix": "Fehler"
     },
     "titleBar": {
@@ -1824,6 +1825,7 @@
       "get_noteStatus": "Notiz wird gelesen...",
       "create_noteStatus": "Notiz wird erstellt...",
       "update_noteStatus": "Notiz wird aktualisiert...",
+      "copiedToClipboard": "In die Zwischenablage kopiert",
       "foundNotes": "{{count}} Notiz gefunden",
       "foundNotes_plural": "{{count}} Notizen gefunden",
       "searchResults": "{{count}} Ergebnis gefunden",

@@ -1800,6 +1800,7 @@
       "copyToClipboard": "Copia negli appunti",
       "copied": "Copiato!",
       "emptyState": "Tieni premuto {{hotkey}} per iniziare una conversazione",
+      "orType": "o scrivi un messaggio",
       "errorPrefix": "Errore"
     },
     "titleBar": {
@@ -1824,6 +1825,7 @@
       "get_noteStatus": "Lettura della nota...",
       "create_noteStatus": "Creazione della nota...",
       "update_noteStatus": "Aggiornamento della nota...",
+      "copiedToClipboard": "Copiato negli appunti",
       "foundNotes": "{{count}} nota trovata",
       "foundNotes_plural": "{{count}} note trovate",
       "searchResults": "{{count}} risultato trovato",
