@@ -634,7 +634,7 @@ async function startApp() {
 
   const savedMeetingKey = environmentManager.getMeetingKey?.() || "";
   if (savedMeetingKey) {
-    const result = hotkeyManager.registerSlot("meeting", savedMeetingKey, meetingHotkeyCallback);
+    const result = await hotkeyManager.registerSlot("meeting", savedMeetingKey, meetingHotkeyCallback);
     debugLogger.info(
       "Meeting hotkey startup registration",
       { savedMeetingKey, ...result },
@@ -642,9 +642,9 @@ async function startApp() {
     );
   }
 
-  ipcMain.handle("register-meeting-hotkey", (_event, hotkey) => {
+  ipcMain.handle("register-meeting-hotkey", async (_event, hotkey) => {
     if (hotkey) {
-      const result = hotkeyManager.registerSlot("meeting", hotkey, meetingHotkeyCallback);
+      const result = await hotkeyManager.registerSlot("meeting", hotkey, meetingHotkeyCallback);
       if (result.success) {
         environmentManager.saveMeetingKey(hotkey);
         return { success: true };
