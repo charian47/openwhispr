@@ -164,7 +164,9 @@
       "openSystemSettings": "Open System Settings",
       "systemAudioTitle": "System Audio",
       "systemAudioDescription": "Captures other participants' audio from calls and meetings. We never record your screen.",
-      "optional": "Optional"
+      "optional": "Optional",
+      "recommended": "Recommended",
+      "accessibilityTroubleshooting": "Not detected? Try removing OpenWhispr from Accessibility in System Settings, then re-add it and toggle it on. You can skip this and continue — text will copy to clipboard instead of auto-pasting."
     },
     "transcription": {
       "title": "Transcription Setup",
@@ -1991,5 +1993,10 @@
     "title": "Update Available",
     "body": "Version {{version}} is ready",
     "cta": "Update Now"
+  },
+  "permissionsGate": {
+    "title": "Permissions Required",
+    "description": "OpenWhispr needs a few permissions to work on this computer.",
+    "continue": "Continue"
   }
 }

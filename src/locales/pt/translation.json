@@ -136,7 +136,9 @@
       "openSystemSettings": "Abrir Configurações do Sistema",
       "systemAudioTitle": "Áudio do Sistema",
       "systemAudioDescription": "Captura o áudio dos outros participantes em chamadas e reuniões. Nunca gravamos a sua tela.",
-      "optional": "Opcional"
+      "optional": "Opcional",
+      "recommended": "Recomendado",
+      "accessibilityTroubleshooting": "Não detectado? Remova o OpenWhispr da Acessibilidade nas Configurações do Sistema, adicione-o novamente e ative-o. Você pode pular isso e continuar — o texto será copiado para a área de transferência em vez de ser colado automaticamente."
     },
     "transcription": {
       "title": "Configuração de transcrição",
@@ -1952,5 +1954,10 @@
     "title": "Atualização disponível",
     "body": "A versão {{version}} está pronta",
     "cta": "Atualizar agora"
+  },
+  "permissionsGate": {
+    "title": "Permissões necessárias",
+    "description": "O OpenWhispr precisa de algumas permissões para funcionar neste computador.",
+    "continue": "Continuar"
   }
 }

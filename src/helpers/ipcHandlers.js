@@ -799,6 +799,13 @@ class IPCHandlers {
       return this.clipboardManager.checkAccessibilityPermissions(silent);
     });
 
+    // Passes `true` to isTrustedAccessibilityClient to trigger the macOS system prompt
+    ipcMain.handle("prompt-accessibility-permission", async () => {
+      if (process.platform !== "darwin") return true;
+      const { systemPreferences } = require("electron");
+      return systemPreferences.isTrustedAccessibilityClient(true);
+    });
+
     ipcMain.handle("read-clipboard", async (event) => {
       return this.clipboardManager.readClipboard();
     });

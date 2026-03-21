@@ -164,7 +164,9 @@
       "openSystemSettings": "打开系统设置",
       "systemAudioTitle": "系统音频",
       "systemAudioDescription": "录制通话和会议中其他参与者的音频。我们绝不会录制您的屏幕。",
-      "optional": "可选"
+      "optional": "可选",
+      "recommended": "推荐",
+      "accessibilityTroubleshooting": "未检测到？请在系统设置的辅助功能中移除 OpenWhispr，然后重新添加并开启。您可以跳过此步继续 — 文本将复制到剪贴板而非自动粘贴。"
     },
     "transcription": {
       "title": "转录设置",
@@ -1952,5 +1954,10 @@
     "title": "有可用更新",
     "body": "版本 {{version}} 已就绪",
     "cta": "立即更新"
+  },
+  "permissionsGate": {
+    "title": "需要权限",
+    "description": "OpenWhispr 需要一些权限才能在此电脑上正常运行。",
+    "continue": "继续"
   }
 }

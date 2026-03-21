@@ -164,7 +164,9 @@
       "openSystemSettings": "Systemeinstellungen öffnen",
       "systemAudioTitle": "Systemaudio",
       "systemAudioDescription": "Nimmt den Ton anderer Teilnehmer aus Anrufen und Meetings auf. Wir nehmen Ihren Bildschirm nie auf.",
-      "optional": "Optional"
+      "optional": "Optional",
+      "recommended": "Empfohlen",
+      "accessibilityTroubleshooting": "Nicht erkannt? Entferne OpenWhispr aus den Bedienungshilfen in den Systemeinstellungen, füge es erneut hinzu und aktiviere es. Du kannst dies überspringen — Text wird nur in die Zwischenablage kopiert statt automatisch eingefügt."
     },
     "transcription": {
       "title": "Transkriptions-Einrichtung",
@@ -1952,5 +1954,10 @@
     "title": "Update verfügbar",
     "body": "Version {{version}} ist bereit",
     "cta": "Jetzt aktualisieren"
+  },
+  "permissionsGate": {
+    "title": "Berechtigungen erforderlich",
+    "description": "OpenWhispr benötigt einige Berechtigungen, um auf diesem Computer zu funktionieren.",
+    "continue": "Weiter"
   }
 }

@@ -164,7 +164,9 @@
       "openSystemSettings": "Apri Impostazioni di Sistema",
       "systemAudioTitle": "Audio di Sistema",
       "systemAudioDescription": "Cattura l'audio degli altri partecipanti durante chiamate e riunioni. Non registriamo mai il tuo schermo.",
-      "optional": "Facoltativo"
+      "optional": "Facoltativo",
+      "recommended": "Consigliato",
+      "accessibilityTroubleshooting": "Non rilevato? Rimuovi OpenWhispr da Accessibilità nelle Impostazioni di Sistema, aggiungilo di nuovo e attivalo. Puoi saltare questo passaggio — il testo verrà solo copiato negli appunti invece di essere incollato automaticamente."
     },
     "transcription": {
       "title": "Configurazione trascrizione",
@@ -1952,5 +1954,10 @@
     "title": "Aggiornamento disponibile",
     "body": "La versione {{version}} è pronta",
     "cta": "Aggiorna ora"
+  },
+  "permissionsGate": {
+    "title": "Autorizzazioni necessarie",
+    "description": "OpenWhispr ha bisogno di alcune autorizzazioni per funzionare su questo computer.",
+    "continue": "Continua"
   }
 }
