@@ -1951,8 +1951,8 @@
     }
   },
   "updateNotification": {
-    "title": "有可用更新",
-    "body": "版本 {{version}} 已就绪",
+    "title": "OpenWhispr 有可用更新",
+    "body": "版本 {{version}} 已可下载",
     "cta": "立即更新"
   },
   "permissionsGate": {

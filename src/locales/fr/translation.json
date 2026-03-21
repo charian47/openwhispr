@@ -1951,8 +1951,8 @@
     }
   },
   "updateNotification": {
-    "title": "Mise à jour disponible",
-    "body": "La version {{version}} est prête",
+    "title": "Mise à jour OpenWhispr disponible",
+    "body": "La version {{version}} est prête à télécharger",
     "cta": "Mettre à jour"
   },
   "permissionsGate": {

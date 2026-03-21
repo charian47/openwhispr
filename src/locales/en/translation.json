@@ -1990,8 +1990,8 @@
     }
   },
   "updateNotification": {
-    "title": "Update Available",
-    "body": "Version {{version}} is ready",
+    "title": "OpenWhispr Update Available",
+    "body": "Version {{version}} is ready to download",
     "cta": "Update Now"
   },
   "permissionsGate": {
