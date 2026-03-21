@@ -40,10 +40,10 @@ export const useAudioRecording = (toast, options = {}) => {
         : await audioManagerRef.current.startRecording();
 
       if (didStart) {
-        void playStartCue();
         if (getSettings().pauseMediaOnDictation) {
           window.electronAPI?.pauseMediaPlayback?.();
         }
+        void playStartCue();
       }
 
       return didStart;
