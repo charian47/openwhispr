@@ -1017,12 +1017,14 @@ declare global {
       addAgentMessage?: (
         conversationId: number,
         role: "user" | "assistant" | "system",
-        content: string
+        content: string,
+        metadata?: Record<string, unknown>
       ) => Promise<{
         id: number;
         conversation_id: number;
         role: string;
         content: string;
+        metadata?: string;
         created_at: string;
       }>;
       getAgentMessages?: (conversationId: number) => Promise<

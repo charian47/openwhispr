@@ -667,9 +667,12 @@ class IPCHandlers {
       return this.databaseManager.updateAgentConversationTitle(id, title);
     });
 
-    ipcMain.handle("db-add-agent-message", async (event, conversationId, role, content) => {
-      return this.databaseManager.addAgentMessage(conversationId, role, content);
-    });
+    ipcMain.handle(
+      "db-add-agent-message",
+      async (event, conversationId, role, content, metadata) => {
+        return this.databaseManager.addAgentMessage(conversationId, role, content, metadata);
+      }
+    );
 
     ipcMain.handle("db-get-agent-messages", async (event, conversationId) => {
       return this.databaseManager.getAgentMessages(conversationId);

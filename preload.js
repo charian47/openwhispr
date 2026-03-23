@@ -579,9 +579,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
   releaseRecordingLock: (pipeline) => ipcRenderer.invoke("release-recording-lock", pipeline),
 
   // Agent cloud streaming (event-based for real-time chunks)
-  startAgentStream: (messages, opts) => ipcRenderer.send("cloud-agent-stream-start", messages, opts),
-  onAgentStreamChunk: registerListener("cloud-agent-stream-chunk", (callback) => (_event, chunk) => callback(chunk)),
-  onAgentStreamError: registerListener("cloud-agent-stream-error", (callback) => (_event, error) => callback(error)),
+  startAgentStream: (messages, opts) =>
+    ipcRenderer.send("cloud-agent-stream-start", messages, opts),
+  onAgentStreamChunk: registerListener(
+    "cloud-agent-stream-chunk",
+    (callback) => (_event, chunk) => callback(chunk)
+  ),
+  onAgentStreamError: registerListener(
+    "cloud-agent-stream-error",
+    (callback) => (_event, error) => callback(error)
+  ),
   onAgentStreamEnd: registerListener("cloud-agent-stream-end", (callback) => () => callback()),
 
   // Agent cloud tools
@@ -595,8 +602,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deleteAgentConversation: (id) => ipcRenderer.invoke("db-delete-agent-conversation", id),
   updateAgentConversationTitle: (id, title) =>
     ipcRenderer.invoke("db-update-agent-conversation-title", id, title),
-  addAgentMessage: (conversationId, role, content) =>
-    ipcRenderer.invoke("db-add-agent-message", conversationId, role, content),
+  addAgentMessage: (conversationId, role, content, metadata) =>
+    ipcRenderer.invoke("db-add-agent-message", conversationId, role, content, metadata),
   getAgentMessages: (conversationId) => ipcRenderer.invoke("db-get-agent-messages", conversationId),
 
   // Google Calendar

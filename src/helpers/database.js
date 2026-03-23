@@ -937,12 +937,15 @@ class DatabaseManager {
     }
   }
 
-  addAgentMessage(conversationId, role, content) {
+  addAgentMessage(conversationId, role, content, metadata) {
     try {
       if (!this.db) throw new Error("Database not initialized");
+      const metadataStr = metadata ? JSON.stringify(metadata) : null;
       const result = this.db
-        .prepare("INSERT INTO agent_messages (conversation_id, role, content) VALUES (?, ?, ?)")
-        .run(conversationId, role, content);
+        .prepare(
+          "INSERT INTO agent_messages (conversation_id, role, content, metadata) VALUES (?, ?, ?, ?)"
+        )
+        .run(conversationId, role, content, metadataStr);
       this.db
         .prepare("UPDATE agent_conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?")
         .run(conversationId);

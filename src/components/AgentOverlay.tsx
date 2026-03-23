@@ -2,13 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "./lib/utils";
 import { AgentTitleBar } from "./agent/AgentTitleBar";
-import { AgentChat } from "./agent/AgentChat";
+import { AgentChat, type Message } from "./agent/AgentChat";
 import { AgentInput } from "./agent/AgentInput";
 import AudioManager from "../helpers/audioManager";
 import ReasoningService, { type AgentStreamChunk } from "../services/ReasoningService";
 import { getSettings } from "../stores/settingsStore";
 import { getAgentSystemPrompt } from "../config/prompts";
 import { createToolRegistry } from "../services/tools";
+import type { ToolRegistry } from "../services/tools/ToolRegistry";
 
 type AgentState =
   | "idle"
@@ -17,22 +18,6 @@ type AgentState =
   | "thinking"
   | "streaming"
   | "tool-executing";
-
-interface ToolCallEntry {
-  id: string;
-  name: string;
-  arguments: string;
-  status: "executing" | "completed" | "error";
-  result?: string;
-}
-
-interface Message {
-  id: string;
-  role: "user" | "assistant" | "tool";
-  content: string;
-  isStreaming: boolean;
-  toolCalls?: ToolCallEntry[];
-}
 
 const MIN_HEIGHT = 200;
 const MIN_WIDTH = 360;
@@ -49,6 +34,7 @@ export default function AgentOverlay() {
   const agentStateRef = useRef<AgentState>("idle");
   const conversationIdRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
+  const toolRegistryRef = useRef<{ key: string; registry: ToolRegistry } | null>(null);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -115,13 +101,20 @@ export default function AgentOverlay() {
       const toolSupportedProviders = ["openai", "groq", "custom", "anthropic", "gemini"];
       const supportsTools = isCloudAgent || toolSupportedProviders.includes(settings.agentProvider);
 
-      const registry = supportsTools
-        ? createToolRegistry({
+      let registry: ToolRegistry | null = null;
+      if (supportsTools) {
+        const cacheKey = `${settings.isSignedIn}-${settings.gcalConnected}-${settings.cloudBackupEnabled}`;
+        if (toolRegistryRef.current?.key === cacheKey) {
+          registry = toolRegistryRef.current.registry;
+        } else {
+          registry = createToolRegistry({
             isSignedIn: settings.isSignedIn,
             gcalConnected: settings.gcalConnected,
             cloudBackupEnabled: settings.cloudBackupEnabled,
-          })
-        : null;
+          });
+          toolRegistryRef.current = { key: cacheKey, registry };
+        }
+      }
       const systemPrompt = getAgentSystemPrompt(registry?.getAll().map((t) => t.name));
 
       const llmMessages = [
@@ -259,10 +252,13 @@ export default function AgentOverlay() {
         );
 
         if (conversationIdRef.current) {
+          const finalMsg = messagesRef.current.find((m) => m.id === assistantId);
+          const toolCalls = finalMsg?.toolCalls;
           window.electronAPI?.addAgentMessage?.(
             conversationIdRef.current,
             "assistant",
-            fullContent
+            fullContent,
+            toolCalls?.length ? { toolCalls } : undefined
           );
         }
       } catch (error) {
@@ -410,6 +406,7 @@ export default function AgentOverlay() {
     setToolStatus("");
     setActiveToolName("");
     conversationIdRef.current = null;
+    toolRegistryRef.current = null;
   }, []);
 
   const handleClose = useCallback(() => {
