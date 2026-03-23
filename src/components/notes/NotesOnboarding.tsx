@@ -53,6 +53,7 @@ export default function NotesOnboarding({ onComplete }: NotesOnboardingProps) {
   const { alertDialog, hideAlertDialog } = useDialogs();
   const {
     granted: systemAudioGranted,
+    mode: systemAudioMode,
     request: requestSystemAudio,
     isMacOS,
   } = useSystemAudioPermission();
@@ -185,7 +186,7 @@ export default function NotesOnboarding({ onComplete }: NotesOnboardingProps) {
         )}
 
         {/* System Audio Permission — macOS only */}
-        {isMacOS && (
+        {isMacOS && systemAudioMode === "native" && (
           <div
             className={cn(
               "rounded-lg border transition-colors duration-200",

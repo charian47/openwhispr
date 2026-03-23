@@ -3349,16 +3349,18 @@ EOF`,
                       buttonText={t("settingsPage.permissions.testAndGrant")}
                       onOpenSettings={permissionsHook.openAccessibilitySettings}
                     />
-                    <PermissionCard
-                      icon={Monitor}
-                      title={t("settingsPage.permissions.systemAudioTitle")}
-                      description={t("settingsPage.permissions.systemAudioDescription")}
-                      granted={systemAudio.granted}
-                      onRequest={systemAudio.request}
-                      buttonText={t("settingsPage.permissions.test")}
-                      onOpenSettings={systemAudio.openSettings}
-                      badge={t("settingsPage.permissions.optional")}
-                    />
+                    {systemAudio.mode === "native" && (
+                      <PermissionCard
+                        icon={Monitor}
+                        title={t("settingsPage.permissions.systemAudioTitle")}
+                        description={t("settingsPage.permissions.systemAudioDescription")}
+                        granted={systemAudio.granted}
+                        onRequest={systemAudio.request}
+                        buttonText={t("settingsPage.permissions.test")}
+                        onOpenSettings={systemAudio.openSettings}
+                        badge={t("settingsPage.permissions.optional")}
+                      />
+                    )}
                   </>
                 )}
               </div>

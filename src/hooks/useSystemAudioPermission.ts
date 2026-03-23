@@ -1,19 +1,31 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { getCachedPlatform } from "../utils/platform";
+import type { SystemAudioAccessResult } from "../types/electron";
+
+const NON_MACOS_ACCESS: SystemAudioAccessResult = {
+  granted: true,
+  status: "granted",
+  mode: "unsupported",
+};
 
 export function useSystemAudioPermission() {
   const isMacOS = getCachedPlatform() === "darwin";
-  const [granted, setGranted] = useState(!isMacOS);
+  const [access, setAccess] = useState<SystemAudioAccessResult | null>(
+    isMacOS ? null : NON_MACOS_ACCESS
+  );
+  const [isChecking, setIsChecking] = useState(false);
   const checkingRef = useRef(false);
 
   const check = useCallback(async () => {
     if (!isMacOS || checkingRef.current) return;
     checkingRef.current = true;
+    setIsChecking(true);
     try {
       const result = await window.electronAPI?.checkSystemAudioAccess?.();
-      setGranted(result?.granted ?? false);
+      setAccess(result ?? { granted: false, status: "unsupported", mode: "unsupported" });
     } finally {
       checkingRef.current = false;
+      setIsChecking(false);
     }
   }, [isMacOS]);
 
@@ -34,18 +46,30 @@ export function useSystemAudioPermission() {
     await window.electronAPI?.openSystemAudioSettings?.();
   }, []);
 
-  // Trigger the native macOS permission prompt via getDisplayMedia (used in onboarding)
   const request = useCallback(async (): Promise<boolean> => {
     if (!isMacOS) return true;
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
-      stream.getTracks().forEach((t) => t.stop());
-      setGranted(true);
-      return true;
-    } catch {
+
+    const currentAccess = access ??
+      (await window.electronAPI?.checkSystemAudioAccess?.()) ?? {
+        granted: false,
+        status: "unsupported" as const,
+        mode: "unsupported" as const,
+      };
+
+    if (currentAccess.mode !== "native") {
+      setAccess(currentAccess);
       return false;
     }
-  }, [isMacOS]);
 
-  return { granted, request, openSettings, check, isMacOS };
+    const result = await window.electronAPI?.requestSystemAudioAccess?.();
+    const nextAccess = result ?? currentAccess;
+    setAccess(nextAccess);
+    return nextAccess.granted;
+  }, [access, isMacOS]);
+
+  const granted = access?.granted ?? false;
+  const status = access?.status ?? "unknown";
+  const mode = access?.mode ?? "unsupported";
+
+  return { granted, status, mode, isChecking, request, openSettings, check, isMacOS };
 }

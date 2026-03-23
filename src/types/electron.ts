@@ -115,6 +115,13 @@ export interface AudioDiagnosticsResult {
   models: string[];
 }
 
+export interface SystemAudioAccessResult {
+  granted: boolean;
+  status: "granted" | "denied" | "not-determined" | "restricted" | "unknown" | "unsupported";
+  mode: "native" | "unsupported";
+  error?: string;
+}
+
 export interface UpdateCheckResult {
   updateAvailable: boolean;
   version?: string;
@@ -732,7 +739,9 @@ declare global {
 
       // System settings helpers
       requestMicrophoneAccess?: () => Promise<{ granted: boolean }>;
-      checkSystemAudioAccess?: () => Promise<{ granted: boolean }>;
+      checkMicrophoneAccess?: () => Promise<{ granted: boolean; status: string }>;
+      checkSystemAudioAccess?: () => Promise<SystemAudioAccessResult>;
+      requestSystemAudioAccess?: () => Promise<SystemAudioAccessResult>;
       openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
@@ -1126,7 +1135,11 @@ declare global {
         provider?: string;
         model?: string;
         language?: string;
-      }) => Promise<{ success: boolean; error?: string }>;
+      }) => Promise<{
+        success: boolean;
+        error?: string;
+        systemAudioMode?: "native" | "unsupported";
+      }>;
       meetingTranscriptionSend?: (buffer: ArrayBuffer, source: "mic" | "system") => void;
       meetingTranscriptionStop?: () => Promise<{
         success: boolean;
@@ -1158,9 +1171,6 @@ declare global {
       onDictationRealtimeError?: (callback: (error: string) => void) => () => void;
       onDictationRealtimeSessionEnd?: (callback: (data: { text: string }) => void) => () => void;
 
-      // Desktop audio capture
-      getDesktopSources?: (types: string[]) => Promise<Array<{ id: string; name: string }>>;
-
       // Google Calendar event listeners
       onGcalMeetingStarting?: (callback: (data: any) => void) => () => void;
       onGcalMeetingEnded?: (callback: (data: any) => void) => () => void;
@@ -1188,6 +1198,15 @@ declare global {
       onNavigateToMeetingNote?: (
         callback: (data: { noteId: number; folderId: number; event: any }) => void
       ) => () => void;
+      onUpdateNotificationData?: (
+        callback: (data: { version: string; releaseDate?: string }) => void
+      ) => () => void;
+      getUpdateNotificationData?: () => Promise<{
+        version: string;
+        releaseDate?: string;
+      } | null>;
+      updateNotificationReady?: () => Promise<void>;
+      updateNotificationRespond?: (action: string) => Promise<{ success: boolean }>;
     };
 
     api?: {

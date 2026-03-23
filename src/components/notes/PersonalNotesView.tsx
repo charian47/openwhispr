@@ -111,7 +111,7 @@ export default function PersonalNotesView({
 
   const activeNote = notes.find((n) => n.id === activeNoteId) ?? null;
 
-  // Note recording uses the same dual-stream transcription as meeting mode.
+  // Note recording uses the same meeting transcription pipeline.
   // The `isMeetingMode` ref distinguishes whether the recording was triggered
   // by the meeting hotkey (creates a separate note) or the note record button.
   const isMeetingModeRef = useRef(false);
@@ -289,8 +289,8 @@ export default function PersonalNotesView({
     cancel: cancelAction,
   } = useActionProcessing({
     onSuccess: useCallback(
-      (enhancedContent: string, prompt: string) => {
-        handleApplyEnhancement(enhancedContent, prompt);
+      (enhancedContent: string, prompt: string, title?: string) => {
+        handleApplyEnhancement(enhancedContent, prompt, title);
       },
       [handleApplyEnhancement]
     ),
