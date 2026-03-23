@@ -10,8 +10,6 @@ import { cn } from "../lib/utils";
 interface RichTextEditorProps {
   value: string;
   onChange?: (value: string) => void;
-  onSelect?: () => void;
-  onBlur?: () => void;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
@@ -21,8 +19,6 @@ interface RichTextEditorProps {
 export function RichTextEditor({
   value,
   onChange,
-  onSelect,
-  onBlur,
   placeholder,
   className,
   disabled,
@@ -58,12 +54,6 @@ export function RichTextEditor({
       const md = (ed.storage as any).markdown.getMarkdown() as string;
       internalValueRef.current = md;
       onChange?.(md);
-    },
-    onSelectionUpdate: () => {
-      onSelect?.();
-    },
-    onBlur: () => {
-      onBlur?.();
     },
     editorProps: {
       attributes: {

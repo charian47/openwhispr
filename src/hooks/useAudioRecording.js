@@ -231,14 +231,6 @@ export const useAudioRecording = (toast, options = {}) => {
     };
   }, [toast, onToggle, performStartRecording, performStopRecording, t]);
 
-  const startRecording = async () => {
-    return performStartRecording();
-  };
-
-  const stopRecording = async () => {
-    return performStopRecording();
-  };
-
   const cancelRecording = async () => {
     if (audioManagerRef.current) {
       const state = audioManagerRef.current.getState();
@@ -262,9 +254,9 @@ export const useAudioRecording = (toast, options = {}) => {
 
   const toggleListening = async () => {
     if (!isRecording && !isProcessing) {
-      await startRecording();
+      await performStartRecording();
     } else if (isRecording) {
-      await stopRecording();
+      await performStopRecording();
     }
   };
 
@@ -274,8 +266,8 @@ export const useAudioRecording = (toast, options = {}) => {
     isStreaming,
     transcript,
     partialTranscript,
-    startRecording,
-    stopRecording,
+    startRecording: performStartRecording,
+    stopRecording: performStopRecording,
     cancelRecording,
     cancelProcessing,
     toggleListening,

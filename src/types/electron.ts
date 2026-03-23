@@ -787,6 +787,7 @@ declare global {
           agentName?: string;
           customDictionary?: string[];
           customPrompt?: string;
+          systemPrompt?: string;
           language?: string;
           locale?: string;
         }
@@ -795,6 +796,8 @@ declare global {
         text?: string;
         model?: string;
         provider?: string;
+        promptMode?: string;
+        matchType?: string;
         error?: string;
         code?: string;
       }>;

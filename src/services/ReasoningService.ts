@@ -1052,7 +1052,7 @@ class ReasoningService extends BaseReasoningService {
       const locale = this.getUiLanguage();
 
       const result = await withSessionRefresh(async () => {
-        const res = await (window as any).electronAPI.cloudReason(text, {
+        const res = await window.electronAPI?.cloudReason?.(text, {
           agentName,
           customDictionary,
           customPrompt: this.getCustomPrompt(),
@@ -1061,9 +1061,9 @@ class ReasoningService extends BaseReasoningService {
           locale,
         });
 
-        if (!res.success) {
-          const err: any = new Error(res.error || "OpenWhispr cloud reasoning failed");
-          err.code = res.code;
+        if (!res?.success) {
+          const err: any = new Error(res?.error || "OpenWhispr cloud reasoning failed");
+          err.code = res?.code;
           throw err;
         }
 

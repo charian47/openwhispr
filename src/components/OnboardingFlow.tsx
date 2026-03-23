@@ -47,9 +47,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const { t } = useTranslation();
   const { isSignedIn } = useAuth();
 
-  // Max valid step index dynamically determined based on auth state
-  // Signed-in users: 3 steps (Welcome, Setup, Activation) - index 0-2
-  // Non-signed-in users: 4 steps (Welcome, Setup, Permissions, Activation) - index 0-3
   const getMaxStep = () => (isSignedIn ? 2 : 3);
 
   const [currentStep, setCurrentStep, removeCurrentStep] = useLocalStorage(
@@ -350,11 +347,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         );
 
       case 1: // Setup - Choose Mode & Configure (merged with permissions for signed-in users)
-        // Simplified path for signed-in users (cloud-first) with permissions
         if (isSignedIn && !skipAuth) {
-          const platform = permissionsHook.pasteToolsInfo?.platform;
-          const isMacOS = platform === "darwin";
-
           return (
             <div className="space-y-6">
               <div className="text-center">
@@ -589,11 +582,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       case 1:
         // For signed-in users: Setup step includes permissions
         if (isSignedIn && !skipAuth) {
-          return areRequiredPermissionsMet(
-            permissionsHook.micPermissionGranted,
-            permissionsHook.accessibilityPermissionGranted,
-            permissionsHook.pasteToolsInfo?.platform
-          );
+          return areRequiredPermissionsMet(permissionsHook.micPermissionGranted);
         }
 
         // For non-signed-in users: Setup - check if configuration is complete
@@ -622,11 +611,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         }
 
         // For non-signed-in users, this is permissions step
-        return areRequiredPermissionsMet(
-          permissionsHook.micPermissionGranted,
-          permissionsHook.accessibilityPermissionGranted,
-          permissionsHook.pasteToolsInfo?.platform
-        );
+        return areRequiredPermissionsMet(permissionsHook.micPermissionGranted);
       }
       case 3:
         return hotkey.trim() !== ""; // Activation step for non-signed-in users

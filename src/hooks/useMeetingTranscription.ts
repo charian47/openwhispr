@@ -232,31 +232,21 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
   const pendingCleanupRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cleanup = useCallback(async () => {
-    const processors = [micProcessorRef];
-    const sources = [micSourceRef];
-    const streams = [micStreamRef];
-    const contexts = [micContextRef];
+    await flushAndDisconnectProcessor(micProcessorRef.current);
+    micProcessorRef.current = null;
 
-    for (const ref of processors) {
-      await flushAndDisconnectProcessor(ref.current);
-      ref.current = null;
-    }
-    for (const ref of sources) {
-      ref.current?.disconnect();
-      ref.current = null;
-    }
-    for (const ref of streams) {
-      try {
-        ref.current?.getTracks().forEach((t) => t.stop());
-      } catch {}
-      ref.current = null;
-    }
-    for (const ref of contexts) {
-      try {
-        await ref.current?.close();
-      } catch {}
-      ref.current = null;
-    }
+    micSourceRef.current?.disconnect();
+    micSourceRef.current = null;
+
+    try {
+      micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    } catch {}
+    micStreamRef.current = null;
+
+    try {
+      await micContextRef.current?.close();
+    } catch {}
+    micContextRef.current = null;
 
     ipcCleanupsRef.current.forEach((fn) => fn());
     ipcCleanupsRef.current = [];

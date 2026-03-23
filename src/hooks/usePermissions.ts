@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import type { PasteToolsResult } from "../types/electron";
 import { useLocalStorage } from "./useLocalStorage";
+import logger from "../utils/logger";
 
 export interface UsePermissionsReturn {
   // State
@@ -150,7 +151,7 @@ export const usePermissions = (
           showAlertDialog?.({ title: titles[settingType], description: result.error });
         }
       } catch (error) {
-        console.error(`Failed to open ${settingType} settings:`, error);
+        logger.error(`Failed to open ${settingType} settings:`, error);
         showAlertDialog?.({
           title: titles[settingType],
           description: unableToOpenDescriptions[settingType],
@@ -215,7 +216,7 @@ export const usePermissions = (
       setMicPermissionGranted(true);
       setMicPermissionError(null);
     } catch (err) {
-      console.error("Microphone permission denied:", err);
+      logger.error("Microphone permission denied:", err);
       const message = describeMicError(err, t);
       setMicPermissionError(message);
       if (showAlertDialog) {
@@ -246,7 +247,7 @@ export const usePermissions = (
       }
       return null;
     } catch (error) {
-      console.error("Failed to check paste tools:", error);
+      logger.error("Failed to check paste tools:", error);
       return null;
     } finally {
       setIsCheckingPasteTools(false);
@@ -313,7 +314,7 @@ export const usePermissions = (
         await window.electronAPI.pasteText(t("hooks.permissions.accessibilityTestText"));
         setAccessibilityPermissionGranted(true);
       } catch (err) {
-        console.error("Accessibility permission test failed:", err);
+        logger.error("Accessibility permission test failed:", err);
         if (showAlertDialog) {
           showAlertDialog({
             title: t("hooks.permissions.titles.accessibilityNeeded"),

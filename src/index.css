@@ -870,13 +870,6 @@ body:has(.agent-overlay-window) #root {
   background: oklch(0.5 0 0 / 0.3);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .agent-overlay-window * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-  }
-}
-
 /* ── TipTap / ProseMirror Rich Text Editor ── */
 
 .rich-text-editor-content {

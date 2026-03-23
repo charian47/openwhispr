@@ -49,22 +49,29 @@ export function useSystemAudioPermission() {
   const request = useCallback(async (): Promise<boolean> => {
     if (!isMacOS) return true;
 
-    const currentAccess = access ??
-      (await window.electronAPI?.checkSystemAudioAccess?.()) ?? {
-        granted: false,
-        status: "unsupported" as const,
-        mode: "unsupported" as const,
-      };
+    setIsChecking(true);
+    try {
+      const currentAccess = access ??
+        (await window.electronAPI?.checkSystemAudioAccess?.()) ?? {
+          granted: false,
+          status: "unsupported" as const,
+          mode: "unsupported" as const,
+        };
 
-    if (currentAccess.mode !== "native") {
-      setAccess(currentAccess);
+      if (currentAccess.mode !== "native") {
+        setAccess(currentAccess);
+        return false;
+      }
+
+      const result = await window.electronAPI?.requestSystemAudioAccess?.();
+      const nextAccess = result ?? currentAccess;
+      setAccess(nextAccess);
+      return nextAccess.granted;
+    } catch {
       return false;
+    } finally {
+      setIsChecking(false);
     }
-
-    const result = await window.electronAPI?.requestSystemAudioAccess?.();
-    const nextAccess = result ?? currentAccess;
-    setAccess(nextAccess);
-    return nextAccess.granted;
   }, [access, isMacOS]);
 
   const granted = access?.granted ?? false;

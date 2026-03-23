@@ -78,7 +78,8 @@
   "systemSettings": {
     "microphone": "Veuillez ouvrir les paramètres système pour configurer les permissions du microphone.",
     "sound": "Veuillez ouvrir les paramètres son du système (par exemple, pavucontrol).",
-    "accessibility": "Les paramètres d'accessibilité ne sont pas disponibles sur cette plateforme."
+    "accessibility": "Les paramètres d'accessibilité ne sont pas disponibles sur cette plateforme.",
+    "systemAudio": "Les paramètres audio système ne sont pas disponibles sur cette plateforme."
   },
   "titleBar": {
     "quitTitle": "Quitter OpenWhispr",
@@ -245,7 +246,20 @@
       "clearAllDescription": "Toutes les transcriptions et fichiers audio seront définitivement supprimés.",
       "clearAllSuccess": "Historique effacé",
       "clearAllErrorTitle": "Impossible d'effacer l'historique",
-      "clearAllErrorDescription": "Une erreur est survenue. Veuillez réessayer."
+      "clearAllErrorDescription": "Une erreur est survenue. Veuillez réessayer.",
+      "copyText": "Copier le texte",
+      "deleteItem": "Supprimer",
+      "viewRawTranscript": "Voir la transcription brute",
+      "showInFolder": "Afficher dans le Finder",
+      "showInFolderWindows": "Afficher dans l'Explorateur",
+      "showInFolderLinux": "Afficher dans le gestionnaire de fichiers",
+      "retryTranscription": "Retranscrire",
+      "retrying": "Retranscription en cours…",
+      "retrySuccess": "Transcription mise à jour",
+      "retryError": "Échec de la retranscription",
+      "audioNotFound": "Fichier audio introuvable ou expiré",
+      "noAiProcessing": "Aucun traitement IA n'a été appliqué à cette transcription",
+      "rawTranscript": "Transcription brute"
     },
     "cloudMigration": {
       "title": "Bienvenue sur OpenWhispr Pro",
@@ -263,7 +277,8 @@
       "bannerDescription": "Activez l'accélération GPU pour de meilleures performances.",
       "enableButton": "Activer le GPU",
       "dismissButton": "Pas maintenant"
-    }
+    },
+    "backToNotes": "Retour aux notes"
   },
   "reasoning": {
     "mode": {
@@ -1145,7 +1160,12 @@
         "autoHide": "Masquer automatiquement au repos",
         "autoHideDescription": "Garder l'icône masquée jusqu'au début de la dictée",
         "description": "Contrôlez quand l'icône de dictée est visible à l'écran",
-        "title": "Icône flottante"
+        "title": "Icône flottante",
+        "startPosition": "Position de départ",
+        "startPositionDescription": "Emplacement du panneau d'enregistrement vocal à l'écran",
+        "bottomRight": "En bas à droite",
+        "center": "En bas au centre",
+        "bottomLeft": "En bas à gauche"
       },
       "hotkey": {
         "activationMode": "Mode d'activation",
@@ -1236,8 +1256,12 @@
             "step1Title": "Démarrer le daemon",
             "step1Desc": "Démarrez ydotoold et activez-le pour qu'il se lance à chaque connexion.",
             "step2Title": "Vérifier qu'il est en cours d'exécution"
+          },
+          "xclip": {
+            "step1Title": "Installer xclip"
           }
-        }
+        },
+        "xclipDesc": "Outil de presse-papiers pour le collage KDE Wayland (xclip ou xsel)"
       },
       "updates": {
         "badges": {
@@ -1327,7 +1351,17 @@
       "usageAnalytics": "Analyse d'utilisation",
       "usageAnalyticsDescription": "Aidez-nous à améliorer OpenWhispr en partageant des métriques de performance anonymes. Nous n'envoyons jamais le contenu de vos transcriptions — uniquement des données de performance et d'erreurs.",
       "dataRetention": "Conservation des données",
-      "dataRetentionDescription": "Stocker les transcriptions et l'audio localement dans votre historique. Lorsque désactivé, les transcriptions sont collées mais pas enregistrées."
+      "dataRetentionDescription": "Stocker les transcriptions et l'audio localement dans votre historique. Lorsque désactivé, les transcriptions sont collées mais pas enregistrées.",
+      "audioRetention": "Conservation de l'audio",
+      "audioRetentionDescription": "Stocke les enregistrements audio localement pour la retranscription et le téléchargement. Les fichiers sont automatiquement supprimés après la période de conservation.",
+      "audioRetentionDisabled": "Désactivé",
+      "audioRetentionDays": "{{count}} jours",
+      "audioStorageUsage": "Espace utilisé",
+      "audioStorageUsageDescription": "Fichiers audio stockés sur cet appareil",
+      "audioStorageFiles": "{{count}} fichiers, {{size}}",
+      "audioStorageEmpty": "Aucun fichier audio stocké",
+      "clearAllAudio": "Supprimer tous les fichiers audio",
+      "clearAllAudioConfirm": "Supprimer tous les fichiers audio stockés ? Cette action est irréversible."
     },
     "prompts": {
       "description": "Affichez, personnalisez et testez le prompt système unifié qui gère la correction du texte et la détection des instructions",
@@ -1701,6 +1735,10 @@
     },
     "enhance": {
       "title": "Erreur d'amélioration"
+    },
+    "speaker": {
+      "you": "Vous",
+      "them": "Eux"
     }
   },
   "dictionary": {

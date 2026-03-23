@@ -6,8 +6,7 @@ import { HotkeyInput } from "../ui/HotkeyInput";
 import { Toggle } from "../ui/toggle";
 import { SettingsRow, SettingsPanel, SettingsPanelRow, SectionHeader } from "../ui/SettingsSection";
 import ReasoningModelSelector from "../ReasoningModelSelector";
-import { getValidationMessage, normalizeHotkey } from "../../utils/hotkeyValidator";
-import { getPlatform } from "../../utils/platform";
+import { validateHotkeyForSlot } from "../../utils/hotkeyValidation";
 
 export default function AgentModeSettings() {
   const { t } = useTranslation();
@@ -45,21 +44,15 @@ export default function AgentModeSettings() {
   const isCustomMode = cloudAgentMode === "byok";
 
   const validateAgentHotkey = useCallback(
-    (hotkey: string) => {
-      const formatError = getValidationMessage(hotkey, getPlatform());
-      if (formatError) return formatError;
-      const platform = getPlatform();
-      const normalized = normalizeHotkey(hotkey, platform);
-      if (dictationKey && normalizeHotkey(dictationKey, platform) === normalized) {
-        return t("hotkey.errors.slotConflict", { slot: t("settingsPage.general.hotkey.title") });
-      }
-      if (meetingKey && normalizeHotkey(meetingKey, platform) === normalized) {
-        return t("hotkey.errors.slotConflict", {
-          slot: t("settingsPage.general.meetingHotkey.title"),
-        });
-      }
-      return null;
-    },
+    (hotkey: string) =>
+      validateHotkeyForSlot(
+        hotkey,
+        {
+          "settingsPage.general.hotkey.title": dictationKey,
+          "settingsPage.general.meetingHotkey.title": meetingKey,
+        },
+        t
+      ),
     [dictationKey, meetingKey, t]
   );
 

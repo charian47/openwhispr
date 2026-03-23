@@ -162,7 +162,9 @@ class ClipboardManager {
     }
 
     const possiblePaths = [
-      path.join(process.resourcesPath, "bin", "nircmd.exe"),
+      ...(process.resourcesPath
+        ? [path.join(process.resourcesPath, "bin", "nircmd.exe")]
+        : []),
       path.join(__dirname, "..", "..", "resources", "bin", "nircmd.exe"),
       path.join(process.cwd(), "resources", "bin", "nircmd.exe"),
     ];
@@ -1151,8 +1153,6 @@ class ClipboardManager {
         // desync (X11 clipboard vs Wayland input) so portal is preferred.
         // On GNOME, Mutter doesn't reliably route uinput to native Wayland
         // windows (issue #292), so portal is tried first there too.
-        const preferUinput = false;
-
         const tryUinputPaste = async () => {
           const args = ["--uinput"];
           if (earlyIsTerminal) args.push("--terminal");
@@ -1165,19 +1165,6 @@ class ClipboardManager {
           );
           restoreClipboard();
         };
-
-        if (preferUinput) {
-          try {
-            await tryUinputPaste();
-            return "uinput";
-          } catch (uinputError) {
-            debugLogger.warn(
-              "uinput paste failed on KDE, falling back to portal",
-              { error: uinputError?.message },
-              "clipboard"
-            );
-          }
-        }
 
         if ((isGnome || isKde) && linuxFastPaste && !this.portalDenied) {
           const MAX_PORTAL_RETRIES = 3;
@@ -1220,13 +1207,11 @@ class ClipboardManager {
           }
         }
 
-        if (!preferUinput) {
-          try {
-            await tryUinputPaste();
-            return "uinput";
-          } catch (uinputError) {
-            debugLogger.warn("uinput paste failed", { error: uinputError?.message }, "clipboard");
-          }
+        try {
+          await tryUinputPaste();
+          return "uinput";
+        } catch (uinputError) {
+          debugLogger.warn("uinput paste failed", { error: uinputError?.message }, "clipboard");
         }
 
         // XTest/XWayland fallback: works for XWayland apps on any Wayland compositor

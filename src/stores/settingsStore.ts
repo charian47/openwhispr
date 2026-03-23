@@ -401,7 +401,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     if (isBrowser) localStorage.setItem("customTranscriptionApiKey", key);
     set({ customTranscriptionApiKey: key });
     window.electronAPI?.saveCustomTranscriptionKey?.(key);
-    invalidateApiKeyCaches();
+    invalidateApiKeyCaches("custom");
   },
   setCustomReasoningApiKey: (key: string) => {
     if (isBrowser) localStorage.setItem("customReasoningApiKey", key);
