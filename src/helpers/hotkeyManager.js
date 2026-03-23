@@ -613,6 +613,8 @@ class HotkeyManager {
               debugLogger.log(
                 "[HotkeyManager] KDE keybinding failed, falling back to globalShortcut"
               );
+              this.kdeManager.close();
+              this.kdeManager = null;
               this.useKDE = false;
               this.loadSavedHotkeyOrDefault(mainWindow, callback);
             }
@@ -621,6 +623,8 @@ class HotkeyManager {
               "[HotkeyManager] KDE keybinding failed, falling back to globalShortcut:",
               err.message
             );
+            this.kdeManager?.close();
+            this.kdeManager = null;
             this.useKDE = false;
             this.loadSavedHotkeyOrDefault(mainWindow, callback);
           }

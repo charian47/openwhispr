@@ -109,7 +109,7 @@ class KDEShortcutManager {
   }
 
   async _listenForComponent() {
-    if (this.componentProxy) return;
+    if (this.componentProxy) return true;
 
     try {
       const componentPath = `/component/${COMPONENT_NAME}`;
@@ -121,7 +121,9 @@ class KDEShortcutManager {
 
       iface.on("globalShortcutPressed", (componentUnique, shortcutUnique, timestamp) => {
         debugLogger.log("[KDEShortcut] Shortcut pressed", { componentUnique, shortcutUnique });
-        // KGlobalAccel may send actionUnique or actionFriendly depending on version
+        // Tested on KDE Plasma 6 (Fedora 43): signal sends the actionFriendly
+        // name ("OpenWhispr") not the actionUnique ("dictation"). The fallback
+        // maps friendly names back to slot names.
         const callback = this.callbacks.get(shortcutUnique)
           || this._findCallbackByFriendlyName(shortcutUnique);
         if (callback) {
@@ -133,8 +135,10 @@ class KDEShortcutManager {
 
       this.componentProxy = iface;
       debugLogger.log("[KDEShortcut] Listening for globalShortcutPressed on", componentPath);
+      return true;
     } catch (err) {
       debugLogger.log("[KDEShortcut] Failed to listen on component:", err.message);
+      return false;
     }
   }
 
@@ -180,7 +184,11 @@ class KDEShortcutManager {
       this.registeredSlots.add(slotName);
 
       // Start listening for press events on the component
-      await this._listenForComponent();
+      const listening = await this._listenForComponent();
+      if (!listening) {
+        debugLogger.log(`[KDEShortcut] Keybinding registered but listener failed for "${slotName}"`);
+        return false;
+      }
 
       debugLogger.log("[KDEShortcut] Registered", {
         slot: slotName,
@@ -216,20 +224,26 @@ class KDEShortcutManager {
   }
 
   close() {
-    // Unregister all before closing
+    // Best-effort cleanup on app shutdown. unRegister calls are async D-Bus
+    // calls that may not complete before disconnect, but KGlobalAccel will
+    // clean up stale registrations from dead processes anyway.
+    const promises = [];
     for (const slotName of this.registeredSlots) {
       const actionId = [COMPONENT_NAME, "OpenWhispr", slotName, `OpenWhispr ${slotName}`];
       try {
-        this.kglobalaccel?.unRegister(actionId);
+        promises.push(this.kglobalaccel?.unRegister(actionId));
       } catch {}
     }
 
-    if (this.bus) {
-      try { this.bus.disconnect(); } catch {}
-      this.bus = null;
-      this.kglobalaccel = null;
-      this.componentProxy = null;
-    }
+    Promise.allSettled(promises).finally(() => {
+      if (this.bus) {
+        try { this.bus.disconnect(); } catch {}
+        this.bus = null;
+        this.kglobalaccel = null;
+        this.componentProxy = null;
+      }
+    });
+
     this.callbacks.clear();
     this.registeredSlots.clear();
   }
