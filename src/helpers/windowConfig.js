@@ -10,11 +10,20 @@ const isKDEWayland =
   process.env.XDG_SESSION_TYPE === "wayland" &&
   /kde/i.test(process.env.XDG_CURRENT_DESKTOP || "");
 
-const OVERLAY_WINDOW_TYPE =
+const MAIN_OVERLAY_TYPE =
   process.platform === "darwin"
     ? "panel"
     : process.platform === "linux"
       ? isGnomeWayland || isKDEWayland
+        ? "normal"
+        : "toolbar"
+      : "normal";
+
+const FLOATING_OVERLAY_TYPE =
+  process.platform === "darwin"
+    ? "panel"
+    : process.platform === "linux"
+      ? isKDEWayland
         ? "normal"
         : "toolbar"
       : "normal";
@@ -48,7 +57,7 @@ const MAIN_WINDOW_CONFIG = {
   fullScreenable: false,
   hasShadow: false,
   acceptsFirstMouse: true,
-  type: OVERLAY_WINDOW_TYPE,
+  type: MAIN_OVERLAY_TYPE,
 };
 
 // Control panel window configuration
@@ -108,7 +117,7 @@ const NOTIFICATION_WINDOW_CONFIG = {
     sandbox: true,
   },
   visibleOnAllWorkspaces: process.platform !== "win32",
-  type: OVERLAY_WINDOW_TYPE,
+  type: FLOATING_OVERLAY_TYPE,
 };
 
 class WindowPositionUtil {
@@ -184,7 +193,7 @@ const AGENT_OVERLAY_CONFIG = {
   resizable: false,
   fullScreenable: false,
   acceptsFirstMouse: true,
-  type: OVERLAY_WINDOW_TYPE,
+  type: FLOATING_OVERLAY_TYPE,
   visibleOnAllWorkspaces: process.platform !== "win32",
   webPreferences: {
     preload: path.join(__dirname, "..", "..", "preload.js"),
