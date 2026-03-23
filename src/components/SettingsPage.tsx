@@ -59,7 +59,7 @@ import PromptStudio from "./ui/PromptStudio";
 import ReasoningModelSelector from "./ReasoningModelSelector";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
-import { getValidationMessage, normalizeHotkey } from "../utils/hotkeyValidator";
+import { validateHotkeyForSlot } from "../utils/hotkeyValidation";
 import { getPlatform, getCachedPlatform } from "../utils/platform";
 import { getDefaultHotkey, formatHotkeyLabel } from "../utils/hotkeys";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
@@ -794,6 +794,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     hasUdevRule: boolean;
     hasGroup: boolean;
     allGood: boolean;
+    isKde?: boolean;
+    hasXclip?: boolean;
+    hasXsel?: boolean;
   } | null>(null);
   const [ydotoolGuideKey, setYdotoolGuideKey] = useState<string | null>(null);
 
@@ -885,38 +888,28 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     });
 
   const validateDictationHotkey = useCallback(
-    (hotkey: string) => {
-      const formatError = getValidationMessage(hotkey, getPlatform());
-      if (formatError) return formatError;
-      const platform = getPlatform();
-      const normalized = normalizeHotkey(hotkey, platform);
-      if (meetingKey && normalizeHotkey(meetingKey, platform) === normalized) {
-        return t("hotkey.errors.slotConflict", {
-          slot: t("settingsPage.general.meetingHotkey.title"),
-        });
-      }
-      if (agentKey && normalizeHotkey(agentKey, platform) === normalized) {
-        return t("hotkey.errors.slotConflict", { slot: t("agentMode.settings.hotkey") });
-      }
-      return null;
-    },
+    (hotkey: string) =>
+      validateHotkeyForSlot(
+        hotkey,
+        {
+          "settingsPage.general.meetingHotkey.title": meetingKey,
+          "agentMode.settings.hotkey": agentKey,
+        },
+        t
+      ),
     [meetingKey, agentKey, t]
   );
 
   const validateMeetingHotkey = useCallback(
-    (hotkey: string) => {
-      const formatError = getValidationMessage(hotkey, getPlatform());
-      if (formatError) return formatError;
-      const platform = getPlatform();
-      const normalized = normalizeHotkey(hotkey, platform);
-      if (dictationKey && normalizeHotkey(dictationKey, platform) === normalized) {
-        return t("hotkey.errors.slotConflict", { slot: t("settingsPage.general.hotkey.title") });
-      }
-      if (agentKey && normalizeHotkey(agentKey, platform) === normalized) {
-        return t("hotkey.errors.slotConflict", { slot: t("agentMode.settings.hotkey") });
-      }
-      return null;
-    },
+    (hotkey: string) =>
+      validateHotkeyForSlot(
+        hotkey,
+        {
+          "settingsPage.general.hotkey.title": dictationKey,
+          "agentMode.settings.hotkey": agentKey,
+        },
+        t
+      ),
     [dictationKey, agentKey, t]
   );
 
@@ -2605,6 +2598,28 @@ EOF`,
                     },
                   ];
 
+                  if (ydotoolStatus.isKde) {
+                    checks.push({
+                      key: "hasXclip",
+                      label: "xclip",
+                      ok: ydotoolStatus.hasXclip || ydotoolStatus.hasXsel || false,
+                      desc: t("settingsPage.general.waylandPaste.xclipDesc", {
+                        defaultValue: "Clipboard tool for KDE Wayland paste (xclip or xsel)",
+                      }),
+                      guide: [
+                        {
+                          title: t("settingsPage.general.waylandPaste.guide.xclip.step1Title", {
+                            defaultValue: "Install xclip",
+                          }),
+                          cmds: [
+                            { cmd: "sudo dnf install xclip  # Fedora" },
+                            { cmd: "sudo apt install xclip  # Debian/Ubuntu" },
+                          ],
+                        },
+                      ],
+                    });
+                  }
+
                   const allOk = checks.every((c) => c.ok);
                   const activeGuide = checks.find((c) => c.key === ydotoolGuideKey);
 
@@ -3324,16 +3339,18 @@ EOF`,
                       buttonText={t("settingsPage.permissions.testAndGrant")}
                       onOpenSettings={permissionsHook.openAccessibilitySettings}
                     />
-                    <PermissionCard
-                      icon={Monitor}
-                      title={t("settingsPage.permissions.systemAudioTitle")}
-                      description={t("settingsPage.permissions.systemAudioDescription")}
-                      granted={systemAudio.granted}
-                      onRequest={systemAudio.request}
-                      buttonText={t("settingsPage.permissions.test")}
-                      onOpenSettings={systemAudio.openSettings}
-                      badge={t("settingsPage.permissions.optional")}
-                    />
+                    {systemAudio.mode === "native" && (
+                      <PermissionCard
+                        icon={Monitor}
+                        title={t("settingsPage.permissions.systemAudioTitle")}
+                        description={t("settingsPage.permissions.systemAudioDescription")}
+                        granted={systemAudio.granted}
+                        onRequest={systemAudio.request}
+                        buttonText={t("settingsPage.permissions.test")}
+                        onOpenSettings={systemAudio.openSettings}
+                        badge={t("settingsPage.permissions.optional")}
+                      />
+                    )}
                   </>
                 )}
               </div>

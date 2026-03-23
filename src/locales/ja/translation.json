@@ -78,7 +78,8 @@
   "systemSettings": {
     "microphone": "システム設定を開いてマイクの権限を設定してください。",
     "sound": "システムのサウンド設定を開いてください（例: pavucontrol）。",
-    "accessibility": "このプラットフォームではアクセシビリティ設定を利用できません。"
+    "accessibility": "このプラットフォームではアクセシビリティ設定を利用できません。",
+    "systemAudio": "システムオーディオの設定はこのプラットフォームでは利用できません。"
   },
   "titleBar": {
     "quitTitle": "OpenWhispr を終了",
@@ -245,7 +246,20 @@
       "clearAllDescription": "すべての文字起こしと音声ファイルが完全に削除されます。",
       "clearAllSuccess": "履歴を削除しました",
       "clearAllErrorTitle": "履歴を削除できませんでした",
-      "clearAllErrorDescription": "問題が発生しました。もう一度お試しください。"
+      "clearAllErrorDescription": "問題が発生しました。もう一度お試しください。",
+      "copyText": "テキストをコピー",
+      "deleteItem": "削除",
+      "viewRawTranscript": "生の文字起こしを表示",
+      "showInFolder": "Finderで表示",
+      "showInFolderWindows": "エクスプローラーで表示",
+      "showInFolderLinux": "ファイルマネージャーで表示",
+      "retryTranscription": "再文字起こし",
+      "retrying": "再文字起こし中…",
+      "retrySuccess": "文字起こしが更新されました",
+      "retryError": "再文字起こしに失敗しました",
+      "audioNotFound": "音声ファイルが見つからないか有効期限切れです",
+      "noAiProcessing": "この文字起こしにはAI処理が適用されていません",
+      "rawTranscript": "生の文字起こし"
     },
     "cloudMigration": {
       "title": "OpenWhispr Pro へようこそ",
@@ -263,7 +277,8 @@
       "bannerDescription": "GPU アクセラレーションを有効にしてパフォーマンスを向上させましょう。",
       "enableButton": "GPU を有効化",
       "dismissButton": "後で"
-    }
+    },
+    "backToNotes": "ノートに戻る"
   },
   "reasoning": {
     "mode": {
@@ -1145,7 +1160,12 @@
         "autoHide": "使用していないときに自動で非表示",
         "autoHideDescription": "ディクテーション開始までアイコンを非表示にする",
         "description": "画面上のディクテーションアイコンの表示を制御",
-        "title": "フローティングアイコン"
+        "title": "フローティングアイコン",
+        "startPosition": "開始位置",
+        "startPositionDescription": "音声レコーダーパネルが画面上に表示される位置",
+        "bottomRight": "右下",
+        "center": "下中央",
+        "bottomLeft": "左下"
       },
       "hotkey": {
         "activationMode": "起動モード",
@@ -1236,8 +1256,12 @@
             "step1Title": "デーモンを起動",
             "step1Desc": "ydotoold を起動し、毎回のログイン時に実行されるよう有効化します。",
             "step2Title": "実行中か確認"
+          },
+          "xclip": {
+            "step1Title": "xclipをインストール"
           }
-        }
+        },
+        "xclipDesc": "KDE Waylandの貼り付け用クリップボードツール（xclipまたはxsel）"
       },
       "updates": {
         "badges": {
@@ -1327,7 +1351,17 @@
       "usageAnalytics": "使用状況の分析",
       "usageAnalyticsDescription": "匿名のパフォーマンスデータを共有して OpenWhispr の改善にご協力ください。文字起こしの内容は送信されません。タイミングとエラーデータのみです。",
       "dataRetention": "データ保持",
-      "dataRetentionDescription": "文字起こしと音声を履歴にローカル保存します。無効にすると、文字起こしは貼り付けられますが保存されません。"
+      "dataRetentionDescription": "文字起こしと音声を履歴にローカル保存します。無効にすると、文字起こしは貼り付けられますが保存されません。",
+      "audioRetention": "音声の保持",
+      "audioRetentionDescription": "再文字起こしやダウンロードのために音声録音をローカルに保存します。ファイルは保持期間が過ぎると自動的に削除されます。",
+      "audioRetentionDisabled": "無効",
+      "audioRetentionDays": "{{count}}日",
+      "audioStorageUsage": "ストレージ使用量",
+      "audioStorageUsageDescription": "このデバイスに保存された音声ファイル",
+      "audioStorageFiles": "{{count}}ファイル、{{size}}",
+      "audioStorageEmpty": "保存された音声ファイルはありません",
+      "clearAllAudio": "すべての音声を削除",
+      "clearAllAudioConfirm": "保存されたすべての音声ファイルを削除しますか？この操作は元に戻せません。"
     },
     "prompts": {
       "description": "テキスト補正と指示検出を行う統合システムプロンプトの表示、カスタマイズ、テスト",
@@ -1591,6 +1625,10 @@
     },
     "enhance": {
       "title": "強化エラー"
+    },
+    "speaker": {
+      "you": "あなた",
+      "them": "相手"
     }
   },
   "dictionary": {

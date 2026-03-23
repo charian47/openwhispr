@@ -22,6 +22,7 @@ import { useNoteDragAndDrop } from "../../hooks/useNoteDragAndDrop";
 import { cn } from "../lib/utils";
 import { MEETINGS_FOLDER_NAME } from "./shared";
 import logger from "../../utils/logger";
+import { parseTranscriptSegments } from "../../utils/parseTranscriptSegments";
 import {
   useNotes,
   useActiveNoteId,
@@ -111,7 +112,7 @@ export default function PersonalNotesView({
 
   const activeNote = notes.find((n) => n.id === activeNoteId) ?? null;
 
-  // Note recording uses the same dual-stream transcription as meeting mode.
+  // Note recording uses the same meeting transcription pipeline.
   // The `isMeetingMode` ref distinguishes whether the recording was triggered
   // by the meeting hotkey (creates a separate note) or the note record button.
   const isMeetingModeRef = useRef(false);
@@ -289,8 +290,8 @@ export default function PersonalNotesView({
     cancel: cancelAction,
   } = useActionProcessing({
     onSuccess: useCallback(
-      (enhancedContent: string, prompt: string) => {
-        handleApplyEnhancement(enhancedContent, prompt);
+      (enhancedContent: string, prompt: string, title?: string) => {
+        handleApplyEnhancement(enhancedContent, prompt, title);
       },
       [handleApplyEnhancement]
     ),
@@ -715,19 +716,15 @@ export default function PersonalNotesView({
                     let formattedTranscript = "";
                     let isMeetingNote = false;
                     if (rawTranscript) {
-                      try {
-                        const segments = JSON.parse(rawTranscript) as Array<{
-                          text: string;
-                          source: string;
-                        }>;
-                        if (Array.isArray(segments) && segments.length > 0 && segments[0].source) {
-                          isMeetingNote = true;
-                          formattedTranscript = segments
-                            .map((s) => `${s.source === "mic" ? "You" : "Them"}: ${s.text}`)
-                            .join("\n");
-                        }
-                      } catch {
-                        // Not JSON segments — use raw transcript as-is
+                      const segments = parseTranscriptSegments(rawTranscript);
+                      if (segments.length > 0) {
+                        isMeetingNote = true;
+                        formattedTranscript = segments
+                          .map(
+                            (s) =>
+                              `${s.source === "mic" ? t("notes.speaker.you") : t("notes.speaker.them")}: ${s.text}`
+                          )
+                          .join("\n");
                       }
                       if (!formattedTranscript) {
                         formattedTranscript = rawTranscript;

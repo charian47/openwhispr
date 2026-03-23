@@ -76,10 +76,9 @@ if (process.platform === "win32") {
 }
 
 // Enable native Wayland support: Ozone platform for native rendering.
-// KDE is forced to XWayland because globalShortcut doesn't work on native
-// Wayland without the GlobalShortcuts portal, and the portal causes unwanted
-// permission dialogs with broken hotkey registration.
-// GNOME and Hyprland use their own D-Bus shortcut managers so they're fine.
+// KDE uses XWayland for reliable clipboard access (Wayland restricts clipboard
+// to focused windows), with KGlobalAccel D-Bus for global shortcuts.
+// GNOME and Hyprland run native Wayland with their own D-Bus shortcut managers.
 if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
   const desktop = (process.env.XDG_CURRENT_DESKTOP || "").toLowerCase();
   if (desktop.includes("kde")) {
@@ -88,16 +87,6 @@ if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") 
     app.commandLine.appendSwitch("ozone-platform-hint", "auto");
   }
   app.commandLine.appendSwitch("enable-features", "UseOzonePlatform,WaylandWindowDecorations");
-}
-
-// Enable system audio loopback capture on macOS via CoreAudio Taps (Electron 39+).
-// Without these flags, getDisplayMedia({ audio: "loopback" }) returns a live audio track
-// that produces only silence (all-zero samples).
-if (process.platform === "darwin") {
-  app.commandLine.appendSwitch(
-    "enable-features",
-    "MacLoopbackAudioForScreenShare,MacSckSystemAudioLoopbackOverride,MacCatapSystemAudioLoopbackCapture"
-  );
 }
 
 // Set desktop filename so Wayland compositors can match windows to the .desktop entry.
@@ -198,6 +187,7 @@ const WhisperCudaManager = require("./src/helpers/whisperCudaManager");
 const GoogleCalendarManager = require("./src/helpers/googleCalendarManager");
 const MeetingProcessDetector = require("./src/helpers/meetingProcessDetector");
 const AudioActivityDetector = require("./src/helpers/audioActivityDetector");
+const AudioTapManager = require("./src/helpers/audioTapManager");
 const MeetingDetectionEngine = require("./src/helpers/meetingDetectionEngine");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
 const { ensureYdotool } = require("./src/helpers/ensureYdotool");
@@ -219,6 +209,7 @@ let textEditMonitor = null;
 let whisperCudaManager = null;
 let googleCalendarManager = null;
 let meetingDetectionEngine = null;
+let audioTapManager = null;
 let ipcHandlers = null;
 let globeKeyAlertShown = false;
 let authBridgeServer = null;
@@ -295,6 +286,7 @@ function initializeCoreManagers() {
   updateManager.setWindowManager(windowManager);
   windowsKeyManager = new WindowsKeyManager();
   textEditMonitor = new TextEditMonitor();
+  audioTapManager = new AudioTapManager();
   windowManager.textEditMonitor = textEditMonitor;
 
   // IPC handlers must be registered before window content loads
@@ -311,6 +303,7 @@ function initializeCoreManagers() {
     whisperCudaManager,
     googleCalendarManager,
     meetingDetectionEngine,
+    audioTapManager,
     getTrayManager: () => trayManager,
   });
 }
@@ -534,28 +527,6 @@ async function startApp() {
       callback({ requestHeaders: details.requestHeaders });
     }
   );
-
-  // Handle getDisplayMedia() calls from the renderer — auto-select the first
-  // screen source with loopback audio so no system picker dialog is shown.
-  const { desktopCapturer } = require("electron");
-  session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
-    try {
-      const sources = await desktopCapturer.getSources({ types: ["screen"] });
-      debugLogger.debug("Display media sources", {
-        count: sources.length,
-        names: sources.map((s) => s.name),
-      });
-      if (!sources.length) {
-        debugLogger.error("No screen sources available — System Audio permission may be denied");
-        callback({});
-        return;
-      }
-      callback({ video: sources[0], audio: "loopback" });
-    } catch (err) {
-      debugLogger.error("Display media handler error", { error: err.message });
-      callback({});
-    }
-  });
 
   windowManager.setActivationModeCache(environmentManager.getActivationMode());
   windowManager.setFloatingIconAutoHide(environmentManager.getFloatingIconAutoHide());
@@ -1150,6 +1121,9 @@ if (gotSingleInstanceLock) {
     }
     if (googleCalendarManager) {
       googleCalendarManager.stop();
+    }
+    if (audioTapManager) {
+      audioTapManager.stop().catch(() => {});
     }
     if (ipcHandlers) {
       ipcHandlers._cleanupTextEditMonitor();

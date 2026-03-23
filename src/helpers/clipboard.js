@@ -98,6 +98,40 @@ class ClipboardManager {
   }
 
   _writeClipboardWayland(text, webContents) {
+    const { isKde } = getLinuxSessionInfo();
+
+    // On KDE with XWayland, write to X11 clipboard directly because
+    // wl-copy targets the Wayland clipboard which is desynced from X11
+    if (isKde) {
+      if (this.commandExists("xclip")) {
+        try {
+          const result = spawnSync("xclip", ["-selection", "clipboard"], {
+            input: text,
+            timeout: 200,
+          });
+          if (result.status === 0) {
+            clipboard.writeText(text);
+            return;
+          }
+        } catch {}
+      }
+      if (this.commandExists("xsel")) {
+        try {
+          const result = spawnSync("xsel", ["--clipboard", "--input"], {
+            input: text,
+            timeout: 200,
+          });
+          if (result.status === 0) {
+            clipboard.writeText(text);
+            return;
+          }
+        } catch {}
+      }
+      // Last resort: Electron's clipboard.writeText should work on XWayland
+      clipboard.writeText(text);
+      return;
+    }
+
     if (this.commandExists("wl-copy")) {
       try {
         const isHyprland = !!process.env.HYPRLAND_INSTANCE_SIGNATURE;
@@ -128,7 +162,9 @@ class ClipboardManager {
     }
 
     const possiblePaths = [
-      path.join(process.resourcesPath, "bin", "nircmd.exe"),
+      ...(process.resourcesPath
+        ? [path.join(process.resourcesPath, "bin", "nircmd.exe")]
+        : []),
       path.join(__dirname, "..", "..", "resources", "bin", "nircmd.exe"),
       path.join(process.cwd(), "resources", "bin", "nircmd.exe"),
     ];
@@ -1112,12 +1148,11 @@ class ClipboardManager {
         });
 
       if (isWayland) {
-        // On KDE Wayland, uinput works reliably for all apps (including
-        // Chromium/Electron which ignore RemoteDesktop portal keystrokes).
+        // On KDE with XWayland (ozone-platform-hint: x11), portal paste works
+        // because clipboard and input are both on X11. uinput causes a clipboard
+        // desync (X11 clipboard vs Wayland input) so portal is preferred.
         // On GNOME, Mutter doesn't reliably route uinput to native Wayland
-        // windows (issue #292), so portal is tried first there.
-        const preferUinput = isKde;
-
+        // windows (issue #292), so portal is tried first there too.
         const tryUinputPaste = async () => {
           const args = ["--uinput"];
           if (earlyIsTerminal) args.push("--terminal");
@@ -1130,19 +1165,6 @@ class ClipboardManager {
           );
           restoreClipboard();
         };
-
-        if (preferUinput) {
-          try {
-            await tryUinputPaste();
-            return "uinput";
-          } catch (uinputError) {
-            debugLogger.warn(
-              "uinput paste failed on KDE, falling back to portal",
-              { error: uinputError?.message },
-              "clipboard"
-            );
-          }
-        }
 
         if ((isGnome || isKde) && linuxFastPaste && !this.portalDenied) {
           const MAX_PORTAL_RETRIES = 3;
@@ -1185,13 +1207,11 @@ class ClipboardManager {
           }
         }
 
-        if (!preferUinput) {
-          try {
-            await tryUinputPaste();
-            return "uinput";
-          } catch (uinputError) {
-            debugLogger.warn("uinput paste failed", { error: uinputError?.message }, "clipboard");
-          }
+        try {
+          await tryUinputPaste();
+          return "uinput";
+        } catch (uinputError) {
+          debugLogger.warn("uinput paste failed", { error: uinputError?.message }, "clipboard");
         }
 
         // XTest/XWayland fallback: works for XWayland apps on any Wayland compositor

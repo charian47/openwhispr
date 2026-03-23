@@ -78,7 +78,8 @@
   "systemSettings": {
     "microphone": "请打开系统设置以配置麦克风权限。",
     "sound": "请打开系统声音设置（例如 pavucontrol）。",
-    "accessibility": "此平台不支持辅助功能设置。"
+    "accessibility": "此平台不支持辅助功能设置。",
+    "systemAudio": "系统音频设置在此平台上不可用。"
   },
   "titleBar": {
     "quitTitle": "退出 OpenWhispr",
@@ -245,7 +246,20 @@
       "clearAllDescription": "所有转录和音频文件将被永久删除。",
       "clearAllSuccess": "历史记录已清除",
       "clearAllErrorTitle": "无法清除历史记录",
-      "clearAllErrorDescription": "出了点问题，请重试。"
+      "clearAllErrorDescription": "出了点问题，请重试。",
+      "copyText": "复制文本",
+      "deleteItem": "删除",
+      "viewRawTranscript": "查看原始转录",
+      "showInFolder": "在访达中显示",
+      "showInFolderWindows": "在资源管理器中显示",
+      "showInFolderLinux": "在文件管理器中显示",
+      "retryTranscription": "重新转录",
+      "retrying": "正在重新转录…",
+      "retrySuccess": "转录已更新",
+      "retryError": "重新转录失败",
+      "audioNotFound": "音频文件未找到或已过期",
+      "noAiProcessing": "此转录未应用 AI 处理",
+      "rawTranscript": "原始转录"
     },
     "cloudMigration": {
       "title": "欢迎使用 OpenWhispr Pro",
@@ -263,7 +277,8 @@
       "bannerDescription": "启用 GPU 加速以获得更快的性能。",
       "enableButton": "启用 GPU",
       "dismissButton": "暂不启用"
-    }
+    },
+    "backToNotes": "返回笔记"
   },
   "reasoning": {
     "mode": {
@@ -1145,7 +1160,12 @@
         "autoHide": "空闲时自动隐藏",
         "autoHideDescription": "在开始听写前保持图标隐藏",
         "description": "控制听写图标在屏幕上的显示",
-        "title": "悬浮图标"
+        "title": "悬浮图标",
+        "startPosition": "起始位置",
+        "startPositionDescription": "语音录制面板在屏幕上的显示位置",
+        "bottomRight": "右下角",
+        "center": "底部居中",
+        "bottomLeft": "左下角"
       },
       "hotkey": {
         "activationMode": "激活模式",
@@ -1236,8 +1256,12 @@
             "step1Title": "启动守护进程",
             "step1Desc": "启动 ydotoold 并设置为每次登录时自动运行。",
             "step2Title": "验证是否正在运行"
+          },
+          "xclip": {
+            "step1Title": "安装 xclip"
           }
-        }
+        },
+        "xclipDesc": "KDE Wayland 粘贴用的剪贴板工具（xclip 或 xsel）"
       },
       "updates": {
         "badges": {
@@ -1327,7 +1351,17 @@
       "usageAnalytics": "使用分析",
       "usageAnalyticsDescription": "通过分享匿名性能数据帮助我们改进 OpenWhispr。我们绝不发送转录内容——仅发送计时和错误数据。",
       "dataRetention": "数据保留",
-      "dataRetentionDescription": "将转录和音频本地保存到历史记录中。禁用后，转录内容会被粘贴但不会被保存。"
+      "dataRetentionDescription": "将转录和音频本地保存到历史记录中。禁用后，转录内容会被粘贴但不会被保存。",
+      "audioRetention": "音频保留",
+      "audioRetentionDescription": "在本地存储音频录制文件以便重新转录和下载。文件会在保留期过后自动删除。",
+      "audioRetentionDisabled": "已禁用",
+      "audioRetentionDays": "{{count}} 天",
+      "audioStorageUsage": "存储用量",
+      "audioStorageUsageDescription": "存储在此设备上的音频文件",
+      "audioStorageFiles": "{{count}} 个文件，{{size}}",
+      "audioStorageEmpty": "没有存储的音频文件",
+      "clearAllAudio": "清除所有音频",
+      "clearAllAudioConfirm": "删除所有已存储的音频文件？此操作无法撤销。"
     },
     "prompts": {
       "description": "查看、自定义和测试用于文本整理和指令识别的统一系统提示词",
@@ -1663,6 +1697,10 @@
     },
     "enhance": {
       "title": "增强错误"
+    },
+    "speaker": {
+      "you": "你",
+      "them": "对方"
     }
   },
   "dictionary": {

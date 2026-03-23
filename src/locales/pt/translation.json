@@ -78,7 +78,8 @@
   "systemSettings": {
     "microphone": "Abra as configurações do sistema para configurar as permissões de microfone.",
     "sound": "Abra as configurações de som do sistema (por exemplo, pavucontrol).",
-    "accessibility": "As configurações de acessibilidade não estão disponíveis nesta plataforma."
+    "accessibility": "As configurações de acessibilidade não estão disponíveis nesta plataforma.",
+    "systemAudio": "As configurações de áudio do sistema não estão disponíveis nesta plataforma."
   },
   "windows": {
     "pttUnavailable": "O listener nativo de Push-to-Talk não está disponível"
@@ -217,7 +218,20 @@
       "clearAllDescription": "Todas as transcrições e arquivos de áudio serão removidos permanentemente.",
       "clearAllSuccess": "Histórico limpo",
       "clearAllErrorTitle": "Não foi possível limpar o histórico",
-      "clearAllErrorDescription": "Algo deu errado. Tente novamente."
+      "clearAllErrorDescription": "Algo deu errado. Tente novamente.",
+      "copyText": "Copiar texto",
+      "deleteItem": "Excluir",
+      "viewRawTranscript": "Ver transcrição bruta",
+      "showInFolder": "Mostrar no Finder",
+      "showInFolderWindows": "Mostrar no Explorador",
+      "showInFolderLinux": "Mostrar no gerenciador de arquivos",
+      "retryTranscription": "Retranscrever",
+      "retrying": "Retranscrevendo…",
+      "retrySuccess": "Transcrição atualizada",
+      "retryError": "Falha ao retranscrever",
+      "audioNotFound": "Arquivo de áudio não encontrado ou expirado",
+      "noAiProcessing": "Nenhum processamento de IA foi aplicado a esta transcrição",
+      "rawTranscript": "Transcrição bruta"
     },
     "cloudMigration": {
       "title": "Boas-vindas ao OpenWhispr Pro",
@@ -235,7 +249,8 @@
       "bannerDescription": "Ative a aceleração GPU para um desempenho mais rápido.",
       "enableButton": "Ativar GPU",
       "dismissButton": "Agora não"
-    }
+    },
+    "backToNotes": "Voltar para notas"
   },
   "reasoning": {
     "mode": {
@@ -1117,7 +1132,12 @@
         "autoHide": "Ocultar automaticamente quando ocioso",
         "autoHideDescription": "Mantenha o ícone oculto até iniciar o ditado",
         "description": "Controle quando o ícone de ditado fica visível na tela",
-        "title": "Ícone flutuante"
+        "title": "Ícone flutuante",
+        "startPosition": "Posição inicial",
+        "startPositionDescription": "Onde o painel de gravação de voz aparece na tela",
+        "bottomRight": "Inferior direito",
+        "center": "Inferior central",
+        "bottomLeft": "Inferior esquerdo"
       },
       "hotkey": {
         "activationMode": "Modo de ativação",
@@ -1208,8 +1228,12 @@
             "step1Title": "Iniciar o daemon",
             "step1Desc": "Inicie o ydotoold e ative-o para que seja executado em cada início de sessão.",
             "step2Title": "Verificar se está em execução"
+          },
+          "xclip": {
+            "step1Title": "Instalar xclip"
           }
-        }
+        },
+        "xclipDesc": "Ferramenta de área de transferência para colar no KDE Wayland (xclip ou xsel)"
       },
       "updates": {
         "badges": {
@@ -1299,7 +1323,17 @@
       "usageAnalytics": "Análise de uso",
       "usageAnalyticsDescription": "Ajude-nos a melhorar o OpenWhispr compartilhando métricas anônimas de desempenho. Nunca enviamos conteúdo de transcrição — apenas dados de tempo e erros.",
       "dataRetention": "Retenção de dados",
-      "dataRetentionDescription": "Armazenar transcrições e áudio localmente no seu histórico. Quando desativado, as transcrições são coladas mas não salvas."
+      "dataRetentionDescription": "Armazenar transcrições e áudio localmente no seu histórico. Quando desativado, as transcrições são coladas mas não salvas.",
+      "audioRetention": "Retenção de áudio",
+      "audioRetentionDescription": "Armazena gravações de áudio localmente para retranscrição e download. Os arquivos são excluídos automaticamente após o período de retenção.",
+      "audioRetentionDisabled": "Desativado",
+      "audioRetentionDays": "{{count}} dias",
+      "audioStorageUsage": "Uso de armazenamento",
+      "audioStorageUsageDescription": "Arquivos de áudio armazenados neste dispositivo",
+      "audioStorageFiles": "{{count}} arquivos, {{size}}",
+      "audioStorageEmpty": "Nenhum arquivo de áudio armazenado",
+      "clearAllAudio": "Excluir todos os áudios",
+      "clearAllAudioConfirm": "Excluir todos os arquivos de áudio armazenados? Esta ação não pode ser desfeita."
     },
     "prompts": {
       "description": "Visualize, personalize e teste o prompt de sistema unificado que alimenta a limpeza de texto e a detecção de instruções",
@@ -1663,6 +1697,10 @@
     },
     "enhance": {
       "title": "Erro de aprimoramento"
+    },
+    "speaker": {
+      "you": "Você",
+      "them": "Outro"
     }
   },
   "dictionary": {
