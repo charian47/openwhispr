@@ -1,4 +1,4 @@
-const { ipcMain, app, shell, BrowserWindow } = require("electron");
+const { ipcMain, app, shell, BrowserWindow, systemPreferences } = require("electron");
 const path = require("path");
 const http = require("http");
 const https = require("https");
@@ -108,6 +108,8 @@ class IPCHandlers {
     this.assemblyAiStreaming = null;
     this.deepgramStreaming = null;
     this._dictationStreaming = null;
+    this._meetingMicStreaming = null;
+    this._meetingSystemStreaming = null;
     this._autoLearnEnabled = true; // Default on, synced from renderer
     this._autoLearnDebounceTimer = null;
     this._autoLearnLatestData = null;
@@ -802,7 +804,6 @@ class IPCHandlers {
     // Passes `true` to isTrustedAccessibilityClient to trigger the macOS system prompt
     ipcMain.handle("prompt-accessibility-permission", async () => {
       if (process.platform !== "darwin") return true;
-      const { systemPreferences } = require("electron");
       return systemPreferences.isTrustedAccessibilityClient(true);
     });
 
@@ -2006,6 +2007,7 @@ class IPCHandlers {
           microphone: i18nMain.t("systemSettings.microphone"),
           sound: i18nMain.t("systemSettings.sound"),
           accessibility: i18nMain.t("systemSettings.accessibility"),
+          systemAudio: i18nMain.t("systemSettings.systemAudio"),
         };
         return {
           success: false,
@@ -2045,9 +2047,8 @@ class IPCHandlers {
 
     ipcMain.handle("request-microphone-access", async () => {
       if (process.platform !== "darwin") {
-        return { granted: true };
+        return { granted: true, status: "granted" };
       }
-      const { systemPreferences } = require("electron");
       const granted = await systemPreferences.askForMediaAccess("microphone");
       return { granted };
     });
@@ -2056,7 +2057,6 @@ class IPCHandlers {
       if (process.platform !== "darwin") {
         return { granted: true, status: "granted" };
       }
-      const { systemPreferences } = require("electron");
       const status = systemPreferences.getMediaAccessStatus("microphone");
       return { granted: status === "granted", status };
     });
@@ -2067,7 +2067,6 @@ class IPCHandlers {
       }
 
       if (this.audioTapManager?.isSupported()) {
-        const { systemPreferences } = require("electron");
         const status = systemPreferences.getMediaAccessStatus("screen");
         return { granted: status === "granted", status, mode: "native" };
       }
@@ -2084,7 +2083,6 @@ class IPCHandlers {
         return { granted: false, status: "unsupported", mode: "unsupported" };
       }
 
-      const { systemPreferences } = require("electron");
       const status = systemPreferences.getMediaAccessStatus("screen");
       if (status === "granted") {
         return { granted: true, status: "granted", mode: "native" };
@@ -2381,9 +2379,6 @@ class IPCHandlers {
     let meetingTranscriptionPrepareInProgress = false;
     let meetingTranscriptionPreparePromise = null;
 
-    this._meetingMicStreaming = null;
-    this._meetingSystemStreaming = null;
-
     const attachMeetingStreamingHandlers = (streaming, win, source) => {
       const send = (channel, data) => {
         if (!win || win.isDestroyed()) {
@@ -2484,19 +2479,16 @@ class IPCHandlers {
         language: options.language,
         preconfigured: options.mode !== "byok",
       };
-      const pairs = hasNativeMeetingSystemAudio()
-        ? (await fetchRealtimeToken(event, options, { streams: 2 })).map((secret, index) => ({
-            ref: index === 0 ? "_meetingMicStreaming" : "_meetingSystemStreaming",
-            secret,
-            source: index === 0 ? "mic" : "system",
-          }))
-        : [
-            {
-              ref: "_meetingMicStreaming",
-              secret: await fetchRealtimeToken(event, options),
-              source: "mic",
-            },
-          ];
+      let pairs;
+      if (hasNativeMeetingSystemAudio()) {
+        const secrets = await fetchRealtimeToken(event, options, { streams: 2 });
+        pairs = [
+          { ref: "_meetingMicStreaming", secret: secrets[0], source: "mic" },
+          { ref: "_meetingSystemStreaming", secret: secrets[1], source: "system" },
+        ];
+      } else {
+        pairs = [{ ref: "_meetingMicStreaming", secret: await fetchRealtimeToken(event, options), source: "mic" }];
+      }
 
       for (const { ref, source } of pairs) {
         this[ref] = new OpenAIRealtimeStreaming();
@@ -3455,8 +3447,14 @@ class IPCHandlers {
       let hasXclip = false;
       let hasXsel = false;
       if (isKde) {
-        try { execFileSync("which", ["xclip"], { timeout: 1000 }); hasXclip = true; } catch {}
-        try { execFileSync("which", ["xsel"], { timeout: 1000 }); hasXsel = true; } catch {}
+        try {
+          execFileSync("which", ["xclip"], { timeout: 1000 });
+          hasXclip = true;
+        } catch {}
+        try {
+          execFileSync("which", ["xsel"], { timeout: 1000 });
+          hasXsel = true;
+        } catch {}
       }
       return { ...status, isKde, hasXclip, hasXsel };
     });

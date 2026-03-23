@@ -74,7 +74,6 @@ function isOAuthBrowserRedirect() {
       window.location.href = `${OAUTH_PROTOCOL}://auth/callback?neon_auth_session_verifier=${encodeURIComponent(verifier)}`;
     }, 2000);
 
-    // Show an ultra-premium branded message while waiting
     document.body.innerHTML = `
       <style>
         /* Design tokens from index.css — single source of truth */
@@ -343,10 +342,8 @@ function MainApp() {
         setNeedsReauth(true);
       } else {
         // Check permissions from localStorage — PermissionsGate does the real async checks
-        const platform = window.electronAPI?.getPlatform?.() ?? "darwin";
         const micOk = localStorage.getItem("micPermissionGranted") === "true";
-        const accessibilityOk = localStorage.getItem("accessibilityPermissionGranted") === "true";
-        if (!areRequiredPermissionsMet(micOk, accessibilityOk, platform)) {
+        if (!areRequiredPermissionsMet(micOk)) {
           setNeedsPermissions(true);
         }
       }

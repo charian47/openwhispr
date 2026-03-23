@@ -1243,6 +1243,14 @@ class DatabaseManager {
 
   cleanup() {
     try {
+      if (this.db) {
+        try {
+          this.db.close();
+        } catch (closeError) {
+          debugLogger.error("Error closing database", { error: closeError.message }, "database");
+        }
+        this.db = null;
+      }
       const dbPath = path.join(
         app.getPath("userData"),
         process.env.NODE_ENV === "development" ? "transcriptions-dev.db" : "transcriptions.db"

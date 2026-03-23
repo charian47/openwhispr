@@ -1,3 +1,4 @@
+import type React from "react";
 import { useTranslation } from "react-i18next";
 import { Shield, Check } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
@@ -22,11 +23,7 @@ export default function PermissionsGate({ onComplete }: PermissionsGateProps) {
 
   const requiredMet =
     permissions.pasteToolsInfo !== null &&
-    areRequiredPermissionsMet(
-      permissions.micPermissionGranted,
-      permissions.accessibilityPermissionGranted,
-      permissions.pasteToolsInfo?.platform
-    );
+    areRequiredPermissionsMet(permissions.micPermissionGranted);
 
   return (
     <div

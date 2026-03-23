@@ -17,6 +17,7 @@ import type { ActionProcessingState } from "../../hooks/useActionProcessing";
 import ActionProcessingOverlay from "./ActionProcessingOverlay";
 import DictationWidget from "./DictationWidget";
 import { normalizeDbDate } from "../../utils/dateFormatting";
+import { parseTranscriptSegments } from "../../utils/parseTranscriptSegments";
 
 function formatNoteDate(dateStr: string): string {
   const date = normalizeDbDate(dateStr);
@@ -97,23 +98,7 @@ export default function NoteEditor({
 
   const displaySegments = useMemo<TranscriptSegment[]>(() => {
     if (meetingSegments && meetingSegments.length > 0) return meetingSegments;
-    const raw = note.transcript || "";
-    if (raw.startsWith("[")) {
-      try {
-        const parsed = JSON.parse(raw) as Array<{
-          text: string;
-          source: "mic" | "system";
-          timestamp?: number;
-        }>;
-        return parsed.map((s, i) => ({
-          id: `stored-${i}`,
-          text: s.text,
-          source: s.source,
-          timestamp: s.timestamp,
-        }));
-      } catch {}
-    }
-    return [];
+    return parseTranscriptSegments(note.transcript || "");
   }, [meetingSegments, note.transcript]);
 
   const hasChatSegments = displaySegments.length > 0;
@@ -192,11 +177,6 @@ export default function NoteEditor({
     const text = e.clipboardData.getData("text/plain").replace(/\n/g, " ");
     document.execCommand("insertText", false, text);
   }, []);
-
-  const prevMeetingRecRef = useRef(false);
-  useEffect(() => {
-    prevMeetingRecRef.current = !!isMeetingRecording;
-  }, [isMeetingRecording]);
 
   // Auto-switch to transcript view after recording stops and transcript is ready
   const prevRecordingRef = useRef(false);
@@ -390,7 +370,9 @@ export default function NoteEditor({
           isRecording={isRecording || !!isMeetingRecording}
           isProcessing={isProcessing}
           onStart={onStartRecording}
-          onStop={isMeetingRecording ? onStopMeetingRecording! : onStopRecording}
+          onStop={
+            isMeetingRecording ? (onStopMeetingRecording ?? onStopRecording) : onStopRecording
+          }
           actionPicker={isMeetingRecording ? undefined : actionPicker}
         />
       </div>

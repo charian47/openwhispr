@@ -614,7 +614,7 @@ export default function ControlPanel() {
                   className="h-7 px-2.5 pl-1.5 gap-1"
                 >
                   <ChevronLeft size={14} strokeWidth={1.8} />
-                  Back to notes
+                  {t("controlPanel.backToNotes")}
                 </Button>
               </div>
             )}

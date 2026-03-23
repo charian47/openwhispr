@@ -59,7 +59,7 @@ import PromptStudio from "./ui/PromptStudio";
 import ReasoningModelSelector from "./ReasoningModelSelector";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
-import { getValidationMessage, normalizeHotkey } from "../utils/hotkeyValidator";
+import { validateHotkeyForSlot } from "../utils/hotkeyValidation";
 import { getPlatform, getCachedPlatform } from "../utils/platform";
 import { getDefaultHotkey, formatHotkeyLabel } from "../utils/hotkeys";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
@@ -888,38 +888,28 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     });
 
   const validateDictationHotkey = useCallback(
-    (hotkey: string) => {
-      const formatError = getValidationMessage(hotkey, getPlatform());
-      if (formatError) return formatError;
-      const platform = getPlatform();
-      const normalized = normalizeHotkey(hotkey, platform);
-      if (meetingKey && normalizeHotkey(meetingKey, platform) === normalized) {
-        return t("hotkey.errors.slotConflict", {
-          slot: t("settingsPage.general.meetingHotkey.title"),
-        });
-      }
-      if (agentKey && normalizeHotkey(agentKey, platform) === normalized) {
-        return t("hotkey.errors.slotConflict", { slot: t("agentMode.settings.hotkey") });
-      }
-      return null;
-    },
+    (hotkey: string) =>
+      validateHotkeyForSlot(
+        hotkey,
+        {
+          "settingsPage.general.meetingHotkey.title": meetingKey,
+          "agentMode.settings.hotkey": agentKey,
+        },
+        t
+      ),
     [meetingKey, agentKey, t]
   );
 
   const validateMeetingHotkey = useCallback(
-    (hotkey: string) => {
-      const formatError = getValidationMessage(hotkey, getPlatform());
-      if (formatError) return formatError;
-      const platform = getPlatform();
-      const normalized = normalizeHotkey(hotkey, platform);
-      if (dictationKey && normalizeHotkey(dictationKey, platform) === normalized) {
-        return t("hotkey.errors.slotConflict", { slot: t("settingsPage.general.hotkey.title") });
-      }
-      if (agentKey && normalizeHotkey(agentKey, platform) === normalized) {
-        return t("hotkey.errors.slotConflict", { slot: t("agentMode.settings.hotkey") });
-      }
-      return null;
-    },
+    (hotkey: string) =>
+      validateHotkeyForSlot(
+        hotkey,
+        {
+          "settingsPage.general.hotkey.title": dictationKey,
+          "agentMode.settings.hotkey": agentKey,
+        },
+        t
+      ),
     [dictationKey, agentKey, t]
   );
 

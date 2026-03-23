@@ -20,7 +20,6 @@ class OpenAIRealtimeStreaming {
     this.pendingResolve = null;
     this.pendingReject = null;
     this.connectionTimeout = null;
-    this.closeResolve = null;
     this.isDisconnecting = false;
     this.audioBytesSent = 0;
     this.model = "gpt-4o-mini-transcribe";
@@ -104,9 +103,6 @@ class OpenAIRealtimeStreaming {
           this.pendingReject(new Error(`WebSocket closed before ready (code: ${code})`));
           this.pendingReject = null;
           this.pendingResolve = null;
-        }
-        if (this.closeResolve) {
-          this.closeResolve({ text: this.getFullTranscript() });
         }
         this.cleanup();
         if (wasActive && !this.isDisconnecting) {
@@ -355,7 +351,6 @@ class OpenAIRealtimeStreaming {
 
     this.isConnected = false;
     this.isConnecting = false;
-    this.closeResolve = null;
   }
 }
 
