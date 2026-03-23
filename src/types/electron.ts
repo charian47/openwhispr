@@ -118,7 +118,7 @@ export interface AudioDiagnosticsResult {
 export interface SystemAudioAccessResult {
   granted: boolean;
   status: "granted" | "denied" | "unknown" | "unsupported";
-  mode: "native" | "legacy" | "unsupported";
+  mode: "native" | "unsupported";
   error?: string;
 }
 
@@ -1134,7 +1134,11 @@ declare global {
         provider?: string;
         model?: string;
         language?: string;
-      }) => Promise<{ success: boolean; error?: string; systemAudioMode?: "native" | "legacy" }>;
+      }) => Promise<{
+        success: boolean;
+        error?: string;
+        systemAudioMode?: "native" | "unsupported";
+      }>;
       meetingTranscriptionSend?: (buffer: ArrayBuffer, source: "mic" | "system") => void;
       meetingTranscriptionStop?: () => Promise<{
         success: boolean;
@@ -1165,9 +1169,6 @@ declare global {
       onDictationRealtimeFinal?: (callback: (text: string) => void) => () => void;
       onDictationRealtimeError?: (callback: (error: string) => void) => () => void;
       onDictationRealtimeSessionEnd?: (callback: (data: { text: string }) => void) => () => void;
-
-      // Desktop audio capture
-      getDesktopSources?: (types: string[]) => Promise<Array<{ id: string; name: string }>>;
 
       // Google Calendar event listeners
       onGcalMeetingStarting?: (callback: (data: any) => void) => () => void;

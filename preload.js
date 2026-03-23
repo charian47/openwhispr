@@ -170,8 +170,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Clipboard functions
   checkAccessibilityPermission: (silent) =>
     ipcRenderer.invoke("check-accessibility-permission", silent),
-  promptAccessibilityPermission: () =>
-    ipcRenderer.invoke("prompt-accessibility-permission"),
+  promptAccessibilityPermission: () => ipcRenderer.invoke("prompt-accessibility-permission"),
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
   writeClipboard: (text) => ipcRenderer.invoke("write-clipboard", text),
   checkPasteTools: () => ipcRenderer.invoke("check-paste-tools"),
@@ -607,9 +606,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   gcalSyncEvents: () => ipcRenderer.invoke("gcal-sync-events"),
   gcalGetUpcomingEvents: (windowMinutes) =>
     ipcRenderer.invoke("gcal-get-upcoming-events", windowMinutes),
-
-  // Desktop audio capture
-  getDesktopSources: (types) => ipcRenderer.invoke("get-desktop-sources", types),
 
   // Google Calendar event listeners
   onGcalMeetingStarting: registerListener(

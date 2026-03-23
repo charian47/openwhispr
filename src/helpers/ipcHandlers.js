@@ -107,7 +107,6 @@ class IPCHandlers {
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
     this.deepgramStreaming = null;
-    this.openaiRealtimeStreaming = null;
     this._dictationStreaming = null;
     this._autoLearnEnabled = true; // Default on, synced from renderer
     this._autoLearnDebounceTimer = null;
@@ -2057,18 +2056,12 @@ class IPCHandlers {
         return { granted: true, status: "granted", mode: "unsupported" };
       }
 
-      if (this.audioTapManager?.isAvailable()) {
+      if (this.audioTapManager?.isSupported()) {
         const status = this.audioTapManager.getPermissionStatus();
         return { granted: status === "granted", status, mode: "native" };
       }
 
-      const { systemPreferences } = require("electron");
-      const status = systemPreferences.getMediaAccessStatus("screen");
-      return {
-        granted: status === "granted",
-        status: status === "granted" ? "granted" : status === "denied" ? "denied" : "unknown",
-        mode: "legacy",
-      };
+      return { granted: false, status: "unsupported", mode: "unsupported" };
     });
 
     ipcMain.handle("request-system-audio-access", async () => {
@@ -2076,12 +2069,17 @@ class IPCHandlers {
         return { granted: true, status: "granted", mode: "unsupported" };
       }
 
-      if (!this.audioTapManager?.isAvailable()) {
-        return { granted: false, status: "unknown", mode: "legacy" };
+      if (!this.audioTapManager?.isSupported()) {
+        return { granted: false, status: "unsupported", mode: "unsupported" };
       }
 
-      const result = await this.audioTapManager.requestAccess();
-      return { ...result, mode: "native" };
+      try {
+        const result = await this.audioTapManager.requestAccess();
+        return { ...result, mode: "native" };
+      } catch (error) {
+        debugLogger.error("System audio permission request failed", { error: error.message });
+        return { granted: false, status: "unknown", mode: "native", error: error.message };
+      }
     });
 
     // Auth: clear all session cookies for sign-out.
@@ -2446,6 +2444,15 @@ class IPCHandlers {
       return data.clientSecret;
     };
 
+    const getMeetingSystemAudioMode = () =>
+      this.audioTapManager?.isSupported() ? "native" : "unsupported";
+
+    const hasNativeMeetingSystemAudio = () => getMeetingSystemAudioMode() === "native";
+
+    const isMeetingStreamingConnected = () =>
+      !!this._meetingMicStreaming?.isConnected &&
+      (!hasNativeMeetingSystemAudio() || !!this._meetingSystemStreaming?.isConnected);
+
     const connectRealtimeStreaming = async (event, options) => {
       if (this._meetingMicStreaming?.isConnected) {
         await this._meetingMicStreaming.disconnect();
@@ -2453,23 +2460,28 @@ class IPCHandlers {
       if (this._meetingSystemStreaming?.isConnected) {
         await this._meetingSystemStreaming.disconnect();
       }
-      if (this.openaiRealtimeStreaming?.isConnected) {
-        await this.openaiRealtimeStreaming.disconnect();
-      }
-
+      this._meetingMicStreaming = null;
+      this._meetingSystemStreaming = null;
       const win = BrowserWindow.fromWebContents(event.sender);
-
-      const [micSecret, systemSecret] = await fetchRealtimeToken(event, options, { streams: 2 });
 
       const connectOpts = {
         model: options.model,
         language: options.language,
         preconfigured: options.mode !== "byok",
       };
-      const pairs = [
-        { ref: "_meetingMicStreaming", secret: micSecret, source: "mic" },
-        { ref: "_meetingSystemStreaming", secret: systemSecret, source: "system" },
-      ];
+      const pairs = hasNativeMeetingSystemAudio()
+        ? (await fetchRealtimeToken(event, options, { streams: 2 })).map((secret, index) => ({
+            ref: index === 0 ? "_meetingMicStreaming" : "_meetingSystemStreaming",
+            secret,
+            source: index === 0 ? "mic" : "system",
+          }))
+        : [
+            {
+              ref: "_meetingMicStreaming",
+              secret: await fetchRealtimeToken(event, options),
+              source: "mic",
+            },
+          ];
 
       for (const { ref, source } of pairs) {
         this[ref] = new OpenAIRealtimeStreaming();
@@ -2480,10 +2492,36 @@ class IPCHandlers {
         pairs.map(({ ref, secret }) => this[ref].connect({ apiKey: secret, ...connectOpts }))
       );
 
-      // Keep legacy reference for backward compat with prepare check
-      this.openaiRealtimeStreaming = this._meetingMicStreaming;
-
       return win;
+    };
+
+    let meetingSendCounts = { mic: 0, system: 0 };
+
+    const resetMeetingStreamingState = () => {
+      this._meetingMicStreaming = null;
+      this._meetingSystemStreaming = null;
+      meetingSendCounts = { mic: 0, system: 0 };
+    };
+
+    const disconnectMeetingStreaming = async () => {
+      const results = await Promise.all([
+        this._meetingMicStreaming
+          ? this._meetingMicStreaming.disconnect().catch(() => ({ text: "" }))
+          : Promise.resolve({ text: "" }),
+        this._meetingSystemStreaming
+          ? this._meetingSystemStreaming.disconnect().catch(() => ({ text: "" }))
+          : Promise.resolve({ text: "" }),
+      ]);
+
+      resetMeetingStreamingState();
+      return results;
+    };
+
+    const rollbackMeetingTranscriptionStart = async () => {
+      if (this.audioTapManager) {
+        await this.audioTapManager.stop().catch(() => {});
+      }
+      await disconnectMeetingStreaming().catch(() => {});
     };
 
     const setupDictationCallbacks = (streaming, event) => {
@@ -2519,7 +2557,7 @@ class IPCHandlers {
         return { success: false, error: "Operation in progress" };
       }
 
-      if (this._meetingMicStreaming?.isConnected && this._meetingSystemStreaming?.isConnected) {
+      if (isMeetingStreamingConnected()) {
         debugLogger.debug("Meeting transcription already prepared (warm connections)");
         return { success: true, alreadyPrepared: true };
       }
@@ -2532,7 +2570,7 @@ class IPCHandlers {
       meetingTranscriptionPreparePromise = (async () => {
         try {
           await connectRealtimeStreaming(event, options);
-          debugLogger.debug("Meeting transcription prepared (dual WebSockets warm)");
+          debugLogger.debug("Meeting transcription prepared (meeting streams warm)");
           return { success: true };
         } catch (error) {
           debugLogger.error("Meeting transcription prepare error", { error: error.message });
@@ -2563,12 +2601,12 @@ class IPCHandlers {
         const systemAudioMode = getMeetingSystemAudioMode();
 
         // If already prepared (warm connections from prepare), just re-attach handlers
-        if (this._meetingMicStreaming?.isConnected && this._meetingSystemStreaming?.isConnected) {
+        if (isMeetingStreamingConnected()) {
           debugLogger.debug("Meeting transcription start: reusing warm connections");
           const win = BrowserWindow.fromWebContents(event.sender);
           attachMeetingStreamingHandlers(this._meetingMicStreaming, win, "mic");
-          attachMeetingStreamingHandlers(this._meetingSystemStreaming, win, "system");
           if (systemAudioMode === "native") {
+            attachMeetingStreamingHandlers(this._meetingSystemStreaming, win, "system");
             await startNativeMeetingSystemAudio(event);
           }
           return { success: true, systemAudioMode };
@@ -2584,6 +2622,7 @@ class IPCHandlers {
         }
         return { success: true, systemAudioMode };
       } catch (error) {
+        await rollbackMeetingTranscriptionStart();
         debugLogger.error("Meeting transcription start error", { error: error.message });
         return { success: false, error: error.message };
       } finally {
@@ -2591,7 +2630,6 @@ class IPCHandlers {
       }
     });
 
-    let meetingSendCounts = { mic: 0, system: 0 };
     const sendMeetingAudio = (audioBuffer, source) => {
       const streaming = source === "mic" ? this._meetingMicStreaming : this._meetingSystemStreaming;
       if (!streaming) {
@@ -2614,9 +2652,6 @@ class IPCHandlers {
         });
       }
     };
-
-    const getMeetingSystemAudioMode = () =>
-      this.audioTapManager?.isAvailable() ? "native" : "legacy";
 
     const startNativeMeetingSystemAudio = async (event) => {
       const win = BrowserWindow.fromWebContents(event.sender);
@@ -2642,19 +2677,7 @@ class IPCHandlers {
           await this.audioTapManager.stop();
         }
 
-        const results = await Promise.all([
-          this._meetingMicStreaming
-            ? this._meetingMicStreaming.disconnect()
-            : Promise.resolve({ text: "" }),
-          this._meetingSystemStreaming
-            ? this._meetingSystemStreaming.disconnect()
-            : Promise.resolve({ text: "" }),
-        ]);
-
-        this._meetingMicStreaming = null;
-        this._meetingSystemStreaming = null;
-        this.openaiRealtimeStreaming = null;
-        meetingSendCounts = { mic: 0, system: 0 };
+        const results = await disconnectMeetingStreaming();
 
         return {
           success: true,
@@ -4202,17 +4225,6 @@ class IPCHandlers {
         }
       }
       return { success: true };
-    });
-
-    ipcMain.handle("get-desktop-sources", async (_event, types) => {
-      try {
-        const { desktopCapturer } = require("electron");
-        const sources = await desktopCapturer.getSources({ types: types || ["screen"] });
-        return sources.map((s) => ({ id: s.id, name: s.name }));
-      } catch (error) {
-        debugLogger.error("Failed to get desktop sources", { error: error.message }, "calendar");
-        return [];
-      }
     });
   }
 

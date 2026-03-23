@@ -9,6 +9,7 @@ interface PermissionsSectionProps {
   permissions: UsePermissionsReturn;
   systemAudio: {
     granted: boolean;
+    mode: "native" | "unsupported";
     request: () => Promise<boolean>;
     openSettings: () => Promise<void>;
   };
@@ -49,16 +50,18 @@ export default function PermissionsSection({ permissions, systemAudio }: Permiss
                   : undefined
               }
             />
-            <PermissionCard
-              icon={Monitor}
-              title={t("onboarding.permissions.systemAudioTitle")}
-              description={t("onboarding.permissions.systemAudioDescription")}
-              granted={systemAudio.granted}
-              onRequest={systemAudio.request}
-              buttonText={t("onboarding.permissions.grant")}
-              onOpenSettings={systemAudio.openSettings}
-              badge={t("onboarding.permissions.optional")}
-            />
+            {systemAudio.mode === "native" && (
+              <PermissionCard
+                icon={Monitor}
+                title={t("onboarding.permissions.systemAudioTitle")}
+                description={t("onboarding.permissions.systemAudioDescription")}
+                granted={systemAudio.granted}
+                onRequest={systemAudio.request}
+                buttonText={t("onboarding.permissions.grant")}
+                onOpenSettings={systemAudio.openSettings}
+                badge={t("onboarding.permissions.optional")}
+              />
+            )}
           </>
         )}
       </div>
