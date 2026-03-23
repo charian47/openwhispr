@@ -168,9 +168,10 @@ class WindowPositionUtil {
       }
     } else if (process.platform === "win32") {
       window.setAlwaysOnTop(true, "pop-up-menu");
-    } else if (isGnomeWayland || isKDEWayland) {
+    } else if (isGnomeWayland) {
       window.setAlwaysOnTop(true, "floating");
     } else {
+      // KDE XWayland and other Linux — "screen-saver" is the strongest z-level
       window.setAlwaysOnTop(true, "screen-saver");
     }
   }
