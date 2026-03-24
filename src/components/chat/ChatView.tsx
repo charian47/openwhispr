@@ -42,19 +42,24 @@ export default function ChatView() {
       if (id === activeConversationId) return;
       setActiveConversationId(id);
       setActiveTitle(title);
+      setIsNewChat(false);
       await persistence.loadConversation(id);
     },
     [activeConversationId, persistence]
   );
 
+  const [isNewChat, setIsNewChat] = useState(false);
+
   const handleNewChat = useCallback(() => {
     setActiveConversationId(null);
     setActiveTitle(t("chat.untitled"));
+    setIsNewChat(true);
     persistence.handleNewChat();
   }, [persistence, t]);
 
   const handleTextSubmit = useCallback(
     async (text: string) => {
+      setIsNewChat(false);
       let convId = activeConversationId;
       if (!convId) {
         const title = text.length > 50 ? `${text.slice(0, 50)}...` : text;
@@ -125,7 +130,7 @@ export default function ChatView() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleNewChat]);
 
-  const hasActiveChat = activeConversationId !== null || persistence.messages.length > 0;
+  const hasActiveChat = activeConversationId !== null || persistence.messages.length > 0 || isNewChat;
 
   return (
     <>
