@@ -94,6 +94,7 @@ export function ChatInput({
     if (!text || !onTextSubmit) return;
     onTextSubmit(text);
     setInputText("");
+    requestAnimationFrame(() => inputRef.current?.focus());
   }, [inputText, onTextSubmit]);
 
   const handleKeyDown = useCallback(
