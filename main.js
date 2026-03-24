@@ -210,6 +210,7 @@ let whisperCudaManager = null;
 let googleCalendarManager = null;
 let meetingDetectionEngine = null;
 let audioTapManager = null;
+let qdrantManager = null;
 let ipcHandlers = null;
 let globeKeyAlertShown = false;
 let authBridgeServer = null;
@@ -662,6 +663,23 @@ async function startApp() {
     const modelManager = require("./src/helpers/modelManagerBridge").default;
     modelManager.prewarmServer(process.env.LOCAL_REASONING_MODEL).catch((err) => {
       debugLogger.debug("llama-server pre-warm error (non-fatal)", { error: err.message });
+    });
+  }
+
+  if (process.env.LOCAL_SEMANTIC_SEARCH === "true") {
+    const QdrantManager = require("./src/helpers/qdrantManager");
+    qdrantManager = new QdrantManager();
+    ipcHandlers.qdrantManager = qdrantManager;
+    qdrantManager.start().then(() => {
+      if (qdrantManager.isReady()) {
+        const vectorIndex = require("./src/helpers/vectorIndex");
+        vectorIndex.init(qdrantManager.getPort());
+        vectorIndex.ensureCollection().catch((err) => {
+          debugLogger.debug("Qdrant collection setup error (non-fatal)", { error: err.message });
+        });
+      }
+    }).catch((err) => {
+      debugLogger.debug("Qdrant startup error (non-fatal)", { error: err.message });
     });
   }
 
@@ -1145,5 +1163,10 @@ if (gotSingleInstanceLock) {
     // Stop llama-server if running
     const modelManager = require("./src/helpers/modelManagerBridge").default;
     modelManager.stopServer().catch(() => {});
+    if (qdrantManager) {
+      qdrantManager.stop().catch(() => {});
+    } else if (ipcHandlers?.qdrantManager) {
+      ipcHandlers.qdrantManager.stop().catch(() => {});
+    }
   });
 }

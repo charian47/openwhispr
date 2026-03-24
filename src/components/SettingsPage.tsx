@@ -707,6 +707,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setPanelStartPosition,
     cloudBackupEnabled,
     setCloudBackupEnabled,
+    localSemanticSearchEnabled,
+    setLocalSemanticSearchEnabled,
     telemetryEnabled,
     setTelemetryEnabled,
     audioRetentionDays,
@@ -3228,6 +3230,27 @@ EOF`,
                     description={t("settingsPage.privacy.usageAnalyticsDescription")}
                   >
                     <Toggle checked={telemetryEnabled} onChange={setTelemetryEnabled} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.privacy.localSemanticSearch")}
+                    description={t("settingsPage.privacy.localSemanticSearchDescription")}
+                  >
+                    <Toggle
+                      checked={localSemanticSearchEnabled}
+                      onChange={(v) => {
+                        setLocalSemanticSearchEnabled(v);
+                        if (v) {
+                          window.electronAPI
+                            .enableSemanticSearch?.()
+                            .then(() => window.electronAPI.semanticReindexAll?.())
+                            .catch(console.error);
+                        } else {
+                          window.electronAPI.disableSemanticSearch?.().catch(console.error);
+                        }
+                      }}
+                    />
                   </SettingsRow>
                 </SettingsPanelRow>
               </SettingsPanel>

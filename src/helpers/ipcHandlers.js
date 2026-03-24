@@ -104,6 +104,7 @@ class IPCHandlers {
     this.googleCalendarManager = managers.googleCalendarManager;
     this.meetingDetectionEngine = managers.meetingDetectionEngine;
     this.audioTapManager = managers.audioTapManager;
+    this.qdrantManager = managers.qdrantManager;
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
     this.deepgramStreaming = null;
@@ -126,6 +127,24 @@ class IPCHandlers {
         this.broadcastToWindows("cuda-fallback-notification", {});
       });
     }
+  }
+
+  _asyncVectorUpsert(note) {
+    setImmediate(() => {
+      const vectorIndex = require("./vectorIndex");
+      if (!vectorIndex.isReady()) return;
+      const { LocalEmbeddings } = require("./localEmbeddings");
+      const text = LocalEmbeddings.noteEmbedText(note.title, note.content, note.enhanced_content);
+      vectorIndex.upsertNote(note.id, text).catch(() => {});
+    });
+  }
+
+  _asyncVectorDelete(noteId) {
+    setImmediate(() => {
+      const vectorIndex = require("./vectorIndex");
+      if (!vectorIndex.isReady()) return;
+      vectorIndex.deleteNote(noteId).catch(() => {});
+    });
   }
 
   _getDictionarySafe() {
@@ -526,9 +545,8 @@ class IPCHandlers {
           folderId
         );
         if (result?.success && result?.note) {
-          setImmediate(() => {
-            this.broadcastToWindows("note-added", result.note);
-          });
+          setImmediate(() => this.broadcastToWindows("note-added", result.note));
+          this._asyncVectorUpsert(result.note);
         }
         return result;
       }
@@ -545,9 +563,8 @@ class IPCHandlers {
     ipcMain.handle("db-update-note", async (event, id, updates) => {
       const result = this.databaseManager.updateNote(id, updates);
       if (result?.success && result?.note) {
-        setImmediate(() => {
-          this.broadcastToWindows("note-updated", result.note);
-        });
+        setImmediate(() => this.broadcastToWindows("note-updated", result.note));
+        this._asyncVectorUpsert(result.note);
       }
       return result;
     });
@@ -555,15 +572,110 @@ class IPCHandlers {
     ipcMain.handle("db-delete-note", async (event, id) => {
       const result = this.databaseManager.deleteNote(id);
       if (result?.success) {
-        setImmediate(() => {
-          this.broadcastToWindows("note-deleted", { id });
-        });
+        setImmediate(() => this.broadcastToWindows("note-deleted", { id }));
+        this._asyncVectorDelete(id);
       }
       return result;
     });
 
     ipcMain.handle("db-search-notes", async (event, query, limit) => {
       return this.databaseManager.searchNotes(query, limit);
+    });
+
+    ipcMain.handle("db-semantic-search-notes", async (event, query, limit = 5) => {
+      const vectorIndex = require("./vectorIndex");
+      if (!vectorIndex.isReady()) {
+        return this.databaseManager.searchNotes(query, limit);
+      }
+
+      try {
+        const [ftsResults, vectorResults] = await Promise.all([
+          this.databaseManager.searchNotes(query, limit * 2),
+          vectorIndex.search(query, limit * 2),
+        ]);
+
+        // Filter low-confidence semantic matches before RRF
+        const filteredVectorResults = vectorResults.filter(({ score }) => score > 0.3);
+
+        // Reciprocal Rank Fusion (K=60, matching cloud implementation)
+        const scores = new Map();
+        ftsResults.forEach((note, i) => {
+          scores.set(note.id, (scores.get(note.id) || 0) + 1 / (60 + i));
+        });
+        filteredVectorResults.forEach(({ noteId }, i) => {
+          scores.set(noteId, (scores.get(noteId) || 0) + 1 / (60 + i));
+        });
+
+        const rankedIds = [...scores.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, limit)
+          .map(([id]) => id);
+
+        const noteMap = new Map();
+        ftsResults.forEach((n) => noteMap.set(n.id, n));
+        for (const id of rankedIds) {
+          if (!noteMap.has(id)) {
+            const note = this.databaseManager.getNote(id);
+            if (note) noteMap.set(id, note);
+          }
+        }
+
+        return rankedIds.map((id) => noteMap.get(id)).filter(Boolean);
+      } catch (error) {
+        debugLogger.error("Semantic search failed, falling back to FTS5", { error: error.message });
+        return this.databaseManager.searchNotes(query, limit);
+      }
+    });
+
+    ipcMain.handle("db-semantic-reindex-all", async () => {
+      const vectorIndex = require("./vectorIndex");
+      if (!vectorIndex.isReady()) return { success: false, error: "Vector index not ready" };
+
+      const notes = this.databaseManager.getNotes(null, 100000);
+      let done = 0;
+      await vectorIndex.reindexAll(notes, (completed, total) => {
+        done = completed;
+        this.broadcastToWindows("semantic-reindex-progress", { done: completed, total });
+      });
+      return { success: true, indexed: done };
+    });
+
+    ipcMain.handle("semantic-search-enable", async () => {
+      try {
+        const QdrantManager = require("./qdrantManager");
+        const vectorIndex = require("./vectorIndex");
+
+        if (!this.qdrantManager) {
+          this.qdrantManager = new QdrantManager();
+        }
+        await this.qdrantManager.start();
+
+        if (this.qdrantManager.isReady()) {
+          vectorIndex.init(this.qdrantManager.getPort());
+          await vectorIndex.ensureCollection();
+        }
+
+        process.env.LOCAL_SEMANTIC_SEARCH = "true";
+        await this.environmentManager.saveAllKeysToEnvFile();
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Failed to enable semantic search", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("semantic-search-disable", async () => {
+      try {
+        if (this.qdrantManager) {
+          await this.qdrantManager.stop();
+        }
+        delete process.env.LOCAL_SEMANTIC_SEARCH;
+        await this.environmentManager.saveAllKeysToEnvFile();
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Failed to disable semantic search", { error: error.message });
+        return { success: false, error: error.message };
+      }
     });
 
     ipcMain.handle("db-update-note-cloud-id", async (event, id, cloudId) => {

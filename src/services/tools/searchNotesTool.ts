@@ -4,14 +4,17 @@ const MAX_CONTENT_LENGTH = 500;
 
 interface SearchToolOptions {
   useCloudSearch: boolean;
+  useLocalSemanticSearch: boolean;
 }
 
 export function createSearchNotesTool(options: SearchToolOptions): ToolDefinition {
-  const { useCloudSearch } = options;
+  const { useCloudSearch, useLocalSemanticSearch } = options;
+
+  const hasSemanticSearch = useCloudSearch || useLocalSemanticSearch;
 
   return {
     name: "search_notes",
-    description: useCloudSearch
+    description: hasSemanticSearch
       ? "Search the user's notes using semantic search. Understands meaning and context, not just keywords. Returns matching notes with title, date, relevance score, and a preview of content."
       : "Search the user's notes by keyword or phrase. Returns matching notes with title, date, and a preview of content.",
     parameters: {
@@ -35,31 +38,39 @@ export function createSearchNotesTool(options: SearchToolOptions): ToolDefinitio
       const query = args.query as string;
       const limit = typeof args.limit === "number" ? args.limit : 5;
 
-      try {
-        if (useCloudSearch) {
-          return await executeCloudSearch(query, limit);
-        }
-        return await executeLocalSearch(query, limit);
-      } catch (error) {
-        if (useCloudSearch) {
-          try {
-            return await executeLocalSearch(query, limit);
-          } catch {
-            // Both failed
+      // Build fallback chain: cloud → local semantic → FTS5
+      const strategies: Array<() => Promise<ToolResult>> = [];
+      if (useCloudSearch) strategies.push(() => executeCloudSearch(query, limit));
+      if (useLocalSemanticSearch) strategies.push(() => executeLocalSearch(query, limit, true));
+      strategies.push(() => executeLocalSearch(query, limit, false));
+
+      for (let i = 0; i < strategies.length; i++) {
+        try {
+          return await strategies[i]();
+        } catch (error) {
+          if (i === strategies.length - 1) {
+            return {
+              success: false,
+              data: null,
+              displayText: `Failed to search notes: ${(error as Error).message}`,
+            };
           }
         }
-        return {
-          success: false,
-          data: null,
-          displayText: `Failed to search notes: ${(error as Error).message}`,
-        };
       }
+
+      return { success: false, data: null, displayText: "No search strategies available" };
     },
   };
 }
 
-async function executeLocalSearch(query: string, limit: number): Promise<ToolResult> {
-  const notes = await window.electronAPI.searchNotes(query, limit);
+async function executeLocalSearch(
+  query: string,
+  limit: number,
+  semantic: boolean
+): Promise<ToolResult> {
+  const notes = semantic
+    ? await window.electronAPI.semanticSearchNotes(query, limit)
+    : await window.electronAPI.searchNotes(query, limit);
 
   if (notes.length === 0) {
     return {
@@ -80,7 +91,7 @@ async function executeLocalSearch(query: string, limit: number): Promise<ToolRes
   return {
     success: true,
     data: results,
-    displayText: `Found ${results.length} note${results.length === 1 ? "" : "s"} for "${query}"`,
+    displayText: `Found ${results.length} note${results.length === 1 ? "" : "s"} for "${query}"${semantic ? " (semantic search)" : ""}`,
   };
 }
 

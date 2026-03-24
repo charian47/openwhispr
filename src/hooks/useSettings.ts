@@ -53,6 +53,7 @@ export interface ApiKeySettings {
 
 export interface PrivacySettings {
   cloudBackupEnabled: boolean;
+  localSemanticSearchEnabled: boolean;
   telemetryEnabled: boolean;
   audioRetentionDays: number;
   dataRetentionEnabled: boolean;
@@ -245,6 +246,8 @@ function useSettingsInternal() {
     setKeepTranscriptionInClipboard: store.setKeepTranscriptionInClipboard,
     cloudBackupEnabled: store.cloudBackupEnabled,
     setCloudBackupEnabled: store.setCloudBackupEnabled,
+    localSemanticSearchEnabled: store.localSemanticSearchEnabled,
+    setLocalSemanticSearchEnabled: store.setLocalSemanticSearchEnabled,
     telemetryEnabled: store.telemetryEnabled,
     setTelemetryEnabled: store.setTelemetryEnabled,
     audioRetentionDays: store.audioRetentionDays,

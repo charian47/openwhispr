@@ -85,6 +85,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deleteNote: (id) => ipcRenderer.invoke("db-delete-note", id),
   exportNote: (noteId, format) => ipcRenderer.invoke("export-note", noteId, format),
   searchNotes: (query, limit) => ipcRenderer.invoke("db-search-notes", query, limit),
+  semanticSearchNotes: (query, limit) => ipcRenderer.invoke("db-semantic-search-notes", query, limit),
+  semanticReindexAll: () => ipcRenderer.invoke("db-semantic-reindex-all"),
+  onSemanticReindexProgress: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("semantic-reindex-progress", listener);
+    return () => ipcRenderer.removeListener("semantic-reindex-progress", listener);
+  },
+  enableSemanticSearch: () => ipcRenderer.invoke("semantic-search-enable"),
+  disableSemanticSearch: () => ipcRenderer.invoke("semantic-search-disable"),
   updateNoteCloudId: (id, cloudId) => ipcRenderer.invoke("db-update-note-cloud-id", id, cloudId),
 
   // Folder functions

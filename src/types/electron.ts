@@ -371,6 +371,13 @@ declare global {
         format: "txt" | "md"
       ) => Promise<{ success: boolean; error?: string }>;
       searchNotes: (query: string, limit?: number) => Promise<NoteItem[]>;
+      semanticSearchNotes: (query: string, limit?: number) => Promise<NoteItem[]>;
+      semanticReindexAll: () => Promise<{ success: boolean; indexed?: number; error?: string }>;
+      onSemanticReindexProgress: (
+        callback: (data: { done: number; total: number }) => void
+      ) => () => void;
+      enableSemanticSearch: () => Promise<{ success: boolean; error?: string }>;
+      disableSemanticSearch: () => Promise<{ success: boolean; error?: string }>;
       updateNoteCloudId: (id: number, cloudId: string) => Promise<NoteItem>;
 
       // Folder operations
