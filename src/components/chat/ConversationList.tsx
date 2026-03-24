@@ -104,30 +104,28 @@ export default function ConversationList({
   const [semanticResults, setSemanticResults] = useState<ConversationPreview[] | null>(null);
   const searchVersionRef = useRef(0);
   const [showArchived, setShowArchived] = useState(false);
-  const [hasArchivedChats, setHasArchivedChats] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const showSkeletonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSkeleton, setShowSkeleton] = useState(false);
 
   const loadConversations = useCallback(async () => {
     try {
-      const result = await window.electronAPI?.getAgentConversationsWithPreview?.(200, 0, showArchived);
-      if (result) {
-        setConversations(
-          result.map((c) => ({
-            id: c.id,
-            title: c.title || "Untitled",
-            preview: c.last_message,
-            created_at: c.created_at,
-            updated_at: c.updated_at,
-            is_archived: !!(c.archived_at),
-          }))
-        );
-      }
-      if (!showArchived) {
-        const archived = await window.electronAPI?.getAgentConversationsWithPreview?.(1, 0, true);
-        setHasArchivedChats(!!archived?.length);
-      }
+      const [active, archived] = await Promise.all([
+        window.electronAPI?.getAgentConversationsWithPreview?.(200, 0, false),
+        window.electronAPI?.getAgentConversationsWithPreview?.(200, 0, true),
+      ]);
+      const toPreview = (c: { id: number; title: string; last_message?: string; created_at: string; updated_at: string; archived_at?: string }) => ({
+        id: c.id,
+        title: c.title || "Untitled",
+        preview: c.last_message,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+        is_archived: !!c.archived_at,
+      });
+      setConversations([
+        ...(active ?? []).map(toPreview),
+        ...(archived ?? []).map(toPreview),
+      ]);
     } catch {
       // silently fail
     } finally {
@@ -138,7 +136,7 @@ export default function ConversationList({
         showSkeletonTimer.current = null;
       }
     }
-  }, [showArchived]);
+  }, []);
 
   useEffect(() => {
     setIsLoading(true);
@@ -258,7 +256,7 @@ export default function ConversationList({
       <div className="px-2 pt-2 pb-1 space-y-1.5 shrink-0">
         <div className="flex items-center gap-1.5">
           <h2 className="text-xs font-medium text-foreground px-1 flex-1">{t("sidebar.chat")}</h2>
-          {(hasArchivedChats || showArchived) && (
+          {conversations.some((c) => c.is_archived) && (
           <button
             onClick={() => setShowArchived((v) => !v)}
             className={cn(
