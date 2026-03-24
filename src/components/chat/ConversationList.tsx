@@ -15,7 +15,7 @@ type FlatItem =
 
 interface ConversationListProps {
   activeConversationId: number | null;
-  onSelectConversation: (id: number, title: string) => void;
+  onSelectConversation: (id: number) => void;
   onNewChat: () => void;
   onArchive: (id: number) => void;
   onDelete: (id: number) => void;
@@ -101,6 +101,8 @@ export default function ConversationList({
   const [conversations, setConversations] = useState<ConversationPreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [semanticResults, setSemanticResults] = useState<ConversationPreview[] | null>(null);
+  const searchVersionRef = useRef(0);
   const [showArchived, setShowArchived] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const showSkeletonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -143,23 +145,47 @@ export default function ConversationList({
   }, [loadConversations, refreshKey]);
 
   const filtered = useMemo(() => {
-    let list = conversations;
-    if (!showArchived) {
-      list = list.filter((c) => !c.is_archived);
-    } else {
-      list = list.filter((c) => c.is_archived);
-    }
-    if (searchQuery.trim()) {
+    const source = semanticResults && searchQuery.trim().length >= 3
+      ? semanticResults
+      : conversations;
+
+    let list = showArchived
+      ? source.filter((c) => c.is_archived)
+      : source.filter((c) => !c.is_archived);
+
+    if (!semanticResults && searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((c) => c.title.toLowerCase().includes(q));
     }
     return list;
-  }, [conversations, searchQuery, showArchived]);
+  }, [conversations, searchQuery, showArchived, semanticResults]);
 
   const flatItems = useMemo(() => groupByDate(filtered, t), [filtered, t]);
 
-  const debouncedSearch = useDebouncedCallback((value: string) => {
+  const debouncedSearch = useDebouncedCallback(async (value: string) => {
+    const version = ++searchVersionRef.current;
     setSearchQuery(value);
+    setSemanticResults(null);
+
+    if (value.trim().length >= 3) {
+      try {
+        const results = await window.electronAPI?.semanticSearchConversations?.(value, 20);
+        if (searchVersionRef.current === version && results) {
+          setSemanticResults(
+            results.map((c: any) => ({
+              id: c.id,
+              title: c.title || "Untitled",
+              preview: c.last_message,
+              created_at: c.created_at,
+              updated_at: c.updated_at,
+              is_archived: !!(c.archived_at),
+            }))
+          );
+        }
+      } catch {
+        // title filter remains active
+      }
+    }
   }, 200);
 
   const virtualizer = useVirtualizer({
@@ -186,13 +212,13 @@ export default function ConversationList({
         e.preventDefault();
         const next = currentIdx < convItems.length - 1 ? currentIdx + 1 : 0;
         const item = convItems[next].item;
-        if (item.type === "conversation") onSelectConversation(item.data.id, item.data.title);
+        if (item.type === "conversation") onSelectConversation(item.data.id);
         virtualizer.scrollToIndex(convItems[next].index);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         const prev = currentIdx > 0 ? currentIdx - 1 : convItems.length - 1;
         const item = convItems[prev].item;
-        if (item.type === "conversation") onSelectConversation(item.data.id, item.data.title);
+        if (item.type === "conversation") onSelectConversation(item.data.id);
         virtualizer.scrollToIndex(convItems[prev].index);
       } else if (e.key === "Enter" && activeConversationId) {
         e.preventDefault();
@@ -263,7 +289,7 @@ export default function ConversationList({
             onChange={(e) => debouncedSearch(e.target.value)}
             placeholder={t("chat.search")}
             className={cn(
-              "w-full h-6 pl-6 pr-2 rounded-md text-[11px]",
+              "input-inline w-full h-6 pl-6 pr-2 rounded-md text-[11px]",
               "bg-foreground/3 dark:bg-white/3 border border-border/25 dark:border-white/8",
               "text-foreground placeholder:text-muted-foreground/40",
               "outline-none focus-visible:ring-1 focus-visible:ring-primary/30",
@@ -310,7 +336,7 @@ export default function ConversationList({
                     <ConversationItem
                       conversation={item.data}
                       isActive={item.data.id === activeConversationId}
-                      onClick={() => onSelectConversation(item.data.id, item.data.title)}
+                      onClick={() => onSelectConversation(item.data.id)}
                       onArchive={onArchive}
                       onDelete={onDelete}
                     />

@@ -4,7 +4,6 @@ import { useChatPersistence } from "./useChatPersistence";
 import { useChatStreaming } from "./useChatStreaming";
 import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
-import ChatHeader from "./ChatHeader";
 import ConversationList from "./ConversationList";
 import EmptyChatState from "./EmptyChatState";
 import { ConfirmDialog } from "../ui/dialog";
@@ -16,15 +15,14 @@ const platform = getCachedPlatform();
 export default function ChatView() {
   const { t } = useTranslation();
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
-  const [activeTitle, setActiveTitle] = useState(t("chat.untitled"));
+  const [isNewChat, setIsNewChat] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
 
   const persistence = useChatPersistence({
     conversationId: activeConversationId,
-    onConversationCreated: (id, title) => {
+    onConversationCreated: (id) => {
       setActiveConversationId(id);
-      setActiveTitle(title);
       setRefreshKey((k) => k + 1);
     },
   });
@@ -38,24 +36,20 @@ export default function ChatView() {
   });
 
   const handleSelectConversation = useCallback(
-    async (id: number, title: string) => {
+    async (id: number) => {
       if (id === activeConversationId) return;
       setActiveConversationId(id);
-      setActiveTitle(title);
       setIsNewChat(false);
       await persistence.loadConversation(id);
     },
     [activeConversationId, persistence]
   );
 
-  const [isNewChat, setIsNewChat] = useState(false);
-
   const handleNewChat = useCallback(() => {
     setActiveConversationId(null);
-    setActiveTitle(t("chat.untitled"));
     setIsNewChat(true);
     persistence.handleNewChat();
-  }, [persistence, t]);
+  }, [persistence]);
 
   const handleTextSubmit = useCallback(
     async (text: string) => {
@@ -64,7 +58,6 @@ export default function ChatView() {
       if (!convId) {
         const title = text.length > 50 ? `${text.slice(0, 50)}...` : text;
         convId = await persistence.createConversation(title);
-        setActiveTitle(title);
       }
 
       const userMsg = {
@@ -80,16 +73,6 @@ export default function ChatView() {
       await streaming.sendToAI(text, allMessages);
     },
     [activeConversationId, persistence, streaming]
-  );
-
-  const handleTitleChange = useCallback(
-    async (title: string) => {
-      if (!activeConversationId) return;
-      setActiveTitle(title);
-      await window.electronAPI?.updateAgentConversationTitle?.(activeConversationId, title);
-      setRefreshKey((k) => k + 1);
-    },
-    [activeConversationId]
   );
 
   const handleArchive = useCallback(async (id: number) => {
@@ -156,10 +139,6 @@ export default function ChatView() {
         <div className="flex-1 min-w-80 flex flex-col">
           {hasActiveChat ? (
             <>
-              <ChatHeader
-                title={activeTitle}
-                onTitleChange={handleTitleChange}
-              />
               <ChatMessages messages={persistence.messages} />
               <ChatInput
                 agentState={streaming.agentState}
