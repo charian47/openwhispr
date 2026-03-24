@@ -1284,7 +1284,9 @@ class DatabaseManager {
   getAgentConversationsWithPreview(limit = 50, offset = 0, includeArchived = false) {
     try {
       if (!this.db) throw new Error("Database not initialized");
-      const archiveFilter = includeArchived ? "" : "WHERE c.archived_at IS NULL";
+      const archiveFilter = includeArchived
+        ? "WHERE c.archived_at IS NOT NULL"
+        : "WHERE c.archived_at IS NULL";
       return this.db
         .prepare(
           `SELECT c.id, c.title, c.created_at, c.updated_at, c.archived_at, c.cloud_id,
