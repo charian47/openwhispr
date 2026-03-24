@@ -219,7 +219,7 @@ export function ChatMessage({ role, content, isStreaming, toolCalls }: ChatMessa
       <div
         className={cn(
           "relative max-w-[85%] px-3 py-2 rounded-lg rounded-bl-sm",
-          "bg-surface-2 border border-border/30 text-foreground",
+          "bg-surface-1 border border-border/30 text-foreground",
           "text-[13px] leading-relaxed"
         )}
       >
