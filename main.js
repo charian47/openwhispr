@@ -666,7 +666,6 @@ async function startApp() {
     });
   }
 
-  // Local semantic search: start Qdrant sidecar + ensure embedding model is available
   const QdrantManager = require("./src/helpers/qdrantManager");
   qdrantManager = new QdrantManager();
   if (qdrantManager.isAvailable()) {

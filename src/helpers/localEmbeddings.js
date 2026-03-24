@@ -178,7 +178,7 @@ class LocalEmbeddings {
   async downloadModel() {
     if (this.isAvailable()) return;
 
-    const { downloadFile } = require("../../scripts/lib/download-utils");
+    const { downloadFile } = require("./downloadUtils");
     const files = [
       {
         name: "model.onnx",

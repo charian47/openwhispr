@@ -82,7 +82,7 @@
     "!**/node_modules/**/CHANGELOG*",
     "!**/node_modules/**/.github/**"
   ],
-  "asarUnpack": ["**/node_modules/ffmpeg-static/**/*", "**/node_modules/better-sqlite3/**/*"],
+  "asarUnpack": ["**/node_modules/ffmpeg-static/**/*", "**/node_modules/better-sqlite3/**/*", "**/node_modules/onnxruntime-node/**/*"],
   "extraResources": [
     ".env",
     "src/assets/**/*",
@@ -102,6 +102,7 @@
         "whisper-server-*",
         "llama-server-*",
         "sherpa-onnx-*",
+        "qdrant-*",
         "windows-key-listener*",
         "windows-mic-listener*",
         "windows-text-monitor*",
