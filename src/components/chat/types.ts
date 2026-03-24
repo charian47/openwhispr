@@ -22,3 +22,5 @@ export type AgentState =
   | "thinking"
   | "streaming"
   | "tool-executing";
+
+export { toolIcons } from "./toolIcons";

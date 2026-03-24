@@ -176,13 +176,6 @@ export default function AgentOverlay() {
     };
   }, []);
 
-  const handleTextSubmit = useCallback(
-    (text: string) => {
-      handleTranscriptionComplete(text);
-    },
-    [handleTranscriptionComplete]
-  );
-
   const handleNewChat = useCallback(() => {
     persistenceNewChat();
     setPartialTranscript("");
@@ -211,7 +204,7 @@ export default function AgentOverlay() {
           partialTranscript={partialTranscript}
           toolStatus={toolStatus}
           activeToolName={activeToolName}
-          onTextSubmit={handleTextSubmit}
+          onTextSubmit={handleTranscriptionComplete}
         />
       </div>
 

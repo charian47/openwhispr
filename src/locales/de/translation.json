@@ -1753,7 +1753,8 @@
     "unarchive": "Dearchivieren",
     "delete": "Löschen",
     "deleteConfirm": "Diese Unterhaltung wird dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
-    "editTitle": "Doppelklick zum Bearbeiten des Titels"
+    "editTitle": "Doppelklick zum Bearbeiten des Titels",
+    "untitled": "Ohne Titel"
   },
   "usage": {
     "approachingLimit": "Wochenlimit fast erreicht",

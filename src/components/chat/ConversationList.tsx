@@ -108,13 +108,16 @@ export default function ConversationList({
 
   const loadConversations = useCallback(async () => {
     try {
-      const result = await window.electronAPI.getAgentConversations?.(200);
+      const result = await window.electronAPI?.getAgentConversationsWithPreview?.(200, 0, showArchived);
       if (result) {
         setConversations(
           result.map((c) => ({
-            ...c,
-            preview: undefined,
-            is_archived: false,
+            id: c.id,
+            title: c.title || "Untitled",
+            preview: c.last_message,
+            created_at: c.created_at,
+            updated_at: c.updated_at,
+            is_archived: !!(c.archived_at),
           }))
         );
       }
@@ -128,7 +131,7 @@ export default function ConversationList({
         showSkeletonTimer.current = null;
       }
     }
-  }, []);
+  }, [showArchived]);
 
   useEffect(() => {
     setIsLoading(true);

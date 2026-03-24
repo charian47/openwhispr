@@ -1541,7 +1541,8 @@
     "unarchive": "Unarchive",
     "delete": "Delete",
     "deleteConfirm": "This conversation will be permanently deleted. This cannot be undone.",
-    "editTitle": "Double-click to edit title"
+    "editTitle": "Double-click to edit title",
+    "untitled": "Untitled"
   },
   "referral": {
     "title": "Refer and earn rewards",

@@ -1753,7 +1753,8 @@
     "unarchive": "Desarchivar",
     "delete": "Eliminar",
     "deleteConfirm": "Esta conversación se eliminará permanentemente. No se puede deshacer.",
-    "editTitle": "Doble clic para editar el título"
+    "editTitle": "Doble clic para editar el título",
+    "untitled": "Sin título"
   },
   "usage": {
     "approachingLimit": "Cerca del límite semanal",

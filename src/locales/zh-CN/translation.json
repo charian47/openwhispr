@@ -992,7 +992,12 @@
           "annualEquivalent": "$16.67",
           "includesPrefix": "所有 Pro 功能 +",
           "badge": "最受欢迎",
-          "features": ["无限会议录制", "代理模式", "与您的数据对话（即将推出）", "优先支持"],
+          "features": [
+            "无限会议录制",
+            "代理模式",
+            "与您的数据对话（即将推出）",
+            "优先支持"
+          ],
           "cta": "开始使用",
           "switchToAnnual": "切换为年付"
         },
@@ -1748,7 +1753,8 @@
     "unarchive": "取消归档",
     "delete": "删除",
     "deleteConfirm": "此对话将被永久删除，无法撤消。",
-    "editTitle": "双击编辑标题"
+    "editTitle": "双击编辑标题",
+    "untitled": "无标题"
   },
   "usage": {
     "approachingLimit": "即将达到周限额",

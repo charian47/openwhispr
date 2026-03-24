@@ -1,20 +1,11 @@
 import { useState, useRef, useCallback } from "react";
-import {
-  Mic,
-  SendHorizontal,
-  Search,
-  Globe,
-  ClipboardCheck,
-  Calendar,
-  FileText,
-  FilePlus,
-  FilePen,
-} from "lucide-react";
+import { Mic, SendHorizontal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../lib/utils";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { formatHotkeyLabel, isGlobeLikeHotkey } from "../../utils/hotkeys";
 import type { AgentState } from "./types";
+import { toolIcons } from "./toolIcons";
 
 interface ChatInputProps {
   agentState: AgentState;
@@ -24,16 +15,6 @@ interface ChatInputProps {
   onTextSubmit?: (text: string) => void;
   showHotkey?: boolean;
 }
-
-const toolIcons: Record<string, typeof Search> = {
-  search_notes: Search,
-  web_search: Globe,
-  copy_to_clipboard: ClipboardCheck,
-  get_calendar_events: Calendar,
-  get_note: FileText,
-  create_note: FilePlus,
-  update_note: FilePen,
-};
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (

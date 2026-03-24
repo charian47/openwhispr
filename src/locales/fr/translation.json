@@ -1493,7 +1493,8 @@
     "unarchive": "Désarchiver",
     "delete": "Supprimer",
     "deleteConfirm": "Cette conversation sera définitivement supprimée. Cette action est irréversible.",
-    "editTitle": "Double-cliquez pour modifier le titre"
+    "editTitle": "Double-cliquez pour modifier le titre",
+    "untitled": "Sans titre"
   },
   "referral": {
     "title": "Parrainez et gagnez des récompenses",

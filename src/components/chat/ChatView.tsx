@@ -16,7 +16,7 @@ const platform = getCachedPlatform();
 export default function ChatView() {
   const { t } = useTranslation();
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
-  const [activeTitle, setActiveTitle] = useState("Untitled");
+  const [activeTitle, setActiveTitle] = useState(t("chat.untitled"));
   const [refreshKey, setRefreshKey] = useState(0);
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
 
@@ -49,9 +49,9 @@ export default function ChatView() {
 
   const handleNewChat = useCallback(() => {
     setActiveConversationId(null);
-    setActiveTitle("Untitled");
+    setActiveTitle(t("chat.untitled"));
     persistence.handleNewChat();
-  }, [persistence]);
+  }, [persistence, t]);
 
   const handleTextSubmit = useCallback(
     async (text: string) => {
@@ -69,10 +69,10 @@ export default function ChatView() {
         isStreaming: false,
       };
       persistence.setMessages((prev) => [...prev, userMsg]);
-      persistence.saveUserMessage(text);
+      await persistence.saveUserMessage(text);
 
       const allMessages = [...persistence.messages, userMsg];
-      streaming.sendToAI(text, allMessages);
+      await streaming.sendToAI(text, allMessages);
     },
     [activeConversationId, persistence, streaming]
   );
@@ -87,9 +87,13 @@ export default function ChatView() {
     [activeConversationId]
   );
 
-  const handleArchive = useCallback(async (_id: number) => {
-    // Archive not yet supported in the DB API
-  }, []);
+  const handleArchive = useCallback(async (id: number) => {
+    await window.electronAPI?.archiveAgentConversation?.(id);
+    if (activeConversationId === id) {
+      handleNewChat();
+    }
+    setRefreshKey((k) => k + 1);
+  }, [activeConversationId, handleNewChat]);
 
   const handleDelete = useCallback(
     (id: number) => {

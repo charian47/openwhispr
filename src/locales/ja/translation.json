@@ -1753,7 +1753,8 @@
     "unarchive": "アーカイブ解除",
     "delete": "削除",
     "deleteConfirm": "この会話は完全に削除されます。元に戻すことはできません。",
-    "editTitle": "ダブルクリックでタイトルを編集"
+    "editTitle": "ダブルクリックでタイトルを編集",
+    "untitled": "無題"
   },
   "usage": {
     "approachingLimit": "週間制限に近づいています",

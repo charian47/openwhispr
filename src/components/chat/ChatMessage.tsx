@@ -4,12 +4,7 @@ import {
   Copy,
   Check,
   Search,
-  Globe,
-  ClipboardCheck,
-  Calendar,
   FileText,
-  FilePlus,
-  FilePen,
   ChevronDown,
   ChevronRight,
   CircleAlert,
@@ -17,6 +12,7 @@ import {
 import { cn } from "../lib/utils";
 import { MarkdownRenderer } from "../ui/MarkdownRenderer";
 import type { ToolCallInfo } from "./types";
+import { toolIcons } from "./toolIcons";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
@@ -24,16 +20,6 @@ interface ChatMessageProps {
   isStreaming: boolean;
   toolCalls?: ToolCallInfo[];
 }
-
-const toolIcons: Record<string, typeof Search> = {
-  search_notes: Search,
-  web_search: Globe,
-  copy_to_clipboard: ClipboardCheck,
-  get_calendar_events: Calendar,
-  get_note: FileText,
-  create_note: FilePlus,
-  update_note: FilePen,
-};
 
 const NOTE_TOOLS = new Set(["create_note", "update_note", "get_note"]);
 
