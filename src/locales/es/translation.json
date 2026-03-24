@@ -1754,7 +1754,10 @@
     "delete": "Eliminar",
     "deleteConfirm": "Esta conversación se eliminará permanentemente. No se puede deshacer.",
     "editTitle": "Doble clic para editar el título",
-    "untitled": "Sin título"
+    "untitled": "Sin título",
+    "searchChats": "Buscar chats",
+    "searchTitle": "Buscar conversaciones",
+    "searchDescription": "Buscar en todas tus conversaciones"
   },
   "usage": {
     "approachingLimit": "Cerca del límite semanal",

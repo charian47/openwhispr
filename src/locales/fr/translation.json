@@ -1494,7 +1494,10 @@
     "delete": "Supprimer",
     "deleteConfirm": "Cette conversation sera définitivement supprimée. Cette action est irréversible.",
     "editTitle": "Double-cliquez pour modifier le titre",
-    "untitled": "Sans titre"
+    "untitled": "Sans titre",
+    "searchChats": "Rechercher",
+    "searchTitle": "Rechercher des conversations",
+    "searchDescription": "Rechercher dans toutes vos conversations"
   },
   "referral": {
     "title": "Parrainez et gagnez des récompenses",

@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Plus, Search, Archive as ArchiveIcon } from "lucide-react";
+import { SquarePen, Search, Archive as ArchiveIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "../lib/utils";
-import { useDebouncedCallback } from "../../hooks/useDebouncedCallback";
 import { normalizeDbDate } from "../../utils/dateFormatting";
 import ConversationItem, { type ConversationPreview } from "./ConversationItem";
 import ConversationDateGroup from "./ConversationDateGroup";
@@ -17,6 +16,7 @@ interface ConversationListProps {
   activeConversationId: number | null;
   onSelectConversation: (id: number) => void;
   onNewChat: () => void;
+  onOpenSearch: () => void;
   onArchive: (id: number) => void;
   onDelete: (id: number) => void;
   refreshKey: number;
@@ -93,6 +93,7 @@ export default function ConversationList({
   activeConversationId,
   onSelectConversation,
   onNewChat,
+  onOpenSearch,
   onArchive,
   onDelete,
   refreshKey,
@@ -100,9 +101,6 @@ export default function ConversationList({
   const { t } = useTranslation();
   const [conversations, setConversations] = useState<ConversationPreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [semanticResults, setSemanticResults] = useState<ConversationPreview[] | null>(null);
-  const searchVersionRef = useRef(0);
   const [showArchived, setShowArchived] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const showSkeletonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -148,48 +146,12 @@ export default function ConversationList({
   }, [loadConversations, refreshKey]);
 
   const filtered = useMemo(() => {
-    const source = semanticResults && searchQuery.trim().length >= 3
-      ? semanticResults
-      : conversations;
-
-    let list = showArchived
-      ? source.filter((c) => c.is_archived)
-      : source.filter((c) => !c.is_archived);
-
-    if (!semanticResults && searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter((c) => c.title.toLowerCase().includes(q));
-    }
-    return list;
-  }, [conversations, searchQuery, showArchived, semanticResults]);
+    return showArchived
+      ? conversations.filter((c) => c.is_archived)
+      : conversations.filter((c) => !c.is_archived);
+  }, [conversations, showArchived]);
 
   const flatItems = useMemo(() => groupByDate(filtered, t), [filtered, t]);
-
-  const debouncedSearch = useDebouncedCallback(async (value: string) => {
-    const version = ++searchVersionRef.current;
-    setSearchQuery(value);
-    setSemanticResults(null);
-
-    if (value.trim().length >= 3) {
-      try {
-        const results = await window.electronAPI?.semanticSearchConversations?.(value, 20);
-        if (searchVersionRef.current === version && results) {
-          setSemanticResults(
-            results.map((c: any) => ({
-              id: c.id,
-              title: c.title || "Untitled",
-              preview: c.last_message,
-              created_at: c.created_at,
-              updated_at: c.updated_at,
-              is_archived: !!(c.archived_at),
-            }))
-          );
-        }
-      } catch {
-        // title filter remains active
-      }
-    }
-  }, 200);
 
   const virtualizer = useVirtualizer({
     count: flatItems.length,
@@ -253,65 +215,50 @@ export default function ConversationList({
 
   return (
     <div className="flex flex-col h-full" onKeyDown={handleKeyDown} tabIndex={-1}>
-      <div className="px-2 pt-2 pb-1 space-y-1.5 shrink-0">
-        <div className="flex items-center gap-1.5">
-          <h2 className="text-xs font-medium text-foreground px-1 flex-1">{t("sidebar.chat")}</h2>
-          {conversations.some((c) => c.is_archived) && (
+      <div className="px-2 pt-2 pb-1 shrink-0 space-y-0.5">
+        <button
+          onClick={onNewChat}
+          className={cn(
+            "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs",
+            "text-muted-foreground/80 hover:text-foreground hover:bg-foreground/5",
+            "transition-colors duration-150",
+            "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/30"
+          )}
+        >
+          <SquarePen size={14} className="shrink-0" />
+          {t("chat.newChat")}
+        </button>
+        <button
+          onClick={onOpenSearch}
+          className={cn(
+            "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs",
+            "text-muted-foreground/80 hover:text-foreground hover:bg-foreground/5",
+            "transition-colors duration-150",
+            "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/30"
+          )}
+        >
+          <Search size={14} className="shrink-0" />
+          {t("chat.searchChats")}
+        </button>
+        {conversations.some((c) => c.is_archived) && (
           <button
             onClick={() => setShowArchived((v) => !v)}
             className={cn(
-              "flex items-center gap-1 h-5 px-1.5 rounded-md text-[10px] transition-colors duration-150",
+              "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs transition-colors duration-150",
               "focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/30",
               showArchived
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-foreground/4"
+                ? "bg-primary/8 text-primary"
+                : "text-muted-foreground/80 hover:text-foreground hover:bg-foreground/5"
             )}
           >
-            <ArchiveIcon size={10} />
+            <ArchiveIcon size={14} className="shrink-0" />
             {t("chat.archived")}
           </button>
-          )}
-          <button
-            onClick={onNewChat}
-            className={cn(
-              "p-1 rounded-sm",
-              "text-muted-foreground/60 hover:text-foreground hover:bg-foreground/8",
-              "transition-colors duration-150",
-              "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/30"
-            )}
-            aria-label={t("chat.newChat")}
-          >
-            <Plus size={14} />
-          </button>
-        </div>
-        <div className="relative">
-          <Search
-            size={11}
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground/40 pointer-events-none"
-          />
-          <input
-            type="text"
-            onChange={(e) => debouncedSearch(e.target.value)}
-            placeholder={t("chat.search")}
-            className={cn(
-              "input-inline w-full h-6 pl-6 pr-2 rounded-md text-[11px]",
-              "bg-foreground/3 dark:bg-white/3 border border-border/25 dark:border-white/8",
-              "text-foreground placeholder:text-muted-foreground/40",
-              "outline-none focus-visible:ring-1 focus-visible:ring-primary/30",
-              "transition-colors"
-            )}
-          />
-        </div>
+        )}
       </div>
 
       {flatItems.length === 0 ? (
-        searchQuery.trim() ? (
-          <div className="flex items-center justify-center flex-1">
-            <p className="text-xs text-muted-foreground/40">{t("chat.noResults")}</p>
-          </div>
-        ) : (
-          <EmptyConversationList onNewChat={onNewChat} />
-        )
+        <EmptyConversationList onNewChat={onNewChat} />
       ) : (
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
           <div

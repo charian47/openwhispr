@@ -1754,7 +1754,10 @@
     "delete": "Excluir",
     "deleteConfirm": "Esta conversa será excluída permanentemente. Não é possível desfazer.",
     "editTitle": "Clique duplo para editar o título",
-    "untitled": "Sem título"
+    "untitled": "Sem título",
+    "searchChats": "Pesquisar chats",
+    "searchTitle": "Pesquisar conversas",
+    "searchDescription": "Pesquisar em todas as conversas"
   },
   "usage": {
     "approachingLimit": "Próximo do limite semanal",

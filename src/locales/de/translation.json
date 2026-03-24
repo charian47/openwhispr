@@ -1754,7 +1754,10 @@
     "delete": "Löschen",
     "deleteConfirm": "Diese Unterhaltung wird dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
     "editTitle": "Doppelklick zum Bearbeiten des Titels",
-    "untitled": "Ohne Titel"
+    "untitled": "Ohne Titel",
+    "searchChats": "Chats suchen",
+    "searchTitle": "Unterhaltungen suchen",
+    "searchDescription": "In allen Unterhaltungen suchen"
   },
   "usage": {
     "approachingLimit": "Wochenlimit fast erreicht",

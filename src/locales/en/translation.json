@@ -1542,7 +1542,10 @@
     "delete": "Delete",
     "deleteConfirm": "This conversation will be permanently deleted. This cannot be undone.",
     "editTitle": "Double-click to edit title",
-    "untitled": "Untitled"
+    "untitled": "Untitled",
+    "searchChats": "Search chats",
+    "searchTitle": "Search conversations",
+    "searchDescription": "Search across all your conversations"
   },
   "referral": {
     "title": "Refer and earn rewards",

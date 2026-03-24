@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { useChatPersistence } from "./useChatPersistence";
 import { useChatStreaming } from "./useChatStreaming";
@@ -10,6 +10,8 @@ import { ConfirmDialog } from "../ui/dialog";
 import { useDialogs } from "../../hooks/useDialogs";
 import { getCachedPlatform } from "../../utils/platform";
 
+const ChatSearchDialog = lazy(() => import("./ChatSearchDialog"));
+
 const platform = getCachedPlatform();
 
 export default function ChatView() {
@@ -17,6 +19,7 @@ export default function ChatView() {
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [isNewChat, setIsNewChat] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showSearch, setShowSearch] = useState(false);
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
 
   const persistence = useChatPersistence({
@@ -125,12 +128,24 @@ export default function ChatView() {
         onConfirm={confirmDialog.onConfirm}
         variant={confirmDialog.variant}
       />
+      {showSearch && (
+        <Suspense fallback={null}>
+          <ChatSearchDialog
+            open={showSearch}
+            onOpenChange={setShowSearch}
+            onSelect={(id) => {
+              handleSelectConversation(id);
+            }}
+          />
+        </Suspense>
+      )}
       <div className="flex h-full">
         <div className="w-56 min-w-50 shrink-0 border-r border-border/15 dark:border-white/6">
           <ConversationList
             activeConversationId={activeConversationId}
             onSelectConversation={handleSelectConversation}
             onNewChat={handleNewChat}
+            onOpenSearch={() => setShowSearch(true)}
             onArchive={handleArchive}
             onDelete={handleDelete}
             refreshKey={refreshKey}
