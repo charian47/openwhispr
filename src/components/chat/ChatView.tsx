@@ -63,7 +63,7 @@ function NewChatEmptyState() {
 export default function ChatView() {
   const { t } = useTranslation();
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
-  const [isNewChat, setIsNewChat] = useState(false);
+  const [isNewChat, setIsNewChat] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showSearch, setShowSearch] = useState(false);
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
