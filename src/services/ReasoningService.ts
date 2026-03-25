@@ -1325,7 +1325,7 @@ class ReasoningService extends BaseReasoningService {
     const cloudProviders = ["openai", "groq", "gemini", "anthropic", "custom"];
     const isLocalProvider = !cloudProviders.includes(provider);
 
-    if (isLocalProvider) {
+    if (isLocalProvider && !tools) {
       const contentGen = this.processTextStreaming(messages, model, provider, config);
       for await (const text of contentGen) {
         yield { type: "content", text };
@@ -1334,12 +1334,24 @@ class ReasoningService extends BaseReasoningService {
       return;
     }
 
-    const providerKey = provider as "openai" | "groq" | "gemini" | "anthropic" | "custom";
-    const apiKey = await this.getApiKey(providerKey);
-    const baseURL = provider === "custom" ? this.getConfiguredOpenAIBase() : undefined;
+    let apiKey = "";
+    let baseURL: string | undefined;
+
+    if (isLocalProvider) {
+      const serverResult = await window.electronAPI.llamaServerStart(model);
+      if (!serverResult.success || !serverResult.port) {
+        throw new Error(serverResult.error || "Failed to start local model server");
+      }
+      baseURL = `http://127.0.0.1:${serverResult.port}/v1`;
+    } else {
+      const providerKey = provider as "openai" | "groq" | "gemini" | "anthropic" | "custom";
+      apiKey = await this.getApiKey(providerKey);
+      baseURL = provider === "custom" ? this.getConfiguredOpenAIBase() : undefined;
+    }
     const apiConfig = getOpenAiApiConfig(model);
 
-    const aiModel = getAIModel(provider, model, apiKey, baseURL);
+    const aiProvider = isLocalProvider ? "local" : provider;
+    const aiModel = getAIModel(aiProvider, model, apiKey, baseURL);
 
     const modelDef = getCloudModel(model);
     const needsDisableThinking = provider === "groq" && modelDef?.disableThinking;
@@ -1352,6 +1364,8 @@ class ReasoningService extends BaseReasoningService {
       messageCount: messages.length,
     });
 
+    const useTemperature = isLocalProvider || apiConfig.supportsTemperature;
+
     const result = streamText({
       model: aiModel,
       messages: messages.map((m) => ({
@@ -1360,7 +1374,7 @@ class ReasoningService extends BaseReasoningService {
       })),
       tools: tools || undefined,
       stopWhen: stepCountIs(tools ? ReasoningService.MAX_TOOL_STEPS : 1),
-      ...(apiConfig.supportsTemperature ? { temperature: config.temperature ?? 0.3 } : {}),
+      ...(useTemperature ? { temperature: config.temperature ?? 0.3 } : {}),
       maxOutputTokens: config.maxTokens || 4096,
       ...(needsDisableThinking ? { providerOptions: { groq: { reasoningEffort: "none" } } } : {}),
     });

@@ -4,13 +4,10 @@ const os = require("os");
 const path = require("path");
 const { downloadFile, parseArgs } = require("./lib/download-utils");
 
-const MODEL_DIR = path.join(
-  os.homedir(),
-  ".cache",
-  "openwhispr",
-  "embedding-models",
-  "all-MiniLM-L6-v2"
-);
+const forBuild = process.argv.includes("--for-build");
+const MODEL_DIR = forBuild
+  ? path.join(__dirname, "..", "resources", "bin", "all-MiniLM-L6-v2")
+  : path.join(os.homedir(), ".cache", "openwhispr", "embedding-models", "all-MiniLM-L6-v2");
 
 const FILES = [
   {

@@ -7,6 +7,37 @@ import { createToolRegistry } from "../../services/tools";
 import type { ToolRegistry } from "../../services/tools/ToolRegistry";
 import type { Message, AgentState, ToolCallInfo } from "./types";
 
+const RAG_NOTE_LIMIT = 5;
+const RAG_NOTE_SNIPPET_LENGTH = 500;
+
+const LOCAL_TOOL_MIN_PARAMS_B = 4;
+
+function estimateModelSizeB(modelId: string): number {
+  const match = modelId.match(/-([\d.]+)[bB]/);
+  return match ? parseFloat(match[1]) : 0;
+}
+
+async function buildRAGContext(userText: string): Promise<string> {
+  if (!window.electronAPI?.semanticSearchNotes) return "";
+  try {
+    const results = await window.electronAPI.semanticSearchNotes(userText, RAG_NOTE_LIMIT);
+    if (!results || results.length === 0) return "";
+
+    const snippets = await Promise.all(
+      results.map(async (r: { id: number; title: string; score?: number }) => {
+        const note = await window.electronAPI.getNote(r.id);
+        if (!note) return null;
+        const content = (note.content || "").slice(0, RAG_NOTE_SNIPPET_LENGTH);
+        return `<note id="${note.id}" title="${note.title}">\n${content}\n</note>`;
+      })
+    );
+
+    return snippets.filter(Boolean).join("\n\n");
+  } catch {
+    return "";
+  }
+}
+
 interface UseChatStreamingOptions {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
@@ -59,8 +90,12 @@ export function useChatStreaming({
 
       const settings = getSettings();
       const isCloudAgent = settings.isSignedIn && settings.cloudAgentMode === "openwhispr";
-      const toolSupportedProviders = ["openai", "groq", "custom", "anthropic", "gemini"];
-      const supportsTools = isCloudAgent || toolSupportedProviders.includes(settings.agentProvider);
+      const isLocalProvider = !["openai", "groq", "custom", "anthropic", "gemini"].includes(
+        settings.agentProvider
+      );
+      const localModelCanUseTool =
+        isLocalProvider && estimateModelSizeB(settings.agentModel) >= LOCAL_TOOL_MIN_PARAMS_B;
+      const supportsTools = isCloudAgent || !isLocalProvider || localModelCanUseTool;
 
       let registry: ToolRegistry | null = null;
       if (supportsTools) {
@@ -76,7 +111,12 @@ export function useChatStreaming({
           toolRegistryRef.current = { key: cacheKey, registry };
         }
       }
-      const systemPrompt = getAgentSystemPrompt(registry?.getAll().map((t) => t.name));
+
+      const noteContext = await buildRAGContext(userText);
+      const systemPrompt = getAgentSystemPrompt(
+        registry?.getAll().map((t) => t.name),
+        noteContext
+      );
 
       const llmMessages = [
         { role: "system", content: systemPrompt },

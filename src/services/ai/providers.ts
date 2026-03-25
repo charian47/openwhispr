@@ -21,6 +21,11 @@ export function getAIModel(
       return createGoogleGenerativeAI({ apiKey })(model);
     case "custom":
       return createOpenAI({ apiKey, baseURL })(model);
+    case "local":
+      return createOpenAI({
+        apiKey: "no-key",
+        baseURL,
+      }).chat(model);
     default:
       throw new Error(`Unsupported AI SDK provider: ${provider}`);
   }

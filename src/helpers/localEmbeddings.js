@@ -6,17 +6,43 @@ const debugLogger = require("./debugLogger");
 const MAX_TOKENS = 256;
 const EMBEDDING_DIM = 384;
 
+const MODEL_SUBDIR = "all-MiniLM-L6-v2";
+
 class LocalEmbeddings {
   constructor() {
     this.session = null;
     this.tokenizer = null;
-    this.modelDir = path.join(
+    this.modelDir = this._resolveModelDir();
+  }
+
+  _resolveModelDir() {
+    const cacheDir = path.join(
       os.homedir(),
       ".cache",
       "openwhispr",
       "embedding-models",
-      "all-MiniLM-L6-v2"
+      MODEL_SUBDIR
     );
+
+    if (process.resourcesPath) {
+      const bundled = path.join(process.resourcesPath, "bin", MODEL_SUBDIR);
+      if (
+        fs.existsSync(path.join(bundled, "model.onnx")) &&
+        fs.existsSync(path.join(bundled, "tokenizer.json"))
+      ) {
+        return bundled;
+      }
+    }
+
+    const projectBin = path.resolve(__dirname, "..", "..", "resources", "bin", MODEL_SUBDIR);
+    if (
+      fs.existsSync(path.join(projectBin, "model.onnx")) &&
+      fs.existsSync(path.join(projectBin, "tokenizer.json"))
+    ) {
+      return projectBin;
+    }
+
+    return cacheDir;
   }
 
   isAvailable() {

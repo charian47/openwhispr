@@ -107,6 +107,7 @@
         "windows-mic-listener*",
         "windows-text-monitor*",
         "windows-fast-paste*",
+        "all-MiniLM-L6-v2/**/*",
         "*.dylib",
         "*.dll",
         "*.so*"
