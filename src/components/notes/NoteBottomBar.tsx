@@ -74,7 +74,6 @@ export default function NoteBottomBar({
           className={cn(
             "flex items-center justify-center w-11 h-11 rounded-full",
             "bg-primary/8 dark:bg-primary/12",
-            "backdrop-blur-xl",
             "border border-primary/15 dark:border-primary/20",
             "shadow-sm hover:shadow-md",
             "text-primary/60 hover:text-primary",

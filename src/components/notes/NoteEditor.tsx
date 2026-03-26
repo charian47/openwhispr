@@ -95,7 +95,7 @@ export default function NoteEditor({
     noteId: note.id,
     noteTitle: note.title,
     noteContent: note.content,
-    noteTranscript: note.transcript,
+    noteTranscript: note.transcript ?? undefined,
   });
   const titleRef = useRef<HTMLDivElement>(null);
   const prevNoteIdRef = useRef<number>(note.id);

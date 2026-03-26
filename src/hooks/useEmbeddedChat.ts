@@ -15,8 +15,6 @@ interface UseEmbeddedChatReturn {
   agentState: AgentState;
   sendMessage: (text: string) => Promise<void>;
   cancelStream: () => void;
-  clearChat: () => void;
-  hasMessages: boolean;
 }
 
 export function useEmbeddedChat({
@@ -85,18 +83,10 @@ export function useEmbeddedChat({
     [conversationId, noteTitle, persistence, streaming]
   );
 
-  const clearChat = useCallback(() => {
-    persistence.handleNewChat();
-    setConversationId(null);
-    streaming.cancelStream();
-  }, [persistence, streaming]);
-
   return {
     messages: persistence.messages,
     agentState: streaming.agentState,
     sendMessage,
     cancelStream: streaming.cancelStream,
-    clearChat,
-    hasMessages: persistence.messages.length > 0,
   };
 }
