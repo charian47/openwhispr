@@ -41,6 +41,8 @@ async function buildRAGContext(userText: string): Promise<string> {
 interface UseChatStreamingOptions {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  /** Optional note context to prepend to the system prompt (used by embedded note chat). */
+  noteContext?: string;
   onStreamComplete?: (assistantId: string, content: string, toolCalls?: ToolCallInfo[]) => void;
 }
 
@@ -55,6 +57,7 @@ export interface ChatStreaming {
 export function useChatStreaming({
   messages,
   setMessages,
+  noteContext: externalNoteContext,
   onStreamComplete,
 }: UseChatStreamingOptions): ChatStreaming {
   const { t } = useTranslation();
@@ -63,6 +66,8 @@ export function useChatStreaming({
   const [activeToolName, setActiveToolName] = useState("");
   const mountedRef = useRef(true);
   const messagesRef = useRef<Message[]>([]);
+  const noteContextRef = useRef(externalNoteContext);
+  noteContextRef.current = externalNoteContext;
   const toolRegistryRef = useRef<{ key: string; registry: ToolRegistry } | null>(null);
 
   useEffect(() => {
@@ -112,10 +117,11 @@ export function useChatStreaming({
         }
       }
 
-      const noteContext = await buildRAGContext(userText);
+      const ragContext = await buildRAGContext(userText);
+      const combinedContext = [noteContextRef.current, ragContext].filter(Boolean).join("\n\n");
       const systemPrompt = getAgentSystemPrompt(
         registry?.getAll().map((t) => t.name),
-        noteContext
+        combinedContext || undefined
       );
 
       const llmMessages = [

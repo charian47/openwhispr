@@ -16,8 +16,11 @@ import type { NoteItem } from "../../types/electron";
 import type { ActionProcessingState } from "../../hooks/useActionProcessing";
 import ActionProcessingOverlay from "./ActionProcessingOverlay";
 import NoteBottomBar from "./NoteBottomBar";
+import EmbeddedChat, { type EmbeddedChatHandle } from "./EmbeddedChat";
 import { normalizeDbDate } from "../../utils/dateFormatting";
 import { parseTranscriptSegments } from "../../utils/parseTranscriptSegments";
+
+type EmbeddedChatMode = "hidden" | "floating" | "sidebar";
 
 function formatNoteDate(dateStr: string): string {
   const date = normalizeDbDate(dateStr);
@@ -60,7 +63,6 @@ interface NoteEditorProps {
   meetingSystemPartial?: string;
   onStopMeetingRecording?: () => void;
   liveTranscript?: string;
-  onAskSubmit?: (text: string) => void;
 }
 
 export default function NoteEditor({
@@ -84,10 +86,12 @@ export default function NoteEditor({
   meetingSystemPartial,
   onStopMeetingRecording,
   liveTranscript,
-  onAskSubmit,
 }: NoteEditorProps) {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<MeetingViewMode>("raw");
+  const [chatMode, setChatMode] = useState<EmbeddedChatMode>("hidden");
+  const embeddedChatRef = useRef<EmbeddedChatHandle>(null);
+  const pendingAskRef = useRef<string | null>(null);
   const editorRef = useRef<Editor | null>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const prevNoteIdRef = useRef<number>(note.id);
@@ -211,6 +215,25 @@ export default function NoteEditor({
     },
     [enhancement]
   );
+
+  // Handle ask submit from NoteBottomBar: open chat + send message
+  const handleAskSubmit = useCallback((text: string) => {
+    if (chatMode === "hidden") {
+      pendingAskRef.current = text;
+      setChatMode("floating");
+    } else {
+      embeddedChatRef.current?.sendMessage(text);
+    }
+  }, [chatMode]);
+
+  // Send pending message once EmbeddedChat mounts
+  useEffect(() => {
+    if (chatMode !== "hidden" && pendingAskRef.current && embeddedChatRef.current) {
+      const text = pendingAskRef.current;
+      pendingAskRef.current = null;
+      embeddedChatRef.current.sendMessage(text);
+    }
+  }, [chatMode]);
 
   const wordCount = useMemo(() => {
     const trimmed = note.content.trim();
@@ -338,46 +361,70 @@ export default function NoteEditor({
         </div>
       </div>
 
-      <div className="flex-1 relative min-h-0">
-        <div className="h-full overflow-y-auto">
-          {viewMode === "transcript" && (hasChatSegments || isMeetingRecording) ? (
-            <MeetingTranscriptChat
-              segments={displaySegments}
-              micPartial={isMeetingRecording ? meetingMicPartial : undefined}
-              systemPartial={isMeetingRecording ? meetingSystemPartial : undefined}
-            />
-          ) : viewMode === "transcript" && hasMeetingTranscript ? (
-            <RichTextEditor value={effectiveTranscript} disabled />
-          ) : viewMode === "enhanced" && enhancement ? (
-            <RichTextEditor value={enhancement.content} onChange={handleEnhancedChange} />
-          ) : (
-            <RichTextEditor
-              value={note.content}
-              onChange={handleContentChange}
-              editorRef={editorRef}
-              placeholder={t("notes.editor.startWriting")}
-              disabled={actionProcessingState === "processing"}
+      <div className="flex-1 relative min-h-0 flex">
+        <div className="flex-1 min-w-0 relative">
+          <div className="h-full overflow-y-auto">
+            {viewMode === "transcript" && (hasChatSegments || isMeetingRecording) ? (
+              <MeetingTranscriptChat
+                segments={displaySegments}
+                micPartial={isMeetingRecording ? meetingMicPartial : undefined}
+                systemPartial={isMeetingRecording ? meetingSystemPartial : undefined}
+              />
+            ) : viewMode === "transcript" && hasMeetingTranscript ? (
+              <RichTextEditor value={effectiveTranscript} disabled />
+            ) : viewMode === "enhanced" && enhancement ? (
+              <RichTextEditor value={enhancement.content} onChange={handleEnhancedChange} />
+            ) : (
+              <RichTextEditor
+                value={note.content}
+                onChange={handleContentChange}
+                editorRef={editorRef}
+                placeholder={t("notes.editor.startWriting")}
+                disabled={actionProcessingState === "processing"}
+              />
+            )}
+          </div>
+          <ActionProcessingOverlay
+            state={actionProcessingState ?? "idle"}
+            actionName={actionName ?? null}
+          />
+          <div
+            className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
+            style={{ background: "linear-gradient(to bottom, transparent, var(--color-background))" }}
+          />
+          <NoteBottomBar
+            isRecording={isRecording || !!isMeetingRecording}
+            isProcessing={isProcessing}
+            onStartRecording={onStartRecording}
+            onStopRecording={
+              isMeetingRecording ? (onStopMeetingRecording ?? onStopRecording) : onStopRecording
+            }
+            onAskSubmit={handleAskSubmit}
+            actionPicker={isMeetingRecording ? undefined : actionPicker}
+          />
+          {chatMode === "floating" && (
+            <EmbeddedChat
+              ref={embeddedChatRef}
+              mode="floating"
+              onModeChange={setChatMode}
+              noteId={note.id}
+              noteTitle={note.title}
+              noteContent={note.content}
+              noteTranscript={note.transcript}
             />
           )}
         </div>
-        <ActionProcessingOverlay
-          state={actionProcessingState ?? "idle"}
-          actionName={actionName ?? null}
-        />
-        <div
-          className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
-          style={{ background: "linear-gradient(to bottom, transparent, var(--color-background))" }}
-        />
-        <NoteBottomBar
-          isRecording={isRecording || !!isMeetingRecording}
-          isProcessing={isProcessing}
-          onStartRecording={onStartRecording}
-          onStopRecording={
-            isMeetingRecording ? (onStopMeetingRecording ?? onStopRecording) : onStopRecording
-          }
-          onAskSubmit={onAskSubmit ?? (() => {})}
-          actionPicker={isMeetingRecording ? undefined : actionPicker}
-        />
+        {chatMode === "sidebar" && (
+          <EmbeddedChat
+            ref={embeddedChatRef}
+            mode="sidebar"
+            onModeChange={setChatMode}
+            noteId={note.id}
+            noteTitle={note.title}
+            noteContent={note.content}
+            noteTranscript={note.transcript}
+          />
+        )}
       </div>
     </div>
   );

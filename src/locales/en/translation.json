@@ -2051,6 +2051,11 @@
   },
   "embeddedChat": {
     "askPlaceholder": "Ask anything...",
-    "send": "Send"
+    "send": "Send",
+    "title": "Chat",
+    "emptyState": "Ask a question about this note",
+    "dock": "Dock to sidebar",
+    "undock": "Undock from sidebar",
+    "close": "Close chat"
   }
 }

@@ -2048,5 +2048,14 @@
     "title": "Permissões necessárias",
     "description": "O OpenWhispr precisa de algumas permissões para funcionar neste computador.",
     "continue": "Continuar"
+  },
+  "embeddedChat": {
+    "askPlaceholder": "Pergunte algo...",
+    "send": "Enviar",
+    "title": "Chat",
+    "emptyState": "Faça uma pergunta sobre esta nota",
+    "dock": "Fixar na barra lateral",
+    "undock": "Desafixar da barra lateral",
+    "close": "Fechar chat"
   }
 }

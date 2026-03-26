@@ -2048,5 +2048,14 @@
     "title": "Berechtigungen erforderlich",
     "description": "OpenWhispr benötigt einige Berechtigungen, um auf diesem Computer zu funktionieren.",
     "continue": "Weiter"
+  },
+  "embeddedChat": {
+    "askPlaceholder": "Frag etwas...",
+    "send": "Senden",
+    "title": "Chat",
+    "emptyState": "Stelle eine Frage zu dieser Notiz",
+    "dock": "In Seitenleiste andocken",
+    "undock": "Von Seitenleiste abdocken",
+    "close": "Chat schließen"
   }
 }

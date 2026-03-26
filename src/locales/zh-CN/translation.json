@@ -2043,5 +2043,14 @@
     "title": "需要权限",
     "description": "OpenWhispr 需要一些权限才能在此电脑上正常运行。",
     "continue": "继续"
+  },
+  "embeddedChat": {
+    "askPlaceholder": "随便问点什么...",
+    "send": "发送",
+    "title": "聊天",
+    "emptyState": "就这条笔记提个问题",
+    "dock": "固定到侧边栏",
+    "undock": "从侧边栏取消固定",
+    "close": "关闭聊天"
   }
 }

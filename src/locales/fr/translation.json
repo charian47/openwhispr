@@ -2048,5 +2048,14 @@
     "title": "Autorisations requises",
     "description": "OpenWhispr a besoin de quelques autorisations pour fonctionner sur cet ordinateur.",
     "continue": "Continuer"
+  },
+  "embeddedChat": {
+    "askPlaceholder": "Posez une question...",
+    "send": "Envoyer",
+    "title": "Chat",
+    "emptyState": "Posez une question sur cette note",
+    "dock": "Ancrer dans la barre latérale",
+    "undock": "Détacher de la barre latérale",
+    "close": "Fermer le chat"
   }
 }

@@ -2048,5 +2048,14 @@
     "title": "権限が必要です",
     "description": "OpenWhispr がこのコンピュータで動作するために、いくつかの権限が必要です。",
     "continue": "続行"
+  },
+  "embeddedChat": {
+    "askPlaceholder": "何でも聞いてください...",
+    "send": "送信",
+    "title": "チャット",
+    "emptyState": "このノートについて質問してください",
+    "dock": "サイドバーに固定",
+    "undock": "サイドバーから外す",
+    "close": "チャットを閉じる"
   }
 }
