@@ -220,17 +220,15 @@ export default function NoteEditor({
     [enhancement]
   );
 
-  const handleAskSubmit = useCallback((text: string) => {
-    if (chatMode === "hidden") {
-      setChatMode("floating");
-    }
-    embeddedChat.sendMessage(text);
-  }, [chatMode, embeddedChat]);
-
-  const wordCount = useMemo(() => {
-    const trimmed = note.content.trim();
-    return trimmed ? trimmed.split(/\s+/).length : 0;
-  }, [note.content]);
+  const handleAskSubmit = useCallback(
+    (text: string) => {
+      if (chatMode === "hidden") {
+        setChatMode("floating");
+      }
+      embeddedChat.sendMessage(text);
+    },
+    [chatMode, embeddedChat]
+  );
 
   const noteDate = formatNoteDate(note.created_at);
 
@@ -252,15 +250,13 @@ export default function NoteEditor({
         <div className="flex items-center mt-1">
           <div className="flex items-center text-xs text-foreground/50 dark:text-foreground/20 min-w-0">
             {noteDate && <span>{noteDate}</span>}
-            {noteDate && (isSaving || wordCount > 0) && <span className="mx-1.5">&middot;</span>}
-            <span className="tabular-nums flex items-center gap-1 shrink-0">
-              {isSaving && <Loader2 size={8} className="animate-spin" />}
-              {isSaving
-                ? t("notes.editor.saving")
-                : wordCount > 0
-                  ? t("notes.editor.wordsCount", { count: wordCount })
-                  : ""}
-            </span>
+            {noteDate && isSaving && <span className="mx-1.5">&middot;</span>}
+            {isSaving && (
+              <span className="tabular-nums flex items-center gap-1 shrink-0">
+                <Loader2 size={8} className="animate-spin" />
+                {t("notes.editor.saving")}
+              </span>
+            )}
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-1">
@@ -381,8 +377,10 @@ export default function NoteEditor({
             actionName={actionName ?? null}
           />
           <div
-            className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
-            style={{ background: "linear-gradient(to bottom, transparent, var(--color-background))" }}
+            className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none"
+            style={{
+              background: "linear-gradient(to bottom, transparent, var(--color-background))",
+            }}
           />
           <NoteBottomBar
             isRecording={isRecording || !!isMeetingRecording}

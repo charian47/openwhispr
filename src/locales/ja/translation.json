@@ -1477,7 +1477,6 @@
       "raw": "元のテキスト",
       "enhanced": "強化済み",
       "saving": "保存中",
-      "wordsCount": "{{count}} 語",
       "startWriting": "書き始める..."
     },
     "context": {

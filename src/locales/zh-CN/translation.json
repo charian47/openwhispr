@@ -1557,7 +1557,6 @@
       "raw": "原始内容",
       "enhanced": "增强内容",
       "saving": "保存中",
-      "wordsCount": "{{count}} 个词",
       "startWriting": "开始书写...",
       "staleIndicator": "内容在增强后已更改",
       "live": "实时",

@@ -1623,7 +1623,6 @@
       "raw": "Brut",
       "enhanced": "Amélioré",
       "saving": "Enregistrement",
-      "wordsCount": "{{count}} mots",
       "startWriting": "Commencez à écrire...",
       "staleIndicator": "Le contenu a changé depuis l'amélioration",
       "live": "En direct",

@@ -1562,7 +1562,6 @@
       "raw": "Sin procesar",
       "enhanced": "Mejorado",
       "saving": "Guardando",
-      "wordsCount": "{{count}} palabras",
       "startWriting": "Comienza a escribir...",
       "staleIndicator": "El contenido ha cambiado desde la mejora",
       "live": "En vivo",
