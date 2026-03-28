@@ -11,7 +11,6 @@ import {
   isCloudReasoningMode,
 } from "../stores/settingsStore";
 
-const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
 const REALTIME_MODELS = new Set(["gpt-4o-mini-transcribe", "gpt-4o-transcribe"]);
 
@@ -1283,11 +1282,6 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
     try {
       const durationSeconds = metadata.durationSeconds ?? null;
-      const shouldSkipOptimizationForDuration =
-        typeof durationSeconds === "number" &&
-        durationSeconds > 0 &&
-        durationSeconds < SHORT_CLIP_DURATION_SECONDS;
-
       const model = this.getTranscriptionModel();
       const provider = apiSettings.cloudTranscriptionProvider || "openai";
 
@@ -1304,26 +1298,8 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         "transcription"
       );
 
-      // gpt-4o-transcribe models don't support WAV format - they need webm, mp3, mp4, etc.
-      // Only use WAV optimization for whisper-1 and groq models
-      const is4oModel = model.includes("gpt-4o");
-      const shouldOptimize =
-        !is4oModel && !shouldSkipOptimizationForDuration && audioBlob.size > 1024 * 1024;
-
-      logger.debug(
-        "Audio optimization decision",
-        {
-          is4oModel,
-          shouldOptimize,
-          shouldSkipOptimizationForDuration,
-        },
-        "transcription"
-      );
-
-      const [apiKey, optimizedAudio] = await Promise.all([
-        this.getAPIKey(),
-        shouldOptimize ? this.optimizeAudio(audioBlob) : Promise.resolve(audioBlob),
-      ]);
+      const apiKey = await this.getAPIKey();
+      const optimizedAudio = audioBlob;
 
       const formData = new FormData();
       // Determine the correct file extension based on the blob type
