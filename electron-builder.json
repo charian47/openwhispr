@@ -136,10 +136,10 @@
     "target": ["nsis", "portable"],
     "icon": "src/assets/icon.ico",
     "azureSignOptions": {
-      "endpoint": "${env.AZURE_SIGNING_ENDPOINT}",
-      "certificateProfileName": "${env.AZURE_CERT_PROFILE_NAME}",
-      "codeSigningAccountName": "${env.AZURE_CODE_SIGNING_ACCOUNT_NAME}",
-      "publisherName": "${env.AZURE_PUBLISHER_NAME}"
+      "endpoint": "https://eus.codesigning.azure.net/",
+      "certificateProfileName": "openwhispr-release",
+      "codeSigningAccountName": "OpenWhispr",
+      "publisherName": "CN=Gizmo Labs Inc., O=Gizmo Labs Inc., L=Wilmington, S=Delaware, C=US"
     },
     "extraResources": [
       {
