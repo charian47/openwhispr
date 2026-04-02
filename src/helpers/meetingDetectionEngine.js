@@ -308,6 +308,10 @@ class MeetingDetectionEngine {
   setMeetingModeActive(active) {
     this._meetingModeActive = active;
     debugLogger.info("Meeting mode active state changed", { active }, "meeting");
+    if (!active) {
+      // Own mic usage during meeting mode sets hasPrompted=true; reset so future detections work
+      this.audioActivityDetector.resetPrompt();
+    }
   }
 
   setUserRecording(active) {
