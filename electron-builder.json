@@ -138,7 +138,8 @@
     "azureSignOptions": {
       "endpoint": "${env.AZURE_SIGNING_ENDPOINT}",
       "certificateProfileName": "${env.AZURE_CERT_PROFILE_NAME}",
-      "codeSigningAccountName": "${env.AZURE_CODE_SIGNING_ACCOUNT_NAME}"
+      "codeSigningAccountName": "${env.AZURE_CODE_SIGNING_ACCOUNT_NAME}",
+      "publisherName": "${env.AZURE_PUBLISHER_NAME}"
     },
     "extraResources": [
       {
