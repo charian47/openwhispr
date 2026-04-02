@@ -654,21 +654,24 @@ function GpuDeviceSelector({ purpose }: { purpose: "transcription" | "intelligen
       />
       <SettingsPanel>
         <SettingsPanelRow>
-          <select
-            value={selectedIndex}
-            onChange={async (e) => {
-              const idx = e.target.value;
-              setSelectedIndex(idx);
-              await window.electronAPI?.setGpuDeviceIndex?.(purpose, Number(idx));
-            }}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          >
-            {gpus.map((gpu) => (
-              <option key={gpu.index} value={String(gpu.index)}>
-                GPU {gpu.index}: {gpu.name} ({Math.round(gpu.vramMb / 1024)}GB)
-              </option>
-            ))}
-          </select>
+          <div className="relative w-full">
+            <select
+              value={selectedIndex}
+              onChange={async (e) => {
+                const idx = e.target.value;
+                setSelectedIndex(idx);
+                await window.electronAPI?.setGpuDeviceIndex?.(purpose, Number(idx));
+              }}
+              className="w-full appearance-none rounded-md border border-border bg-background px-3 pr-10 py-2 text-sm"
+            >
+              {gpus.map((gpu) => (
+                <option key={gpu.index} value={String(gpu.index)}>
+                  GPU {gpu.index}: {gpu.name} ({Math.round(gpu.vramMb / 1024)}GB)
+                </option>
+              ))}
+            </select>
+            <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
         </SettingsPanelRow>
       </SettingsPanel>
     </div>

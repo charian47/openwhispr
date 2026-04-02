@@ -1393,8 +1393,8 @@
     },
     "intelligence": {
       "gpuDevice": {
-        "title": "Устройство GPU",
-        "description": "Выберите GPU для локальной транскрипции и обработки ИИ"
+        "title": "Intelligence GPU",
+        "description": "GPU для локальной обработки ИИ"
       }
     }
   },

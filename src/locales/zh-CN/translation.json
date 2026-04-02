@@ -1393,8 +1393,8 @@
     },
     "intelligence": {
       "gpuDevice": {
-        "title": "GPU 设备",
-        "description": "选择用于本地转录和 AI 处理的 GPU"
+        "title": "Intelligence GPU",
+        "description": "用于本地 AI 处理的 GPU"
       }
     }
   },

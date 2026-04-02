@@ -1393,8 +1393,8 @@
     },
     "intelligence": {
       "gpuDevice": {
-        "title": "GPUデバイス",
-        "description": "ローカル文字起こしとAI処理に使用するGPUを選択"
+        "title": "Intelligence GPU",
+        "description": "ローカルAI処理に使用するGPU"
       }
     }
   },

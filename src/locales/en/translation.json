@@ -1441,8 +1441,8 @@
     },
     "intelligence": {
       "gpuDevice": {
-        "title": "GPU Device",
-        "description": "Select which GPU to use for local transcription and AI processing"
+        "title": "Intelligence GPU",
+        "description": "GPU used for local AI processing"
       }
     }
   },

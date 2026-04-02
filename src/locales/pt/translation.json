@@ -1365,8 +1365,8 @@
     },
     "intelligence": {
       "gpuDevice": {
-        "title": "Dispositivo GPU",
-        "description": "Selecionar qual GPU usar para transcrição local e processamento IA"
+        "title": "Intelligence GPU",
+        "description": "GPU usado para processamento IA local"
       }
     }
   },

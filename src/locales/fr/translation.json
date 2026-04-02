@@ -1393,8 +1393,8 @@
     },
     "intelligence": {
       "gpuDevice": {
-        "title": "Périphérique GPU",
-        "description": "Sélectionner le GPU pour la transcription locale et le traitement IA"
+        "title": "Intelligence GPU",
+        "description": "GPU utilisé pour le traitement IA local"
       }
     }
   },

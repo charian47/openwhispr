@@ -1393,8 +1393,8 @@
     },
     "intelligence": {
       "gpuDevice": {
-        "title": "GPU-Gerät",
-        "description": "GPU für lokale Transkription und KI-Verarbeitung auswählen"
+        "title": "Intelligence GPU",
+        "description": "GPU für lokale KI-Verarbeitung"
       }
     }
   },
