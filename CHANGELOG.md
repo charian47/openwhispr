@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **Google Calendar Scopes**: Narrow OAuth scope from `calendar.readonly` to `calendar.events.readonly` + `calendar.calendarlist.readonly` for minimal privilege
 - **picomatch**: Bump to 4.0.4
 - **brace-expansion**: Bump to 1.1.13 (security backport)
 - **yaml**: Bump to 2.8.3
