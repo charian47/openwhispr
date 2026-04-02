@@ -4421,15 +4421,6 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("meeting-detection-respond", async (_event, detectionId, action) => {
-      try {
-        this.meetingDetectionEngine.handleUserResponse(detectionId, action);
-        return { success: true };
-      } catch (error) {
-        return { success: false, error: error.message };
-      }
-    });
-
     ipcMain.handle("meeting-notification-respond", async (_event, detectionId, action) => {
       try {
         await this.meetingDetectionEngine.handleNotificationResponse(detectionId, action);

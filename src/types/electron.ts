@@ -1257,10 +1257,6 @@ declare global {
       meetingDetectionSetPreferences?: (
         prefs: Record<string, boolean>
       ) => Promise<{ success: boolean }>;
-      meetingDetectionRespond?: (
-        detectionId: string,
-        action: string
-      ) => Promise<{ success: boolean }>;
       onMeetingDetected?: (callback: (data: any) => void) => () => void;
       onMeetingDetectedStartRecording?: (callback: (data: any) => void) => () => void;
       onMeetingNotificationData?: (callback: (data: any) => void) => () => void;

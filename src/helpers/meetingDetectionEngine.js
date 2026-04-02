@@ -158,38 +158,38 @@ class MeetingDetectionEngine {
     });
   }
 
-  handleUserResponse(detectionId, action) {
-    debugLogger.info("User response to detection", { detectionId, action }, "meeting");
-    if (action === "dismiss") {
-      const detection = this.activeDetections.get(detectionId);
-      if (detection) {
-        this._dismiss();
-        detection.dismissed = true;
-      }
-    }
-  }
-
   async handleNotificationResponse(detectionId, action) {
     debugLogger.info("Notification response", { detectionId, action }, "meeting");
     try {
       const detection = this.activeDetections.get(detectionId);
 
       if (action === "start" && detection) {
-        this._meetingModeActive = true;
         const eventSummary = detection.event?.summary || "New note";
 
         const noteResult = this.databaseManager.saveNote(eventSummary, "", "meeting");
         const meetingsFolder = this.databaseManager.getMeetingsFolder();
 
-        if (noteResult?.note?.id && meetingsFolder?.id) {
-          await this.windowManager.createControlPanelWindow();
-          this.windowManager.snapControlPanelToMeetingMode();
-          this.windowManager.sendToControlPanel("navigate-to-meeting-note", {
-            noteId: noteResult.note.id,
-            folderId: meetingsFolder.id,
-            event: detection.event,
-          });
+        if (!noteResult?.note?.id || !meetingsFolder?.id) {
+          debugLogger.error(
+            "Meeting note creation failed",
+            { noteId: noteResult?.note?.id, folderId: meetingsFolder?.id },
+            "meeting"
+          );
+          this.activeDetections.delete(detectionId);
+          return;
         }
+
+        this._meetingModeActive = true;
+
+        this.broadcastToWindows("note-added", noteResult.note);
+
+        await this.windowManager.createControlPanelWindow();
+        this.windowManager.snapControlPanelToMeetingMode();
+        this.windowManager.sendToControlPanel("navigate-to-meeting-note", {
+          noteId: noteResult.note.id,
+          folderId: meetingsFolder.id,
+          event: detection.event,
+        });
 
         this.audioActivityDetector.resetPrompt();
 
@@ -197,8 +197,8 @@ class MeetingDetectionEngine {
       } else if (action === "dismiss") {
         if (detection) {
           this._dismiss();
-          detection.dismissed = true;
         }
+        this.activeDetections.delete(detectionId);
       }
     } catch (error) {
       this._meetingModeActive = false;

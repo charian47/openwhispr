@@ -989,6 +989,8 @@ class WindowManager {
 
     WindowPositionUtil.setupAlwaysOnTop(this.notificationWindow);
 
+    this._pendingNotificationData = promptData;
+
     if (process.env.NODE_ENV === "development") {
       await DevServerManager.waitForDevServer();
       await this.notificationWindow.loadURL(
@@ -1000,8 +1002,6 @@ class WindowManager {
         query: { ...fileInfo.query, "meeting-notification": "true" },
       });
     }
-
-    this._pendingNotificationData = promptData;
 
     this._notificationReadyFallback = setTimeout(() => {
       this._notificationReadyFallback = null;

@@ -85,7 +85,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deleteNote: (id) => ipcRenderer.invoke("db-delete-note", id),
   exportNote: (noteId, format) => ipcRenderer.invoke("export-note", noteId, format),
   searchNotes: (query, limit) => ipcRenderer.invoke("db-search-notes", query, limit),
-  semanticSearchNotes: (query, limit) => ipcRenderer.invoke("db-semantic-search-notes", query, limit),
+  semanticSearchNotes: (query, limit) =>
+    ipcRenderer.invoke("db-semantic-search-notes", query, limit),
   semanticReindexAll: () => ipcRenderer.invoke("db-semantic-reindex-all"),
   onSemanticReindexProgress: (callback) => {
     const listener = (_event, data) => callback?.(data);
@@ -660,8 +661,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   meetingDetectionGetPreferences: () => ipcRenderer.invoke("meeting-detection-get-preferences"),
   meetingDetectionSetPreferences: (prefs) =>
     ipcRenderer.invoke("meeting-detection-set-preferences", prefs),
-  meetingDetectionRespond: (detectionId, action) =>
-    ipcRenderer.invoke("meeting-detection-respond", detectionId, action),
   onMeetingDetected: registerListener(
     "meeting-detected",
     (callback) => (_event, data) => callback(data)
