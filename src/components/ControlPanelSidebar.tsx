@@ -95,7 +95,7 @@ export default function ControlPanelSidebar({
   return (
     <div className="w-48 h-full shrink-0 border-r border-border/15 dark:border-white/6 flex flex-col bg-surface-1/60 dark:bg-surface-1">
       <div
-        className={cn("w-full shrink-0", platform === "darwin" ? "h-8" : "h-10")}
+        className={cn("w-full shrink-0", platform === "darwin" ? "h-5" : "h-10")}
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       />
 
