@@ -45,6 +45,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
   - **Google**: Gemini 3.1 Pro, Gemini 3 Flash, Gemini 2.5 Flash Lite
   - **Groq**: Ultra-fast inference with Llama and Mixtral models
   - **Local**: Qwen, LLaMA, Mistral, Gemma models via llama.cpp
+- 🛠️ **Agent Tool Calling**: Agentic tools for searching, creating, and updating notes — with RAG context injection for local models
 - 🤖 **AI Actions**: Apply AI-powered actions to notes with customizable processing templates
 
 ### Meeting Transcription
@@ -59,7 +60,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - 📝 **Notes System**: Create, edit, and organize notes with folders, audio upload, and real-time dictation
 - 🔎 **Full-Text Search**: FTS5-powered search across all note content with Cmd+K command palette
+- 🧠 **Local Semantic Search**: Always-on Qdrant vector DB with MiniLM embeddings for offline meaning-based search across notes
 - ☁️ **Cloud Sync**: Local-first storage with cloud backup and semantic search
+- 💬 **Embedded Chat**: Chat panel in the note editor with floating and sidebar modes
 - 📁 **Folder Organization**: Organize notes into custom folders with drag-and-drop
 
 ### Cloud & Account
@@ -849,7 +852,7 @@ A: No. As of v1.6.0, OpenWhispr uses NSEvent monitors instead of CGEvent taps, e
 
 ## Project Status
 
-OpenWhispr is actively maintained and ready for production use. Current version: 1.6.6
+OpenWhispr is actively maintained and ready for production use. Current version: 1.6.7
 
 - ✅ Core dictation with local and cloud processing
 - ✅ Cross-platform support (macOS, Windows, Linux)
