@@ -7,15 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- **Save Notes as Files**: Export notes to the local filesystem as Markdown files, mirroring folder hierarchy
-- **Responsive Settings Dialog**: Settings dialog adapts to narrow windows — sidebar collapses to icon rail, rows stack vertically, plan grid reflows
-
 ## [1.6.7] - 2026-04-02
 
 ### Added
 
+- **Save Notes as Files**: Export notes to the local filesystem as Markdown files, mirroring folder hierarchy
+- **Responsive Settings Dialog**: Settings dialog adapts to narrow windows — sidebar collapses to icon rail, rows stack vertically, plan grid reflows
 - **Chat Sidebar**: Full sidebar chat tab with conversation history, cloud sync, and semantic search
 - **Chat UX Polish**: Empty state with illustration, shimmer thinking/streaming indicator, stop button, action buttons and search dialog
 - **Local Semantic Search**: Always-on Qdrant vector DB sidecar for offline semantic search across notes — hybrid FTS5 + vector with Reciprocal Rank Fusion
