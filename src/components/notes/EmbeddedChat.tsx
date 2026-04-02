@@ -5,7 +5,7 @@ import { cn } from "../lib/utils";
 import { ChatMessages } from "../chat/ChatMessages";
 import { ChatInput } from "../chat/ChatInput";
 import type { Message, AgentState } from "../chat/types";
-import { setActiveNoteId } from "../../stores/noteStore";
+import { setActiveNoteId, setActiveFolderId } from "../../stores/noteStore";
 
 export type EmbeddedChatMode = "hidden" | "floating" | "sidebar";
 
@@ -39,7 +39,9 @@ export default function EmbeddedChat({
 }: EmbeddedChatProps) {
   const { t } = useTranslation();
 
-  const handleOpenNote = useCallback((noteId: number) => {
+  const handleOpenNote = useCallback(async (noteId: number) => {
+    const note = await window.electronAPI.getNote(noteId);
+    if (note?.folder_id) setActiveFolderId(note.folder_id);
     setActiveNoteId(noteId);
   }, []);
 

@@ -1316,7 +1316,9 @@ declare global {
       onNavigateToMeetingNote?: (
         callback: (data: { noteId: number; folderId: number; event: any }) => void
       ) => () => void;
-      onNavigateToNote?: (callback: (data: { noteId: number }) => void) => () => void;
+      onNavigateToNote?: (
+        callback: (data: { noteId: number; folderId: number | null }) => void
+      ) => () => void;
       onUpdateNotificationData?: (
         callback: (data: { version: string; releaseDate?: string }) => void
       ) => () => void;
