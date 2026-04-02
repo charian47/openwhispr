@@ -1948,8 +1948,8 @@
       "newConversation": "New",
       "copyToClipboard": "Copy to clipboard",
       "copied": "Copied!",
-      "emptyState": "Hold {{hotkey}} to start a conversation",
-      "orType": "or type a message",
+      "emptyState": "Ask me anything",
+      "emptyStateHint": "Notes, web, calendar — just ask",
       "errorPrefix": "Error"
     },
     "titleBar": {

@@ -1900,8 +1900,8 @@
       "newConversation": "新規",
       "copyToClipboard": "クリップボードにコピー",
       "copied": "コピーしました！",
-      "emptyState": "{{hotkey}} を長押しして会話を開始",
-      "orType": "またはメッセージを入力",
+      "emptyState": "なんでも聞いてください",
+      "emptyStateHint": "ノート、ウェブ、カレンダー — 何でもどうぞ",
       "errorPrefix": "エラー"
     },
     "titleBar": {

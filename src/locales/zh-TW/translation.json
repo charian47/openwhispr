@@ -1895,8 +1895,8 @@
       "newConversation": "新建",
       "copyToClipboard": "複製到剪貼簿",
       "copied": "已複製！",
-      "emptyState": "按住 {{hotkey}} 開始對話",
-      "orType": "或輸入訊息",
+      "emptyState": "隨便問我",
+      "emptyStateHint": "筆記、網頁、日曆 — 儘管問",
       "errorPrefix": "錯誤"
     },
     "titleBar": {

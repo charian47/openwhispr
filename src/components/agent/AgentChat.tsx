@@ -15,9 +15,12 @@ export function AgentChat({ messages }: AgentChatProps) {
     <ChatMessages
       messages={messages}
       emptyState={
-        <div className="flex items-center justify-center h-full select-none">
-          <p className="text-[12px] text-muted-foreground/30">
-            {t("agentMode.chat.orType")}
+        <div className="flex flex-col items-center justify-center h-full gap-1 select-none">
+          <p className="text-[13px] font-medium text-foreground/40">
+            {t("agentMode.chat.emptyState")}
+          </p>
+          <p className="text-[11px] text-muted-foreground/30">
+            {t("agentMode.chat.emptyStateHint")}
           </p>
         </div>
       }

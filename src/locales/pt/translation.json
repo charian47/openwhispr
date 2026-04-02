@@ -1900,8 +1900,8 @@
       "newConversation": "Novo",
       "copyToClipboard": "Copiar para área de transferência",
       "copied": "Copiado!",
-      "emptyState": "Segure {{hotkey}} para iniciar uma conversa",
-      "orType": "ou digite uma mensagem",
+      "emptyState": "Pergunte-me qualquer coisa",
+      "emptyStateHint": "Notas, web, calendário — é só perguntar",
       "errorPrefix": "Erro"
     },
     "titleBar": {

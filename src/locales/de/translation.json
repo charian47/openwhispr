@@ -1900,8 +1900,8 @@
       "newConversation": "Neu",
       "copyToClipboard": "In Zwischenablage kopieren",
       "copied": "Kopiert!",
-      "emptyState": "{{hotkey}} gedrückt halten, um eine Unterhaltung zu starten",
-      "orType": "oder eine Nachricht eingeben",
+      "emptyState": "Frag mich alles",
+      "emptyStateHint": "Notizen, Web, Kalender — einfach fragen",
       "errorPrefix": "Fehler"
     },
     "titleBar": {
