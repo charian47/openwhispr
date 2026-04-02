@@ -46,7 +46,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deleteTranscriptionAudio: (id) => ipcRenderer.invoke("delete-transcription-audio", id),
   getAudioStorageUsage: () => ipcRenderer.invoke("get-audio-storage-usage"),
   deleteAllAudio: () => ipcRenderer.invoke("delete-all-audio"),
-  retryTranscription: (id) => ipcRenderer.invoke("retry-transcription", id),
+  retryTranscription: (id, settings) => ipcRenderer.invoke("retry-transcription", id, settings),
   updateTranscriptionText: (id, text, rawText) =>
     ipcRenderer.invoke("update-transcription-text", id, text, rawText),
   getTranscriptionById: (id) => ipcRenderer.invoke("get-transcription-by-id", id),
@@ -203,6 +203,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   whisperServerStatus: () => ipcRenderer.invoke("whisper-server-status"),
 
   // CUDA GPU acceleration
+  listGpus: () => ipcRenderer.invoke("list-gpus"),
+  setGpuDeviceIndex: (purpose, index) => ipcRenderer.invoke("set-gpu-device-index", purpose, index),
+  getGpuDeviceIndex: (purpose) => ipcRenderer.invoke("get-gpu-device-index", purpose),
   detectGpu: () => ipcRenderer.invoke("detect-gpu"),
   getCudaWhisperStatus: () => ipcRenderer.invoke("get-cuda-whisper-status"),
   downloadCudaWhisperBinary: () => ipcRenderer.invoke("download-cuda-whisper-binary"),

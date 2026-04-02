@@ -55,6 +55,12 @@ export interface ActionItem {
   updated_at: string;
 }
 
+export interface GpuDevice {
+  index: number;
+  name: string;
+  vramMb: number;
+}
+
 export interface GpuInfo {
   hasNvidiaGpu: boolean;
   gpuName?: string;
@@ -333,7 +339,17 @@ declare global {
       getAudioStorageUsage: () => Promise<{ fileCount: number; totalBytes: number }>;
       deleteAllAudio: () => Promise<{ deleted: number }>;
       retryTranscription: (
-        id: number
+        id: number,
+        settings?: {
+          useLocalWhisper: boolean;
+          localTranscriptionProvider: string;
+          cloudTranscriptionMode: string;
+          cloudTranscriptionProvider: string;
+          cloudTranscriptionModel: string;
+          cloudTranscriptionBaseUrl?: string;
+          parakeetModel: string;
+          whisperModel: string;
+        }
       ) => Promise<{ success: boolean; transcription?: TranscriptionItem; error?: string }>;
       updateTranscriptionText: (
         id: number,
@@ -503,6 +519,9 @@ declare global {
       }>;
 
       // CUDA GPU acceleration
+      listGpus?: () => Promise<GpuDevice[]>;
+      setGpuDeviceIndex?: (purpose: "transcription" | "intelligence", index: number) => Promise<{ success: boolean }>;
+      getGpuDeviceIndex?: (purpose: "transcription" | "intelligence") => Promise<string>;
       detectGpu: () => Promise<GpuInfo>;
       getCudaWhisperStatus: () => Promise<CudaWhisperStatus>;
       downloadCudaWhisperBinary: () => Promise<{ success: boolean; error?: string }>;
