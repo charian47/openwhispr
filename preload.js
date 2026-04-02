@@ -85,6 +85,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deleteNote: (id) => ipcRenderer.invoke("db-delete-note", id),
   exportNote: (noteId, format) => ipcRenderer.invoke("export-note", noteId, format),
   searchNotes: (query, limit) => ipcRenderer.invoke("db-search-notes", query, limit),
+  semanticSearchNotes: (query, limit) =>
+    ipcRenderer.invoke("db-semantic-search-notes", query, limit),
+  semanticReindexAll: () => ipcRenderer.invoke("db-semantic-reindex-all"),
+  onSemanticReindexProgress: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("semantic-reindex-progress", listener);
+    return () => ipcRenderer.removeListener("semantic-reindex-progress", listener);
+  },
   updateNoteCloudId: (id, cloudId) => ipcRenderer.invoke("db-update-note-cloud-id", id, cloudId),
 
   // Folder functions
@@ -93,6 +101,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deleteFolder: (id) => ipcRenderer.invoke("db-delete-folder", id),
   renameFolder: (id, name) => ipcRenderer.invoke("db-rename-folder", id, name),
   getFolderNoteCounts: () => ipcRenderer.invoke("db-get-folder-note-counts"),
+
+  // Note files (markdown mirror) functions
+  noteFilesSetEnabled: (enabled, customPath) =>
+    ipcRenderer.invoke("note-files-set-enabled", enabled, customPath),
+  noteFilesSetPath: (path) => ipcRenderer.invoke("note-files-set-path", path),
+  noteFilesRebuild: () => ipcRenderer.invoke("note-files-rebuild"),
+  noteFilesGetDefaultPath: () => ipcRenderer.invoke("note-files-get-default-path"),
+  noteFilesPickFolder: () => ipcRenderer.invoke("note-files-pick-folder"),
+  showNoteFile: (noteId) => ipcRenderer.invoke("show-note-file", noteId),
+  showFolderInExplorer: (folderName) => ipcRenderer.invoke("show-folder-in-explorer", folderName),
 
   // Action functions
   getActions: () => ipcRenderer.invoke("db-get-actions"),
@@ -533,6 +551,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   onWindowsPushToTalkUnavailable: registerListener("windows-ptt-unavailable"),
 
+  // Settings shortcut (Cmd+, / Ctrl+,)
+  onShowSettings: registerListener("show-settings", (callback) => () => callback()),
+
   // Accessibility permission events (macOS)
   onAccessibilityMissing: (callback) => {
     const listener = () => callback?.();
@@ -584,13 +605,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
   acquireRecordingLock: (pipeline) => ipcRenderer.invoke("acquire-recording-lock", pipeline),
   releaseRecordingLock: (pipeline) => ipcRenderer.invoke("release-recording-lock", pipeline),
 
-  // Agent cloud streaming
-  cloudAgentStream: (messages, opts) => ipcRenderer.invoke("cloud-agent-stream", messages, opts),
+  // Agent cloud streaming (event-based for real-time chunks)
+  startAgentStream: (messages, opts) =>
+    ipcRenderer.send("cloud-agent-stream-start", messages, opts),
   onAgentStreamChunk: registerListener(
-    "agent-stream-chunk",
+    "cloud-agent-stream-chunk",
     (callback) => (_event, chunk) => callback(chunk)
   ),
-  onAgentStreamDone: registerListener("agent-stream-done", (callback) => () => callback()),
+  onAgentStreamError: registerListener(
+    "cloud-agent-stream-error",
+    (callback) => (_event, error) => callback(error)
+  ),
+  onAgentStreamEnd: registerListener("cloud-agent-stream-end", (callback) => () => callback()),
+
+  // Agent cloud tools
+  agentWebSearch: (query, numResults) => ipcRenderer.invoke("agent-web-search", query, numResults),
+  agentOpenNote: (noteId) => ipcRenderer.invoke("agent-open-note", noteId),
 
   // Agent conversation persistence
   createAgentConversation: (title) => ipcRenderer.invoke("db-create-agent-conversation", title),
@@ -599,9 +629,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deleteAgentConversation: (id) => ipcRenderer.invoke("db-delete-agent-conversation", id),
   updateAgentConversationTitle: (id, title) =>
     ipcRenderer.invoke("db-update-agent-conversation-title", id, title),
-  addAgentMessage: (conversationId, role, content) =>
-    ipcRenderer.invoke("db-add-agent-message", conversationId, role, content),
+  addAgentMessage: (conversationId, role, content, metadata) =>
+    ipcRenderer.invoke("db-add-agent-message", conversationId, role, content, metadata),
   getAgentMessages: (conversationId) => ipcRenderer.invoke("db-get-agent-messages", conversationId),
+  getAgentConversationsWithPreview: (limit, offset, includeArchived) =>
+    ipcRenderer.invoke("db-get-agent-conversations-with-preview", limit, offset, includeArchived),
+  searchAgentConversations: (query, limit) =>
+    ipcRenderer.invoke("db-search-agent-conversations", query, limit),
+  archiveAgentConversation: (id) => ipcRenderer.invoke("db-archive-agent-conversation", id),
+  unarchiveAgentConversation: (id) => ipcRenderer.invoke("db-unarchive-agent-conversation", id),
+  updateAgentConversationCloudId: (id, cloudId) =>
+    ipcRenderer.invoke("db-update-agent-conversation-cloud-id", id, cloudId),
+  semanticSearchConversations: (query, limit) =>
+    ipcRenderer.invoke("db-semantic-search-conversations", query, limit),
 
   // Google Calendar
   gcalStartOAuth: () => ipcRenderer.invoke("gcal-start-oauth"),
@@ -613,6 +653,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   gcalSyncEvents: () => ipcRenderer.invoke("gcal-sync-events"),
   gcalGetUpcomingEvents: (windowMinutes) =>
     ipcRenderer.invoke("gcal-get-upcoming-events", windowMinutes),
+  gcalGetEvent: (eventId) => ipcRenderer.invoke("gcal-get-event", eventId),
 
   // Google Calendar event listeners
   onGcalMeetingStarting: registerListener(
@@ -640,8 +681,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   meetingDetectionGetPreferences: () => ipcRenderer.invoke("meeting-detection-get-preferences"),
   meetingDetectionSetPreferences: (prefs) =>
     ipcRenderer.invoke("meeting-detection-set-preferences", prefs),
-  meetingDetectionRespond: (detectionId, action) =>
-    ipcRenderer.invoke("meeting-detection-respond", detectionId, action),
   onMeetingDetected: registerListener(
     "meeting-detected",
     (callback) => (_event, data) => callback(data)
@@ -660,6 +699,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("meeting-notification-respond", detectionId, action),
   onNavigateToMeetingNote: registerListener(
     "navigate-to-meeting-note",
+    (callback) => (_event, data) => callback(data)
+  ),
+  onNavigateToNote: registerListener(
+    "navigate-to-note",
     (callback) => (_event, data) => callback(data)
   ),
 

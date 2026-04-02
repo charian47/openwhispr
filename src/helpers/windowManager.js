@@ -92,7 +92,7 @@ class WindowManager {
     await this.loadMainWindow();
     await this.initializeHotkey();
     this.dragManager.setTargetWindow(this.mainWindow);
-    MenuManager.setupMainMenu();
+    MenuManager.setupMainMenu(() => this.openSettings());
   }
 
   setMainWindowInteractivity(shouldCapture) {
@@ -599,7 +599,7 @@ class WindowManager {
       this.controlPanelWindow = null;
     });
 
-    MenuManager.setupControlPanelMenu(this.controlPanelWindow);
+    MenuManager.setupControlPanelMenu(this.controlPanelWindow, () => this.openSettings());
 
     this.controlPanelWindow.webContents.on("did-finish-load", () => {
       clearVisibilityTimer();
@@ -989,6 +989,8 @@ class WindowManager {
 
     WindowPositionUtil.setupAlwaysOnTop(this.notificationWindow);
 
+    this._pendingNotificationData = promptData;
+
     if (process.env.NODE_ENV === "development") {
       await DevServerManager.waitForDevServer();
       await this.notificationWindow.loadURL(
@@ -1000,8 +1002,6 @@ class WindowManager {
         query: { ...fileInfo.query, "meeting-notification": "true" },
       });
     }
-
-    this._pendingNotificationData = promptData;
 
     this._notificationReadyFallback = setTimeout(() => {
       this._notificationReadyFallback = null;
@@ -1173,10 +1173,10 @@ class WindowManager {
   }
 
   refreshLocalizedUi() {
-    MenuManager.setupMainMenu();
+    MenuManager.setupMainMenu(() => this.openSettings());
 
     if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
-      MenuManager.setupControlPanelMenu(this.controlPanelWindow);
+      MenuManager.setupControlPanelMenu(this.controlPanelWindow, () => this.openSettings());
       this.controlPanelWindow.setTitle(i18nMain.t("window.controlPanelTitle"));
     }
 
@@ -1186,6 +1186,13 @@ class WindowManager {
 
     if (this.agentWindow && !this.agentWindow.isDestroyed()) {
       this.agentWindow.setTitle(i18nMain.t("window.agentChatTitle"));
+    }
+  }
+
+  async openSettings() {
+    await this.createControlPanelWindow();
+    if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
+      this.controlPanelWindow.webContents.send("show-settings");
     }
   }
 

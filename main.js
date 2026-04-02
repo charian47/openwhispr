@@ -1,3 +1,21 @@
+// KDE/GNOME Wayland: self-relaunch with --ozone-platform=x11 to force XWayland.
+// Chromium picks the display backend before JS runs, so appendSwitch is too late.
+if (
+  process.platform === "linux" &&
+  process.env.XDG_SESSION_TYPE === "wayland" &&
+  !process.argv.includes("--ozone-platform=x11")
+) {
+  const desktop = (process.env.XDG_CURRENT_DESKTOP || "").toLowerCase();
+  if (desktop.includes("kde") || /gnome|ubuntu|unity/.test(desktop)) {
+    const { spawn } = require("child_process");
+    spawn(process.execPath, [...process.argv.slice(1), "--ozone-platform=x11"], {
+      stdio: "inherit",
+      detached: true,
+    }).unref();
+    process.exit(0);
+  }
+}
+
 const {
   app,
   globalShortcut,
@@ -62,6 +80,13 @@ function configureChannelUserDataPath() {
 
 configureChannelUserDataPath();
 
+// Load userData .env (contains DICTATION_KEY, API keys, etc.) early — before
+// hotkey registration, which needs DICTATION_KEY before the renderer loads.
+require("dotenv").config({
+  path: path.join(app.getPath("userData"), ".env"),
+  override: false,
+});
+
 // Fix transparent window flickering on Linux: --enable-transparent-visuals requires
 // the compositor to set up an ARGB visual before any windows are created.
 // --disable-gpu-compositing prevents GPU compositing conflicts with the compositor.
@@ -79,13 +104,7 @@ if (process.platform === "win32") {
 // force --ozone-platform=x11 before Electron starts. appendSwitch below is a
 // best-effort fallback for unpackaged dev mode (may not take effect on E39+).
 if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
-  const desktop = (process.env.XDG_CURRENT_DESKTOP || "").toLowerCase();
-  if (desktop.includes("kde")) {
-    app.commandLine.appendSwitch("ozone-platform-hint", "x11");
-  } else {
-    app.commandLine.appendSwitch("ozone-platform-hint", "auto");
-  }
-  app.commandLine.appendSwitch("enable-features", "UseOzonePlatform,WaylandWindowDecorations");
+  app.commandLine.appendSwitch("enable-features", "WaylandWindowDecorations");
 }
 
 // Set desktop filename so Wayland compositors can match windows to the .desktop entry.
@@ -209,6 +228,7 @@ let whisperCudaManager = null;
 let googleCalendarManager = null;
 let meetingDetectionEngine = null;
 let audioTapManager = null;
+let qdrantManager = null;
 let ipcHandlers = null;
 let globeKeyAlertShown = false;
 let authBridgeServer = null;
@@ -661,6 +681,32 @@ async function startApp() {
     const modelManager = require("./src/helpers/modelManagerBridge").default;
     modelManager.prewarmServer(process.env.LOCAL_REASONING_MODEL).catch((err) => {
       debugLogger.debug("llama-server pre-warm error (non-fatal)", { error: err.message });
+    });
+  }
+
+  const QdrantManager = require("./src/helpers/qdrantManager");
+  qdrantManager = new QdrantManager();
+  if (qdrantManager.isAvailable()) {
+    qdrantManager
+      .start()
+      .then(() => {
+        if (qdrantManager.isReady()) {
+          const vectorIndex = require("./src/helpers/vectorIndex");
+          vectorIndex.init(qdrantManager.getPort());
+          vectorIndex.ensureCollection().catch((err) => {
+            debugLogger.debug("Qdrant collection setup error (non-fatal)", { error: err.message });
+          });
+        }
+      })
+      .catch((err) => {
+        debugLogger.debug("Qdrant startup error (non-fatal)", { error: err.message });
+      });
+  }
+
+  const localEmbeddings = require("./src/helpers/localEmbeddings");
+  if (!localEmbeddings.isAvailable()) {
+    localEmbeddings.downloadModel().catch((err) => {
+      debugLogger.debug("Embedding model download error (non-fatal)", { error: err.message });
     });
   }
 
@@ -1144,5 +1190,8 @@ if (gotSingleInstanceLock) {
     // Stop llama-server if running
     const modelManager = require("./src/helpers/modelManagerBridge").default;
     modelManager.stopServer().catch(() => {});
+    if (qdrantManager) {
+      qdrantManager.stop().catch(() => {});
+    }
   });
 }

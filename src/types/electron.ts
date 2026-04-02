@@ -275,6 +275,18 @@ export interface LlamaVulkanDownloadProgress {
   percentage: number;
 }
 
+export interface ConversationPreview {
+  id: number;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  archived_at?: string | null;
+  cloud_id?: string | null;
+  message_count: number;
+  last_message?: string | null;
+  last_message_role?: "user" | "assistant" | "system" | null;
+}
+
 export interface ReferralItem {
   id: string;
   email: string;
@@ -387,6 +399,11 @@ declare global {
         format: "txt" | "md"
       ) => Promise<{ success: boolean; error?: string }>;
       searchNotes: (query: string, limit?: number) => Promise<NoteItem[]>;
+      semanticSearchNotes: (query: string, limit?: number) => Promise<NoteItem[]>;
+      semanticReindexAll: () => Promise<{ success: boolean; indexed?: number; error?: string }>;
+      onSemanticReindexProgress: (
+        callback: (data: { done: number; total: number }) => void
+      ) => () => void;
       updateNoteCloudId: (id: number, cloudId: string) => Promise<NoteItem>;
 
       // Folder operations
@@ -400,6 +417,18 @@ declare global {
         name: string
       ) => Promise<{ success: boolean; folder?: FolderItem; error?: string }>;
       getFolderNoteCounts: () => Promise<Array<{ folder_id: number; count: number }>>;
+
+      // Note files (markdown mirror)
+      noteFilesSetEnabled?: (
+        enabled: boolean,
+        customPath?: string
+      ) => Promise<{ success: boolean; error?: string }>;
+      noteFilesSetPath?: (path: string) => Promise<{ success: boolean; error?: string }>;
+      noteFilesRebuild?: () => Promise<{ success: boolean; error?: string }>;
+      noteFilesGetDefaultPath?: () => Promise<string>;
+      noteFilesPickFolder?: () => Promise<{ canceled: boolean; path?: string }>;
+      showNoteFile?: (noteId: number) => Promise<{ success: boolean }>;
+      showFolderInExplorer?: (folderName: string) => Promise<{ success: boolean }>;
 
       // Action operations
       getActions: () => Promise<ActionItem[]>;
@@ -503,7 +532,10 @@ declare global {
 
       // CUDA GPU acceleration
       listGpus?: () => Promise<GpuDevice[]>;
-      setGpuDeviceIndex?: (purpose: "transcription" | "intelligence", index: number) => Promise<{ success: boolean }>;
+      setGpuDeviceIndex?: (
+        purpose: "transcription" | "intelligence",
+        index: number
+      ) => Promise<{ success: boolean }>;
       getGpuDeviceIndex?: (purpose: "transcription" | "intelligence") => Promise<string>;
       detectGpu: () => Promise<GpuInfo>;
       getCudaWhisperStatus: () => Promise<CudaWhisperStatus>;
@@ -693,6 +725,9 @@ declare global {
         callback: (data: { hotkey: string; error: string; suggestions: string[] }) => void
       ) => () => void;
       onSettingUpdated?: (callback: (data: { key: string; value: unknown }) => void) => () => void;
+
+      // Settings shortcut (Cmd+, / Ctrl+,)
+      onShowSettings?: (callback: () => void) => () => void;
 
       // Accessibility permission events (macOS)
       onAccessibilityMissing?: (callback: () => void) => () => void;
@@ -1014,6 +1049,8 @@ declare global {
         Array<{
           id: number;
           title: string;
+          archived_at?: string;
+          cloud_id?: string;
           created_at: string;
           updated_at: string;
         }>
@@ -1021,6 +1058,8 @@ declare global {
       getAgentConversation?: (id: number) => Promise<{
         id: number;
         title: string;
+        archived_at?: string;
+        cloud_id?: string;
         created_at: string;
         updated_at: string;
         messages: Array<{
@@ -1028,6 +1067,7 @@ declare global {
           conversation_id: number;
           role: "user" | "assistant" | "system";
           content: string;
+          metadata?: string;
           created_at: string;
         }>;
       } | null>;
@@ -1036,12 +1076,14 @@ declare global {
       addAgentMessage?: (
         conversationId: number,
         role: "user" | "assistant" | "system",
-        content: string
+        content: string,
+        metadata?: Record<string, unknown>
       ) => Promise<{
         id: number;
         conversation_id: number;
         role: string;
         content: string;
+        metadata?: string;
         created_at: string;
       }>;
       getAgentMessages?: (conversationId: number) => Promise<
@@ -1050,9 +1092,26 @@ declare global {
           conversation_id: number;
           role: "user" | "assistant" | "system";
           content: string;
+          metadata?: string;
           created_at: string;
         }>
       >;
+      getAgentConversationsWithPreview?: (
+        limit?: number,
+        offset?: number,
+        includeArchived?: boolean
+      ) => Promise<ConversationPreview[]>;
+      searchAgentConversations?: (query: string, limit?: number) => Promise<ConversationPreview[]>;
+      archiveAgentConversation?: (id: number) => Promise<{ success: boolean }>;
+      unarchiveAgentConversation?: (id: number) => Promise<{ success: boolean }>;
+      updateAgentConversationCloudId?: (
+        id: number,
+        cloudId: string
+      ) => Promise<{ success: boolean }>;
+      semanticSearchConversations?: (
+        query: string,
+        limit?: number
+      ) => Promise<ConversationPreview[]>;
 
       // Deepgram Streaming
       deepgramStreamingWarmup?: (options?: { sampleRate?: number; language?: string }) => Promise<{
@@ -1103,13 +1162,44 @@ declare global {
       onAgentStopRecording?: (callback: () => void) => () => void;
       onAgentToggleRecording?: (callback: () => void) => () => void;
 
-      // Agent cloud streaming
-      cloudAgentStream?: (
-        messages: Array<{ role: string; content: string }>,
-        opts?: { systemPrompt?: string }
-      ) => Promise<{ success: boolean; error?: string; code?: string }>;
-      onAgentStreamChunk?: (callback: (chunk: string) => void) => () => void;
-      onAgentStreamDone?: (callback: () => void) => () => void;
+      // Agent cloud streaming (event-based)
+      startAgentStream?: (
+        messages: Array<{ role: string; content: string | Array<unknown> }>,
+        opts?: {
+          systemPrompt?: string;
+          tools?: Array<{ name: string; description: string; parameters: Record<string, unknown> }>;
+        }
+      ) => void;
+      onAgentStreamChunk?: (
+        callback: (chunk: {
+          type: "content" | "tool_call" | "done";
+          text?: string;
+          id?: string;
+          name?: string;
+          arguments?: string;
+          finishReason?: string;
+        }) => void
+      ) => () => void;
+      onAgentStreamError?: (
+        callback: (error: { error: string; code?: string }) => void
+      ) => () => void;
+      onAgentStreamEnd?: (callback: () => void) => () => void;
+
+      // Agent cloud tools
+      agentOpenNote?: (noteId: number) => Promise<{ success: boolean; error?: string }>;
+      agentWebSearch?: (
+        query: string,
+        numResults?: number
+      ) => Promise<{
+        success: boolean;
+        results?: Array<{
+          title: string;
+          url: string;
+          text: string;
+          publishedDate?: string;
+        }>;
+        error?: string;
+      }>;
 
       // Google Calendar
       gcalStartOAuth?: () => Promise<{ success: boolean; email?: string; error?: string }>;
@@ -1128,6 +1218,16 @@ declare global {
       gcalGetUpcomingEvents?: (
         windowMinutes?: number
       ) => Promise<{ success: boolean; events: any[] }>;
+      gcalGetEvent?: (eventId: string) => Promise<{
+        success: boolean;
+        event: {
+          id: string;
+          summary: string | null;
+          start_time: string;
+          end_time: string;
+          attendees_count: number;
+        } | null;
+      }>;
 
       // Meeting chain transcription (BaseTen)
       meetingTranscribeChain?: (
@@ -1204,10 +1304,6 @@ declare global {
       meetingDetectionSetPreferences?: (
         prefs: Record<string, boolean>
       ) => Promise<{ success: boolean }>;
-      meetingDetectionRespond?: (
-        detectionId: string,
-        action: string
-      ) => Promise<{ success: boolean }>;
       onMeetingDetected?: (callback: (data: any) => void) => () => void;
       onMeetingDetectedStartRecording?: (callback: (data: any) => void) => () => void;
       onMeetingNotificationData?: (callback: (data: any) => void) => () => void;
@@ -1220,6 +1316,7 @@ declare global {
       onNavigateToMeetingNote?: (
         callback: (data: { noteId: number; folderId: number; event: any }) => void
       ) => () => void;
+      onNavigateToNote?: (callback: (data: { noteId: number }) => void) => () => void;
       onUpdateNotificationData?: (
         callback: (data: { version: string; releaseDate?: string }) => void
       ) => () => void;
