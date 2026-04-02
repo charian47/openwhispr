@@ -78,12 +78,7 @@ class AudioTapManager {
     return { granted: status === "granted", status };
   }
 
-  /**
-   * Probe the native binary once on startup to cache the real TCC status.
-   * The macOS consent dialog only appears on the very first call — after
-   * that, probing is always silent (success or silent failure). Safe to
-   * call on every app launch.
-   */
+  /** Probe once on startup to cache the real TCC status for the session. */
   async resolvePermission() {
     if (!this.isSupported() || this.permissionStatus !== "unknown") {
       return;
