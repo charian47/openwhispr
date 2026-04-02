@@ -998,29 +998,33 @@ class IPCHandlers {
 
     ipcMain.handle("list-gpus", async () => {
       const { listNvidiaGpus } = require("../utils/gpuDetection");
-      const gpus = await listNvidiaGpus();
-      debugLogger.info("GPU devices detected", { count: gpus.length, gpus }, "gpu");
-      return gpus;
+      return listNvidiaGpus();
     });
 
     ipcMain.handle("set-gpu-device-index", async (_event, purpose, index) => {
-      const idx = String(parseInt(index, 10));
-      if (isNaN(parseInt(index, 10)) || parseInt(index, 10) < 0) {
+      if (purpose !== "transcription" && purpose !== "intelligence") {
         return { success: false };
       }
+      const parsed = parseInt(index, 10);
+      if (isNaN(parsed) || parsed < 0) {
+        return { success: false };
+      }
+      const idx = String(parsed);
       const key = purpose === "intelligence" ? "INTELLIGENCE_GPU_INDEX" : "TRANSCRIPTION_GPU_INDEX";
       const oldIdx = process.env[key] || "0";
       process.env[key] = idx;
-      this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
+      this.environmentManager.saveAllKeysToEnvFile().catch((err) => {
+        debugLogger.error("Failed to persist GPU index", { error: err.message }, "gpu");
+      });
 
       if (oldIdx !== idx) {
         try {
-          if (purpose === "transcription" && this.whisperManager?.process) {
+          if (purpose === "transcription" && this.whisperManager?.serverManager?.process) {
             debugLogger.info("Restarting whisper-server for GPU change", { from: oldIdx, to: idx }, "gpu");
-            const modelPath = this.whisperManager.modelPath;
-            await this.whisperManager.stop();
-            if (modelPath) {
-              await this.whisperManager.start(modelPath, { useCuda: !!process.env.WHISPER_CUDA_ENABLED });
+            const modelName = this.whisperManager.currentServerModel;
+            await this.whisperManager.stopServer();
+            if (modelName) {
+              await this.whisperManager.startServer(modelName, { useCuda: !!process.env.WHISPER_CUDA_ENABLED });
             }
           }
           if (purpose === "intelligence") {
@@ -1043,6 +1047,9 @@ class IPCHandlers {
     });
 
     ipcMain.handle("get-gpu-device-index", async (_event, purpose) => {
+      if (purpose !== "transcription" && purpose !== "intelligence") {
+        return "0";
+      }
       const key = purpose === "intelligence" ? "INTELLIGENCE_GPU_INDEX" : "TRANSCRIPTION_GPU_INDEX";
       return process.env[key] || "0";
     });

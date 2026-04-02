@@ -71,7 +71,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Progress } from "./ui/progress";
 import { useToast } from "./ui/Toast";
 import { useTheme } from "../hooks/useTheme";
-import type { LocalTranscriptionProvider } from "../types/electron";
+import type { GpuDevice, LocalTranscriptionProvider } from "../types/electron";
 import logger from "../utils/logger";
 import { SettingsRow } from "./ui/SettingsSection";
 import { useUsage } from "../hooks/useUsage";
@@ -629,7 +629,7 @@ function AiModelsSection({
 
 function GpuDeviceSelector({ purpose }: { purpose: "transcription" | "intelligence" }) {
   const { t } = useTranslation();
-  const [gpus, setGpus] = useState<Array<{ index: number; name: string; vramMb: number }>>([]);
+  const [gpus, setGpus] = useState<GpuDevice[]>([]);
   const [selectedIndex, setSelectedIndex] = useState("0");
   const [loaded, setLoaded] = useState(false);
 
@@ -641,7 +641,7 @@ function GpuDeviceSelector({ purpose }: { purpose: "transcription" | "intelligen
       setGpus(gpuList);
       setSelectedIndex(idx);
       setLoaded(true);
-    });
+    }).catch(() => setLoaded(true));
   }, [purpose]);
 
   if (!loaded || gpus.length < 2) return null;

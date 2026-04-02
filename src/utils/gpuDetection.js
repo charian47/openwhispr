@@ -66,7 +66,7 @@ function listNvidiaGpus() {
           return;
         }
 
-        cachedGpuList = stdout
+        const gpus = stdout
           .trim()
           .split("\n")
           .map((line) => {
@@ -79,7 +79,8 @@ function listNvidiaGpus() {
           })
           .filter((g) => !isNaN(g.index));
 
-        resolve(cachedGpuList);
+        if (gpus.length > 0) cachedGpuList = gpus;
+        resolve(gpus);
       }
     );
   });
