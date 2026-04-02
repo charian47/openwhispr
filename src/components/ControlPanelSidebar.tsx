@@ -95,12 +95,12 @@ export default function ControlPanelSidebar({
   return (
     <div className="w-48 h-full shrink-0 border-r border-border/15 dark:border-white/6 flex flex-col bg-surface-1/60 dark:bg-surface-1">
       <div
-        className="w-full h-10 shrink-0"
+        className={cn("w-full shrink-0", platform === "darwin" ? "h-8" : "h-10")}
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       />
 
       {onOpenSearch && (
-        <div className="px-2 pt-2 pb-1">
+        <div className="px-2 pb-1">
           <button
             onClick={onOpenSearch}
             className="group flex items-center w-full h-7 px-2.5 rounded-md border border-border/70 dark:border-white/25 bg-transparent hover:bg-foreground/5 dark:hover:bg-white/5 transition-colors gap-2 outline-none focus-visible:ring-1 focus-visible:ring-primary/30"

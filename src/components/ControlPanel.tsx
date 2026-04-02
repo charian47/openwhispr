@@ -21,6 +21,7 @@ import {
 import { useSettingsStore } from "../stores/settingsStore";
 import ControlPanelSidebar, { type ControlPanelView } from "./ControlPanelSidebar";
 import WindowControls from "./WindowControls";
+import { cn } from "./lib/utils";
 
 import { getCachedPlatform } from "../utils/platform";
 import { setActiveNoteId, setActiveFolderId, initializeNotes } from "../stores/noteStore";
@@ -631,12 +632,15 @@ export default function ControlPanel() {
         </div>
         <main className="flex-1 flex flex-col overflow-hidden">
           <div
-            className="flex items-center justify-between w-full h-10 shrink-0"
+            className={cn(
+              "flex items-center justify-between w-full shrink-0",
+              platform === "darwin" ? "h-8" : "h-10"
+            )}
             style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
           >
             {isMeetingMode && (
               <div
-                className={platform === "darwin" ? "ml-[84px] mt-[16px]" : "ml-2"}
+                className={platform === "darwin" ? "ml-[84px]" : "ml-2"}
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
               >
                 <Button
