@@ -101,8 +101,6 @@ export default function EmbeddedChat({
         partialTranscript=""
         onTextSubmit={onTextSubmit}
         onCancel={onCancel}
-        showHotkey={false}
-        autoFocus={false}
       />
     </>
   );

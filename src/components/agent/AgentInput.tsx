@@ -9,5 +9,5 @@ interface AgentInputProps {
 }
 
 export function AgentInput(props: AgentInputProps) {
-  return <ChatInput {...props} showHotkey={true} />;
+  return <ChatInput {...props} autoFocus />;
 }

@@ -1,53 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Mic, SendHorizontal, Square } from "lucide-react";
+import { SendHorizontal, Square } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../lib/utils";
-import { useSettingsStore } from "../../stores/settingsStore";
-import { formatHotkeyLabel, isGlobeLikeHotkey } from "../../utils/hotkeys";
 import type { AgentState } from "./types";
+
 interface ChatInputProps {
   agentState: AgentState;
   partialTranscript: string;
   onTextSubmit?: (text: string) => void;
   onCancel?: () => void;
-  showHotkey?: boolean;
   autoFocus?: boolean;
-}
-
-function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd
-      className={cn(
-        "inline-flex items-center justify-center",
-        "min-w-5 h-4.5 px-1.5",
-        "text-[10px] font-medium leading-none",
-        "text-muted-foreground/70",
-        "bg-foreground/6 border border-foreground/8",
-        "rounded-sm",
-        "shadow-[0_1px_0_0_rgba(0,0,0,0.04)]"
-      )}
-    >
-      {children}
-    </kbd>
-  );
-}
-
-function HotkeyKeys({ hotkey }: { hotkey: string }) {
-  const label = formatHotkeyLabel(hotkey);
-
-  if (isGlobeLikeHotkey(hotkey) || !label.includes("+")) {
-    return <Kbd>{label}</Kbd>;
-  }
-
-  const parts = label.split("+");
-
-  return (
-    <span className="inline-flex items-center gap-0.5">
-      {parts.map((part, i) => (
-        <Kbd key={i}>{part}</Kbd>
-      ))}
-    </span>
-  );
 }
 
 function RecordingIndicator() {
@@ -83,11 +45,9 @@ export function ChatInput({
   partialTranscript,
   onTextSubmit,
   onCancel,
-  showHotkey = false,
   autoFocus = false,
 }: ChatInputProps) {
   const { t } = useTranslation();
-  const agentKey = useSettingsStore((s) => s.agentKey);
   const [inputText, setInputText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -180,33 +140,20 @@ export function ChatInput({
                 <Square size={12} className="fill-current" />
               </button>
             ) : isIdle ? (
-              <div className="flex items-center gap-1 shrink-0">
-                {showHotkey && (
-                  <div className="flex items-center gap-2 mr-1">
-                    <div
-                      className="text-muted-foreground/50"
-                      style={{ animation: "agent-mic-pulse 2.5s ease-in-out infinite" }}
-                    >
-                      <Mic size={14} />
-                    </div>
-                    <HotkeyKeys hotkey={agentKey} />
-                  </div>
+              <button
+                onClick={handleSubmit}
+                disabled={!inputText.trim()}
+                className={cn(
+                  "p-1 rounded-sm shrink-0",
+                  "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/30",
+                  "transition-colors duration-100",
+                  inputText.trim()
+                    ? "text-primary hover:text-primary/80"
+                    : "text-muted-foreground/25 cursor-default"
                 )}
-                <button
-                  onClick={handleSubmit}
-                  disabled={!inputText.trim()}
-                  className={cn(
-                    "p-1 rounded-sm",
-                    "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/30",
-                    "transition-colors duration-100",
-                    inputText.trim()
-                      ? "text-primary hover:text-primary/80"
-                      : "text-muted-foreground/25 cursor-default"
-                  )}
-                >
-                  <SendHorizontal size={14} />
-                </button>
-              </div>
+              >
+                <SendHorizontal size={14} />
+              </button>
             ) : null}
           </div>
         )}
