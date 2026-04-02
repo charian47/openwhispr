@@ -847,6 +847,10 @@
         "description": "Тарифы, использование и оплата",
         "label": "Тарифы и оплата"
       },
+      "apiKeys": {
+        "label": "API-ключи",
+        "description": "Управление доступом к API"
+      },
       "general": {
         "description": "Внешний вид, звуки и автозапуск",
         "label": "Настройки"
@@ -1075,6 +1079,11 @@
         "professional": "Hey {{agentName}}, сделай это более профессиональным",
         "bulletPoints": "Hey {{agentName}}, преобразуй это в маркированный список"
       }
+    },
+    "apiKeys": {
+      "title": "API-ключи",
+      "signInRequired": "Требуется вход",
+      "signInRequiredDescription": "Войдите, чтобы управлять API-ключами."
     },
     "aiModels": {
       "customSetup": "Пользовательская настройка",
@@ -2001,5 +2010,45 @@
     "title": "Требуются разрешения",
     "description": "OpenWhispr нужны некоторые разрешения для работы на этом компьютере.",
     "continue": "Продолжить"
+  },
+  "apiKeysSection": {
+    "title": "API-ключи",
+    "description": "Создавайте ключи для программного доступа к API OpenWhispr.",
+    "empty": "API-ключей пока нет",
+    "createButton": "Создать API-ключ",
+    "create": {
+      "title": "Создать API-ключ",
+      "nameLabel": "Название ключа",
+      "namePlaceholder": "напр. Моя интеграция",
+      "scopesLabel": "Разрешения",
+      "submit": "Создать",
+      "cancel": "Отмена"
+    },
+    "created": {
+      "title": "API-ключ создан",
+      "warning": "Скопируйте этот ключ сейчас. Он больше не будет показан.",
+      "copied": "Скопировано!",
+      "copyButton": "Скопировать в буфер обмена",
+      "done": "Готово"
+    },
+    "scopes": {
+      "notes:read": "Чтение заметок",
+      "notes:write": "Создание и редактирование заметок",
+      "transcriptions:read": "Чтение транскрипций",
+      "usage:read": "Просмотр использования"
+    },
+    "revoke": {
+      "button": "Отозвать",
+      "confirm": "Отозвать этот ключ? Интеграции, использующие его, перестанут работать.",
+      "success": "API-ключ отозван"
+    },
+    "neverUsed": "Не использовался",
+    "lastUsed": "Последнее использование {{time}}",
+    "maxKeysReached": "Максимум {{max}} ключей разрешено",
+    "errors": {
+      "loadFailed": "Не удалось загрузить API-ключи",
+      "createFailed": "Не удалось создать API-ключ",
+      "revokeFailed": "Не удалось отозвать API-ключ"
+    }
   }
 }

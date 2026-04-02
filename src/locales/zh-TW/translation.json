@@ -847,6 +847,10 @@
         "description": "方案、用量與帳單",
         "label": "方案與帳單"
       },
+      "apiKeys": {
+        "label": "API 金鑰",
+        "description": "管理 API 存取"
+      },
       "general": {
         "description": "外觀、音效與啟動",
         "label": "偏好設定"
@@ -1075,6 +1079,11 @@
         "professional": "Hey {{agentName}}，讓這個更專業",
         "bulletPoints": "Hey {{agentName}}，將這個轉換成要點列表"
       }
+    },
+    "apiKeys": {
+      "title": "API 金鑰",
+      "signInRequired": "需要登入",
+      "signInRequiredDescription": "登入以管理您的 API 金鑰。"
     },
     "aiModels": {
       "customSetup": "自訂設定",
@@ -2001,5 +2010,45 @@
     "title": "需要權限",
     "description": "OpenWhispr 需要一些權限才能在此電腦上正常運作。",
     "continue": "繼續"
+  },
+  "apiKeysSection": {
+    "title": "API 金鑰",
+    "description": "建立金鑰以程式化方式存取 OpenWhispr API。",
+    "empty": "尚無 API 金鑰",
+    "createButton": "建立 API 金鑰",
+    "create": {
+      "title": "建立 API 金鑰",
+      "nameLabel": "金鑰名稱",
+      "namePlaceholder": "例如：我的整合",
+      "scopesLabel": "權限",
+      "submit": "建立",
+      "cancel": "取消"
+    },
+    "created": {
+      "title": "API 金鑰已建立",
+      "warning": "請立即複製此金鑰，它將不會再次顯示。",
+      "copied": "已複製！",
+      "copyButton": "複製到剪貼簿",
+      "done": "完成"
+    },
+    "scopes": {
+      "notes:read": "讀取筆記",
+      "notes:write": "建立與編輯筆記",
+      "transcriptions:read": "讀取轉錄",
+      "usage:read": "檢視使用情況"
+    },
+    "revoke": {
+      "button": "撤銷",
+      "confirm": "撤銷此金鑰？使用它的整合將停止運作。",
+      "success": "API 金鑰已撤銷"
+    },
+    "neverUsed": "從未使用",
+    "lastUsed": "上次使用 {{time}}",
+    "maxKeysReached": "最多允許 {{max}} 個金鑰",
+    "errors": {
+      "loadFailed": "無法載入 API 金鑰",
+      "createFailed": "無法建立 API 金鑰",
+      "revokeFailed": "無法撤銷 API 金鑰"
+    }
   }
 }

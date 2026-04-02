@@ -647,6 +647,46 @@
       "title": "What gets logged"
     }
   },
+  "apiKeysSection": {
+    "title": "API Keys",
+    "description": "Create keys to access the OpenWhispr API programmatically.",
+    "empty": "No API keys yet",
+    "createButton": "Create API Key",
+    "create": {
+      "title": "Create API Key",
+      "nameLabel": "Key Name",
+      "namePlaceholder": "e.g. My Integration",
+      "scopesLabel": "Permissions",
+      "submit": "Create",
+      "cancel": "Cancel"
+    },
+    "created": {
+      "title": "API Key Created",
+      "warning": "Copy this key now. It won't be shown again.",
+      "copied": "Copied!",
+      "copyButton": "Copy to Clipboard",
+      "done": "Done"
+    },
+    "scopes": {
+      "notes:read": "Read notes",
+      "notes:write": "Create & edit notes",
+      "transcriptions:read": "Read transcriptions",
+      "usage:read": "View usage"
+    },
+    "revoke": {
+      "button": "Revoke",
+      "confirm": "Revoke this key? Any integrations using it will stop working.",
+      "success": "API key revoked"
+    },
+    "neverUsed": "Never used",
+    "lastUsed": "Last used {{time}}",
+    "maxKeysReached": "Maximum {{max}} keys allowed",
+    "errors": {
+      "loadFailed": "Failed to load API keys",
+      "createFailed": "Failed to create API key",
+      "revokeFailed": "Failed to revoke API key"
+    }
+  },
   "dictionarySuffix": "Dictionary Suffix",
   "emailVerification": {
     "checkEmailDescription": "We sent a verification link to",
@@ -895,6 +935,10 @@
         "description": "Plans, usage & billing",
         "label": "Plans & Billing"
       },
+      "apiKeys": {
+        "label": "API Keys",
+        "description": "Manage API access"
+      },
       "general": {
         "description": "Appearance, sounds & startup",
         "label": "Preferences"
@@ -1123,6 +1167,11 @@
         "professional": "Hey {{agentName}}, make this more professional",
         "bulletPoints": "Hey {{agentName}}, convert this to bullet points"
       }
+    },
+    "apiKeys": {
+      "title": "API Keys",
+      "signInRequired": "Sign in required",
+      "signInRequiredDescription": "Sign in to manage your API keys."
     },
     "aiModels": {
       "customSetup": "Custom Setup",

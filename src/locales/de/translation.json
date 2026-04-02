@@ -847,6 +847,10 @@
         "description": "Tarife, Nutzung & Abrechnung",
         "label": "Tarife & Abrechnung"
       },
+      "apiKeys": {
+        "label": "API-Schlüssel",
+        "description": "API-Zugriff verwalten"
+      },
       "general": {
         "description": "Darstellung, Töne & Start",
         "label": "Einstellungen"
@@ -1075,6 +1079,11 @@
         "professional": "Hey {{agentName}}, mach das professioneller",
         "bulletPoints": "Hey {{agentName}}, wandle das in Stichpunkte um"
       }
+    },
+    "apiKeys": {
+      "title": "API-Schlüssel",
+      "signInRequired": "Anmeldung erforderlich",
+      "signInRequiredDescription": "Melden Sie sich an, um Ihre API-Schlüssel zu verwalten."
     },
     "aiModels": {
       "customSetup": "Benutzerdefinierte Einrichtung",
@@ -2001,5 +2010,45 @@
     "title": "Berechtigungen erforderlich",
     "description": "OpenWhispr benötigt einige Berechtigungen, um auf diesem Computer zu funktionieren.",
     "continue": "Weiter"
+  },
+  "apiKeysSection": {
+    "title": "API-Schlüssel",
+    "description": "Erstellen Sie Schlüssel für den programmatischen Zugriff auf die OpenWhispr-API.",
+    "empty": "Noch keine API-Schlüssel",
+    "createButton": "API-Schlüssel erstellen",
+    "create": {
+      "title": "API-Schlüssel erstellen",
+      "nameLabel": "Schlüsselname",
+      "namePlaceholder": "z. B. Meine Integration",
+      "scopesLabel": "Berechtigungen",
+      "submit": "Erstellen",
+      "cancel": "Abbrechen"
+    },
+    "created": {
+      "title": "API-Schlüssel erstellt",
+      "warning": "Kopieren Sie diesen Schlüssel jetzt. Er wird nicht erneut angezeigt.",
+      "copied": "Kopiert!",
+      "copyButton": "In die Zwischenablage kopieren",
+      "done": "Fertig"
+    },
+    "scopes": {
+      "notes:read": "Notizen lesen",
+      "notes:write": "Notizen erstellen und bearbeiten",
+      "transcriptions:read": "Transkriptionen lesen",
+      "usage:read": "Nutzung anzeigen"
+    },
+    "revoke": {
+      "button": "Widerrufen",
+      "confirm": "Diesen Schlüssel widerrufen? Alle Integrationen, die ihn verwenden, funktionieren dann nicht mehr.",
+      "success": "API-Schlüssel widerrufen"
+    },
+    "neverUsed": "Nie verwendet",
+    "lastUsed": "Zuletzt verwendet {{time}}",
+    "maxKeysReached": "Maximal {{max}} Schlüssel erlaubt",
+    "errors": {
+      "loadFailed": "API-Schlüssel konnten nicht geladen werden",
+      "createFailed": "API-Schlüssel konnte nicht erstellt werden",
+      "revokeFailed": "API-Schlüssel konnte nicht widerrufen werden"
+    }
   }
 }

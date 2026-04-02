@@ -847,6 +847,10 @@
         "description": "套餐、用量与账单",
         "label": "套餐与账单"
       },
+      "apiKeys": {
+        "label": "API 密钥",
+        "description": "管理 API 访问"
+      },
       "general": {
         "description": "外观、声音与启动",
         "label": "偏好设置"
@@ -1075,6 +1079,11 @@
         "professional": "Hey {{agentName}}，让这个更专业",
         "bulletPoints": "Hey {{agentName}}，把这个转换成要点列表"
       }
+    },
+    "apiKeys": {
+      "title": "API 密钥",
+      "signInRequired": "需要登录",
+      "signInRequiredDescription": "登录以管理您的 API 密钥。"
     },
     "aiModels": {
       "customSetup": "自定义设置",
@@ -2001,5 +2010,45 @@
     "title": "需要权限",
     "description": "OpenWhispr 需要一些权限才能在此电脑上正常运行。",
     "continue": "继续"
+  },
+  "apiKeysSection": {
+    "title": "API 密钥",
+    "description": "创建密钥以编程方式访问 OpenWhispr API。",
+    "empty": "暂无 API 密钥",
+    "createButton": "创建 API 密钥",
+    "create": {
+      "title": "创建 API 密钥",
+      "nameLabel": "密钥名称",
+      "namePlaceholder": "例如：我的集成",
+      "scopesLabel": "权限",
+      "submit": "创建",
+      "cancel": "取消"
+    },
+    "created": {
+      "title": "API 密钥已创建",
+      "warning": "请立即复制此密钥，它将不会再次显示。",
+      "copied": "已复制！",
+      "copyButton": "复制到剪贴板",
+      "done": "完成"
+    },
+    "scopes": {
+      "notes:read": "读取笔记",
+      "notes:write": "创建和编辑笔记",
+      "transcriptions:read": "读取转录",
+      "usage:read": "查看使用情况"
+    },
+    "revoke": {
+      "button": "撤销",
+      "confirm": "撤销此密钥？使用它的集成将停止工作。",
+      "success": "API 密钥已撤销"
+    },
+    "neverUsed": "从未使用",
+    "lastUsed": "上次使用 {{time}}",
+    "maxKeysReached": "最多允许 {{max}} 个密钥",
+    "errors": {
+      "loadFailed": "无法加载 API 密钥",
+      "createFailed": "无法创建 API 密钥",
+      "revokeFailed": "无法撤销 API 密钥"
+    }
   }
 }

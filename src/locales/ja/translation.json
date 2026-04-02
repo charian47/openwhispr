@@ -847,6 +847,10 @@
         "description": "プラン、使用状況、請求",
         "label": "プランと請求"
       },
+      "apiKeys": {
+        "description": "APIキーの管理",
+        "label": "APIキー"
+      },
       "general": {
         "description": "外観、サウンド、起動設定",
         "label": "環境設定"
@@ -1075,6 +1079,11 @@
         "professional": "Hey {{agentName}}、これをもっとプロフェッショナルにして",
         "bulletPoints": "Hey {{agentName}}、これを箇条書きに変換して"
       }
+    },
+    "apiKeys": {
+      "title": "APIキー",
+      "signInRequired": "サインインが必要です",
+      "signInRequiredDescription": "APIキーを管理するにはサインインしてください。"
     },
     "aiModels": {
       "customSetup": "カスタム設定",
@@ -2001,5 +2010,45 @@
     "title": "権限が必要です",
     "description": "OpenWhispr がこのコンピュータで動作するために、いくつかの権限が必要です。",
     "continue": "続行"
+  },
+  "apiKeysSection": {
+    "title": "APIキー",
+    "description": "アカウントへのプログラムアクセス用のキーを管理",
+    "empty": "APIキーはまだありません",
+    "createButton": "キーを作成",
+    "create": {
+      "title": "APIキーを作成",
+      "nameLabel": "キー名",
+      "namePlaceholder": "例: マイインテグレーション",
+      "scopesLabel": "権限",
+      "submit": "作成",
+      "cancel": "キャンセル"
+    },
+    "created": {
+      "title": "キーが作成されました",
+      "warning": "このキーを今すぐコピーしてください。再度表示されることはありません。",
+      "copied": "コピー済み",
+      "copyButton": "クリップボードにコピー",
+      "done": "完了"
+    },
+    "scopes": {
+      "notes:read": "ノートの読み取り",
+      "notes:write": "ノートの作成と編集",
+      "transcriptions:read": "文字起こしの読み取り",
+      "usage:read": "使用状況の表示"
+    },
+    "revoke": {
+      "button": "取り消し",
+      "confirm": "このAPIキーを取り消しますか？このキーを使用しているインテグレーションは機能しなくなります。",
+      "success": "APIキーが取り消されました"
+    },
+    "neverUsed": "未使用",
+    "lastUsed": "{{time}}に使用",
+    "maxKeysReached": "キーの上限（{{max}}個）に達しました",
+    "errors": {
+      "loadFailed": "APIキーを読み込めませんでした",
+      "createFailed": "APIキーを作成できませんでした",
+      "revokeFailed": "APIキーを取り消せませんでした"
+    }
   }
 }
