@@ -110,6 +110,9 @@ export default function ControlPanel() {
       if (mod && e.key === "k") {
         e.preventDefault();
         setShowSearch(true);
+      } else if (mod && e.key === ",") {
+        e.preventDefault();
+        setShowSettings(true);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -232,6 +235,13 @@ export default function ControlPanel() {
     const cleanup = window.electronAPI?.onNavigateToNote?.((data) => {
       setActiveNoteId(data.noteId);
       setActiveView("personal-notes");
+    });
+    return () => cleanup?.();
+  }, []);
+
+  useEffect(() => {
+    const cleanup = window.electronAPI?.onShowSettings?.(() => {
+      setShowSettings(true);
     });
     return () => cleanup?.();
   }, []);

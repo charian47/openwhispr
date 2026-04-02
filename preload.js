@@ -538,6 +538,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   onWindowsPushToTalkUnavailable: registerListener("windows-ptt-unavailable"),
 
+  // Settings shortcut (Cmd+, / Ctrl+,)
+  onShowSettings: registerListener("show-settings", (callback) => () => callback()),
+
   // Accessibility permission events (macOS)
   onAccessibilityMissing: (callback) => {
     const listener = () => callback?.();

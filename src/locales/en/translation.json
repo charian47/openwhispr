@@ -22,6 +22,7 @@
     "appLabel": "OpenWhispr",
     "quit": "Quit OpenWhispr",
     "speech": "Speech",
+    "settings": "Settings...",
     "help": "Help",
     "learnMore": "Learn More",
     "file": "File",

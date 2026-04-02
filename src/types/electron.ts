@@ -520,7 +520,10 @@ declare global {
 
       // CUDA GPU acceleration
       listGpus?: () => Promise<GpuDevice[]>;
-      setGpuDeviceIndex?: (purpose: "transcription" | "intelligence", index: number) => Promise<{ success: boolean }>;
+      setGpuDeviceIndex?: (
+        purpose: "transcription" | "intelligence",
+        index: number
+      ) => Promise<{ success: boolean }>;
       getGpuDeviceIndex?: (purpose: "transcription" | "intelligence") => Promise<string>;
       detectGpu: () => Promise<GpuInfo>;
       getCudaWhisperStatus: () => Promise<CudaWhisperStatus>;
@@ -710,6 +713,9 @@ declare global {
         callback: (data: { hotkey: string; error: string; suggestions: string[] }) => void
       ) => () => void;
       onSettingUpdated?: (callback: (data: { key: string; value: unknown }) => void) => () => void;
+
+      // Settings shortcut (Cmd+, / Ctrl+,)
+      onShowSettings?: (callback: () => void) => () => void;
 
       // Accessibility permission events (macOS)
       onAccessibilityMissing?: (callback: () => void) => () => void;
@@ -1202,7 +1208,16 @@ declare global {
       ) => Promise<{ success: boolean; events: any[] }>;
       gcalGetEvent?: (
         eventId: string
-      ) => Promise<{ success: boolean; event: { id: string; summary: string | null; start_time: string; end_time: string; attendees_count: number } | null }>;
+      ) => Promise<{
+        success: boolean;
+        event: {
+          id: string;
+          summary: string | null;
+          start_time: string;
+          end_time: string;
+          attendees_count: number;
+        } | null;
+      }>;
 
       // Meeting chain transcription (BaseTen)
       meetingTranscribeChain?: (
