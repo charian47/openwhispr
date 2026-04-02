@@ -253,20 +253,18 @@ textarea:not(.input-inline) {
   box-shadow: inset 0 1px 2px oklch(from var(--color-foreground) l c h / 0.06);
 }
 
-/* Light mode inputs - embossed parchment */
+/* Light mode inputs */
 :root input:not(.input-inline),
 :root textarea:not(.input-inline) {
-  background-color: var(--color-parchment-bg);
-  border: 1px solid var(--color-parchment-border);
-  color: var(--color-parchment-text);
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  color: var(--color-foreground);
 }
 
 :root input:not(.input-inline):focus,
 :root textarea:not(.input-inline):focus {
-  border-color: var(--color-parchment-accent);
-  box-shadow:
-    0 0 0 2px oklch(from var(--color-parchment-accent) l c h / 0.2),
-    inset 0 1px 3px oklch(from var(--color-parchment-text) l c h / var(--opacity-subtle));
+  border-color: var(--color-border-active);
+  box-shadow: 0 0 0 2px oklch(from var(--color-ring) l c h / 0.15);
   background-color: var(--color-background);
 }
 

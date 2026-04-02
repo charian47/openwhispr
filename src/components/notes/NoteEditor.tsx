@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, Loader2, FileText, Sparkles, AlignLeft, MessageSquareText, Calendar, LinkIcon, FolderOpen, Users } from "lucide-react";
+import { Download, Loader2, FileText, Sparkles, AlignLeft, MessageSquareText, Calendar, LinkIcon, FolderOpen, Search, Plus, Check } from "lucide-react";
 import { RichTextEditor } from "../ui/RichTextEditor";
 import type { Editor } from "@tiptap/react";
 import { MeetingTranscriptChat } from "./MeetingTranscriptChat";
@@ -10,9 +10,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
 import { cn } from "../lib/utils";
-import type { NoteItem } from "../../types/electron";
+import type { NoteItem, FolderItem } from "../../types/electron";
 import type { ActionProcessingState } from "../../hooks/useActionProcessing";
 import ActionProcessingOverlay from "./ActionProcessingOverlay";
 import NoteBottomBar from "./NoteBottomBar";
@@ -70,6 +71,9 @@ interface NoteEditorProps {
   liveTranscript?: string;
   folderName?: string | null;
   calendarEventName?: string | null;
+  folders?: FolderItem[];
+  onMoveToFolder?: (noteId: number, folderId: number) => void;
+  onCreateFolderAndMove?: (noteId: number, folderName: string) => void;
 }
 
 export default function NoteEditor({
@@ -95,10 +99,16 @@ export default function NoteEditor({
   liveTranscript,
   folderName,
   calendarEventName,
+  folders,
+  onMoveToFolder,
+  onCreateFolderAndMove,
 }: NoteEditorProps) {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<MeetingViewMode>("raw");
   const [chatMode, setChatMode] = useState<EmbeddedChatMode>("hidden");
+  const [folderSearch, setFolderSearch] = useState("");
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
   const editorRef = useRef<Editor | null>(null);
 
   const embeddedChat = useEmbeddedChat({
@@ -115,6 +125,14 @@ export default function NoteEditor({
 
   const effectiveTranscript = liveTranscript || meetingTranscript || note.transcript || "";
   const hasMeetingTranscript = !isMeetingRecording && !!effectiveTranscript;
+
+  const filteredFolders = useMemo(
+    () =>
+      folderSearch && folders
+        ? folders.filter((f) => f.name.toLowerCase().includes(folderSearch.toLowerCase()))
+        : folders ?? [],
+    [folders, folderSearch]
+  );
 
   const displaySegments = useMemo<TranscriptSegment[]>(() => {
     if (meetingSegments && meetingSegments.length > 0) return meetingSegments;
@@ -258,8 +276,8 @@ export default function NoteEditor({
           role="textbox"
           aria-label={t("notes.editor.noteTitle")}
         />
-        {/* Metadata chips row — Granola-inspired */}
-        <div className="flex items-center gap-2 mt-1.5 mb-1 flex-wrap">
+        {/* Metadata + toolbar row */}
+        <div className="flex items-center gap-2 mt-1.5">
           {shortDate && (
             <span
               className="inline-flex items-center gap-1.5 text-[11px] text-foreground/40 dark:text-foreground/25"
@@ -275,17 +293,106 @@ export default function NoteEditor({
               <span className="truncate max-w-40">{calendarEventName}</span>
             </span>
           )}
-          {folderName && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground/40 dark:text-foreground/25">
-              <FolderOpen size={11} className="shrink-0" />
-              {folderName}
-            </span>
-          )}
-          {note.note_type === "meeting" && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground/20 dark:text-foreground/12">
-              <Users size={11} className="shrink-0" />
-              {t("notes.editor.participants")}
-            </span>
+          {folders && onMoveToFolder && (
+            <DropdownMenu
+              onOpenChange={(open) => {
+                if (!open) {
+                  setFolderSearch("");
+                  setIsCreatingFolder(false);
+                  setNewFolderName("");
+                }
+              }}
+            >
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="inline-flex items-center gap-1.5 text-[11px] px-1.5 py-0.5 rounded-md border border-border/40 dark:border-white/6 text-foreground/40 dark:text-foreground/25 hover:text-foreground/60 hover:border-border/60 hover:bg-foreground/3 dark:hover:text-foreground/40 dark:hover:border-white/10 dark:hover:bg-white/3 transition-all duration-150 cursor-pointer outline-none"
+                >
+                  <FolderOpen size={11} className="shrink-0" />
+                  {folderName || t("notes.editor.noFolder")}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" sideOffset={6} className="min-w-44 p-1">
+                {(folders.length > 5) && (
+                  <>
+                    <div className="relative px-1.5 py-0.5">
+                      <Search
+                        size={9}
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground/15 pointer-events-none"
+                      />
+                      <input
+                        value={folderSearch}
+                        onChange={(e) => setFolderSearch(e.target.value)}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        placeholder={t("notes.context.searchFolders")}
+                        className="input-inline w-full pl-4.5 pr-1 py-0.5 text-xs text-foreground placeholder:text-foreground/15 outline-none border-none appearance-none"
+                      />
+                    </div>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <div className="overflow-y-auto max-h-48">
+                  {filteredFolders.map((folder) => {
+                    const isCurrent = folder.id === note.folder_id;
+                    return (
+                      <DropdownMenuItem
+                        key={folder.id}
+                        disabled={isCurrent}
+                        onClick={() => onMoveToFolder(note.id, folder.id)}
+                        className="text-xs gap-2 rounded-md px-2 py-1.5"
+                      >
+                        <FolderOpen size={11} className="text-foreground/30 shrink-0" />
+                        <span className="truncate flex-1">{folder.name}</span>
+                        {isCurrent && <Check size={9} className="text-primary shrink-0" />}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  {folderSearch && filteredFolders.length === 0 && (
+                    <p className="text-xs text-foreground/20 text-center py-1.5">
+                      {t("notes.context.noResults")}
+                    </p>
+                  )}
+                </div>
+                {onCreateFolderAndMove && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {isCreatingFolder ? (
+                      <div className="px-1">
+                        <input
+                          autoFocus
+                          value={newFolderName}
+                          onChange={(e) => setNewFolderName(e.target.value)}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === "Enter" && newFolderName.trim()) {
+                              onCreateFolderAndMove(note.id, newFolderName.trim());
+                              setNewFolderName("");
+                              setIsCreatingFolder(false);
+                            }
+                            if (e.key === "Escape") {
+                              setIsCreatingFolder(false);
+                              setNewFolderName("");
+                            }
+                          }}
+                          placeholder={t("notes.folders.folderName")}
+                          className="input-inline w-full px-2 py-1.5 rounded-md bg-transparent text-xs text-foreground placeholder:text-foreground/20 outline-none border-none appearance-none"
+                        />
+                      </div>
+                    ) : (
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          setIsCreatingFolder(true);
+                        }}
+                        className="text-xs gap-2 rounded-md px-2 py-1.5 text-foreground/40"
+                      >
+                        <Plus size={10} />
+                        {t("notes.context.newFolder")}
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           {isSaving && (
             <span className="inline-flex items-center gap-1 text-[11px] text-foreground/30 dark:text-foreground/15 tabular-nums">
@@ -293,8 +400,6 @@ export default function NoteEditor({
               {t("notes.editor.saving")}
             </span>
           )}
-        </div>
-        <div className="flex items-center">
           <div className="flex-1" />
           <div className="flex items-center gap-1">
             {(enhancement || hasMeetingTranscript || hasChatSegments || isMeetingRecording) && (
@@ -364,7 +469,7 @@ export default function NoteEditor({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md bg-foreground/3 dark:bg-white/3 text-foreground/25 hover:text-foreground/40 hover:bg-foreground/6 dark:hover:bg-white/6 transition-colors duration-150"
+                    className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md bg-foreground/4 dark:bg-white/5 text-foreground/50 dark:text-foreground/40 hover:text-foreground/70 hover:bg-foreground/8 dark:hover:text-foreground/60 dark:hover:bg-white/8 transition-colors duration-150"
                     aria-label={t("notes.editor.export")}
                   >
                     <Download size={11} />

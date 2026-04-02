@@ -846,6 +846,9 @@ export default function PersonalNotesView({
               liveTranscript={isTranscribing ? realtimeTranscript : ""}
               folderName={activeFolderName}
               calendarEventName={calendarEventName}
+              folders={folders}
+              onMoveToFolder={handleMoveToFolder}
+              onCreateFolderAndMove={handleCreateFolderAndMove}
               actionProcessingState={actionProcessingState}
               actionName={actionName}
               actionPicker={

@@ -156,18 +156,17 @@ export default function NoteListItem({
                   >
                     {folders.length > 5 && (
                       <>
-                        <div className="relative px-2 py-1.5">
+                        <div className="relative px-1.5 py-0.5">
                           <Search
                             size={9}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/15 pointer-events-none"
+                            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground/15 pointer-events-none"
                           />
                           <input
                             value={folderSearch}
                             onChange={(e) => setFolderSearch(e.target.value)}
                             onKeyDown={(e) => e.stopPropagation()}
                             placeholder={t("notes.context.searchFolders")}
-                            style={{ background: "none" }}
-                            className="w-full pl-5 pr-1 py-0.5 text-xs text-foreground placeholder:text-foreground/15 outline-none border-none appearance-none"
+                            className="input-inline w-full pl-4.5 pr-1 py-0.5 text-xs text-foreground placeholder:text-foreground/15 outline-none border-none appearance-none"
                           />
                         </div>
                         <DropdownMenuSeparator />
@@ -199,7 +198,7 @@ export default function NoteListItem({
                     </div>
                     <DropdownMenuSeparator />
                     {isCreating ? (
-                      <div className="px-2 py-1">
+                      <div className="px-1">
                         <input
                           autoFocus
                           value={newFolderName}
@@ -217,7 +216,7 @@ export default function NoteListItem({
                             }
                           }}
                           placeholder={t("notes.folders.folderName")}
-                          className="w-full bg-transparent text-xs text-foreground placeholder:text-foreground/15 outline-none border-none appearance-none"
+                          className="input-inline w-full px-2 py-1.5 rounded-md bg-transparent text-xs text-foreground placeholder:text-foreground/20 outline-none border-none appearance-none"
                         />
                       </div>
                     ) : (
