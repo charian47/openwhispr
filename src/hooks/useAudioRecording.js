@@ -235,7 +235,7 @@ export const useAudioRecording = (toast, options = {}) => {
     };
   }, [toast, onToggle, performStartRecording, performStopRecording, t]);
 
-  const cancelRecording = async () => {
+  const cancelRecording = useCallback(async () => {
     if (audioManagerRef.current) {
       window.electronAPI?.unregisterCancelHotkey?.();
       const state = audioManagerRef.current.getState();
@@ -248,7 +248,7 @@ export const useAudioRecording = (toast, options = {}) => {
       return audioManagerRef.current.cancelRecording();
     }
     return false;
-  };
+  }, []);
 
   const cancelProcessing = () => {
     if (audioManagerRef.current) {
