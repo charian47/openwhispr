@@ -655,6 +655,12 @@ export default function ControlPanel() {
               </div>
             </div>
           )}
+          {platform === "darwin" && (
+            <div
+              className="w-full h-8 shrink-0"
+              style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+            />
+          )}
           <div className="flex-1 overflow-y-auto relative">
             {platform === "darwin" && isMeetingMode && (
               <div className="absolute top-2 left-4 z-10">

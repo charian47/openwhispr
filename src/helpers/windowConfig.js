@@ -86,7 +86,7 @@ const CONTROL_PANEL_CONFIG = {
   frame: false,
   ...(process.platform === "darwin" && {
     titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 16, y: 28 },
+    trafficLightPosition: { x: 20, y: 20 },
   }),
   transparent: false,
   minimizable: true,
