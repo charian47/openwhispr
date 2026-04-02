@@ -1,6 +1,19 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, Loader2, FileText, Sparkles, AlignLeft, MessageSquareText, Calendar, LinkIcon, FolderOpen, Search, Plus, Check } from "lucide-react";
+import {
+  Download,
+  Loader2,
+  FileText,
+  Sparkles,
+  AlignLeft,
+  MessageSquareText,
+  Calendar,
+  LinkIcon,
+  FolderOpen,
+  Search,
+  Plus,
+  Check,
+} from "lucide-react";
 import { RichTextEditor } from "../ui/RichTextEditor";
 import type { Editor } from "@tiptap/react";
 import { MeetingTranscriptChat } from "./MeetingTranscriptChat";
@@ -130,7 +143,7 @@ export default function NoteEditor({
     () =>
       folderSearch && folders
         ? folders.filter((f) => f.name.toLowerCase().includes(folderSearch.toLowerCase()))
-        : folders ?? [],
+        : (folders ?? []),
     [folders, folderSearch]
   );
 
@@ -280,7 +293,7 @@ export default function NoteEditor({
         <div className="flex items-center gap-2 mt-1.5">
           {shortDate && (
             <span
-              className="inline-flex items-center gap-1.5 text-[11px] text-foreground/40 dark:text-foreground/25"
+              className="inline-flex items-center gap-1.5 text-[11px] text-foreground/50 dark:text-foreground/35"
               title={noteDate}
             >
               <Calendar size={11} className="shrink-0" />
@@ -288,7 +301,7 @@ export default function NoteEditor({
             </span>
           )}
           {calendarEventName && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground/40 dark:text-foreground/25">
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground/50 dark:text-foreground/35">
               <LinkIcon size={11} className="shrink-0" />
               <span className="truncate max-w-40">{calendarEventName}</span>
             </span>
@@ -304,15 +317,13 @@ export default function NoteEditor({
               }}
             >
               <DropdownMenuTrigger asChild>
-                <button
-                  className="inline-flex items-center gap-1.5 text-[11px] px-1.5 py-0.5 rounded-md border border-border/40 dark:border-white/6 text-foreground/40 dark:text-foreground/25 hover:text-foreground/60 hover:border-border/60 hover:bg-foreground/3 dark:hover:text-foreground/40 dark:hover:border-white/10 dark:hover:bg-white/3 transition-all duration-150 cursor-pointer outline-none"
-                >
+                <button className="inline-flex items-center gap-1.5 text-[11px] px-1.5 py-0.5 rounded-md border border-border/70 dark:border-white/25 text-foreground/50 dark:text-foreground/35 hover:text-foreground/60 hover:border-border/60 hover:bg-foreground/3 dark:hover:text-foreground/40 dark:hover:border-white/10 dark:hover:bg-white/3 transition-all duration-150 cursor-pointer outline-none">
                   <FolderOpen size={11} className="shrink-0" />
                   {folderName || t("notes.editor.noFolder")}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" sideOffset={6} className="min-w-44 p-1">
-                {(folders.length > 5) && (
+                {folders.length > 5 && (
                   <>
                     <div className="relative px-1.5 py-0.5">
                       <Search
