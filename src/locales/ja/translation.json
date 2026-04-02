@@ -2085,6 +2085,8 @@
     "emptyState": "このノートについて質問してください",
     "dock": "サイドバーに固定",
     "undock": "サイドバーから外す",
-    "close": "チャットを閉じる"
+    "close": "チャットを閉じる",
+    "newChat": "新しいチャット",
+    "conversationSelector": "会話を切り替え"
   }
 }

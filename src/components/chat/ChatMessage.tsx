@@ -185,7 +185,13 @@ function extractNoteCards(toolCalls?: ToolCallInfo[]): Array<{ noteId: number; t
   return cards;
 }
 
-export function ChatMessage({ role, content, isStreaming, toolCalls, onOpenNote }: ChatMessageProps) {
+export function ChatMessage({
+  role,
+  content,
+  isStreaming,
+  toolCalls,
+  onOpenNote,
+}: ChatMessageProps) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
@@ -206,6 +212,7 @@ export function ChatMessage({ role, content, isStreaming, toolCalls, onOpenNote 
         style={{ animation: "agent-message-in 200ms ease-out both" }}
       >
         <div
+          data-chat-bubble
           className={cn(
             "max-w-[80%] px-3 py-2 rounded-lg rounded-br-sm",
             "bg-primary/90 text-primary-foreground",
@@ -228,6 +235,7 @@ export function ChatMessage({ role, content, isStreaming, toolCalls, onOpenNote 
       style={{ animation: "agent-message-in 200ms ease-out both" }}
     >
       <div
+        data-chat-bubble
         className={cn(
           "max-w-[85%] px-3 py-2 rounded-lg rounded-bl-sm",
           "bg-surface-1 border border-border/30 text-foreground",

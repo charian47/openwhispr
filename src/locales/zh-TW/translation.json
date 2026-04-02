@@ -2080,6 +2080,8 @@
     "emptyState": "就這條筆記提個問題",
     "dock": "固定到側邊欄",
     "undock": "從側邊欄取消固定",
-    "close": "關閉聊天"
+    "close": "關閉聊天",
+    "newChat": "新對話",
+    "conversationSelector": "切換對話"
   }
 }

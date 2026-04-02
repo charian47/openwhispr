@@ -623,7 +623,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   agentOpenNote: (noteId) => ipcRenderer.invoke("agent-open-note", noteId),
 
   // Agent conversation persistence
-  createAgentConversation: (title) => ipcRenderer.invoke("db-create-agent-conversation", title),
+  createAgentConversation: (title, noteId) =>
+    ipcRenderer.invoke("db-create-agent-conversation", title, noteId),
   getAgentConversations: (limit) => ipcRenderer.invoke("db-get-agent-conversations", limit),
   getAgentConversation: (id) => ipcRenderer.invoke("db-get-agent-conversation", id),
   deleteAgentConversation: (id) => ipcRenderer.invoke("db-delete-agent-conversation", id),
@@ -636,6 +637,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("db-get-agent-conversations-with-preview", limit, offset, includeArchived),
   searchAgentConversations: (query, limit) =>
     ipcRenderer.invoke("db-search-agent-conversations", query, limit),
+  getConversationsForNote: (noteId, limit) =>
+    ipcRenderer.invoke("db-get-conversations-for-note", noteId, limit),
   archiveAgentConversation: (id) => ipcRenderer.invoke("db-archive-agent-conversation", id),
   unarchiveAgentConversation: (id) => ipcRenderer.invoke("db-unarchive-agent-conversation", id),
   updateAgentConversationCloudId: (id, cloudId) =>

@@ -10,7 +10,7 @@ export interface ChatPersistence {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   conversationId: number | null;
-  createConversation: (title: string) => Promise<number>;
+  createConversation: (title: string, noteId?: number | null) => Promise<number>;
   loadConversation: (id: number) => Promise<void>;
   saveUserMessage: (text: string) => Promise<void>;
   saveAssistantMessage: (content: string, toolCalls?: ToolCallInfo[]) => Promise<void>;
@@ -22,8 +22,8 @@ export function useChatPersistence(options: UseChatPersistenceOptions = {}): Cha
   const conversationIdRef = useRef<number | null>(options.conversationId ?? null);
 
   const createConversation = useCallback(
-    async (title: string): Promise<number> => {
-      const conv = await window.electronAPI?.createAgentConversation?.(title);
+    async (title: string, noteId?: number | null): Promise<number> => {
+      const conv = await window.electronAPI?.createAgentConversation?.(title, noteId ?? undefined);
       const id = conv?.id ?? 0;
       conversationIdRef.current = id;
       options.onConversationCreated?.(id, title);

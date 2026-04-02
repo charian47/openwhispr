@@ -11,11 +11,23 @@ interface UseEmbeddedChatOptions {
   noteTranscript?: string;
 }
 
+interface NoteConversationItem {
+  id: number;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+}
+
 interface UseEmbeddedChatReturn {
   messages: Message[];
   agentState: AgentState;
   sendMessage: (text: string) => Promise<void>;
   cancelStream: () => void;
+  noteConversations: NoteConversationItem[];
+  activeConversationId: number | null;
+  switchConversation: (id: number) => Promise<void>;
+  startNewChat: () => void;
 }
 
 export function useEmbeddedChat({
@@ -26,6 +38,7 @@ export function useEmbeddedChat({
   noteTranscript,
 }: UseEmbeddedChatOptions): UseEmbeddedChatReturn {
   const [conversationId, setConversationId] = useState<number | null>(null);
+  const [noteConversations, setNoteConversations] = useState<NoteConversationItem[]>([]);
   const noteIdRef = useRef(noteId);
 
   const persistence = useChatPersistence({
@@ -55,21 +68,65 @@ export function useEmbeddedChat({
     },
   });
 
-  // Reset chat when noteId changes
+  const fetchNoteConversations = useCallback(async () => {
+    if (!noteId) return;
+    const conversations = await window.electronAPI?.getConversationsForNote?.(noteId);
+    if (noteIdRef.current !== noteId) return;
+    setNoteConversations(conversations ?? []);
+    return conversations ?? [];
+  }, [noteId]);
+
+  // Load conversations when noteId changes
   useEffect(() => {
-    if (noteId !== noteIdRef.current) {
-      noteIdRef.current = noteId;
+    noteIdRef.current = noteId;
+    if (!noteId) {
       persistence.handleNewChat();
       setConversationId(null);
+      setNoteConversations([]);
+      return;
     }
-  }, [noteId, persistence]);
+
+    let stale = false;
+    (async () => {
+      const conversations = await window.electronAPI?.getConversationsForNote?.(noteId);
+      if (stale || noteIdRef.current !== noteId) return;
+      setNoteConversations(conversations ?? []);
+      if (conversations?.length) {
+        const mostRecent = conversations[0];
+        await persistence.loadConversation(mostRecent.id);
+        if (stale || noteIdRef.current !== noteId) return;
+        setConversationId(mostRecent.id);
+      } else {
+        persistence.handleNewChat();
+        setConversationId(null);
+      }
+    })();
+
+    return () => {
+      stale = true;
+    };
+  }, [noteId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const switchConversation = useCallback(
+    async (id: number) => {
+      await persistence.loadConversation(id);
+      setConversationId(id);
+    },
+    [persistence]
+  );
+
+  const startNewChat = useCallback(() => {
+    persistence.handleNewChat();
+    setConversationId(null);
+  }, [persistence]);
 
   const sendMessage = useCallback(
     async (text: string) => {
       let convId = conversationId;
       if (!convId) {
         const title = `Note: ${noteTitle || "Untitled"}`;
-        convId = await persistence.createConversation(title);
+        convId = await persistence.createConversation(title, noteId);
+        fetchNoteConversations();
       }
 
       const userMsg: Message = {
@@ -84,7 +141,7 @@ export function useEmbeddedChat({
       const allMessages = [...persistence.messages, userMsg];
       await streaming.sendToAI(text, allMessages);
     },
-    [conversationId, noteTitle, persistence, streaming]
+    [conversationId, noteId, noteTitle, persistence, streaming, fetchNoteConversations]
   );
 
   return {
@@ -92,5 +149,9 @@ export function useEmbeddedChat({
     agentState: streaming.agentState,
     sendMessage,
     cancelStream: streaming.cancelStream,
+    noteConversations,
+    activeConversationId: conversationId,
+    switchConversation,
+    startNewChat,
   };
 }

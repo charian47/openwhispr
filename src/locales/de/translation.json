@@ -2085,6 +2085,8 @@
     "emptyState": "Stelle eine Frage zu dieser Notiz",
     "dock": "In Seitenleiste andocken",
     "undock": "Von Seitenleiste abdocken",
-    "close": "Chat schließen"
+    "close": "Chat schließen",
+    "newChat": "Neuer Chat",
+    "conversationSelector": "Unterhaltung wechseln"
   }
 }

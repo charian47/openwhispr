@@ -245,6 +245,14 @@ class DatabaseManager {
       } catch (err) {
         if (!err.message.includes("duplicate column")) throw err;
       }
+      try {
+        this.db.exec("ALTER TABLE agent_conversations ADD COLUMN note_id INTEGER");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
+      this.db.exec(
+        "CREATE INDEX IF NOT EXISTS idx_agent_conversations_note ON agent_conversations(note_id)"
+      );
 
       const actionCount = this.db.prepare("SELECT COUNT(*) as count FROM actions").get();
       if (actionCount.count === 0) {
@@ -822,17 +830,42 @@ class DatabaseManager {
     }
   }
 
-  createAgentConversation(title = "Untitled") {
+  createAgentConversation(title = "Untitled", noteId = null) {
     try {
       if (!this.db) throw new Error("Database not initialized");
       const result = this.db
-        .prepare("INSERT INTO agent_conversations (title) VALUES (?)")
-        .run(title);
+        .prepare("INSERT INTO agent_conversations (title, note_id) VALUES (?, ?)")
+        .run(title, noteId);
       return this.db
         .prepare("SELECT * FROM agent_conversations WHERE id = ?")
         .get(result.lastInsertRowid);
     } catch (error) {
       debugLogger.error("Error creating agent conversation", { error: error.message }, "database");
+      throw error;
+    }
+  }
+
+  getConversationsForNote(noteId, limit = 20) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db
+        .prepare(
+          `SELECT c.id, c.title, c.created_at, c.updated_at,
+            COUNT(m.id) AS message_count
+          FROM agent_conversations c
+          LEFT JOIN agent_messages m ON m.conversation_id = c.id
+          WHERE c.note_id = ?
+          GROUP BY c.id
+          ORDER BY c.updated_at DESC
+          LIMIT ?`
+        )
+        .all(noteId, limit);
+    } catch (error) {
+      debugLogger.error(
+        "Error getting conversations for note",
+        { error: error.message },
+        "database"
+      );
       throw error;
     }
   }

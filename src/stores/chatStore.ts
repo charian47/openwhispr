@@ -5,6 +5,7 @@ interface ConversationItem {
   title: string;
   cloud_id?: string | null;
   archived_at?: string | null;
+  note_id?: number | null;
   created_at: string;
   updated_at: string;
 }

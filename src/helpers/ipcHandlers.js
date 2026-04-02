@@ -809,8 +809,12 @@ class IPCHandlers {
     });
 
     // Agent conversation handlers
-    ipcMain.handle("db-create-agent-conversation", async (event, title) => {
-      return this.databaseManager.createAgentConversation(title);
+    ipcMain.handle("db-create-agent-conversation", async (event, title, noteId) => {
+      return this.databaseManager.createAgentConversation(title, noteId);
+    });
+
+    ipcMain.handle("db-get-conversations-for-note", async (event, noteId, limit) => {
+      return this.databaseManager.getConversationsForNote(noteId, limit);
     });
 
     ipcMain.handle("db-get-agent-conversations", async (event, limit) => {

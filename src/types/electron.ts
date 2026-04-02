@@ -1039,12 +1039,28 @@ declare global {
       updateAgentHotkey?: (hotkey: string) => Promise<{ success: boolean; message: string }>;
       getAgentKey?: () => Promise<string>;
       saveAgentKey?: (key: string) => Promise<void>;
-      createAgentConversation?: (title: string) => Promise<{
+      createAgentConversation?: (
+        title: string,
+        noteId?: number
+      ) => Promise<{
         id: number;
         title: string;
+        note_id?: number | null;
         created_at: string;
         updated_at: string;
       }>;
+      getConversationsForNote?: (
+        noteId: number,
+        limit?: number
+      ) => Promise<
+        Array<{
+          id: number;
+          title: string;
+          created_at: string;
+          updated_at: string;
+          message_count: number;
+        }>
+      >;
       getAgentConversations?: (limit?: number) => Promise<
         Array<{
           id: number;

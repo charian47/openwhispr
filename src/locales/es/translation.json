@@ -2085,6 +2085,8 @@
     "emptyState": "Haz una pregunta sobre esta nota",
     "dock": "Anclar a la barra lateral",
     "undock": "Desanclar de la barra lateral",
-    "close": "Cerrar chat"
+    "close": "Cerrar chat",
+    "newChat": "Nuevo chat",
+    "conversationSelector": "Cambiar conversación"
   }
 }

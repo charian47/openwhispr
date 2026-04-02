@@ -11,8 +11,10 @@ interface NoteBottomBarProps {
   onStartRecording: () => void;
   onStopRecording: () => void;
   onAskSubmit: (text: string) => void;
+  onInputFocus?: () => void;
   askDisabled?: boolean;
   actionPicker?: React.ReactNode;
+  hideInput?: boolean;
 }
 
 export default function NoteBottomBar({
@@ -21,8 +23,10 @@ export default function NoteBottomBar({
   onStartRecording,
   onStopRecording,
   onAskSubmit,
+  onInputFocus,
   askDisabled,
   actionPicker,
+  hideInput,
 }: NoteBottomBarProps) {
   const { t } = useTranslation();
   const [inputText, setInputText] = useState("");
@@ -69,7 +73,8 @@ export default function NoteBottomBar({
 
   const handleInputFocus = useCallback(() => {
     setIsExpanded(true);
-  }, []);
+    onInputFocus?.();
+  }, [onInputFocus]);
 
   useEffect(() => {
     if (!isExpanded) return;
@@ -87,11 +92,13 @@ export default function NoteBottomBar({
       ref={containerRef}
       className="absolute bottom-0 left-0 right-0 z-10 px-5 pb-4 pt-3 pointer-events-none bg-background"
     >
-      <div className="flex items-end gap-2 pointer-events-auto">
+      <div
+        className={cn("flex items-end gap-2 pointer-events-auto", hideInput && "justify-center")}
+      >
         <div
           className={cn(
             "shrink-0 transition-all duration-300 ease-out overflow-hidden",
-            isExpanded && !isRecording ? "w-0 opacity-0" : "w-auto opacity-100"
+            !hideInput && isExpanded && !isRecording ? "w-0 opacity-0" : "w-auto opacity-100"
           )}
         >
           {isRecording ? (
@@ -154,54 +161,56 @@ export default function NoteBottomBar({
           )}
         </div>
 
-        <div
-          className={cn(
-            "flex-1 min-w-0 flex items-center h-10 px-3 gap-2",
-            "rounded-xl",
-            "bg-foreground/3 dark:bg-white/4",
-            "border",
-            "transition-all duration-200",
-            isExpanded
-              ? "border-foreground/12 dark:border-white/10 shadow-[0_0_0_3px_rgba(0,0,0,0.02)] dark:shadow-[0_0_0_3px_rgba(255,255,255,0.02)]"
-              : "border-border/20 dark:border-white/6"
-          )}
-        >
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={handleInputFocus}
-            disabled={askDisabled}
-            placeholder={t("embeddedChat.askPlaceholder")}
+        {!hideInput && (
+          <div
             className={cn(
-              "input-inline flex-1 bg-transparent outline-none min-w-0 p-0",
-              "text-[13px] text-foreground",
-              "placeholder:text-foreground/25 dark:placeholder:text-foreground/15"
+              "flex-1 min-w-0 flex items-center h-10 px-3 gap-2",
+              "rounded-xl",
+              "bg-foreground/3 dark:bg-white/4",
+              "border",
+              "transition-all duration-200",
+              isExpanded
+                ? "border-foreground/12 dark:border-white/10 shadow-[0_0_0_3px_rgba(0,0,0,0.02)] dark:shadow-[0_0_0_3px_rgba(255,255,255,0.02)]"
+                : "border-border/20 dark:border-white/6"
             )}
-          />
-
-          {hasText ? (
-            <button
-              onClick={handleSubmit}
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={handleInputFocus}
               disabled={askDisabled}
+              placeholder={t("embeddedChat.askPlaceholder")}
               className={cn(
-                "flex items-center justify-center w-6 h-6 rounded-md shrink-0",
-                "bg-foreground dark:bg-foreground/90 text-background",
-                "transition-all duration-150",
-                "hover:bg-foreground/85 dark:hover:bg-foreground/80",
-                "active:scale-90",
-                "disabled:opacity-30"
+                "input-inline flex-1 bg-transparent outline-none min-w-0 p-0",
+                "text-[13px] text-foreground",
+                "placeholder:text-foreground/25 dark:placeholder:text-foreground/15"
               )}
-              aria-label={t("embeddedChat.send")}
-            >
-              <ArrowUp size={13} strokeWidth={2.5} />
-            </button>
-          ) : !isExpanded ? (
-            <div className="shrink-0">{actionPicker}</div>
-          ) : null}
-        </div>
+            />
+
+            {hasText ? (
+              <button
+                onClick={handleSubmit}
+                disabled={askDisabled}
+                className={cn(
+                  "flex items-center justify-center w-6 h-6 rounded-md shrink-0",
+                  "bg-foreground dark:bg-foreground/90 text-background",
+                  "transition-all duration-150",
+                  "hover:bg-foreground/85 dark:hover:bg-foreground/80",
+                  "active:scale-90",
+                  "disabled:opacity-30"
+                )}
+                aria-label={t("embeddedChat.send")}
+              >
+                <ArrowUp size={13} strokeWidth={2.5} />
+              </button>
+            ) : !isExpanded ? (
+              <div className="shrink-0">{actionPicker}</div>
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   );
