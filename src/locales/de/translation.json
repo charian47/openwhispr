@@ -1571,7 +1571,10 @@
       "live": "Live",
       "transcript": "Transkript",
       "notes": "Notizen",
-      "conversationWillAppear": "Gespräch wird hier angezeigt..."
+      "conversationWillAppear": "Gespräch wird hier angezeigt...",
+      "linkedEvent": "Verknüpftes Ereignis",
+      "noFolder": "Kein Ordner",
+      "participants": "Teilnehmer"
     },
     "upload": {
       "title": "Audio hochladen",

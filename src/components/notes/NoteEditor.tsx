@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, Loader2, FileText, Sparkles, AlignLeft, MessageSquareText } from "lucide-react";
+import { Download, Loader2, FileText, Sparkles, AlignLeft, MessageSquareText, Calendar, LinkIcon, FolderOpen, Users } from "lucide-react";
 import { RichTextEditor } from "../ui/RichTextEditor";
 import type { Editor } from "@tiptap/react";
 import { MeetingTranscriptChat } from "./MeetingTranscriptChat";
@@ -33,6 +33,12 @@ function formatNoteDate(dateStr: string): string {
   return `${datePart} \u00b7 ${timePart}`;
 }
 
+function formatShortDate(dateStr: string): string {
+  const date = normalizeDbDate(dateStr);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 export interface Enhancement {
   content: string;
   isStale: boolean;
@@ -62,6 +68,8 @@ interface NoteEditorProps {
   meetingSystemPartial?: string;
   onStopMeetingRecording?: () => void;
   liveTranscript?: string;
+  folderName?: string | null;
+  calendarEventName?: string | null;
 }
 
 export default function NoteEditor({
@@ -85,6 +93,8 @@ export default function NoteEditor({
   meetingSystemPartial,
   onStopMeetingRecording,
   liveTranscript,
+  folderName,
+  calendarEventName,
 }: NoteEditorProps) {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<MeetingViewMode>("raw");
@@ -231,6 +241,7 @@ export default function NoteEditor({
   );
 
   const noteDate = formatNoteDate(note.created_at);
+  const shortDate = formatShortDate(note.created_at);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -247,17 +258,43 @@ export default function NoteEditor({
           role="textbox"
           aria-label={t("notes.editor.noteTitle")}
         />
-        <div className="flex items-center mt-1">
-          <div className="flex items-center text-xs text-foreground/50 dark:text-foreground/20 min-w-0">
-            {noteDate && <span>{noteDate}</span>}
-            {noteDate && isSaving && <span className="mx-1.5">&middot;</span>}
-            {isSaving && (
-              <span className="tabular-nums flex items-center gap-1 shrink-0">
-                <Loader2 size={8} className="animate-spin" />
-                {t("notes.editor.saving")}
-              </span>
-            )}
-          </div>
+        {/* Metadata chips row — Granola-inspired */}
+        <div className="flex items-center gap-2 mt-1.5 mb-1 flex-wrap">
+          {shortDate && (
+            <span
+              className="inline-flex items-center gap-1.5 text-[11px] text-foreground/40 dark:text-foreground/25"
+              title={noteDate}
+            >
+              <Calendar size={11} className="shrink-0" />
+              {shortDate}
+            </span>
+          )}
+          {calendarEventName && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground/40 dark:text-foreground/25">
+              <LinkIcon size={11} className="shrink-0" />
+              <span className="truncate max-w-40">{calendarEventName}</span>
+            </span>
+          )}
+          {folderName && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground/40 dark:text-foreground/25">
+              <FolderOpen size={11} className="shrink-0" />
+              {folderName}
+            </span>
+          )}
+          {note.note_type === "meeting" && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground/20 dark:text-foreground/12">
+              <Users size={11} className="shrink-0" />
+              {t("notes.editor.participants")}
+            </span>
+          )}
+          {isSaving && (
+            <span className="inline-flex items-center gap-1 text-[11px] text-foreground/30 dark:text-foreground/15 tabular-nums">
+              <Loader2 size={8} className="animate-spin" />
+              {t("notes.editor.saving")}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center">
           <div className="flex-1" />
           <div className="flex items-center gap-1">
             {(enhancement || hasMeetingTranscript || hasChatSegments || isMeetingRecording) && (

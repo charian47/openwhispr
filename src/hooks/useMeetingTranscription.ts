@@ -90,7 +90,7 @@ registerProcessor("meeting-pcm-processor", MeetingPCMProcessor);
 const getMeetingMicConstraints = async (): Promise<MediaStreamConstraints> => {
   const { preferBuiltInMic, selectedMicDeviceId } = getSettings();
   const micProcessing = {
-    echoCancellation: false,
+    echoCancellation: true,
     noiseSuppression: false,
     autoGainControl: false,
   };

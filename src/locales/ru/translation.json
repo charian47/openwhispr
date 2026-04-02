@@ -1571,7 +1571,10 @@
       "live": "Живой",
       "transcript": "Транскрипция",
       "notes": "Заметки",
-      "conversationWillAppear": "Разговор появится здесь..."
+      "conversationWillAppear": "Разговор появится здесь...",
+      "linkedEvent": "Связанное событие",
+      "noFolder": "Без папки",
+      "participants": "Участники"
     },
     "upload": {
       "title": "Загрузить аудио",

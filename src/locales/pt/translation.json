@@ -1571,7 +1571,10 @@
       "live": "Ao vivo",
       "transcript": "Transcrição",
       "notes": "Notas",
-      "conversationWillAppear": "A conversa aparecerá aqui..."
+      "conversationWillAppear": "A conversa aparecerá aqui...",
+      "linkedEvent": "Evento vinculado",
+      "noFolder": "Sem pasta",
+      "participants": "Participantes"
     },
     "upload": {
       "title": "Enviar áudio",

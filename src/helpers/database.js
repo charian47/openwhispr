@@ -1194,6 +1194,16 @@ class DatabaseManager {
     }
   }
 
+  getCalendarEventById(eventId) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db.prepare("SELECT * FROM calendar_events WHERE id = ?").get(eventId) || null;
+    } catch (error) {
+      debugLogger.error("Error getting calendar event by id", { error: error.message }, "gcal");
+      return null;
+    }
+  }
+
   clearCalendarData() {
     try {
       if (!this.db) throw new Error("Database not initialized");

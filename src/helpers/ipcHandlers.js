@@ -4404,6 +4404,15 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("gcal-get-event", async (_event, eventId) => {
+      try {
+        const event = this.databaseManager.getCalendarEventById(eventId);
+        return { success: true, event };
+      } catch (error) {
+        return { success: false, event: null };
+      }
+    });
+
     ipcMain.handle("meeting-detection-get-preferences", async () => {
       try {
         return { success: true, preferences: this.meetingDetectionEngine.getPreferences() };

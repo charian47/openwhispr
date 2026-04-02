@@ -1632,7 +1632,10 @@
       "live": "En direct",
       "transcript": "Transcription",
       "notes": "Notes",
-      "conversationWillAppear": "La conversation apparaîtra ici..."
+      "conversationWillAppear": "La conversation apparaîtra ici...",
+      "linkedEvent": "Événement lié",
+      "noFolder": "Aucun dossier",
+      "participants": "Participants"
     },
     "upload": {
       "title": "Téléverser un fichier audio",

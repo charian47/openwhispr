@@ -261,9 +261,9 @@ CREATE TABLE transcriptions (
 Settings stored in localStorage with these keys:
 - `whisperModel`: Selected Whisper model
 - `useLocalWhisper`: Boolean for local vs cloud
-- `openaiApiKey`: Encrypted API key
-- `anthropicApiKey`: Encrypted API key
-- `geminiApiKey`: Encrypted API key
+- `openaiApiKey`: API key (plaintext)
+- `anthropicApiKey`: API key (plaintext)
+- `geminiApiKey`: API key (plaintext)
 - `language`: Selected language code
 - `agentName`: User's custom agent name
 - `reasoningModel`: Selected AI model for processing
@@ -693,7 +693,7 @@ const { t } = useTranslation();
 
 ## Security Considerations
 
-- API keys stored in system keychain when possible
+- API keys stored in plaintext in userData `.env` and localStorage (not yet encrypted — see #532)
 - Context isolation enabled
 - No remote code execution
 - Sanitized file paths

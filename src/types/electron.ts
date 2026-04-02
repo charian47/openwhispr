@@ -1181,6 +1181,9 @@ declare global {
       gcalGetUpcomingEvents?: (
         windowMinutes?: number
       ) => Promise<{ success: boolean; events: any[] }>;
+      gcalGetEvent?: (
+        eventId: string
+      ) => Promise<{ success: boolean; event: { id: string; summary: string | null; start_time: string; end_time: string; attendees_count: number } | null }>;
 
       // Meeting chain transcription (BaseTen)
       meetingTranscribeChain?: (

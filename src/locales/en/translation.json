@@ -1680,7 +1680,10 @@
       "live": "Live",
       "transcript": "Transcript",
       "notes": "Notes",
-      "conversationWillAppear": "Conversation will appear here..."
+      "conversationWillAppear": "Conversation will appear here...",
+      "linkedEvent": "Linked event",
+      "noFolder": "No folder",
+      "participants": "Participants"
     },
     "upload": {
       "title": "Upload Audio",

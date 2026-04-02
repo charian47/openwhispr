@@ -138,6 +138,23 @@ export default function PersonalNotesView({
 
   const activeNote = notes.find((n) => n.id === activeNoteId) ?? null;
 
+  // Derive folder name and calendar event name for the metadata chips
+  const activeFolderName = useMemo(() => {
+    if (!activeNote?.folder_id) return null;
+    return folders.find((f) => f.id === activeNote.folder_id)?.name ?? null;
+  }, [activeNote?.folder_id, folders]);
+
+  const [calendarEventName, setCalendarEventName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!activeNote?.calendar_event_id) {
+      setCalendarEventName(null);
+      return;
+    }
+    window.electronAPI.gcalGetEvent?.(activeNote.calendar_event_id).then((result) => {
+      setCalendarEventName(result?.success && result.event?.summary ? result.event.summary : null);
+    });
+  }, [activeNote?.calendar_event_id]);
+
   // Note recording uses the same meeting transcription pipeline.
   // The `isMeetingMode` ref distinguishes whether the recording was triggered
   // by the meeting hotkey (creates a separate note) or the note record button.
@@ -827,6 +844,8 @@ export default function PersonalNotesView({
               meetingSystemPartial={systemPartial}
               onStopMeetingRecording={stopTranscription}
               liveTranscript={isTranscribing ? realtimeTranscript : ""}
+              folderName={activeFolderName}
+              calendarEventName={calendarEventName}
               actionProcessingState={actionProcessingState}
               actionName={actionName}
               actionPicker={

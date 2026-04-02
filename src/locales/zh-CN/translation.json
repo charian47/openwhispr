@@ -1566,7 +1566,10 @@
       "live": "实时",
       "transcript": "转录",
       "notes": "笔记",
-      "conversationWillAppear": "对话将显示在这里..."
+      "conversationWillAppear": "对话将显示在这里...",
+      "linkedEvent": "关联日程",
+      "noFolder": "无文件夹",
+      "participants": "参与者"
     },
     "upload": {
       "title": "上传音频",

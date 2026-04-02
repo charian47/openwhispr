@@ -1571,7 +1571,10 @@
       "live": "En vivo",
       "transcript": "Transcripción",
       "notes": "Notas",
-      "conversationWillAppear": "La conversación aparecerá aquí..."
+      "conversationWillAppear": "La conversación aparecerá aquí...",
+      "linkedEvent": "Evento vinculado",
+      "noFolder": "Sin carpeta",
+      "participants": "Participantes"
     },
     "upload": {
       "title": "Subir audio",
