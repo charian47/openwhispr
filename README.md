@@ -78,6 +78,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - ⌨️ **Compound Hotkeys**: Support for multi-key combinations like `Cmd+Shift+K`
 - 🎙️ **Push-to-Talk (Windows)**: Native low-level keyboard hook for true push-to-talk with compound hotkey support
 - 🐧 **GNOME Wayland Support**: Native global shortcuts via D-Bus for GNOME Wayland users
+- 🐧 **KDE Wayland Support**: Native global shortcuts via D-Bus for KDE Plasma on Wayland
 - 🐧 **Hyprland Wayland Support**: Native global shortcuts via `hyprctl` keybindings + D-Bus for Hyprland users
 - 🖥️ **Multi-Monitor**: Floating dictation icon follows your cursor across monitors
 - 🧹 **Model Cleanup**: One-click removal of cached models with uninstall hooks to keep disks tidy

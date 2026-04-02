@@ -11,16 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Native macOS System Audio Tap**: CoreAudio Tap API for direct system audio capture — eliminates the need for screen recording permission on macOS 14.2+
 - **TipTap Rich Text Editor**: Migrated notes editor from plain Markdown to TipTap with Obsidian-style live preview — hides Markdown syntax except on the cursor line, with rich text rendering for enhanced and transcript views
 - **Dual-Channel Meeting Transcription**: Separate mic and system audio channels with chat bubble UI for speaker-differentiated meeting transcripts
 - **Meeting Segment Timestamps**: Persist segment timestamps in saved meeting transcripts with chronological ordering
 - **Meeting-Specific AI Prompts**: Meeting notes generation now uses speaker-aware prompts for better context in generated summaries
+- **KDE Wayland Native Shortcuts**: Native global shortcut support for KDE Plasma on Wayland using D-Bus, matching the existing GNOME and Hyprland approach (#486)
+- **Mistral Nemo 12B and Gemma 3 12B**: Added to local model registry for on-device inference (#483)
+- **Post-Login Permissions Gate**: Returning users now see a permissions check after login to ensure mic and system audio access
 
 ### Changed
 
 - **Unified Notes Recording**: All notes now use dual-stream transcription with simplified recording UX — always saves to transcript
 - **Notes Tab Rename**: Renamed "Raw" tab to "Notes" and default to it during meetings
 - **Shared Note Title Generation**: Extracted `generateNoteTitle` utility for consistent auto-titling across meeting and regular notes
+- **Simplified Permission Buttons**: Consolidated permission prompts to a single "Grant Access" action (#490)
+- **screenRecording → systemAudio Rename**: Renamed `screenRecording` references to `systemAudio` across the codebase for clarity
+- **macOS 15+ System Audio Consent**: Trigger the native system audio consent dialog on macOS 15+ instead of the legacy screen recording prompt
+- **Improved Notes Output**: Better generate notes output format and auto-title generation
+- **Update Notification Polish**: Improved update notification transparency, icon, and copy
+- **Permission Re-validation**: Re-validate mic and system audio permissions against the OS on component mount
 
 ### Fixed
 
@@ -38,6 +48,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Streaming Dictation Commands**: Use TipTap editor commands for streaming dictation input
 - **Google OAuth Onboarding**: Fix Google OAuth users skipping onboarding flow
 - **Realtime Dictation Default**: Default streaming provider to openai-realtime for dictation; respect sttConfig dictation mode for realtime models
+- **KDE Plasma Overlay**: Fix KDE Plasma hotkey and overlay window behavior — scoped window type changes to KDE only, preserving GNOME behavior (#491)
+- **Cleanup Prompt Refusal**: Fix cleanup prompt refusing to output command-like transcriptions (#478)
+- **KDE Wayland Clipboard Paste**: Replaced busy-wait with sleep and clean up temp file for KDE Wayland paste (#455)
+- **GNOME Agent Hotkey**: Register agent hotkey as independent GNOME Wayland keybinding slot (#436)
+- **Agent Hotkey Conflict Warning**: Show conflict warning when agent hotkey duplicates another mode
+- **Meeting Hotkey Registration**: Await async `registerSlot` for meeting hotkey registration
+- **Media Pause During Dictation**: Prevent paused media from being unpaused during dictation (#419)
+- **Meeting Chat Scroll Overlap**: Fix meeting system audio transcription and chat scroll overlap
+- **macOS Media Remote Bundle**: Include macos-media-remote in extraResources (#487)
+- **NSAudioCaptureUsageDescription**: Restore plist entry and increase audio probe timeout
 
 ### Security
 
