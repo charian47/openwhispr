@@ -34,6 +34,8 @@ import EmbeddedChat, { type EmbeddedChatMode } from "./EmbeddedChat";
 import { useEmbeddedChat } from "../../hooks/useEmbeddedChat";
 import { normalizeDbDate } from "../../utils/dateFormatting";
 import { parseTranscriptSegments } from "../../utils/parseTranscriptSegments";
+import NoteParticipants from "./NoteParticipants";
+import type { CalendarAttendee } from "../../types/calendar";
 
 function formatNoteDate(dateStr: string): string {
   const date = normalizeDbDate(dateStr);
@@ -155,6 +157,14 @@ export default function NoteEditor({
   }, [meetingSegments, note.transcript]);
 
   const hasChatSegments = displaySegments.length > 0;
+
+  const parsedParticipants = useMemo<CalendarAttendee[]>(() => {
+    try {
+      return note.participants ? JSON.parse(note.participants) : [];
+    } catch {
+      return [];
+    }
+  }, [note.id, note.participants]);
 
   const updateSegmentIndicator = useCallback(() => {
     const container = segmentContainerRef.current;
@@ -329,6 +339,7 @@ export default function NoteEditor({
                 <span className="truncate max-w-40">{calendarEventName}</span>
               </span>
             )}
+            <NoteParticipants noteId={note.id} participants={parsedParticipants} />
             {folders && onMoveToFolder && (
               <DropdownMenu
                 onOpenChange={(open) => {

@@ -1596,6 +1596,14 @@
       "noFolder": "Kein Ordner",
       "participants": "Teilnehmer"
     },
+    "participants": {
+      "attendee": "Teilnehmer",
+      "attendees": "Teilnehmer",
+      "addAttendees": "Teilnehmer hinzufügen",
+      "addPlaceholder": "Teilnehmer hinzufügen...",
+      "typeEmail": "E-Mail eingeben zum Hinzufügen...",
+      "me": "(ich)"
+    },
     "upload": {
       "title": "Audio hochladen",
       "using": "Verwendet {{model}}",

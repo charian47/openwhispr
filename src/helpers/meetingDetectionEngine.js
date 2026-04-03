@@ -183,6 +183,23 @@ class MeetingDetectionEngine {
 
         this.broadcastToWindows("note-added", noteResult.note);
 
+        const isRealEvent =
+          detection.event?.calendar_id &&
+          detection.event.calendar_id !== "__detected__" &&
+          detection.event.calendar_id !== "__manual__";
+
+        if (isRealEvent) {
+          const calEvent = this.databaseManager.getCalendarEventById(detection.event.id);
+          const updates = { calendar_event_id: detection.event.id };
+          if (calEvent?.attendees) {
+            updates.participants = calEvent.attendees;
+          }
+          const updateResult = this.databaseManager.updateNote(noteResult.note.id, updates);
+          if (updateResult?.success && updateResult?.note) {
+            this.broadcastToWindows("note-updated", updateResult.note);
+          }
+        }
+
         await this.windowManager.createControlPanelWindow();
         this.windowManager.snapControlPanelToMeetingMode();
         this.windowManager.sendToControlPanel("navigate-to-meeting-note", {

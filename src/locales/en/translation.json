@@ -1705,6 +1705,14 @@
       "noFolder": "No folder",
       "participants": "Participants"
     },
+    "participants": {
+      "attendee": "attendee",
+      "attendees": "attendees",
+      "addAttendees": "Add attendees",
+      "addPlaceholder": "Add attendees...",
+      "typeEmail": "Type an email to add...",
+      "me": "(me)"
+    },
     "upload": {
       "title": "Upload Audio",
       "using": "Using {{model}}",

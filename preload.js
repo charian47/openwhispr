@@ -658,6 +658,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("gcal-get-upcoming-events", windowMinutes),
   gcalGetEvent: (eventId) => ipcRenderer.invoke("gcal-get-event", eventId),
 
+  // Contacts
+  searchContacts: (query) => ipcRenderer.invoke("search-contacts", query),
+  upsertContact: (contact) => ipcRenderer.invoke("upsert-contact", contact),
+  getMD5Hash: (text) => ipcRenderer.invoke("get-md5-hash", text),
+
   // Google Calendar event listeners
   onGcalMeetingStarting: registerListener(
     "gcal-meeting-starting",

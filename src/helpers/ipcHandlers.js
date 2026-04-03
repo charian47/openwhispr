@@ -4816,6 +4816,28 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("search-contacts", async (_event, query) => {
+      try {
+        const contacts = this.databaseManager.searchContacts(query);
+        return { success: true, contacts };
+      } catch (error) {
+        return { success: false, contacts: [] };
+      }
+    });
+
+    ipcMain.handle("upsert-contact", async (_event, contact) => {
+      try {
+        this.databaseManager.upsertContacts([contact]);
+        return { success: true };
+      } catch (error) {
+        return { success: false };
+      }
+    });
+
+    ipcMain.handle("get-md5-hash", (_event, text) => {
+      return crypto.createHash("md5").update(text.toLowerCase().trim()).digest("hex");
+    });
+
     ipcMain.handle("meeting-detection-get-preferences", async () => {
       try {
         return { success: true, preferences: this.meetingDetectionEngine.getPreferences() };

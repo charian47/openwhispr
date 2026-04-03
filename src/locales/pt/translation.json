@@ -1596,6 +1596,14 @@
       "noFolder": "Sem pasta",
       "participants": "Participantes"
     },
+    "participants": {
+      "attendee": "participante",
+      "attendees": "participantes",
+      "addAttendees": "Adicionar participantes",
+      "addPlaceholder": "Adicionar participantes...",
+      "typeEmail": "Digite um e-mail para adicionar...",
+      "me": "(eu)"
+    },
     "upload": {
       "title": "Enviar áudio",
       "using": "Usando {{model}}",

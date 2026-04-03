@@ -1596,6 +1596,14 @@
       "noFolder": "Nessuna cartella",
       "participants": "Partecipanti"
     },
+    "participants": {
+      "attendee": "partecipante",
+      "attendees": "partecipanti",
+      "addAttendees": "Aggiungi partecipanti",
+      "addPlaceholder": "Aggiungi partecipanti...",
+      "typeEmail": "Digita un'email per aggiungere...",
+      "me": "(io)"
+    },
     "upload": {
       "title": "Carica audio",
       "using": "Utilizzando {{model}}",
