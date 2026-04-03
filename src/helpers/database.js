@@ -363,6 +363,26 @@ class DatabaseManager {
         if (!err.message.includes("duplicate column")) throw err;
       }
 
+      try {
+        this.db.exec("ALTER TABLE calendar_events ADD COLUMN attendees TEXT");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
+      try {
+        this.db.exec("ALTER TABLE notes ADD COLUMN participants TEXT");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
+
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS contacts (
+          email TEXT PRIMARY KEY,
+          display_name TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
       return true;
     } catch (error) {
       debugLogger.error("Database initialization failed", { error: error.message }, "database");
@@ -626,6 +646,7 @@ class DatabaseManager {
         "folder_id",
         "transcript",
         "calendar_event_id",
+        "participants",
       ];
       const fields = [];
       const values = [];
@@ -1147,7 +1168,7 @@ class DatabaseManager {
       if (!this.db) throw new Error("Database not initialized");
       const transaction = this.db.transaction((eventList) => {
         const stmt = this.db.prepare(
-          "INSERT OR REPLACE INTO calendar_events (id, calendar_id, summary, start_time, end_time, is_all_day, status, hangout_link, conference_data, organizer_email, attendees_count, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
+          "INSERT OR REPLACE INTO calendar_events (id, calendar_id, summary, start_time, end_time, is_all_day, status, hangout_link, conference_data, organizer_email, attendees_count, attendees, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
         );
         for (const e of eventList) {
           stmt.run(
@@ -1161,7 +1182,8 @@ class DatabaseManager {
             e.hangout_link || null,
             e.conference_data || null,
             e.organizer_email || null,
-            e.attendees_count || 0
+            e.attendees_count || 0,
+            e.attendees || null
           );
         }
       });
@@ -1234,6 +1256,40 @@ class DatabaseManager {
     } catch (error) {
       debugLogger.error("Error getting calendar event by id", { error: error.message }, "gcal");
       return null;
+    }
+  }
+
+  upsertContacts(contacts) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const transaction = this.db.transaction((list) => {
+        const stmt = this.db.prepare(
+          "INSERT INTO contacts (email, display_name, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(email) DO UPDATE SET display_name = COALESCE(excluded.display_name, contacts.display_name), updated_at = CURRENT_TIMESTAMP"
+        );
+        for (const c of list) {
+          if (c.email) stmt.run(c.email.toLowerCase().trim(), c.displayName || null);
+        }
+      });
+      transaction(contacts);
+      return { success: true };
+    } catch (error) {
+      debugLogger.error("Error upserting contacts", { error: error.message }, "database");
+      throw error;
+    }
+  }
+
+  searchContacts(query) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const pattern = `%${query || ""}%`;
+      return this.db
+        .prepare(
+          "SELECT * FROM contacts WHERE email LIKE ? OR display_name LIKE ? ORDER BY display_name ASC, email ASC LIMIT 20"
+        )
+        .all(pattern, pattern);
+    } catch (error) {
+      debugLogger.error("Error searching contacts", { error: error.message }, "database");
+      throw error;
     }
   }
 

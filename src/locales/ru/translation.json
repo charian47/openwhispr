@@ -1596,6 +1596,14 @@
       "noFolder": "Без папки",
       "participants": "Участники"
     },
+    "participants": {
+      "attendee": "участник",
+      "attendees": "участников",
+      "addAttendees": "Добавить участников",
+      "addPlaceholder": "Добавить участников...",
+      "typeEmail": "Введите email для добавления...",
+      "me": "(я)"
+    },
     "upload": {
       "title": "Загрузить аудио",
       "using": "Используется {{model}}",

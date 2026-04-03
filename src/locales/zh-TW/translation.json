@@ -1591,6 +1591,14 @@
       "noFolder": "無資料夾",
       "participants": "參與者"
     },
+    "participants": {
+      "attendee": "位與會者",
+      "attendees": "位與會者",
+      "addAttendees": "新增與會者",
+      "addPlaceholder": "新增與會者...",
+      "typeEmail": "輸入電子郵件以新增...",
+      "me": "（我）"
+    },
     "upload": {
       "title": "上傳音訊",
       "using": "使用 {{model}}",

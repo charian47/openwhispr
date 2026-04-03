@@ -29,6 +29,7 @@ export interface NoteItem {
   folder_id: number | null;
   transcript: string | null;
   calendar_event_id: string | null;
+  participants: string | null;
   cloud_id: string | null;
   created_at: string;
   updated_at: string;
@@ -391,6 +392,7 @@ declare global {
           folder_id?: number | null;
           transcript?: string | null;
           calendar_event_id?: string | null;
+          participants?: string | null;
         }
       ) => Promise<{ success: boolean; note?: NoteItem }>;
       deleteNote: (id: number) => Promise<{ success: boolean }>;
@@ -1242,8 +1244,22 @@ declare global {
           start_time: string;
           end_time: string;
           attendees_count: number;
+          attendees: string | null;
         } | null;
       }>;
+
+      // Contacts
+      searchContacts: (
+        query: string
+      ) => Promise<{
+        success: boolean;
+        contacts: Array<{ email: string; display_name: string | null }>;
+      }>;
+      upsertContact: (contact: {
+        email: string;
+        displayName?: string | null;
+      }) => Promise<{ success: boolean }>;
+      getMD5Hash: (text: string) => Promise<string>;
 
       // Meeting chain transcription (BaseTen)
       meetingTranscribeChain?: (

@@ -1657,6 +1657,14 @@
       "noFolder": "Aucun dossier",
       "participants": "Participants"
     },
+    "participants": {
+      "attendee": "participant",
+      "attendees": "participants",
+      "addAttendees": "Ajouter des participants",
+      "addPlaceholder": "Ajouter des participants...",
+      "typeEmail": "Saisissez un e-mail pour ajouter...",
+      "me": "(moi)"
+    },
     "upload": {
       "title": "Téléverser un fichier audio",
       "using": "Utilisation de {{model}}",

@@ -1596,6 +1596,14 @@
       "noFolder": "Sin carpeta",
       "participants": "Participantes"
     },
+    "participants": {
+      "attendee": "asistente",
+      "attendees": "asistentes",
+      "addAttendees": "Agregar asistentes",
+      "addPlaceholder": "Agregar asistentes...",
+      "typeEmail": "Escribe un correo para agregar...",
+      "me": "(yo)"
+    },
     "upload": {
       "title": "Subir audio",
       "using": "Usando {{model}}",

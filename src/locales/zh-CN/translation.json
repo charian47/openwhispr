@@ -1591,6 +1591,14 @@
       "noFolder": "无文件夹",
       "participants": "参与者"
     },
+    "participants": {
+      "attendee": "位参会者",
+      "attendees": "位参会者",
+      "addAttendees": "添加参会者",
+      "addPlaceholder": "添加参会者...",
+      "typeEmail": "输入邮箱以添加...",
+      "me": "（我）"
+    },
     "upload": {
       "title": "上传音频",
       "using": "使用 {{model}}",
