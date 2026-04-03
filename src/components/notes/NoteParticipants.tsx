@@ -18,12 +18,48 @@ function getInitialColor(email: string): string {
   return `hsl(${h}, 45%, 65%)`;
 }
 
-interface NoteParticipantsProps {
-  participants: CalendarAttendee[];
-  onUpdate: (participants: CalendarAttendee[]) => void;
+interface ParticipantAvatarProps {
+  email: string;
+  displayName: string | null;
+  gravatarHash?: string;
+  failed: boolean;
+  onImageError: () => void;
 }
 
-export default function NoteParticipants({ participants, onUpdate }: NoteParticipantsProps) {
+function ParticipantAvatar({
+  email,
+  displayName,
+  gravatarHash,
+  failed,
+  onImageError,
+}: ParticipantAvatarProps) {
+  if (gravatarHash && !failed) {
+    return (
+      <img
+        src={`https://www.gravatar.com/avatar/${gravatarHash}?d=404&s=64`}
+        alt=""
+        loading="lazy"
+        className="shrink-0 w-6 h-6 rounded-full object-cover"
+        onError={onImageError}
+      />
+    );
+  }
+  return (
+    <span
+      className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white"
+      style={{ backgroundColor: getInitialColor(email) }}
+    >
+      {getInitials(displayName, email)}
+    </span>
+  );
+}
+
+interface NoteParticipantsProps {
+  noteId: number;
+  participants: CalendarAttendee[];
+}
+
+export default function NoteParticipants({ noteId, participants }: NoteParticipantsProps) {
   const { t } = useTranslation();
   const [localParticipants, setLocalParticipants] = useState(participants);
   const [search, setSearch] = useState("");
@@ -68,6 +104,15 @@ export default function NoteParticipants({ participants, onUpdate }: NotePartici
     });
   }, [search, open, localParticipants]);
 
+  const saveParticipants = useCallback(
+    (updated: CalendarAttendee[]) => {
+      window.electronAPI.updateNote(noteId, {
+        participants: JSON.stringify(updated),
+      });
+    },
+    [noteId]
+  );
+
   const addParticipant = useCallback(
     (email: string, displayName?: string | null) => {
       const normalized = email.toLowerCase().trim();
@@ -77,20 +122,20 @@ export default function NoteParticipants({ participants, onUpdate }: NotePartici
         { email: normalized, displayName: displayName || null, responseStatus: null, self: false },
       ];
       setLocalParticipants(updated);
-      onUpdate(updated);
+      saveParticipants(updated);
       window.electronAPI.upsertContact({ email: normalized, displayName: displayName || null });
       setSearch("");
     },
-    [localParticipants, onUpdate]
+    [localParticipants, saveParticipants]
   );
 
   const removeParticipant = useCallback(
     (email: string) => {
       const updated = localParticipants.filter((p) => p.email !== email);
       setLocalParticipants(updated);
-      onUpdate(updated);
+      saveParticipants(updated);
     },
-    [localParticipants, onUpdate]
+    [localParticipants, saveParticipants]
   );
 
   const handleKeyDown = useCallback(
@@ -153,12 +198,12 @@ export default function NoteParticipants({ participants, onUpdate }: NotePartici
                   onClick={() => addParticipant(contact.email, contact.display_name)}
                   className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs text-foreground/70 hover:bg-foreground/5 transition-colors cursor-pointer"
                 >
-                  <span
-                    className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white"
-                    style={{ backgroundColor: getInitialColor(contact.email) }}
-                  >
-                    {getInitials(contact.display_name, contact.email)}
-                  </span>
+                  <ParticipantAvatar
+                    email={contact.email}
+                    displayName={contact.display_name}
+                    failed={false}
+                    onImageError={() => {}}
+                  />
                   <span className="truncate">{contact.display_name || contact.email}</span>
                 </button>
               ))}
@@ -176,50 +221,36 @@ export default function NoteParticipants({ participants, onUpdate }: NotePartici
               <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
                 {domain}
               </div>
-              {members.map((p) => {
-                const hash = gravatarHashes[p.email];
-                const failed = failedGravatars.has(p.email);
+              {members.map((p) => (
+                <div
+                  key={p.email}
+                  className="group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5 transition-colors"
+                >
+                  <ParticipantAvatar
+                    email={p.email}
+                    displayName={p.displayName}
+                    gravatarHash={gravatarHashes[p.email]}
+                    failed={failedGravatars.has(p.email)}
+                    onImageError={() => setFailedGravatars((prev) => new Set(prev).add(p.email))}
+                  />
 
-                return (
-                  <div
-                    key={p.email}
-                    className="group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-foreground/5 transition-colors"
-                  >
-                    {hash && !failed ? (
-                      <img
-                        src={`https://www.gravatar.com/avatar/${hash}?d=404&s=64`}
-                        alt=""
-                        loading="lazy"
-                        className="shrink-0 w-6 h-6 rounded-full object-cover"
-                        onError={() => setFailedGravatars((prev) => new Set(prev).add(p.email))}
-                      />
-                    ) : (
-                      <span
-                        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white"
-                        style={{ backgroundColor: getInitialColor(p.email) }}
-                      >
-                        {getInitials(p.displayName, p.email)}
+                  <span className="flex-1 min-w-0 truncate text-xs text-foreground/70">
+                    {p.displayName || p.email.split("@")[0]}
+                    {p.self && (
+                      <span className="ml-1 text-foreground/30">
+                        {t("notes.participants.me", "(me)")}
                       </span>
                     )}
+                  </span>
 
-                    <span className="flex-1 min-w-0 truncate text-xs text-foreground/70">
-                      {p.displayName || p.email.split("@")[0]}
-                      {p.self && (
-                        <span className="ml-1 text-foreground/30">
-                          {t("notes.participants.me", "(me)")}
-                        </span>
-                      )}
-                    </span>
-
-                    <button
-                      onClick={() => removeParticipant(p.email)}
-                      className="shrink-0 opacity-0 group-hover:opacity-100 p-0.5 rounded text-foreground/30 hover:text-foreground/60 transition-opacity cursor-pointer"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                );
-              })}
+                  <button
+                    onClick={() => removeParticipant(p.email)}
+                    className="shrink-0 opacity-0 group-hover:opacity-100 p-0.5 rounded text-foreground/30 hover:text-foreground/60 transition-opacity cursor-pointer"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
             </div>
           ))}
 

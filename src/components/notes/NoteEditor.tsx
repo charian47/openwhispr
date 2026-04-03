@@ -339,14 +339,7 @@ export default function NoteEditor({
                 <span className="truncate max-w-40">{calendarEventName}</span>
               </span>
             )}
-            <NoteParticipants
-              participants={parsedParticipants}
-              onUpdate={async (updated) => {
-                await window.electronAPI.updateNote(note.id, {
-                  participants: JSON.stringify(updated),
-                });
-              }}
-            />
+            <NoteParticipants noteId={note.id} participants={parsedParticipants} />
             {folders && onMoveToFolder && (
               <DropdownMenu
                 onOpenChange={(open) => {
