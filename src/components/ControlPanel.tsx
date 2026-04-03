@@ -21,7 +21,6 @@ import {
 import { useSettingsStore } from "../stores/settingsStore";
 import ControlPanelSidebar, { type ControlPanelView } from "./ControlPanelSidebar";
 import WindowControls from "./WindowControls";
-import { cn } from "./lib/utils";
 
 import { getCachedPlatform } from "../utils/platform";
 import { setActiveNoteId, setActiveFolderId, initializeNotes } from "../stores/noteStore";
@@ -631,39 +630,15 @@ export default function ControlPanel() {
           />
         </div>
         <main className="flex-1 flex flex-col overflow-hidden">
-          {platform !== "darwin" && (
-            <div
-              className="flex items-center justify-between w-full h-10 shrink-0"
-              style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
-            >
-              {isMeetingMode && (
-                <div className="ml-2" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
-                  <Button
-                    variant="outline-flat"
-                    size="sm"
-                    onClick={handleExitMeetingMode}
-                    className="h-7 px-2.5 pl-1.5 gap-1"
-                  >
-                    <ChevronLeft size={14} strokeWidth={1.8} />
-                    {t("controlPanel.backToNotes")}
-                  </Button>
-                </div>
-              )}
-              <div className="flex-1" />
-              <div className="pr-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
-                <WindowControls />
-              </div>
-            </div>
-          )}
-          {platform === "darwin" && (
-            <div
-              className="w-full h-8 shrink-0"
-              style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
-            />
-          )}
-          <div className="flex-1 overflow-y-auto relative">
-            {platform === "darwin" && isMeetingMode && (
-              <div className="absolute top-2 left-4 z-10">
+          <div
+            className="flex items-center justify-between w-full h-10 shrink-0"
+            style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+          >
+            {isMeetingMode && (
+              <div
+                className={platform === "darwin" ? "ml-[84px] mt-[16px]" : "ml-2"}
+                style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+              >
                 <Button
                   variant="outline-flat"
                   size="sm"
@@ -675,6 +650,14 @@ export default function ControlPanel() {
                 </Button>
               </div>
             )}
+            <div className="flex-1" />
+            {platform !== "darwin" && (
+              <div className="pr-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+                <WindowControls />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto pt-1">
             {usage?.isPastDue && activeView === "home" && (
               <div className="max-w-3xl mx-auto w-full mb-3">
                 <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 p-3">
