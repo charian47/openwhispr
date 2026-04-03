@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Calendar Participants on Meeting Notes**: Automatically link Google Calendar attendees to meeting notes when recording starts from a calendar event, with domain-grouped display and Gravatar avatars
 - **Save Notes as Files**: Export notes to the local filesystem as Markdown files, mirroring folder hierarchy
 - **Responsive Settings Dialog**: Settings dialog adapts to narrow windows — sidebar collapses to icon rail, rows stack vertically, plan grid reflows
 - **Chat Sidebar**: Full sidebar chat tab with conversation history, cloud sync, and semantic search
@@ -45,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Transcription Retry Provider**: Retry transcription uses configured provider instead of forcing Parakeet
 - **JSON Parse Validation**: Validate JSON.parse result type before calling .replace() in prompts (#541)
 - **GPU Selector Polish**: Address code review feedback, rename Intelligence GPU label, fix dropdown chevron padding (#539)
+- **Meeting Participant Saves**: Fix calendar attendees not syncing to store and manual participant adds overwriting calendar data
 - **Chat Duplicate Conversations**: Fix duplicate conversations — includeArchived filter returned all instead of only archived
 - **Linux Wayland Fixes**: Force XWayland on KDE/GNOME Wayland, fix hotkey startup race; use uinput before portal on GNOME Wayland (#468, #494)
 - **Mic Permission Gate**: Remove mic permission gate, fix system audio detection
