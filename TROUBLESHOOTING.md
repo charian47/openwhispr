@@ -67,8 +67,8 @@
 
 **Fix:**
 1. Reinstall dependencies: `rm -rf node_modules && npm ci`
-2. Run `npm run setup` to verify FFmpeg
-3. If using packaged app, try reinstalling
+2. If using packaged app, try reinstalling
+3. **Windows:** check that antivirus / Windows Defender hasn't quarantined the bundled FFmpeg binary
 
 ### whisper.cpp Issues
 
@@ -127,9 +127,33 @@ OpenWhispr tries clipboard methods in order: `wl-copy` (most reliable) → rende
 
 ### Windows-Specific Issues
 
-See [WINDOWS_TROUBLESHOOTING.md](WINDOWS_TROUBLESHOOTING.md) for:
-- Window visibility issues
-- FFmpeg permission problems
+**No window appears (process running in Task Manager but invisible):**
+1. Check the system tray (click the `^` caret) for the OpenWhispr icon
+2. Run with debug logging: `OpenWhispr.exe --log-level=debug`
+3. Try disabling GPU acceleration: `OpenWhispr.exe --disable-gpu`
+
+**Antivirus / Windows Defender blocking binaries:**
+
+whisper.cpp and FFmpeg may be quarantined silently. Add OpenWhispr to exclusions: Settings → Virus & threat protection → Exclusions.
+
+**Permission errors:**
+
+Right-click OpenWhispr → Run as administrator (or set permanently in Properties → Compatibility).
+
+**Firewall blocking cloud mode:**
+
+Allow OpenWhispr through Windows Firewall when using cloud transcription providers.
+
+**Complete reset (after uninstalling):**
+
+```batch
+rd /s /q "%APPDATA%\OpenWhispr"
+rd /s /q "%LOCALAPPDATA%\OpenWhispr"
+```
+
+Then reinstall.
+
+**Logs location:** `%APPDATA%\OpenWhispr\logs\`
 
 ## Enable Debug Mode
 

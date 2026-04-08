@@ -515,7 +515,6 @@ Automatically detect and transcribe meetings with Google Calendar integration:
 open-whispr/
 ├── main.js              # Electron main process & IPC handlers
 ├── preload.js           # Electron preload script & API bridge
-├── setup.js             # First-time setup script
 ├── package.json         # Dependencies and scripts
 ├── env.example          # Environment variables template
 ├── CHANGELOG.md         # Project changelog
@@ -591,7 +590,6 @@ open-whispr/
 
 - `npm run dev` - Start development with hot reload
 - `npm run start` - Start production build
-- `npm run setup` - First-time setup (creates .env file)
 - `npm run build:renderer` - Build the React app only
 - `npm run download:whisper-cpp` - Download whisper.cpp for the current platform
 - `npm run download:whisper-cpp:all` - Download whisper.cpp for all platforms
@@ -667,7 +665,7 @@ Note: build/pack/dist scripts automatically download whisper.cpp, llama-server, 
 
 ### Environment Variables
 
-Create a `.env` file in the root directory (or use `npm run setup`):
+Create a `.env` file in the root directory (see [.env.example](.env.example) for the template):
 
 ```env
 # OpenAI API Configuration (optional - only needed for cloud processing)
