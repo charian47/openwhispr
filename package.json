@@ -5,7 +5,7 @@
   "main": "main.js",
   "private": true,
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "compile:globe": "node scripts/build-globe-listener.js",
@@ -91,7 +91,7 @@
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.1",
     "cross-env": "^10.0.0",
-    "electron": "^39.0.0",
+    "electron": "^41.2.0",
     "electron-builder": "^26.4.0",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
