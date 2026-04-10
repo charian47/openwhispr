@@ -187,7 +187,7 @@ class HotkeyManager {
         );
         return {
           success: false,
-          error: `Failed to register GNOME hotkey "${hotkey}" for ${slotName}`,
+          error: i18nMain.t("hotkey.errors.registrationFailed", { hotkey }),
         };
       }
 
@@ -859,7 +859,9 @@ class HotkeyManager {
           `localStorage.getItem("dictationKey") || ""`
         );
         if (lsKey && lsKey.trim() !== "") return lsKey;
-      } catch {}
+      } catch (err) {
+        debugLogger.log("[HotkeyManager] Failed to read dictationKey from localStorage:", err.message);
+      }
     }
 
     try {
@@ -867,7 +869,9 @@ class HotkeyManager {
       const envManager = new EnvironmentManager();
       const envKey = envManager.getDictationKey();
       if (envKey && envKey.trim() !== "") return envKey;
-    } catch {}
+    } catch (err) {
+      debugLogger.log("[HotkeyManager] Failed to read dictationKey from .env:", err.message);
+    }
 
     return DEFAULT_HOTKEY;
   }

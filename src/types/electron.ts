@@ -721,7 +721,7 @@ declare global {
 
       // Hotkey registration events
       onHotkeyFallbackUsed?: (
-        callback: (data: { original: string; fallback: string; message: string }) => void
+        callback: (data: { original: string; fallback: string }) => void
       ) => () => void;
       onHotkeyRegistrationFailed?: (
         callback: (data: { hotkey: string; error: string; suggestions: string[] }) => void

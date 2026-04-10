@@ -736,7 +736,13 @@ export async function initializeSettings(): Promise<void> {
       if (activeKey) {
         useSettingsStore.setState({ dictationKey: activeKey });
       }
-    } catch {}
+    } catch (err) {
+      logger.warn(
+        "Failed to sync active dictation key on startup",
+        { error: (err as Error).message },
+        "settings"
+      );
+    }
 
     // Sync agent key from main process
     try {

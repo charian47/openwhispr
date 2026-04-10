@@ -1100,7 +1100,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       try {
         const key = await window.electronAPI?.getEffectiveDefaultHotkey?.();
         if (key) setEffectiveDefaultHotkey(key);
-      } catch {}
+      } catch (error) {
+        logger.error("Failed to get effective default hotkey", error, "settings");
+      }
     };
     checkHotkeyMode();
   }, [setActivationMode]);

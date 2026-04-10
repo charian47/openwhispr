@@ -1680,7 +1680,7 @@ class IPCHandlers {
           }
         }
 
-        // On GNOME Wayland, re-register the keybinding with the effective hotkey
+        // On GNOME, re-register the keybinding with the effective hotkey
         if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager && effectiveHotkey) {
           const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(effectiveHotkey);
           debugLogger.log(
