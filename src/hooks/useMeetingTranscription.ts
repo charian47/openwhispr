@@ -260,6 +260,7 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
   const speakerIdentificationsRef = useRef<
     Array<{ speakerId: string; displayName?: string; startTime: number; endTime: number }>
   >([]);
+  const meetingStartTimeRef = useRef<number>(0);
 
   const applySpeakerIdentification = useCallback(
     (
@@ -270,7 +271,10 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
         return segment;
       }
 
-      if (segment.timestamp < identification.startTime || segment.timestamp > identification.endTime) {
+      const epochStart = meetingStartTimeRef.current + identification.startTime * 1000;
+      const epochEnd = meetingStartTimeRef.current + identification.endTime * 1000;
+
+      if (segment.timestamp < epochStart - 5000 || segment.timestamp > epochEnd + 5000) {
         return segment;
       }
 
@@ -388,6 +392,7 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
     setSystemPartial("");
     setError(null);
     speakerIdentificationsRef.current = [];
+    meetingStartTimeRef.current = Date.now();
 
     // Set recording state immediately for instant UI feedback
     isRecordingRef.current = true;
