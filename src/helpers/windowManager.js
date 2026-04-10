@@ -25,7 +25,6 @@ class WindowManager {
     this.notificationWindow = null;
     this._notificationTimeout = null;
     this.transcriptionPreviewWindow = null;
-    this._previewTimeout = null;
     this.updateNotificationWindow = null;
     this._updateNotificationDismissed = false;
     this.tray = null;
@@ -770,21 +769,14 @@ class WindowManager {
     this.transcriptionPreviewWindow.webContents.send("preview-text", text);
     this.transcriptionPreviewWindow.showInactive();
     WindowPositionUtil.setupAlwaysOnTop(this.transcriptionPreviewWindow);
+  }
 
-    if (this._previewTimeout) {
-      clearTimeout(this._previewTimeout);
-    }
-    this._previewTimeout = setTimeout(() => {
-      this.hideTranscriptionPreview();
-    }, 5000);
+  appendTranscriptionPreview(text) {
+    if (!this.transcriptionPreviewWindow || this.transcriptionPreviewWindow.isDestroyed()) return;
+    this.transcriptionPreviewWindow.webContents.send("preview-append", text);
   }
 
   hideTranscriptionPreview() {
-    if (this._previewTimeout) {
-      clearTimeout(this._previewTimeout);
-      this._previewTimeout = null;
-    }
-
     if (!this.transcriptionPreviewWindow || this.transcriptionPreviewWindow.isDestroyed()) return;
 
     this.transcriptionPreviewWindow.webContents.send("preview-hide");

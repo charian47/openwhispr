@@ -344,6 +344,8 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         this._silenceCtx = null;
         this._silenceAnalyser = null;
 
+        this.cleanupPreview();
+
         this.isRecording = false;
         this.isProcessing = true;
         this.onStateChange?.({ isRecording: false, isProcessing: true });
@@ -373,6 +375,37 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       this.mediaRecorder.start();
       this.isRecording = true;
       this.onStateChange?.({ isRecording: true, isProcessing: false });
+
+      const {
+        showTranscriptionPreview,
+        useLocalWhisper,
+        localTranscriptionProvider,
+        whisperModel,
+        parakeetModel,
+      } = getSettings();
+      if (showTranscriptionPreview && useLocalWhisper) {
+        try {
+          const previewCtx = await this.getOrCreateAudioContext();
+          this._previewSource = previewCtx.createMediaStreamSource(micStream);
+
+          if (!this.workletModuleLoaded) {
+            await previewCtx.audioWorklet.addModule(this.getWorkletBlobUrl());
+            this.workletModuleLoaded = true;
+          }
+
+          this._previewProcessor = new AudioWorkletNode(previewCtx, "pcm-streaming-processor");
+          this._previewProcessor.port.onmessage = (event) => {
+            window.electronAPI?.sendDictationPreviewAudio?.(event.data);
+          };
+          this._previewSource.connect(this._previewProcessor);
+
+          const provider = localTranscriptionProvider === "nvidia" ? "nvidia" : "whisper";
+          const model = provider === "nvidia" ? parakeetModel : whisperModel;
+          window.electronAPI?.startDictationPreview?.({ provider, model });
+        } catch (e) {
+          logger.warn("Preview worklet setup failed", { error: e.message }, "audio");
+        }
+      }
 
       return true;
     } catch (error) {
@@ -411,6 +444,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
   cancelRecording() {
     if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
       this.mediaRecorder.onstop = () => {
+        this.cleanupPreview();
         this.isRecording = false;
         this.isProcessing = false;
         this.audioChunks = [];
@@ -617,9 +651,6 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
       if (result.success && result.text) {
         const rawText = result.text;
-        if (getSettings().showTranscriptionPreview) {
-          window.electronAPI?.showTranscriptionPreview?.(rawText);
-        }
         const reasoningStart = performance.now();
         const text = await this.processTranscription(result.text, "local");
         timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
@@ -694,9 +725,6 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
       if (result.success && result.text) {
         const rawText = result.text;
-        if (getSettings().showTranscriptionPreview) {
-          window.electronAPI?.showTranscriptionPreview?.(rawText);
-        }
         const reasoningStart = performance.now();
         const text = await this.processTranscription(result.text, "local-parakeet");
         timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
@@ -2531,6 +2559,19 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     }
 
     return true;
+  }
+
+  cleanupPreview() {
+    if (this._previewProcessor) {
+      this._previewProcessor.port.postMessage("stop");
+      this._previewProcessor.disconnect();
+      this._previewProcessor = null;
+    }
+    if (this._previewSource) {
+      this._previewSource.disconnect();
+      this._previewSource = null;
+    }
+    window.electronAPI?.stopDictationPreview?.();
   }
 
   cleanupStreamingAudio() {

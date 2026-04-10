@@ -2885,24 +2885,6 @@ class IPCHandlers {
 
     let meetingSendCounts = { mic: 0, system: 0 };
 
-    // Meeting mic captures at 24kHz (for OpenAI Realtime), but local engines
-    // expect 16kHz. Downsample with linear interpolation (3:2 ratio).
-    const downsample24kTo16k = (pcmBuffer) => {
-      const input = new Int16Array(pcmBuffer.buffer, pcmBuffer.byteOffset, pcmBuffer.length / 2);
-      const ratio = 1.5; // 24000 / 16000
-      const outputLength = Math.floor(input.length / ratio);
-      const output = new Int16Array(outputLength);
-      for (let i = 0; i < outputLength; i++) {
-        const srcIdx = i * ratio;
-        const idx = Math.floor(srcIdx);
-        const frac = srcIdx - idx;
-        const s0 = input[idx];
-        const s1 = idx + 1 < input.length ? input[idx + 1] : s0;
-        output[i] = Math.round(s0 + frac * (s1 - s0));
-      }
-      return Buffer.from(output.buffer);
-    };
-
     const pcm16ToWav = (pcmBuffer, sampleRate = 16000, channels = 1) => {
       const dataSize = pcmBuffer.length;
       const header = Buffer.alloc(44);
@@ -2920,6 +2902,24 @@ class IPCHandlers {
       header.write("data", 36);
       header.writeUInt32LE(dataSize, 40);
       return Buffer.concat([header, pcmBuffer]);
+    };
+
+    // Meeting mic captures at 24kHz (for OpenAI Realtime), but local engines
+    // expect 16kHz. Downsample with linear interpolation (3:2 ratio).
+    const downsample24kTo16k = (pcmBuffer) => {
+      const input = new Int16Array(pcmBuffer.buffer, pcmBuffer.byteOffset, pcmBuffer.length / 2);
+      const ratio = 1.5; // 24000 / 16000
+      const outputLength = Math.floor(input.length / ratio);
+      const output = new Int16Array(outputLength);
+      for (let i = 0; i < outputLength; i++) {
+        const srcIdx = i * ratio;
+        const idx = Math.floor(srcIdx);
+        const frac = srcIdx - idx;
+        const s0 = input[idx];
+        const s1 = idx + 1 < input.length ? input[idx + 1] : s0;
+        output[i] = Math.round(s0 + frac * (s1 - s0));
+      }
+      return Buffer.from(output.buffer);
     };
 
     let meetingLocalMode = false;
@@ -3011,6 +3011,56 @@ class IPCHandlers {
       meetingLocalProvider = null;
       meetingLocalModel = null;
       meetingLocalTranscribing = false;
+    };
+
+    let dictationPreviewMode = false;
+    let dictationPreviewBuffer = [];
+    let dictationPreviewTimer = null;
+    let dictationPreviewTranscribing = false;
+    let dictationPreviewProvider = null;
+    let dictationPreviewModel = null;
+
+    const transcribeDictationPreviewChunk = async () => {
+      if (dictationPreviewTranscribing) return;
+      if (!dictationPreviewBuffer.length) return;
+
+      dictationPreviewTranscribing = true;
+      try {
+        const pcm = Buffer.concat(dictationPreviewBuffer);
+        dictationPreviewBuffer = [];
+
+        const samples = new Int16Array(pcm.buffer, pcm.byteOffset, pcm.length / 2);
+        let sumSq = 0;
+        for (let i = 0; i < samples.length; i++) {
+          const n = samples[i] / 0x7fff;
+          sumSq += n * n;
+        }
+        const rms = Math.sqrt(sumSq / samples.length);
+        if (rms < 0.005) return;
+
+        const wav = pcm16ToWav(pcm);
+
+        let result;
+        if (dictationPreviewProvider === "nvidia") {
+          result = await this.parakeetManager.transcribeLocalParakeet(wav, {
+            model: dictationPreviewModel,
+          });
+        } else {
+          result = await this.whisperManager.transcribeLocalWhisper(wav, {
+            model: dictationPreviewModel,
+          });
+        }
+
+        if (result?.success && result.text?.trim()) {
+          this.windowManager.appendTranscriptionPreview(result.text.trim());
+        }
+      } catch (error) {
+        debugLogger.error("Dictation preview transcription chunk failed", {
+          error: error.message,
+        });
+      } finally {
+        dictationPreviewTranscribing = false;
+      }
     };
 
     const resetMeetingStreamingState = () => {
@@ -3284,6 +3334,38 @@ class IPCHandlers {
       const result = await this._dictationStreaming.disconnect().catch(() => ({ text: "" }));
       this._dictationStreaming = null;
       return { success: true, text: result.text || "" };
+    });
+
+    ipcMain.handle("start-dictation-preview", async (_event, { provider, model }) => {
+      dictationPreviewMode = true;
+      dictationPreviewProvider = provider;
+      dictationPreviewModel = model;
+      dictationPreviewBuffer = [];
+      this.windowManager.showTranscriptionPreview("");
+      dictationPreviewTimer = setInterval(() => transcribeDictationPreviewChunk(), 1500);
+      return { success: true };
+    });
+
+    ipcMain.on("dictation-preview-audio", (_event, audioBuffer) => {
+      if (!dictationPreviewMode) return;
+      dictationPreviewBuffer.push(
+        Buffer.isBuffer(audioBuffer) ? audioBuffer : Buffer.from(audioBuffer)
+      );
+    });
+
+    ipcMain.handle("stop-dictation-preview", async () => {
+      if (dictationPreviewTimer) {
+        clearInterval(dictationPreviewTimer);
+        dictationPreviewTimer = null;
+      }
+      await transcribeDictationPreviewChunk();
+      this.windowManager.hideTranscriptionPreview();
+      dictationPreviewMode = false;
+      dictationPreviewBuffer = [];
+      dictationPreviewTranscribing = false;
+      dictationPreviewProvider = null;
+      dictationPreviewModel = null;
+      return { success: true };
     });
 
     ipcMain.handle("update-transcription-text", async (_event, id, text, rawText) => {
@@ -4708,10 +4790,6 @@ class IPCHandlers {
       this.windowManager.hideAgentOverlay();
       return { success: true };
     });
-
-    ipcMain.handle("show-transcription-preview", (_, text) =>
-      this.windowManager.showTranscriptionPreview(text)
-    );
 
     ipcMain.handle("resize-agent-window", async (_event, width, height) => {
       this.windowManager.resizeAgentWindow(width, height);

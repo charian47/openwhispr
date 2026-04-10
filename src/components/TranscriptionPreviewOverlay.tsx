@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 
 export default function TranscriptionPreviewOverlay() {
-  const { t } = useTranslation();
   const [text, setText] = useState("");
   const [isVisible, setIsVisible] = useState(false);
 
@@ -12,17 +10,23 @@ export default function TranscriptionPreviewOverlay() {
       setTimeout(() => setIsVisible(true), 50);
     });
 
+    const cleanupAppend = window.electronAPI?.onPreviewAppend?.((chunk: string) => {
+      setText((prev) => (prev ? prev + " " + chunk : chunk));
+    });
+
     const cleanupHide = window.electronAPI?.onPreviewHide?.(() => {
       setIsVisible(false);
+      setTimeout(() => setText(""), 200);
     });
 
     return () => {
       cleanupText?.();
+      cleanupAppend?.();
       cleanupHide?.();
     };
   }, []);
 
-  if (!text) {
+  if (!isVisible) {
     return <div className="w-full h-full bg-transparent" />;
   }
 
@@ -37,10 +41,14 @@ export default function TranscriptionPreviewOverlay() {
           isVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
         ].join(" ")}
       >
-        <p className="text-[11px] text-muted-foreground font-medium">
-          {t("transcriptionPreview.label")}
-        </p>
-        <p className="text-[12px] text-foreground leading-snug line-clamp-3 mt-0.5">{text}</p>
+        {text ? (
+          <p className="text-[12px] text-foreground leading-snug line-clamp-3">{text}</p>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <p className="text-[11px] text-muted-foreground">Listening...</p>
+          </div>
+        )}
       </div>
     </div>
   );

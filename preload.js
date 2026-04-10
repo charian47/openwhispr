@@ -602,9 +602,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getAgentWindowBounds: () => ipcRenderer.invoke("get-agent-window-bounds"),
   setAgentWindowBounds: (x, y, width, height) =>
     ipcRenderer.invoke("set-agent-window-bounds", x, y, width, height),
-  showTranscriptionPreview: (text) => ipcRenderer.invoke("show-transcription-preview", text),
   onPreviewText: registerListener("preview-text", (callback) => (_event, text) => callback(text)),
+  onPreviewAppend: registerListener(
+    "preview-append",
+    (callback) => (_event, text) => callback(text)
+  ),
   onPreviewHide: registerListener("preview-hide", (callback) => () => callback()),
+  startDictationPreview: (opts) => ipcRenderer.invoke("start-dictation-preview", opts),
+  stopDictationPreview: () => ipcRenderer.invoke("stop-dictation-preview"),
+  sendDictationPreviewAudio: (data) => ipcRenderer.send("dictation-preview-audio", data),
   acquireRecordingLock: (pipeline) => ipcRenderer.invoke("acquire-recording-lock", pipeline),
   releaseRecordingLock: (pipeline) => ipcRenderer.invoke("release-recording-lock", pipeline),
 

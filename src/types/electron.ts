@@ -1358,9 +1358,15 @@ declare global {
       } | null>;
       updateNotificationReady?: () => Promise<void>;
       updateNotificationRespond?: (action: string) => Promise<{ success: boolean }>;
-      showTranscriptionPreview?: (text: string) => Promise<void>;
       onPreviewText?: (callback: (text: string) => void) => () => void;
+      onPreviewAppend?: (callback: (text: string) => void) => () => void;
       onPreviewHide?: (callback: () => void) => () => void;
+      startDictationPreview?: (opts: {
+        provider: string;
+        model: string;
+      }) => Promise<{ success: boolean }>;
+      stopDictationPreview?: () => Promise<{ success: boolean }>;
+      sendDictationPreviewAudio?: (data: ArrayBuffer) => void;
     };
 
     api?: {
