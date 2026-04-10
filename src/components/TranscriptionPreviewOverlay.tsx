@@ -337,20 +337,6 @@ export default function TranscriptionPreviewOverlay() {
           </div>
         )}
 
-        {phase === "cleanup" && (
-          <div
-            className={[
-              "h-[2px] overflow-hidden rounded-full bg-accent/10",
-              activeText ? "mt-1.5" : "mt-2",
-            ].join(" ")}
-          >
-            <div
-              className="h-full w-1/4 rounded-full bg-accent/35"
-              style={{ animation: "indeterminate 1.4s ease-in-out infinite" }}
-            />
-          </div>
-        )}
-
         {phase === "listening" && !rawText && (
           <div className="mt-2 flex items-center gap-2 px-1 py-1">
             <div className="flex items-end gap-[3px]">
