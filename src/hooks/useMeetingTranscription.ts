@@ -261,20 +261,14 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
     Array<{ speakerId: string; displayName?: string; startTime: number; endTime: number }>
   >([]);
   const meetingStartTimeRef = useRef<number>(0);
+  const lastSpeakerRef = useRef<{ speakerId: string; displayName?: string } | null>(null);
 
   const applySpeakerIdentification = useCallback(
     (
       segment: TranscriptSegment,
       identification: { speakerId: string; displayName?: string; startTime: number; endTime: number }
     ): TranscriptSegment => {
-      if (segment.source !== "system" || segment.timestamp == null) {
-        return segment;
-      }
-
-      const epochStart = meetingStartTimeRef.current + identification.startTime * 1000;
-      const epochEnd = meetingStartTimeRef.current + identification.endTime * 1000;
-
-      if (segment.timestamp < epochStart - 5000 || segment.timestamp > epochEnd + 5000) {
+      if (segment.source !== "system" || segment.speaker) {
         return segment;
       }
 
@@ -392,6 +386,7 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
     setSystemPartial("");
     setError(null);
     speakerIdentificationsRef.current = [];
+    lastSpeakerRef.current = null;
     meetingStartTimeRef.current = Date.now();
 
     // Set recording state immediately for instant UI feedback
@@ -482,12 +477,19 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
             setPartialForSource(data.text);
             setPartialTranscript(data.text);
           } else {
-            const rawSegment: TranscriptSegment = {
+            let rawSegment: TranscriptSegment = {
               id: `seg-${++segmentCounter}`,
               text: data.text,
               source: data.source,
               timestamp: data.timestamp,
             };
+            if (rawSegment.source === "system" && !rawSegment.speaker && lastSpeakerRef.current) {
+              rawSegment = {
+                ...rawSegment,
+                speaker: lastSpeakerRef.current.speakerId,
+                speakerName: lastSpeakerRef.current.displayName,
+              };
+            }
             const seg = speakerIdentificationsRef.current.reduce(applySpeakerIdentification, rawSegment);
             setSegments((prev) => {
               // Insert in chronological order — scan from the end since most
@@ -507,15 +509,18 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
       if (segmentCleanup) ipcCleanupsRef.current.push(segmentCleanup);
 
       const speakerCleanup = window.electronAPI?.onMeetingSpeakerIdentified?.((data) => {
+        lastSpeakerRef.current = { speakerId: data.speakerId, displayName: data.displayName };
         speakerIdentificationsRef.current = [
           ...speakerIdentificationsRef.current.filter(
-            (identification) => identification.endTime >= data.endTime - SPEAKER_IDENTIFICATION_RETENTION_MS
+            (id) => id.endTime >= data.endTime - SPEAKER_IDENTIFICATION_RETENTION_MS
           ),
           data,
         ];
-
         setSegments((prev) =>
-          prev.map((segment) => applySpeakerIdentification(segment, data))
+          prev.map((segment) => {
+            if (segment.source !== "system" || segment.speaker) return segment;
+            return { ...segment, speaker: data.speakerId, speakerName: data.displayName ?? segment.speakerName };
+          })
         );
       });
       if (speakerCleanup) ipcCleanupsRef.current.push(speakerCleanup);

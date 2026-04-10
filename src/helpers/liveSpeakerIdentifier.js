@@ -5,7 +5,7 @@ const { downsample24kTo16k } = require("../utils/audioUtils");
 
 const SAMPLE_RATE = 16000;
 const VAD_WINDOW_SIZE = 512;
-const MIN_SEGMENT_SECONDS = 1.5;
+const MIN_SEGMENT_SECONDS = 0.8;
 const MIN_SEGMENT_SAMPLES = Math.round(SAMPLE_RATE * MIN_SEGMENT_SECONDS);
 const SPEECH_THRESHOLD = 0.15;
 const SILENCE_THRESHOLD = 0.08;
@@ -399,8 +399,8 @@ class LiveSpeakerIdentifier {
     this.onSpeakerIdentified?.({
       speakerId,
       displayName: this.transientDisplayNames.get(speakerId) || null,
-      startTime: this.segmentStartSample / SAMPLE_RATE,
-      endTime: this.segmentEndSample / SAMPLE_RATE,
+      startTime: Math.max(0, this.segmentStartSample / SAMPLE_RATE - 10),
+      endTime: this.segmentEndSample / SAMPLE_RATE + 10,
     });
   }
 
@@ -465,7 +465,7 @@ class LiveSpeakerIdentifier {
   }
 
   _assignSpeakerId(embedding) {
-    const speakerId = `live_${this.nextLiveIndex}`;
+    const speakerId = `speaker_${this.nextLiveIndex}`;
     this.nextLiveIndex += 1;
     this.transientEmbeddings.set(speakerId, cloneFloat32Array(embedding));
     this.transientCounts.set(speakerId, 1);

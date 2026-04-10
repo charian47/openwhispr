@@ -2982,6 +2982,12 @@ class IPCHandlers {
           }
 
           win.webContents.send("meeting-speaker-identified", identification);
+
+          for (const seg of meetingDiarizationSegments) {
+            if (seg.source === "system" && !seg.speaker) {
+              seg.speaker = identification.speakerId;
+            }
+          }
         },
         {
           getSpeakerProfiles: getLiveSpeakerProfiles,
