@@ -66,11 +66,7 @@ export default function TranscriptionPreviewOverlay() {
     }
   }, [phase]);
 
-  const targetWidth = useMemo(() => {
-    if (activeText.length > 300) return 540;
-    if (activeText.length > 100) return 480;
-    return 420;
-  }, [activeText.length]);
+  const targetWidth = 420;
 
   const showFinalResult = useCallback(
     (text: string) => {
