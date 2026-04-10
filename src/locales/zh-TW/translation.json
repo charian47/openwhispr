@@ -1943,6 +1943,16 @@
       "systemPrompt": "系統提示詞",
       "systemPromptDescription": "助手的自訂指令",
       "systemPromptPlaceholder": "輸入自訂系統提示詞...",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "雲端供應商",
+        "local": "本機",
+        "selfHosted": "自架主機",
+        "openwhisprDesc": "即開即用，無需設定。",
+        "providersDesc": "使用自己的 API 金鑰。",
+        "localDesc": "裝置端模型，完全私密。",
+        "selfHostedDesc": "你自己網路上的伺服器。"
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "使用 OpenWhispr 的雲端 AI 進行助手對話",
       "customSetup": "自訂配置 (BYOK)",

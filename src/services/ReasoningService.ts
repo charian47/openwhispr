@@ -446,7 +446,7 @@ class ReasoningService extends BaseReasoningService {
       let result: string;
       const startTime = Date.now();
 
-      const isLanReasoning = this.isLanReasoningMode();
+      const isLanReasoning = !!config.lanUrl || this.isLanReasoningMode();
 
       logger.logReasoning("ROUTING_TO_PROVIDER", {
         provider,
@@ -1092,7 +1092,7 @@ class ReasoningService extends BaseReasoningService {
     config: ReasoningConfig = {}
   ): Promise<string> {
     const settings = getSettings();
-    const lanUrl = settings.remoteReasoningUrl.trim();
+    const lanUrl = (config.lanUrl || settings.remoteReasoningUrl).trim();
 
     logger.logReasoning("LAN_START", { url: lanUrl, agentName });
 
@@ -1206,14 +1206,15 @@ class ReasoningService extends BaseReasoningService {
     const isLocalProvider = !cloudProviders.includes(provider);
 
     const settings = getSettings();
-    const isLanReasoning = this.isLanReasoningMode();
+    const lanOverride = config.lanUrl?.trim();
+    const isLanReasoning = !!lanOverride || this.isLanReasoningMode();
 
     let endpoint: string;
     let apiKey = "";
 
     if (isLanReasoning) {
-      const baseUrl =
-        normalizeBaseUrl(settings.remoteReasoningUrl.trim()) || settings.remoteReasoningUrl.trim();
+      const rawUrl = lanOverride || settings.remoteReasoningUrl.trim();
+      const baseUrl = normalizeBaseUrl(rawUrl) || rawUrl;
       endpoint = buildApiUrl(baseUrl, "/v1/chat/completions");
     } else if (isLocalProvider) {
       const serverResult = await window.electronAPI.llamaServerStart(model);
@@ -1394,7 +1395,8 @@ class ReasoningService extends BaseReasoningService {
     const isLocalProvider = !cloudProviders.includes(provider);
 
     const settings = getSettings();
-    const isLanReasoning = this.isLanReasoningMode();
+    const lanOverride = config.lanUrl?.trim();
+    const isLanReasoning = !!lanOverride || this.isLanReasoningMode();
 
     if ((isLocalProvider || isLanReasoning) && !tools) {
       const contentGen = this.processTextStreaming(messages, model, provider, config);
@@ -1409,8 +1411,8 @@ class ReasoningService extends BaseReasoningService {
     let baseURL: string | undefined;
 
     if (isLanReasoning) {
-      const lanUrl = settings.remoteReasoningUrl.trim();
-      baseURL = normalizeBaseUrl(lanUrl) || lanUrl;
+      const rawUrl = lanOverride || settings.remoteReasoningUrl.trim();
+      baseURL = normalizeBaseUrl(rawUrl) || rawUrl;
       if (!baseURL.endsWith("/v1")) {
         baseURL = buildApiUrl(baseURL, "/v1");
       }

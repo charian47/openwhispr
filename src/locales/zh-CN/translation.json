@@ -1943,6 +1943,16 @@
       "systemPrompt": "系统提示词",
       "systemPromptDescription": "助手的自定义指令",
       "systemPromptPlaceholder": "输入自定义系统提示词...",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "云服务商",
+        "local": "本地",
+        "selfHosted": "自托管",
+        "openwhisprDesc": "开箱即用，无需设置。",
+        "providersDesc": "使用自己的 API 密钥。",
+        "localDesc": "设备端模型，完全私密。",
+        "selfHostedDesc": "你自己网络上的服务器。"
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "使用 OpenWhispr 的云端 AI 进行助手对话",
       "customSetup": "自定义配置 (BYOK)",

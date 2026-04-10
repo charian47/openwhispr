@@ -1948,6 +1948,16 @@
       "systemPrompt": "Prompt di Sistema",
       "systemPromptDescription": "Istruzioni personalizzate per l'agente",
       "systemPromptPlaceholder": "Inserisci un prompt di sistema personalizzato...",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "Provider Cloud",
+        "local": "Locale",
+        "selfHosted": "Self-Hosted",
+        "openwhisprDesc": "Funziona subito. Nessuna configurazione.",
+        "providersDesc": "Porta la tua chiave API.",
+        "localDesc": "Modelli sul dispositivo. Completamente privato.",
+        "selfHostedDesc": "Il tuo server sulla tua rete."
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Usa l'IA cloud di OpenWhispr per le conversazioni agente",
       "customSetup": "Configurazione personalizzata (BYOK)",

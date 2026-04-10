@@ -1948,6 +1948,16 @@
       "systemPrompt": "Системный промпт",
       "systemPromptDescription": "Пользовательские инструкции для агента",
       "systemPromptPlaceholder": "Введите пользовательский системный промпт...",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "Облачные провайдеры",
+        "local": "Локально",
+        "selfHosted": "Свой сервер",
+        "openwhisprDesc": "Просто работает. Настройка не нужна.",
+        "providersDesc": "Свой API-ключ.",
+        "localDesc": "Модели на устройстве. Полная приватность.",
+        "selfHostedDesc": "Ваш сервер в вашей сети."
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Использовать облачный ИИ OpenWhispr для разговоров с агентом",
       "customSetup": "Своя настройка (BYOK)",

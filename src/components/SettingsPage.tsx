@@ -76,7 +76,8 @@ import { useToast } from "./ui/Toast";
 import { useTheme } from "../hooks/useTheme";
 import type { GpuDevice, LocalTranscriptionProvider, InferenceMode } from "../types/electron";
 import logger from "../utils/logger";
-import { SettingsRow } from "./ui/SettingsSection";
+import { SettingsRow, InferenceModeSelector } from "./ui/SettingsSection";
+import type { InferenceModeOption } from "./ui/SettingsSection";
 import { useSettingsLayout } from "./ui/SidebarModal";
 import { useUsage } from "../hooks/useUsage";
 import { cn } from "./lib/utils";
@@ -161,79 +162,6 @@ function SectionHeader({ title, description }: { title: string; description?: st
   );
 }
 
-interface InferenceModeOption {
-  id: InferenceMode;
-  label: string;
-  description: string;
-  icon: React.ReactNode;
-}
-
-function InferenceModeSelector({
-  modes,
-  activeMode,
-  onSelect,
-}: {
-  modes: InferenceModeOption[];
-  activeMode: InferenceMode;
-  onSelect: (mode: InferenceMode) => void;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <SettingsPanel>
-      {modes.map((mode) => {
-        const isActive = activeMode === mode.id;
-        return (
-          <SettingsPanelRow key={mode.id}>
-            <button
-              onClick={() => onSelect(mode.id)}
-              className="w-full flex items-center gap-3 text-left cursor-pointer group"
-            >
-              <div
-                className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
-                  isActive
-                    ? "bg-primary/10 dark:bg-primary/15"
-                    : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
-                }`}
-              >
-                <div
-                  className={`transition-colors ${isActive ? "text-primary" : "text-muted-foreground"}`}
-                >
-                  {mode.icon}
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-foreground">{mode.label}</span>
-                  {isActive && (
-                    <span className="text-xs font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
-                      {t("common.active")}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground/80 mt-0.5">{mode.description}</p>
-              </div>
-              <div
-                className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
-                  isActive
-                    ? "border-primary bg-primary"
-                    : "border-border-hover dark:border-border-subtle"
-                }`}
-              >
-                {isActive && (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
-                  </div>
-                )}
-              </div>
-            </button>
-          </SettingsPanelRow>
-        );
-      })}
-    </SettingsPanel>
-  );
-}
-
 interface TranscriptionSectionProps {
   isSignedIn: boolean;
   cloudTranscriptionMode: string;
@@ -308,12 +236,7 @@ function TranscriptionSection({
 }: TranscriptionSectionProps) {
   const { t } = useTranslation();
 
-  const transcriptionModes: {
-    id: InferenceMode;
-    label: string;
-    description: string;
-    icon: React.ReactNode;
-  }[] = [
+  const transcriptionModes: InferenceModeOption[] = [
     {
       id: "openwhispr",
       label: t("settingsPage.transcription.modes.openwhispr"),
@@ -506,12 +429,7 @@ function AiModelsSection({
 }: AiModelsSectionProps) {
   const { t } = useTranslation();
 
-  const aiModes: {
-    id: InferenceMode;
-    label: string;
-    description: string;
-    icon: React.ReactNode;
-  }[] = [
+  const aiModes: InferenceModeOption[] = [
     {
       id: "openwhispr",
       label: t("settingsPage.aiModels.modes.openwhispr"),

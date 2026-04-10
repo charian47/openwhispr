@@ -133,6 +133,31 @@ function migrateProviderSettings() {
 
 migrateProviderSettings();
 
+function migrateAgentMode() {
+  if (!isBrowser) return;
+  if (localStorage.getItem("_agentModeMigrated") === "1") return;
+
+  const cloudAgentMode = localStorage.getItem("cloudAgentMode");
+  const agentProvider = localStorage.getItem("agentProvider");
+
+  let agentInferenceMode: InferenceMode = "openwhispr";
+  if (cloudAgentMode === "byok") {
+    const localProviders = ["qwen", "llama", "mistral", "openai-oss", "gemma"];
+    if (agentProvider === "custom") {
+      agentInferenceMode = "self-hosted";
+    } else if (agentProvider && localProviders.includes(agentProvider)) {
+      agentInferenceMode = "local";
+    } else {
+      agentInferenceMode = "providers";
+    }
+  }
+  localStorage.setItem("agentInferenceMode", agentInferenceMode);
+
+  localStorage.setItem("_agentModeMigrated", "1");
+}
+
+migrateAgentMode();
+
 export interface SettingsState
   extends
     TranscriptionSettings,
@@ -232,6 +257,8 @@ export interface SettingsState
   setAgentSystemPrompt: (value: string) => void;
   setAgentEnabled: (value: boolean) => void;
   setCloudAgentMode: (value: string) => void;
+  setAgentInferenceMode: (mode: InferenceMode) => void;
+  setRemoteAgentUrl: (url: string) => void;
 
   updateTranscriptionSettings: (settings: Partial<TranscriptionSettings>) => void;
   updateReasoningSettings: (settings: Partial<ReasoningSettings>) => void;
@@ -418,6 +445,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   agentSystemPrompt: readString("agentSystemPrompt", ""),
   agentEnabled: readBoolean("agentEnabled", true),
   cloudAgentMode: readString("cloudAgentMode", "openwhispr"),
+  agentInferenceMode: (() => {
+    const v = readString("agentInferenceMode", "openwhispr");
+    if (v === "openwhispr" || v === "providers" || v === "local" || v === "self-hosted") return v;
+    return "openwhispr" as InferenceMode;
+  })(),
+  remoteAgentUrl: readString("remoteAgentUrl", ""),
 
   setUseLocalWhisper: createBooleanSetter("useLocalWhisper"),
   setWhisperModel: createStringSetter("whisperModel"),
@@ -654,6 +687,8 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setAgentSystemPrompt: createStringSetter("agentSystemPrompt"),
   setAgentEnabled: createBooleanSetter("agentEnabled"),
   setCloudAgentMode: createStringSetter("cloudAgentMode"),
+  setAgentInferenceMode: createStringSetter("agentInferenceMode") as (mode: InferenceMode) => void,
+  setRemoteAgentUrl: createStringSetter("remoteAgentUrl"),
 
   updateTranscriptionSettings: (settings: Partial<TranscriptionSettings>) => {
     const s = useSettingsStore.getState();

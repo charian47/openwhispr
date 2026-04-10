@@ -1948,6 +1948,16 @@
       "systemPrompt": "システムプロンプト",
       "systemPromptDescription": "エージェントへのカスタム指示",
       "systemPromptPlaceholder": "カスタムシステムプロンプトを入力...",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "クラウドプロバイダー",
+        "local": "ローカル",
+        "selfHosted": "セルフホスト",
+        "openwhisprDesc": "設定不要ですぐに使えます。",
+        "providersDesc": "独自のAPIキーを使用。",
+        "localDesc": "デバイス上のモデル。完全プライベート。",
+        "selfHostedDesc": "ネットワーク上の自分のサーバー。"
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "OpenWhisprのクラウドAIをエージェント会話に使用する",
       "customSetup": "カスタム設定 (BYOK)",

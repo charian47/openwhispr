@@ -75,6 +75,8 @@ export interface AgentModeSettings {
   agentSystemPrompt: string;
   agentEnabled: boolean;
   cloudAgentMode: string;
+  agentInferenceMode: InferenceMode;
+  remoteAgentUrl: string;
 }
 
 function useSettingsInternal() {

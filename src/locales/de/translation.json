@@ -1948,6 +1948,16 @@
       "systemPrompt": "System-Prompt",
       "systemPromptDescription": "Benutzerdefinierte Anweisungen für den Agenten",
       "systemPromptPlaceholder": "Benutzerdefinierten System-Prompt eingeben...",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "Cloud-Anbieter",
+        "local": "Lokal",
+        "selfHosted": "Selbst gehostet",
+        "openwhisprDesc": "Funktioniert sofort. Keine Einrichtung nötig.",
+        "providersDesc": "Eigenen API-Schlüssel verwenden.",
+        "localDesc": "Modelle auf dem Gerät. Vollständig privat.",
+        "selfHostedDesc": "Eigener Server in Ihrem Netzwerk."
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "OpenWhisprs Cloud-KI für Agent-Unterhaltungen verwenden",
       "customSetup": "Eigene Konfiguration (BYOK)",
