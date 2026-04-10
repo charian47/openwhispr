@@ -594,7 +594,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
         // Save failed transcription with audio so the user can retry later
         if (this.lastAudioBlob) {
-          this.saveFailedTranscription(error.message, metadata);
+          this.saveFailedTranscription(error.message, error.code || null, metadata);
         }
       }
     } finally {
@@ -816,7 +816,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         apiKey = await window.electronAPI.getMistralKey?.();
       }
       if (!isValidApiKey(apiKey, "mistral")) {
-        throw new Error("Mistral API key not found. Please set your API key in the Control Panel.");
+        const err = new Error(
+          "Mistral API key not found. Please set your API key in the Control Panel."
+        );
+        err.code = "API_KEY_MISSING";
+        throw err;
       }
     } else if (provider === "groq") {
       // Prefer store value (user-entered via UI) over main process (.env)
@@ -825,7 +829,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         apiKey = await window.electronAPI.getGroqKey?.();
       }
       if (!isValidApiKey(apiKey, "groq")) {
-        throw new Error("Groq API key not found. Please set your API key in the Control Panel.");
+        const err = new Error(
+          "Groq API key not found. Please set your API key in the Control Panel."
+        );
+        err.code = "API_KEY_MISSING";
+        throw err;
       }
     } else {
       // Default to OpenAI
@@ -836,9 +844,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         apiKey = await window.electronAPI.getOpenAIKey();
       }
       if (!isValidApiKey(apiKey, "openai")) {
-        throw new Error(
+        const err = new Error(
           "OpenAI API key not found. Please set your API key in the .env file or Control Panel."
         );
+        err.code = "API_KEY_MISSING";
+        throw err;
       }
     }
 
@@ -1511,7 +1521,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           },
           "transcription"
         );
-        throw new Error(`API Error: ${response.status} ${errorText}`);
+        const err = new Error(`API Error: ${response.status} ${errorText}`);
+        if (response.status === 401) err.code = "INVALID_KEY";
+        else if (response.status === 429) err.code = "LIMIT_REACHED";
+        else if (response.status >= 500) err.code = "SERVER_ERROR";
+        throw err;
       }
 
       let result;
@@ -1860,7 +1874,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     }
   }
 
-  async saveFailedTranscription(errorMessage, metadata = {}) {
+  async saveFailedTranscription(errorMessage, errorCode = null, metadata = {}) {
     if (!getSettings().dataRetentionEnabled) {
       logger.debug("Skipping failed transcription save — data retention disabled", {}, "audio");
       this.lastAudioBlob = null;
@@ -1872,6 +1886,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       const result = await window.electronAPI.saveTranscription("", null, {
         status: "failed",
         errorMessage,
+        errorCode,
       });
 
       if (result?.id && this.lastAudioBlob) {

@@ -67,6 +67,11 @@ class DatabaseManager {
       } catch (err) {
         if (!err.message.includes("duplicate column")) throw err;
       }
+      try {
+        this.db.exec("ALTER TABLE transcriptions ADD COLUMN error_code TEXT");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
 
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS custom_dictionary (
@@ -390,15 +395,19 @@ class DatabaseManager {
     }
   }
 
-  saveTranscription(text, rawText = null, { status = "completed", errorMessage = null } = {}) {
+  saveTranscription(
+    text,
+    rawText = null,
+    { status = "completed", errorMessage = null, errorCode = null } = {}
+  ) {
     try {
       if (!this.db) {
         throw new Error("Database not initialized");
       }
       const stmt = this.db.prepare(
-        "INSERT INTO transcriptions (text, raw_text, status, error_message) VALUES (?, ?, ?, ?)"
+        "INSERT INTO transcriptions (text, raw_text, status, error_message, error_code) VALUES (?, ?, ?, ?, ?)"
       );
-      const result = stmt.run(text, rawText, status, errorMessage);
+      const result = stmt.run(text, rawText, status, errorMessage, errorCode);
 
       const fetchStmt = this.db.prepare("SELECT * FROM transcriptions WHERE id = ?");
       const transcription = fetchStmt.get(result.lastInsertRowid);
@@ -478,13 +487,13 @@ class DatabaseManager {
     }
   }
 
-  updateTranscriptionStatus(id, status, errorMessage = null) {
+  updateTranscriptionStatus(id, status, errorMessage = null, errorCode = null) {
     try {
       if (!this.db) throw new Error("Database not initialized");
       const stmt = this.db.prepare(
-        "UPDATE transcriptions SET status = ?, error_message = ? WHERE id = ?"
+        "UPDATE transcriptions SET status = ?, error_message = ?, error_code = ? WHERE id = ?"
       );
-      stmt.run(status, errorMessage, id);
+      stmt.run(status, errorMessage, errorCode, id);
       return { success: true };
     } catch (error) {
       debugLogger.error(

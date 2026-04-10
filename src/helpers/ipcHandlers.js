@@ -55,7 +55,7 @@ function buildMultipartBody(fileBuffer, fileName, contentType, fields = {}) {
   return { body: Buffer.concat(bodyParts), boundary };
 }
 
-function postMultipart(url, body, boundary, headers = {}) {
+function postMultipart(url, body, boundary, headers = {}, timeoutMs = 60000) {
   const httpModule = url.protocol === "https:" ? https : http;
   return new Promise((resolve, reject) => {
     const req = httpModule.request(
@@ -64,6 +64,7 @@ function postMultipart(url, body, boundary, headers = {}) {
         port: url.port || (url.protocol === "https:" ? 443 : 80),
         path: url.pathname,
         method: "POST",
+        timeout: timeoutMs,
         headers: {
           "Content-Type": `multipart/form-data; boundary=${boundary}`,
           "Content-Length": body.length,
@@ -82,6 +83,12 @@ function postMultipart(url, body, boundary, headers = {}) {
         });
       }
     );
+    req.on("timeout", () => {
+      req.destroy();
+      const err = new Error("Cloud request timed out");
+      err.code = "TIMEOUT";
+      reject(err);
+    });
     req.on("error", reject);
     req.write(body);
     req.end();
@@ -1599,9 +1606,13 @@ class IPCHandlers {
           if (!info?.hotkey) continue;
 
           if (!usesNativeListener(info.hotkey)) {
-            debugLogger.log(`[IPC] Unregistering globalShortcut "${info.hotkey}" (slot "${slot}") for capture mode`);
+            debugLogger.log(
+              `[IPC] Unregistering globalShortcut "${info.hotkey}" (slot "${slot}") for capture mode`
+            );
             const { globalShortcut } = require("electron");
-            try { globalShortcut.unregister(info.hotkey); } catch {}
+            try {
+              globalShortcut.unregister(info.hotkey);
+            } catch {}
           }
         }
 
@@ -1614,7 +1625,9 @@ class IPCHandlers {
         // On GNOME, unregister all native keybindings during capture
         if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager) {
           for (const slot of [...hotkeyManager.gnomeManager.registeredSlots]) {
-            debugLogger.log(`[IPC] Unregistering GNOME keybinding (slot "${slot}") for capture mode`);
+            debugLogger.log(
+              `[IPC] Unregistering GNOME keybinding (slot "${slot}") for capture mode`
+            );
             await hotkeyManager.gnomeManager.unregisterKeybinding(slot).catch((err) => {
               debugLogger.warn(`[IPC] Failed to unregister GNOME slot "${slot}":`, err.message);
             });
@@ -1641,7 +1654,10 @@ class IPCHandlers {
       } else {
         // Exiting capture mode - re-register globalShortcut if not already registered
         // Skip for KDE/GNOME/Hyprland — updateHotkey handles re-registration via native path
-        const usesNativePath = hotkeyManager.isUsingKDE() || hotkeyManager.isUsingGnome() || hotkeyManager.isUsingHyprland();
+        const usesNativePath =
+          hotkeyManager.isUsingKDE() ||
+          hotkeyManager.isUsingGnome() ||
+          hotkeyManager.isUsingHyprland();
         if (effectiveHotkey && !usesNativeListener(effectiveHotkey) && !usesNativePath) {
           const { globalShortcut } = require("electron");
           const accelerator = effectiveHotkey.startsWith("Fn+")
@@ -1709,18 +1725,28 @@ class IPCHandlers {
             `[IPC] Re-registering KDE keybinding "${effectiveHotkey}" after capture mode`
           );
           const callback = this.windowManager.createHotkeyCallback();
-          const result = await hotkeyManager.kdeManager.registerKeybinding(effectiveHotkey, "dictation", callback);
+          const result = await hotkeyManager.kdeManager.registerKeybinding(
+            effectiveHotkey,
+            "dictation",
+            callback
+          );
           if (result === true) {
             hotkeyManager.currentHotkey = effectiveHotkey;
           } else {
-            debugLogger.warn(`[IPC] Failed to re-register KDE keybinding "${effectiveHotkey}" after capture mode`, { result });
+            debugLogger.warn(
+              `[IPC] Failed to re-register KDE keybinding "${effectiveHotkey}" after capture mode`,
+              { result }
+            );
           }
         }
 
         // Re-register non-dictation slots (meeting, agent) that were unregistered on capture enter
         for (const [slot, info] of hotkeyManager.slots) {
-          if (slot === "dictation" || slot === "cancel" || !info?.hotkey || !info?.callback) continue;
-          debugLogger.log(`[IPC] Re-registering slot "${slot}" ("${info.hotkey}") after capture mode`);
+          if (slot === "dictation" || slot === "cancel" || !info?.hotkey || !info?.callback)
+            continue;
+          debugLogger.log(
+            `[IPC] Re-registering slot "${slot}" ("${info.hotkey}") after capture mode`
+          );
           await hotkeyManager.registerSlot(slot, info.hotkey, info.callback).catch((err) => {
             debugLogger.warn(`[IPC] Failed to re-register slot "${slot}":`, err.message);
           });
@@ -2610,7 +2636,9 @@ class IPCHandlers {
           };
         }
         if (data.statusCode !== 200) {
-          throw new Error(data.data?.error || `API error: ${data.statusCode}`);
+          const err = new Error(data.data?.error || `API error: ${data.statusCode}`);
+          err.code = "SERVER_ERROR";
+          throw err;
         }
 
         return {
@@ -2629,7 +2657,7 @@ class IPCHandlers {
         };
       } catch (error) {
         debugLogger.error("Cloud transcription error", { error: error.message }, "cloud-api");
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, code: error.code || null };
       }
     });
 
@@ -2743,7 +2771,9 @@ class IPCHandlers {
             endpoint = "https://api.openai.com/v1/audio/transcriptions";
           }
           if (!apiKey && provider !== "custom") {
-            throw new Error(`${provider} API key not configured`);
+            const err = new Error(`${provider} API key not configured`);
+            err.code = "API_KEY_MISSING";
+            throw err;
           }
 
           const formData = new FormData();
@@ -2759,7 +2789,11 @@ class IPCHandlers {
           const response = await fetch(endpoint, { method: "POST", headers, body: formData });
           if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`${provider} API Error: ${response.status} ${errorText}`);
+            const err = new Error(`${provider} API Error: ${response.status} ${errorText}`);
+            if (response.status === 401) err.code = "INVALID_KEY";
+            else if (response.status === 429) err.code = "LIMIT_REACHED";
+            else if (response.status >= 500) err.code = "SERVER_ERROR";
+            throw err;
           }
           const data = await response.json();
           if (data?.text) {
@@ -2793,6 +2827,12 @@ class IPCHandlers {
           "Retry transcription failed",
           { id, error: error.message },
           "audio-storage"
+        );
+        this.databaseManager.updateTranscriptionStatus(
+          id,
+          "failed",
+          error.message,
+          error.code || null
         );
         return { success: false, error: error.message };
       }

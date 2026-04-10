@@ -2,6 +2,19 @@ export type LocalTranscriptionProvider = "whisper" | "nvidia";
 
 export type TranscriptionStatus = "completed" | "failed" | "pending";
 
+export type TranscriptionErrorCode =
+  | "TIMEOUT"
+  | "NETWORK"
+  | "SERVER_ERROR"
+  | "OFFLINE"
+  | "AUTH_EXPIRED"
+  | "AUTH_REQUIRED"
+  | "LIMIT_REACHED"
+  | "API_KEY_MISSING"
+  | "INVALID_KEY"
+  | "MODEL_NOT_AVAILABLE"
+  | null;
+
 export interface TranscriptionItem {
   id: number;
   text: string;
@@ -14,6 +27,7 @@ export interface TranscriptionItem {
   model: string | null;
   status: TranscriptionStatus;
   error_message: string | null;
+  error_code: TranscriptionErrorCode;
 }
 
 export interface NoteItem {
