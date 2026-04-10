@@ -66,6 +66,7 @@ const BOOLEAN_SETTINGS = new Set([
   "keepTranscriptionInClipboard",
   "dataRetentionEnabled",
   "noteFilesEnabled",
+  "showTranscriptionPreview",
 ]);
 
 const ARRAY_SETTINGS = new Set(["customDictionary", "gcalAccounts"]);
@@ -125,6 +126,7 @@ export interface SettingsState
   setCloudReasoningBaseUrl: (value: string) => void;
   setCustomDictionary: (words: string[]) => void;
   setAssemblyAiStreaming: (value: boolean) => void;
+  setShowTranscriptionPreview: (value: boolean) => void;
   setUseReasoningModel: (value: boolean) => void;
   setReasoningModel: (value: string) => void;
   setReasoningProvider: (value: string) => void;
@@ -250,6 +252,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   cloudReasoningBaseUrl: readString("cloudReasoningBaseUrl", API_ENDPOINTS.OPENAI_BASE),
   customDictionary: readStringArray("customDictionary", []),
   assemblyAiStreaming: readBoolean("assemblyAiStreaming", true),
+  showTranscriptionPreview: readBoolean("showTranscriptionPreview", false),
 
   useReasoningModel: readBoolean("useReasoningModel", true),
   reasoningModel: readString("reasoningModel", ""),
@@ -342,6 +345,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setCloudReasoningMode: createStringSetter("cloudReasoningMode"),
   setCloudReasoningBaseUrl: createStringSetter("cloudReasoningBaseUrl"),
   setAssemblyAiStreaming: createBooleanSetter("assemblyAiStreaming"),
+  setShowTranscriptionPreview: createBooleanSetter("showTranscriptionPreview"),
   setUseReasoningModel: createBooleanSetter("useReasoningModel"),
   setReasoningModel: createStringSetter("reasoningModel"),
   setReasoningProvider: createStringSetter("reasoningProvider"),
