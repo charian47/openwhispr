@@ -18,6 +18,7 @@ if (
 
 const {
   app,
+  desktopCapturer,
   globalShortcut,
   BrowserWindow,
   dialog,
@@ -1076,6 +1077,14 @@ if (gotSingleInstanceLock) {
       return new Promise((resolve) => setTimeout(resolve, delay));
     })
     .then(() => {
+      if (process.platform !== "darwin") {
+        session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+          desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
+            callback({ video: sources[0], audio: "loopback" });
+          });
+        });
+      }
+
       startApp().catch((error) => {
         console.error("Failed to start app:", error);
         dialog.showErrorBox(

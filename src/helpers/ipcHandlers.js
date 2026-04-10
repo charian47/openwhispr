@@ -2433,7 +2433,7 @@ class IPCHandlers {
 
     ipcMain.handle("check-system-audio-access", async () => {
       if (process.platform !== "darwin") {
-        return { granted: true, status: "granted", mode: "unsupported" };
+        return { granted: true, status: "granted", mode: "loopback" };
       }
 
       if (!this.audioTapManager?.isSupported()) {
@@ -2446,7 +2446,7 @@ class IPCHandlers {
 
     ipcMain.handle("request-system-audio-access", async () => {
       if (process.platform !== "darwin") {
-        return { granted: true, status: "granted", mode: "unsupported" };
+        return { granted: true, status: "granted", mode: "loopback" };
       }
 
       if (!this.audioTapManager?.isSupported()) {
@@ -2877,14 +2877,17 @@ class IPCHandlers {
       return data.clientSecret;
     };
 
-    const getMeetingSystemAudioMode = () =>
-      this.audioTapManager?.isSupported() ? "native" : "unsupported";
+    const getMeetingSystemAudioMode = () => {
+      if (this.audioTapManager?.isSupported()) return "native";
+      if (process.platform !== "darwin") return "loopback";
+      return "unsupported";
+    };
 
-    const hasNativeMeetingSystemAudio = () => getMeetingSystemAudioMode() === "native";
+    const hasMeetingSystemAudio = () => getMeetingSystemAudioMode() !== "unsupported";
 
     const isMeetingStreamingConnected = () =>
       !!this._meetingMicStreaming?.isConnected &&
-      (!hasNativeMeetingSystemAudio() || !!this._meetingSystemStreaming?.isConnected);
+      (!hasMeetingSystemAudio() || !!this._meetingSystemStreaming?.isConnected);
 
     const connectRealtimeStreaming = async (event, options) => {
       if (this._meetingMicStreaming?.isConnected) {
@@ -2903,7 +2906,7 @@ class IPCHandlers {
         preconfigured: options.mode !== "byok",
       };
       let pairs;
-      if (hasNativeMeetingSystemAudio()) {
+      if (hasMeetingSystemAudio()) {
         const secrets = await fetchRealtimeToken(event, options, { streams: 2 });
         pairs = [
           { ref: "_meetingMicStreaming", secret: secrets[0], source: "mic" },

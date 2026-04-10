@@ -2,39 +2,35 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { getCachedPlatform } from "../utils/platform";
 import type { SystemAudioAccessResult } from "../types/electron";
 
-const NON_MACOS_ACCESS: SystemAudioAccessResult = {
-  granted: true,
-  status: "granted",
+const DEFAULT_ACCESS: SystemAudioAccessResult = {
+  granted: false,
+  status: "unsupported",
   mode: "unsupported",
 };
 
 export function useSystemAudioPermission() {
   const isMacOS = getCachedPlatform() === "darwin";
-  const [access, setAccess] = useState<SystemAudioAccessResult | null>(
-    isMacOS ? null : NON_MACOS_ACCESS
-  );
+  const [access, setAccess] = useState<SystemAudioAccessResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const checkingRef = useRef(false);
 
   const check = useCallback(async () => {
-    if (!isMacOS || checkingRef.current) return;
+    if (checkingRef.current) return;
     checkingRef.current = true;
     setIsChecking(true);
     try {
       const result = await window.electronAPI?.checkSystemAudioAccess?.();
-      setAccess(result ?? { granted: false, status: "unsupported", mode: "unsupported" });
+      setAccess(result ?? DEFAULT_ACCESS);
     } finally {
       checkingRef.current = false;
       setIsChecking(false);
     }
-  }, [isMacOS]);
+  }, []);
 
-  // Check on mount
   useEffect(() => {
     check();
   }, [check]);
 
-  // Re-check when the window regains focus (user may have just toggled it in System Settings)
   useEffect(() => {
     if (!isMacOS) return;
     const handleFocus = () => check();
@@ -47,22 +43,20 @@ export function useSystemAudioPermission() {
   }, []);
 
   const request = useCallback(async (): Promise<boolean> => {
-    if (!isMacOS) return true;
+    const currentAccess = access ?? (await window.electronAPI?.checkSystemAudioAccess?.()) ?? DEFAULT_ACCESS;
+
+    if (currentAccess.mode === "loopback") {
+      setAccess(currentAccess);
+      return currentAccess.granted;
+    }
+
+    if (currentAccess.mode !== "native") {
+      setAccess(currentAccess);
+      return false;
+    }
 
     setIsChecking(true);
     try {
-      const currentAccess = access ??
-        (await window.electronAPI?.checkSystemAudioAccess?.()) ?? {
-          granted: false,
-          status: "unsupported" as const,
-          mode: "unsupported" as const,
-        };
-
-      if (currentAccess.mode !== "native") {
-        setAccess(currentAccess);
-        return false;
-      }
-
       const result = await window.electronAPI?.requestSystemAudioAccess?.();
       const nextAccess = result ?? currentAccess;
       setAccess(nextAccess);
@@ -72,7 +66,7 @@ export function useSystemAudioPermission() {
     } finally {
       setIsChecking(false);
     }
-  }, [access, isMacOS]);
+  }, [access]);
 
   const granted = access?.granted ?? false;
   const status = access?.status ?? "unknown";

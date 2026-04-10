@@ -125,7 +125,7 @@ export interface AudioDiagnosticsResult {
 export interface SystemAudioAccessResult {
   granted: boolean;
   status: "granted" | "denied" | "not-determined" | "restricted" | "unknown" | "unsupported";
-  mode: "native" | "unsupported";
+  mode: "native" | "loopback" | "unsupported";
   error?: string;
 }
 
@@ -1295,7 +1295,7 @@ declare global {
       }) => Promise<{
         success: boolean;
         error?: string;
-        systemAudioMode?: "native" | "unsupported";
+        systemAudioMode?: "native" | "loopback" | "unsupported";
       }>;
       meetingTranscriptionSend?: (buffer: ArrayBuffer, source: "mic" | "system") => void;
       meetingTranscriptionStop?: () => Promise<{

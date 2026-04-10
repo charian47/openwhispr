@@ -244,6 +244,10 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
   const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const micProcessorRef = useRef<AudioWorkletNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const systemContextRef = useRef<AudioContext | null>(null);
+  const systemSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const systemProcessorRef = useRef<AudioWorkletNode | null>(null);
+  const systemStreamRef = useRef<MediaStream | null>(null);
   const isRecordingRef = useRef(false);
   const isStartingRef = useRef(false);
   const isPreparedRef = useRef(false);
@@ -267,6 +271,22 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
       await micContextRef.current?.close();
     } catch {}
     micContextRef.current = null;
+
+    await flushAndDisconnectProcessor(systemProcessorRef.current);
+    systemProcessorRef.current = null;
+
+    systemSourceRef.current?.disconnect();
+    systemSourceRef.current = null;
+
+    try {
+      systemStreamRef.current?.getTracks().forEach((t) => t.stop());
+    } catch {}
+    systemStreamRef.current = null;
+
+    try {
+      await systemContextRef.current?.close();
+    } catch {}
+    systemContextRef.current = null;
 
     ipcCleanupsRef.current.forEach((fn) => fn());
     ipcCleanupsRef.current = [];
@@ -405,7 +425,7 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
 
       const systemAudioMode = startResult.systemAudioMode || "unsupported";
 
-      if (!micResult && systemAudioMode !== "native") {
+      if (!micResult && systemAudioMode === "unsupported") {
         logger.error("Meeting transcription has no available audio source", {}, "meeting");
         setError(
           "No microphone is available and system audio capture is unsupported on this device."
@@ -510,6 +530,40 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
 
       if (micPipelinePromise) {
         await micPipelinePromise;
+      }
+
+      if (systemAudioMode === "loopback") {
+        try {
+          const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: true,
+          });
+          displayStream.getVideoTracks().forEach((t) => t.stop());
+
+          const systemContext = new AudioContext({ sampleRate: 24000 });
+          await detachFromOutputDevice(systemContext);
+          systemContextRef.current = systemContext;
+          systemStreamRef.current = displayStream;
+
+          await createAudioPipeline({
+            stream: displayStream,
+            context: systemContext,
+            label: "Meeting system",
+            onChunk: (chunk) => {
+              if (!isRecordingRef.current) return;
+              window.electronAPI?.meetingTranscriptionSend?.(chunk, "system");
+            },
+          }).then(({ source, processor }) => {
+            systemSourceRef.current = source;
+            systemProcessorRef.current = processor;
+          });
+        } catch (err) {
+          logger.warn(
+            "System audio loopback failed, continuing with mic only",
+            { error: (err as Error).message },
+            "meeting"
+          );
+        }
       }
 
       // Abort if stop was called during pipeline setup

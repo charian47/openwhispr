@@ -55,7 +55,6 @@ export default function NotesOnboarding({ onComplete }: NotesOnboardingProps) {
     granted: systemAudioGranted,
     mode: systemAudioMode,
     request: requestSystemAudio,
-    isMacOS,
   } = useSystemAudioPermission();
   const [isRequestingSystemAudio, setIsRequestingSystemAudio] = useState(false);
 
@@ -185,8 +184,8 @@ export default function NotesOnboarding({ onComplete }: NotesOnboardingProps) {
           </div>
         )}
 
-        {/* System Audio Permission — macOS only */}
-        {isMacOS && systemAudioMode === "native" && (
+        {/* System Audio Permission */}
+        {systemAudioMode !== "unsupported" && (
           <div
             className={cn(
               "rounded-lg border transition-colors duration-200",
@@ -214,7 +213,7 @@ export default function NotesOnboarding({ onComplete }: NotesOnboardingProps) {
                 <span className="text-xs text-success/60 font-medium shrink-0">
                   {t("notes.onboarding.systemAudio.enabled")}
                 </span>
-              ) : (
+              ) : systemAudioMode === "native" ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -228,7 +227,7 @@ export default function NotesOnboarding({ onComplete }: NotesOnboardingProps) {
                     t("notes.onboarding.systemAudio.grant")
                   )}
                 </Button>
-              )}
+              ) : null}
             </div>
           </div>
         )}
