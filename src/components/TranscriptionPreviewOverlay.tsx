@@ -18,6 +18,7 @@ export default function TranscriptionPreviewOverlay() {
   const [copied, setCopied] = useState(false);
   const [showCleanupAfterHold, setShowCleanupAfterHold] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
+  const [countdownKey, setCountdownKey] = useState(0);
 
   const shellRef = useRef<HTMLDivElement | null>(null);
   const textRef = useRef<HTMLDivElement | null>(null);
@@ -68,6 +69,14 @@ export default function TranscriptionPreviewOverlay() {
   }, []);
 
   const activeText = phase === "final" ? finalText || rawText : rawText;
+  const countdownMs =
+    phase === "hold" ? HOLD_DURATION_MS : phase === "final" ? FINAL_HIDE_DURATION_MS : 0;
+
+  useEffect(() => {
+    if (phase === "hold" || phase === "final") {
+      setCountdownKey((k) => k + 1);
+    }
+  }, [phase]);
 
   const targetWidth = useMemo(() => {
     if (phase === "listening" && !rawText) return 400;
@@ -232,13 +241,19 @@ export default function TranscriptionPreviewOverlay() {
       if (result?.success === false) throw new Error("clipboard-write-failed");
       setCopied(true);
       resetCopyState();
-      if (phaseRef.current === "final") startHideTimer(FINAL_HIDE_DURATION_MS);
+      if (phaseRef.current === "final") {
+        startHideTimer(FINAL_HIDE_DURATION_MS);
+        setCountdownKey((k) => k + 1);
+      }
     } catch {
       try {
         await navigator.clipboard.writeText(textToCopy);
         setCopied(true);
         resetCopyState();
-        if (phaseRef.current === "final") startHideTimer(FINAL_HIDE_DURATION_MS);
+        if (phaseRef.current === "final") {
+          startHideTimer(FINAL_HIDE_DURATION_MS);
+          setCountdownKey((k) => k + 1);
+        }
       } catch {
         setCopied(false);
       }
@@ -268,10 +283,15 @@ export default function TranscriptionPreviewOverlay() {
         ref={shellRef}
         className={[
           "relative overflow-hidden rounded-xl border bg-card/92 p-3 backdrop-blur-xl",
-          "border-border/40 shadow-[0_8px_24px_rgba(0,0,0,0.14)]",
-          "dark:border-border-subtle/45 dark:bg-surface-2/92",
+          "shadow-[0_8px_24px_rgba(0,0,0,0.14)]",
+          "dark:bg-surface-2/92",
+          phase === "final"
+            ? "border-emerald-500/18 dark:border-emerald-500/20"
+            : phase === "hold" || phase === "cleanup"
+              ? "border-primary/20 dark:border-primary/22"
+              : "border-border/40 dark:border-border-subtle/45",
           "transition-all duration-200 ease-out",
-          isVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+          isVisible ? "translate-y-0 opacity-100 scale-100" : "translate-y-4 opacity-0 scale-[0.97]",
         ].join(" ")}
       >
         <div className="flex items-center justify-between">
@@ -378,12 +398,29 @@ export default function TranscriptionPreviewOverlay() {
             </span>
           </div>
         )}
+
+        {countdownMs > 0 && (
+          <div className="absolute bottom-0 inset-x-0 h-[2px] overflow-hidden rounded-b-xl">
+            <div
+              key={countdownKey}
+              className={[
+                "h-full rounded-b-xl",
+                phase === "final" ? "bg-emerald-500/25" : "bg-primary/22",
+              ].join(" ")}
+              style={{ animation: `preview-countdown ${countdownMs}ms linear forwards` }}
+            />
+          </div>
+        )}
       </div>
 
       <style>{`
         @keyframes preview-bars {
           0%, 100% { transform: scaleY(0.7); opacity: 0.6; }
           50% { transform: scaleY(1.3); opacity: 1; }
+        }
+        @keyframes preview-countdown {
+          from { width: 100%; }
+          to { width: 0%; }
         }
         .preview-text-scroll::-webkit-scrollbar { display: none; }
         .preview-text-scroll { scrollbar-width: none; }
