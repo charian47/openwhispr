@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 type PreviewPhase = "listening" | "live" | "hold" | "cleanup" | "final";
 
 const HOLD_DURATION_MS = 3000;
-const FINAL_HIDE_DURATION_MS = 4500;
+const FINAL_HIDE_DURATION_MS = 4000;
 const COPIED_RESET_MS = 1400;
 const HIDE_ANIMATION_MS = 220;
 
@@ -287,9 +287,11 @@ export default function TranscriptionPreviewOverlay() {
           "dark:bg-surface-2/92",
           phase === "final"
             ? "border-emerald-500/18 dark:border-emerald-500/20"
-            : phase === "hold" || phase === "cleanup"
-              ? "border-primary/20 dark:border-primary/22"
-              : "border-border/40 dark:border-border-subtle/45",
+            : phase === "cleanup"
+              ? "border-accent/22 dark:border-accent/25"
+              : phase === "hold"
+                ? "border-primary/20 dark:border-primary/22"
+                : "border-border/40 dark:border-border-subtle/45",
           "transition-all duration-200 ease-out",
           isVisible ? "translate-y-0 opacity-100 scale-100" : "translate-y-4 opacity-0 scale-[0.97]",
         ].join(" ")}
@@ -298,15 +300,25 @@ export default function TranscriptionPreviewOverlay() {
           <div className="flex items-center gap-1.5 min-w-0">
             {phase === "final" ? (
               <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500/70" />
+            ) : phase === "cleanup" ? (
+              <div className="flex items-end gap-[2px] shrink-0 h-3.5">
+                {[5, 9, 7].map((h, i) => (
+                  <span
+                    key={i}
+                    className="w-[2px] rounded-full bg-accent/60"
+                    style={{
+                      height: h,
+                      animation: "preview-bars 0.8s ease-in-out infinite",
+                      animationDelay: `${i * 0.1}s`,
+                    }}
+                  />
+                ))}
+              </div>
             ) : (
               <span
                 className={[
                   "block h-1.5 w-1.5 shrink-0 rounded-full animate-pulse",
-                  phase === "cleanup"
-                    ? "bg-muted-foreground/40"
-                    : rawText
-                      ? "bg-primary/70"
-                      : "bg-muted-foreground/30",
+                  rawText ? "bg-primary/70" : "bg-muted-foreground/30",
                 ].join(" ")}
               />
             )}
@@ -354,7 +366,9 @@ export default function TranscriptionPreviewOverlay() {
                 "preview-text-scroll rounded-lg border px-2.5 py-2 max-h-[220px] overflow-y-auto",
                 phase === "final"
                   ? "border-emerald-500/10 bg-emerald-500/[0.03]"
-                  : "border-border/25 bg-background/30",
+                  : phase === "cleanup"
+                    ? "border-accent/12 bg-accent/[0.03]"
+                    : "border-border/25 bg-background/30",
               ].join(" ")}
             >
               <p className="select-text text-[13px] leading-[1.52] text-foreground whitespace-pre-wrap break-words [text-wrap:pretty]">
@@ -367,12 +381,12 @@ export default function TranscriptionPreviewOverlay() {
         {phase === "cleanup" && (
           <div
             className={[
-              "h-px overflow-hidden rounded-full bg-muted-foreground/8",
+              "h-[2px] overflow-hidden rounded-full bg-accent/10",
               activeText ? "mt-1.5" : "mt-2",
             ].join(" ")}
           >
             <div
-              className="h-full w-1/4 rounded-full bg-muted-foreground/20"
+              className="h-full w-1/4 rounded-full bg-accent/35"
               style={{ animation: "indeterminate 1.4s ease-in-out infinite" }}
             />
           </div>
