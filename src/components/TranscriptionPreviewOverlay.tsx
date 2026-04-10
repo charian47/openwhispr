@@ -5,9 +5,10 @@ export default function TranscriptionPreviewOverlay() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    setTimeout(() => setIsVisible(true), 50);
+
     const cleanupText = window.electronAPI?.onPreviewText?.((incoming: string) => {
       setText(incoming);
-      setTimeout(() => setIsVisible(true), 50);
     });
 
     const cleanupAppend = window.electronAPI?.onPreviewAppend?.((chunk: string) => {
