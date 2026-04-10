@@ -496,10 +496,7 @@ export default function ReasoningModelSelector({
 
   const effectiveMode = mode || selectedMode;
 
-  const cloudProviderIds =
-    mode === "cloud"
-      ? ["openai", "anthropic", "gemini", "groq"]
-      : ["openai", "anthropic", "gemini", "groq", "custom"];
+  const cloudProviderIds = ["openai", "anthropic", "gemini", "groq", "custom"];
   const cloudProviders = cloudProviderIds.map((id) => ({
     id,
     name:

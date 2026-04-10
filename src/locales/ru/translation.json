@@ -1093,13 +1093,13 @@
       "enableTextCleanupDescription": "ИИ улучшает качество транскрипции",
       "modes": {
         "openwhispr": "OpenWhispr",
-        "providers": "Провайдеры",
-        "local": "На устройстве",
+        "providers": "Облачные провайдеры",
+        "local": "Локально",
         "selfHosted": "Свой сервер",
         "openwhisprDesc": "Работает сразу. Без настройки.",
         "providersDesc": "Используйте свой API-ключ.",
-        "localDesc": "Работает локально. Полная приватность.",
-        "selfHostedDesc": "Свой сервер в LAN или облаке."
+        "localDesc": "Модели на устройстве. Полная приватность.",
+        "selfHostedDesc": "Свой сервер в вашей сети."
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Просто работает. Настройка не требуется.",
@@ -1406,13 +1406,13 @@
       "description": "Выберите, как OpenWhispr будет транскрибировать вашу речь",
       "modes": {
         "openwhispr": "OpenWhispr",
-        "providers": "Провайдеры",
-        "local": "На устройстве",
+        "providers": "Облачные провайдеры",
+        "local": "Локально",
         "selfHosted": "Свой сервер",
         "openwhisprDesc": "Работает сразу. Без настройки.",
         "providersDesc": "Используйте свой API-ключ.",
-        "localDesc": "Работает локально. Полная приватность.",
-        "selfHostedDesc": "Свой сервер в LAN или облаке."
+        "localDesc": "Модели на устройстве. Полная приватность.",
+        "selfHostedDesc": "Свой сервер в вашей сети."
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Просто работает. Настройка не требуется.",

@@ -1093,13 +1093,13 @@
       "enableTextCleanupDescription": "L'IA migliora la qualità della trascrizione",
       "modes": {
         "openwhispr": "OpenWhispr",
-        "providers": "Provider",
-        "local": "Sul dispositivo",
+        "providers": "Provider cloud",
+        "local": "Locale",
         "selfHosted": "Self-hosted",
         "openwhisprDesc": "Funziona subito. Zero setup.",
         "providersDesc": "Usa la tua chiave API.",
-        "localDesc": "Gira sul tuo PC. Totalmente privato.",
-        "selfHostedDesc": "Il tuo server in LAN o cloud."
+        "localDesc": "Modelli sul dispositivo. Totalmente privato.",
+        "selfHostedDesc": "Il tuo server nella tua rete."
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Funziona subito. Nessuna configurazione necessaria.",
@@ -1406,13 +1406,13 @@
       "description": "Scegli come OpenWhispr trascrive la tua voce",
       "modes": {
         "openwhispr": "OpenWhispr",
-        "providers": "Provider",
-        "local": "Sul dispositivo",
+        "providers": "Provider cloud",
+        "local": "Locale",
         "selfHosted": "Self-hosted",
         "openwhisprDesc": "Funziona subito. Zero setup.",
         "providersDesc": "Usa la tua chiave API.",
-        "localDesc": "Gira sul tuo PC. Totalmente privato.",
-        "selfHostedDesc": "Il tuo server in LAN o cloud."
+        "localDesc": "Modelli sul dispositivo. Totalmente privato.",
+        "selfHostedDesc": "Il tuo server nella tua rete."
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Funziona subito. Nessuna configurazione necessaria.",

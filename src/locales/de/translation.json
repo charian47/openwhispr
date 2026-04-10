@@ -1093,13 +1093,13 @@
       "enableTextCleanupDescription": "KI verbessert die Transkriptionsqualität",
       "modes": {
         "openwhispr": "OpenWhispr",
-        "providers": "Anbieter",
+        "providers": "Cloud-Anbieter",
         "local": "Lokal",
         "selfHosted": "Selbst gehostet",
         "openwhisprDesc": "Sofort einsatzbereit.",
         "providersDesc": "Eigenen API-Schlüssel nutzen.",
-        "localDesc": "Läuft lokal. Voll privat.",
-        "selfHostedDesc": "Eigener Server im LAN oder Cloud."
+        "localDesc": "Modelle auf dem Gerät. Voll privat.",
+        "selfHostedDesc": "Eigener Server in Ihrem Netzwerk."
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Funktioniert sofort. Keine Konfiguration nötig.",
@@ -1406,13 +1406,13 @@
       "description": "Wählen Sie, wie OpenWhispr Ihre Stimme transkribiert",
       "modes": {
         "openwhispr": "OpenWhispr",
-        "providers": "Anbieter",
+        "providers": "Cloud-Anbieter",
         "local": "Lokal",
         "selfHosted": "Selbst gehostet",
         "openwhisprDesc": "Sofort einsatzbereit.",
         "providersDesc": "Eigenen API-Schlüssel nutzen.",
-        "localDesc": "Läuft lokal. Voll privat.",
-        "selfHostedDesc": "Eigener Server im LAN oder Cloud."
+        "localDesc": "Modelle auf dem Gerät. Voll privat.",
+        "selfHostedDesc": "Eigener Server in Ihrem Netzwerk."
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Funktioniert sofort. Keine Konfiguration nötig.",

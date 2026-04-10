@@ -74,12 +74,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Progress } from "./ui/progress";
 import { useToast } from "./ui/Toast";
 import { useTheme } from "../hooks/useTheme";
-import type {
-  GpuDevice,
-  LocalTranscriptionProvider,
-  InferenceMode,
-  SelfHostedType,
-} from "../types/electron";
+import type { GpuDevice, LocalTranscriptionProvider, InferenceMode } from "../types/electron";
 import logger from "../utils/logger";
 import { SettingsRow } from "./ui/SettingsSection";
 import { useSettingsLayout } from "./ui/SidebarModal";
@@ -193,8 +188,6 @@ interface TranscriptionSectionProps {
   setCloudTranscriptionBaseUrl: (url: string) => void;
   transcriptionMode: InferenceMode;
   setTranscriptionMode: (mode: InferenceMode) => void;
-  remoteTranscriptionType: SelfHostedType;
-  setRemoteTranscriptionType: (type: SelfHostedType) => void;
   remoteTranscriptionUrl: string;
   setRemoteTranscriptionUrl: (url: string) => void;
   toast: (opts: {
@@ -234,8 +227,6 @@ function TranscriptionSection({
   setCloudTranscriptionBaseUrl,
   transcriptionMode,
   setTranscriptionMode,
-  remoteTranscriptionType,
-  setRemoteTranscriptionType,
   remoteTranscriptionUrl,
   setRemoteTranscriptionUrl,
   toast,
@@ -408,16 +399,8 @@ function TranscriptionSection({
           {transcriptionMode === "self-hosted" && (
             <SelfHostedPanel
               service="transcription"
-              selectedType={remoteTranscriptionType}
-              onTypeSelect={setRemoteTranscriptionType}
-              lanUrl={remoteTranscriptionUrl}
-              onLanUrlChange={setRemoteTranscriptionUrl}
-              compatibleUrl={cloudTranscriptionBaseUrl || ""}
-              onCompatibleUrlChange={setCloudTranscriptionBaseUrl}
-              compatibleApiKey={customTranscriptionApiKey}
-              onCompatibleApiKeyChange={setCustomTranscriptionApiKey}
-              compatibleModel={cloudTranscriptionModel}
-              onCompatibleModelChange={setCloudTranscriptionModel}
+              url={remoteTranscriptionUrl}
+              onUrlChange={setRemoteTranscriptionUrl}
             />
           )}
         </>
@@ -454,8 +437,6 @@ interface AiModelsSectionProps {
   setCustomReasoningApiKey: (key: string) => void;
   reasoningMode: InferenceMode;
   setReasoningMode: (mode: InferenceMode) => void;
-  remoteReasoningType: SelfHostedType;
-  setRemoteReasoningType: (type: SelfHostedType) => void;
   remoteReasoningUrl: string;
   setRemoteReasoningUrl: (url: string) => void;
   toast: (opts: {
@@ -490,8 +471,6 @@ function AiModelsSection({
   setCustomReasoningApiKey,
   reasoningMode,
   setReasoningMode,
-  remoteReasoningType,
-  setRemoteReasoningType,
   remoteReasoningUrl,
   setRemoteReasoningUrl,
   toast,
@@ -658,16 +637,8 @@ function AiModelsSection({
               {reasoningMode === "self-hosted" && (
                 <SelfHostedPanel
                   service="reasoning"
-                  selectedType={remoteReasoningType}
-                  onTypeSelect={setRemoteReasoningType}
-                  lanUrl={remoteReasoningUrl}
-                  onLanUrlChange={setRemoteReasoningUrl}
-                  compatibleUrl={cloudReasoningBaseUrl}
-                  onCompatibleUrlChange={setCloudReasoningBaseUrl}
-                  compatibleApiKey={customReasoningApiKey}
-                  onCompatibleApiKeyChange={setCustomReasoningApiKey}
-                  compatibleModel={reasoningModel}
-                  onCompatibleModelChange={setReasoningModel}
+                  url={remoteReasoningUrl}
+                  onUrlChange={setRemoteReasoningUrl}
                 />
               )}
             </>
@@ -816,14 +787,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setCloudReasoningMode,
     transcriptionMode,
     setTranscriptionMode,
-    remoteTranscriptionType,
-    setRemoteTranscriptionType,
     remoteTranscriptionUrl,
     setRemoteTranscriptionUrl,
     reasoningMode,
     setReasoningMode,
-    remoteReasoningType,
-    setRemoteReasoningType,
     remoteReasoningUrl,
     setRemoteReasoningUrl,
     audioCuesEnabled,
@@ -3115,8 +3082,6 @@ EOF`,
             setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
             transcriptionMode={transcriptionMode}
             setTranscriptionMode={setTranscriptionMode}
-            remoteTranscriptionType={remoteTranscriptionType}
-            setRemoteTranscriptionType={setRemoteTranscriptionType}
             remoteTranscriptionUrl={remoteTranscriptionUrl}
             setRemoteTranscriptionUrl={setRemoteTranscriptionUrl}
             toast={toast}
@@ -3152,8 +3117,6 @@ EOF`,
             setCustomReasoningApiKey={setCustomReasoningApiKey}
             reasoningMode={reasoningMode}
             setReasoningMode={setReasoningMode}
-            remoteReasoningType={remoteReasoningType}
-            setRemoteReasoningType={setRemoteReasoningType}
             remoteReasoningUrl={remoteReasoningUrl}
             setRemoteReasoningUrl={setRemoteReasoningUrl}
             toast={toast}
@@ -3299,8 +3262,6 @@ EOF`,
               setCustomReasoningApiKey={setCustomReasoningApiKey}
               reasoningMode={reasoningMode}
               setReasoningMode={setReasoningMode}
-              remoteReasoningType={remoteReasoningType}
-              setRemoteReasoningType={setRemoteReasoningType}
               remoteReasoningUrl={remoteReasoningUrl}
               setRemoteReasoningUrl={setRemoteReasoningUrl}
               toast={toast}

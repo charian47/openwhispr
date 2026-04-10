@@ -314,9 +314,7 @@ export default function TranscriptionModelPicker({
   const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
   const styles = useMemo(() => MODEL_PICKER_COLORS[colorScheme], [colorScheme]);
   const cloudProviders = useMemo(() => getTranscriptionProviders(), []);
-  const cloudProviderTabs = CLOUD_PROVIDER_TABS.filter(
-    (p) => !(mode === "cloud" && p.id === "custom")
-  ).map((provider) =>
+  const cloudProviderTabs = CLOUD_PROVIDER_TABS.map((provider) =>
     provider.id === "custom" ? { ...provider, name: t("transcription.customProvider") } : provider
   );
 

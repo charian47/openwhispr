@@ -1088,13 +1088,13 @@
       "enableTextCleanupDescription": "AI 自動提升轉錄品質",
       "modes": {
         "openwhispr": "OpenWhispr",
-        "providers": "供應商",
-        "local": "本機執行",
+        "providers": "雲端供應商",
+        "local": "本機",
         "selfHosted": "自架主機",
         "openwhisprDesc": "即開即用，無需設定。",
         "providersDesc": "使用你自己的 API Key。",
-        "localDesc": "在本機執行，完全私密。",
-        "selfHostedDesc": "自架伺服器，區網或雲端。"
+        "localDesc": "裝置端模型，完全私密。",
+        "selfHostedDesc": "你的伺服器，在你的網路上。"
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "即開即用，無需設定。",
@@ -1401,13 +1401,13 @@
       "description": "選擇 OpenWhispr 轉錄語音的方式",
       "modes": {
         "openwhispr": "OpenWhispr",
-        "providers": "供應商",
-        "local": "本機執行",
+        "providers": "雲端供應商",
+        "local": "本機",
         "selfHosted": "自架主機",
         "openwhisprDesc": "即開即用，無需設定。",
         "providersDesc": "使用你自己的 API Key。",
-        "localDesc": "在本機執行，完全私密。",
-        "selfHostedDesc": "自架伺服器，區網或雲端。"
+        "localDesc": "裝置端模型，完全私密。",
+        "selfHostedDesc": "你的伺服器，在你的網路上。"
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "即開即用，無需設定。",

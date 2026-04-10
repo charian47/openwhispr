@@ -1093,13 +1093,13 @@
       "enableTextCleanupDescription": "AI が文字起こしの品質を向上",
       "modes": {
         "openwhispr": "OpenWhispr",
-        "providers": "プロバイダー",
-        "local": "デバイス上",
+        "providers": "クラウドプロバイダー",
+        "local": "ローカル",
         "selfHosted": "セルフホスト",
         "openwhisprDesc": "設定不要ですぐ使える。",
         "providersDesc": "自分のAPIキーを使用。",
-        "localDesc": "端末上で動作。完全プライベート。",
-        "selfHostedDesc": "LANやクラウドの自前サーバー。"
+        "localDesc": "端末上のモデル。完全プライベート。",
+        "selfHostedDesc": "自前サーバーをネットワーク上に。"
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "設定不要ですぐに使えます。",
@@ -1406,13 +1406,13 @@
       "description": "OpenWhispr の音声文字起こし方法を選択",
       "modes": {
         "openwhispr": "OpenWhispr",
-        "providers": "プロバイダー",
-        "local": "デバイス上",
+        "providers": "クラウドプロバイダー",
+        "local": "ローカル",
         "selfHosted": "セルフホスト",
         "openwhisprDesc": "設定不要ですぐ使える。",
         "providersDesc": "自分のAPIキーを使用。",
-        "localDesc": "端末上で動作。完全プライベート。",
-        "selfHostedDesc": "LANやクラウドの自前サーバー。"
+        "localDesc": "端末上のモデル。完全プライベート。",
+        "selfHostedDesc": "自前サーバーをネットワーク上に。"
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "設定不要ですぐに使えます。",
