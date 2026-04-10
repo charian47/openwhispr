@@ -219,8 +219,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           return;
         }
 
-        // Get platform-appropriate default hotkey
-        const defaultHotkey = getDefaultHotkey();
+        // Get platform-appropriate default hotkey from backend (accounts for
+        // X11 modifier-only and GNOME gsettings limitations)
+        const defaultHotkey = await window.electronAPI?.getEffectiveDefaultHotkey?.() || getDefaultHotkey();
         const platform = window.electronAPI?.getPlatform?.() ?? "darwin";
 
         // Only auto-register if no hotkey is currently set
