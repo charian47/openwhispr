@@ -3022,7 +3022,10 @@ class IPCHandlers {
 
     const transcribeDictationPreviewChunk = async () => {
       if (dictationPreviewTranscribing) return;
-      if (!dictationPreviewBuffer.length) return;
+      if (!dictationPreviewBuffer.length) {
+        debugLogger.debug("Dictation preview: empty buffer, skipping");
+        return;
+      }
 
       dictationPreviewTranscribing = true;
       try {
@@ -3036,7 +3039,12 @@ class IPCHandlers {
           sumSq += n * n;
         }
         const rms = Math.sqrt(sumSq / samples.length);
-        if (rms < 0.005) return;
+        debugLogger.debug("Dictation preview chunk", {
+          pcmBytes: pcm.length,
+          rms: rms.toFixed(6),
+          samples: samples.length,
+        });
+        if (rms < 0.002) return;
 
         const wav = pcm16ToWav(pcm);
 
@@ -3341,13 +3349,23 @@ class IPCHandlers {
       dictationPreviewProvider = provider;
       dictationPreviewModel = model;
       dictationPreviewBuffer = [];
+      dictationPreviewChunkCount = 0;
       this.windowManager.showTranscriptionPreview("");
       dictationPreviewTimer = setInterval(() => transcribeDictationPreviewChunk(), 1500);
       return { success: true };
     });
 
+    let dictationPreviewChunkCount = 0;
     ipcMain.on("dictation-preview-audio", (_event, audioBuffer) => {
       if (!dictationPreviewMode) return;
+      dictationPreviewChunkCount++;
+      if (dictationPreviewChunkCount <= 3 || dictationPreviewChunkCount % 50 === 0) {
+        debugLogger.debug("Dictation preview audio received", {
+          bytes: audioBuffer?.byteLength || audioBuffer?.length,
+          count: dictationPreviewChunkCount,
+          bufferSize: dictationPreviewBuffer.length,
+        });
+      }
       dictationPreviewBuffer.push(
         Buffer.isBuffer(audioBuffer) ? audioBuffer : Buffer.from(audioBuffer)
       );
