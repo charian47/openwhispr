@@ -1446,7 +1446,9 @@
       "gpuDevice": {
         "title": "Transcription GPU",
         "description": "GPU used for local speech-to-text"
-      }
+      },
+      "transcriptionPreview": "Live Transcription Preview",
+      "transcriptionPreviewDescription": "Show transcription in a floating window before cleanup"
     },
     "intelligence": {
       "gpuDevice": {
@@ -2098,5 +2100,8 @@
     "close": "Close chat",
     "newChat": "New chat",
     "conversationSelector": "Switch conversation"
+  },
+  "transcriptionPreview": {
+    "label": "Preview"
   }
 }

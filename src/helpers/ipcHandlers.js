@@ -4709,6 +4709,10 @@ class IPCHandlers {
       return { success: true };
     });
 
+    ipcMain.handle("show-transcription-preview", (_, text) =>
+      this.windowManager.showTranscriptionPreview(text)
+    );
+
     ipcMain.handle("resize-agent-window", async (_event, width, height) => {
       this.windowManager.resizeAgentWindow(width, height);
       return { success: true };

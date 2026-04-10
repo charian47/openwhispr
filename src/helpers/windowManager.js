@@ -12,6 +12,7 @@ const {
   CONTROL_PANEL_CONFIG,
   AGENT_OVERLAY_CONFIG,
   NOTIFICATION_WINDOW_CONFIG,
+  TRANSCRIPTION_PREVIEW_CONFIG,
   WINDOW_SIZES,
   WindowPositionUtil,
 } = require("./windowConfig");
@@ -23,6 +24,8 @@ class WindowManager {
     this.agentWindow = null;
     this.notificationWindow = null;
     this._notificationTimeout = null;
+    this.transcriptionPreviewWindow = null;
+    this._previewTimeout = null;
     this.updateNotificationWindow = null;
     this._updateNotificationDismissed = false;
     this.tray = null;
@@ -724,6 +727,72 @@ class WindowManager {
     this._clearAgentAnimation();
     this.agentWindow.webContents.send("agent-stop-recording");
     this.agentWindow.hide();
+  }
+
+  async ensureTranscriptionPreviewWindow() {
+    if (this.transcriptionPreviewWindow && !this.transcriptionPreviewWindow.isDestroyed()) {
+      return;
+    }
+
+    this.transcriptionPreviewWindow = new BrowserWindow(TRANSCRIPTION_PREVIEW_CONFIG);
+
+    this.transcriptionPreviewWindow.on("closed", () => {
+      this.transcriptionPreviewWindow = null;
+    });
+
+    if (process.env.NODE_ENV === "development") {
+      await DevServerManager.waitForDevServer();
+      await this.transcriptionPreviewWindow.loadURL(
+        `${DevServerManager.DEV_SERVER_URL}?transcription-preview=true`
+      );
+    } else {
+      const fileInfo = DevServerManager.getAppFilePath(false);
+      await this.transcriptionPreviewWindow.loadFile(fileInfo.path, {
+        query: { ...fileInfo.query, "transcription-preview": "true" },
+      });
+    }
+  }
+
+  async showTranscriptionPreview(text) {
+    await this.ensureTranscriptionPreviewWindow();
+
+    if (!this.transcriptionPreviewWindow || this.transcriptionPreviewWindow.isDestroyed()) return;
+
+    const mainBounds =
+      this.mainWindow && !this.mainWindow.isDestroyed() ? this.mainWindow.getBounds() : null;
+
+    if (mainBounds) {
+      const display = screen.getDisplayNearestPoint({ x: mainBounds.x, y: mainBounds.y });
+      const position = WindowPositionUtil.getTranscriptionPreviewPosition(display, mainBounds);
+      this.transcriptionPreviewWindow.setBounds(position);
+    }
+
+    this.transcriptionPreviewWindow.webContents.send("preview-text", text);
+    this.transcriptionPreviewWindow.showInactive();
+    WindowPositionUtil.setupAlwaysOnTop(this.transcriptionPreviewWindow);
+
+    if (this._previewTimeout) {
+      clearTimeout(this._previewTimeout);
+    }
+    this._previewTimeout = setTimeout(() => {
+      this.hideTranscriptionPreview();
+    }, 5000);
+  }
+
+  hideTranscriptionPreview() {
+    if (this._previewTimeout) {
+      clearTimeout(this._previewTimeout);
+      this._previewTimeout = null;
+    }
+
+    if (!this.transcriptionPreviewWindow || this.transcriptionPreviewWindow.isDestroyed()) return;
+
+    this.transcriptionPreviewWindow.webContents.send("preview-hide");
+    setTimeout(() => {
+      if (this.transcriptionPreviewWindow && !this.transcriptionPreviewWindow.isDestroyed()) {
+        this.transcriptionPreviewWindow.hide();
+      }
+    }, 200);
   }
 
   resizeAgentWindow(width, height) {

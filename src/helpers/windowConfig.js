@@ -120,6 +120,27 @@ const NOTIFICATION_WINDOW_CONFIG = {
   type: FLOATING_OVERLAY_TYPE,
 };
 
+const TRANSCRIPTION_PREVIEW_CONFIG = {
+  width: 380,
+  height: 100,
+  frame: false,
+  transparent: true,
+  alwaysOnTop: true,
+  skipTaskbar: true,
+  resizable: false,
+  focusable: false,
+  hasShadow: false,
+  show: false,
+  webPreferences: {
+    preload: path.join(__dirname, "..", "..", "preload.js"),
+    nodeIntegration: false,
+    contextIsolation: true,
+    sandbox: true,
+  },
+  visibleOnAllWorkspaces: process.platform !== "win32",
+  type: FLOATING_OVERLAY_TYPE,
+};
+
 class WindowPositionUtil {
   static getMainWindowPosition(display, customSize = null, position = "bottom-right") {
     const { width, height } = customSize || WINDOW_SIZES.BASE;
@@ -149,6 +170,21 @@ class WindowPositionUtil {
     const workArea = display.workArea || display.bounds;
     const x = Math.max(0, workArea.x + workArea.width - width - MARGIN);
     const y = Math.max(0, workArea.y + MARGIN);
+    return { x, y, width, height };
+  }
+
+  static getTranscriptionPreviewPosition(display, mainWindowBounds) {
+    const width = 380;
+    const height = 100;
+    const GAP = 8;
+    const workArea = display.workArea || display.bounds;
+
+    let x = Math.round(mainWindowBounds.x + (mainWindowBounds.width - width) / 2);
+    let y = mainWindowBounds.y - height - GAP;
+
+    x = Math.max(workArea.x, Math.min(x, workArea.x + workArea.width - width));
+    y = Math.max(workArea.y, Math.min(y, workArea.y + workArea.height - height));
+
     return { x, y, width, height };
   }
 
@@ -212,6 +248,7 @@ module.exports = {
   CONTROL_PANEL_CONFIG,
   AGENT_OVERLAY_CONFIG,
   NOTIFICATION_WINDOW_CONFIG,
+  TRANSCRIPTION_PREVIEW_CONFIG,
   WINDOW_SIZES,
   WindowPositionUtil,
 };

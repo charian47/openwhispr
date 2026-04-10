@@ -1249,9 +1249,7 @@ declare global {
       }>;
 
       // Contacts
-      searchContacts: (
-        query: string
-      ) => Promise<{
+      searchContacts: (query: string) => Promise<{
         success: boolean;
         contacts: Array<{ email: string; display_name: string | null }>;
       }>;
@@ -1360,6 +1358,9 @@ declare global {
       } | null>;
       updateNotificationReady?: () => Promise<void>;
       updateNotificationRespond?: (action: string) => Promise<{ success: boolean }>;
+      showTranscriptionPreview?: (text: string) => Promise<void>;
+      onPreviewText?: (callback: (text: string) => void) => () => void;
+      onPreviewHide?: (callback: () => void) => () => void;
     };
 
     api?: {

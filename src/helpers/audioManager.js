@@ -617,6 +617,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
       if (result.success && result.text) {
         const rawText = result.text;
+        if (getSettings().showTranscriptionPreview) {
+          window.electronAPI?.showTranscriptionPreview?.(rawText);
+        }
         const reasoningStart = performance.now();
         const text = await this.processTranscription(result.text, "local");
         timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
@@ -691,6 +694,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
       if (result.success && result.text) {
         const rawText = result.text;
+        if (getSettings().showTranscriptionPreview) {
+          window.electronAPI?.showTranscriptionPreview?.(rawText);
+        }
         const reasoningStart = performance.now();
         const text = await this.processTranscription(result.text, "local-parakeet");
         timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);

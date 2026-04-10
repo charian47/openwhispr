@@ -183,6 +183,8 @@ interface TranscriptionSectionProps {
   setCustomTranscriptionApiKey: (key: string) => void;
   cloudTranscriptionBaseUrl?: string;
   setCloudTranscriptionBaseUrl: (url: string) => void;
+  showTranscriptionPreview: boolean;
+  setShowTranscriptionPreview: (value: boolean) => void;
   toast: (opts: {
     title: string;
     description: string;
@@ -218,6 +220,8 @@ function TranscriptionSection({
   setCustomTranscriptionApiKey,
   cloudTranscriptionBaseUrl,
   setCloudTranscriptionBaseUrl,
+  showTranscriptionPreview,
+  setShowTranscriptionPreview,
   toast,
 }: TranscriptionSectionProps) {
   const { t } = useTranslation();
@@ -396,6 +400,18 @@ function TranscriptionSection({
           setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
           variant="settings"
         />
+      )}
+      {useLocalWhisper && (
+        <SettingsPanel>
+          <SettingsPanelRow>
+            <SettingsRow
+              label={t("settingsPage.transcription.transcriptionPreview")}
+              description={t("settingsPage.transcription.transcriptionPreviewDescription")}
+            >
+              <Toggle checked={showTranscriptionPreview} onChange={setShowTranscriptionPreview} />
+            </SettingsRow>
+          </SettingsPanelRow>
+        </SettingsPanel>
       )}
       <GpuDeviceSelector purpose="transcription" />
     </div>
@@ -791,6 +807,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setNoteFilesEnabled,
     noteFilesPath,
     setNoteFilesPath,
+    showTranscriptionPreview,
+    setShowTranscriptionPreview,
   } = useSettings();
 
   const agentKey = useSettingsStore((s) => s.agentKey);
@@ -3043,6 +3061,8 @@ EOF`,
             setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
             cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
             setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+            showTranscriptionPreview={showTranscriptionPreview}
+            setShowTranscriptionPreview={setShowTranscriptionPreview}
             toast={toast}
           />
         );
