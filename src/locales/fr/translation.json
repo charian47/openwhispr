@@ -1816,7 +1816,14 @@
       "them": "Eux",
       "label": "Intervenant {{n}}",
       "identifyingSpeakers": "Identification des intervenants...",
-      "speakersIdentified": "Speakers identified"
+      "speakersIdentified": "Speakers identified",
+      "typeNamePlaceholder": "Saisir un nom",
+      "knownSpeakers": "Interlocuteurs connus",
+      "meetingAttendees": "Participants à la réunion",
+      "assignName": "Attribuer un nom",
+      "isThisPerson": "Est-ce {{name}} ?",
+      "confirmed": "Confirmé",
+      "nameAssigned": "Nom attribué"
     }
   },
   "dictionary": {

@@ -1330,9 +1330,41 @@ declare global {
             source: "mic" | "system";
             timestamp?: number;
             speaker?: string;
+            speakerName?: string;
+            suggestedName?: string;
+            suggestedProfileId?: number;
           }>;
+          speakerEmbeddings?: Record<string, number[]> | null;
         }) => void
       ) => () => void;
+
+      // Speaker name mapping
+      getSpeakerMappings?: (noteId: number) => Promise<Array<{
+        note_id: number;
+        speaker_id: string;
+        profile_id: number | null;
+        display_name: string;
+      }>>;
+      setSpeakerMapping?: (
+        noteId: number,
+        speakerId: string,
+        displayName: string,
+        email?: string | null,
+        profileId?: number | null
+      ) => Promise<{ success: boolean; profileId: number | null }>;
+      removeSpeakerMapping?: (noteId: number, speakerId: string) => Promise<{ success: boolean }>;
+      getSpeakerProfiles?: () => Promise<Array<{
+        id: number;
+        display_name: string;
+        email: string | null;
+        sample_count: number;
+        created_at: string;
+        updated_at: string;
+      }>>;
+      saveNoteSpeakerEmbeddings?: (
+        noteId: number,
+        embeddings: Record<string, number[]>
+      ) => Promise<{ success: boolean }>;
 
       // Dictation realtime streaming
       dictationRealtimeWarmup?: (options: {

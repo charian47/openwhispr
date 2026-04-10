@@ -263,6 +263,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
     (callback) => (_event, data) => callback(data)
   ),
 
+  // Speaker name mapping
+  getSpeakerMappings: (noteId) => ipcRenderer.invoke("get-speaker-mappings", noteId),
+  setSpeakerMapping: (noteId, speakerId, displayName, email, profileId) =>
+    ipcRenderer.invoke("set-speaker-mapping", noteId, speakerId, displayName, email, profileId),
+  removeSpeakerMapping: (noteId, speakerId) =>
+    ipcRenderer.invoke("remove-speaker-mapping", noteId, speakerId),
+  getSpeakerProfiles: () => ipcRenderer.invoke("get-speaker-profiles"),
+  saveNoteSpeakerEmbeddings: (noteId, embeddings) =>
+    ipcRenderer.invoke("save-note-speaker-embeddings", noteId, embeddings),
+
   // Window control functions
   windowMinimize: () => ipcRenderer.invoke("window-minimize"),
   windowMaximize: () => ipcRenderer.invoke("window-maximize"),

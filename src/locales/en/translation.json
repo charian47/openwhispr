@@ -1864,7 +1864,14 @@
       "them": "Them",
       "label": "Speaker {{n}}",
       "identifyingSpeakers": "Identifying speakers...",
-      "speakersIdentified": "Speakers identified"
+      "speakersIdentified": "Speakers identified",
+      "typeNamePlaceholder": "Type a name",
+      "knownSpeakers": "Known speakers",
+      "meetingAttendees": "Meeting attendees",
+      "assignName": "Assign name",
+      "isThisPerson": "Is this {{name}}?",
+      "confirmed": "Confirmed",
+      "nameAssigned": "Name assigned"
     }
   },
   "dictionary": {

@@ -5084,6 +5084,97 @@ class IPCHandlers {
         return { canceled: true };
       }
     });
+
+    ipcMain.handle("get-speaker-mappings", async (_event, noteId) => {
+      return this.databaseManager.getSpeakerMappings(noteId);
+    });
+
+    ipcMain.handle(
+      "set-speaker-mapping",
+      async (_event, noteId, speakerId, displayName, email, profileId) => {
+        const embeddings = this.databaseManager.getNoteSpeakerEmbeddings(noteId);
+        const speakerEmb = embeddings.find((e) => e.speaker_id === speakerId);
+
+        let resolvedProfileId = profileId ?? null;
+        if (speakerEmb) {
+          const profile = this.databaseManager.upsertSpeakerProfile(
+            displayName,
+            email || null,
+            speakerEmb.embedding,
+            resolvedProfileId
+          );
+          resolvedProfileId = profile.id;
+          this._retroactiveMapping(profile);
+        }
+
+        this.databaseManager.setSpeakerMapping(noteId, speakerId, resolvedProfileId, displayName);
+        return { success: true, profileId: resolvedProfileId };
+      }
+    );
+
+    ipcMain.handle("remove-speaker-mapping", async (_event, noteId, speakerId) => {
+      this.databaseManager.removeSpeakerMapping(noteId, speakerId);
+      return { success: true };
+    });
+
+    ipcMain.handle("get-speaker-profiles", async () => {
+      return this.databaseManager.getSpeakerProfiles();
+    });
+
+    ipcMain.handle("save-note-speaker-embeddings", async (_event, noteId, embeddingsObj) => {
+      const buffers = {};
+      for (const [speakerId, arr] of Object.entries(embeddingsObj)) {
+        buffers[speakerId] = Buffer.from(new Float32Array(arr).buffer);
+      }
+      this.databaseManager.saveNoteSpeakerEmbeddings(noteId, buffers);
+      return { success: true };
+    });
+  }
+
+  _retroactiveMapping(profile) {
+    setImmediate(async () => {
+      try {
+        const speakerEmbeddings = require("./speakerEmbeddings");
+        const noteIds = this.databaseManager.getNotesWithUnmappedSpeakers();
+
+        const profileEmb = new Float32Array(profile.embedding.buffer, profile.embedding.byteOffset, profile.embedding.byteLength / 4);
+
+        for (const noteId of noteIds) {
+          const embeddings = this.databaseManager.getNoteSpeakerEmbeddings(noteId);
+          const existing = this.databaseManager.getSpeakerMappings(noteId);
+          const mappedSpeakers = new Set(existing.map(m => m.speaker_id));
+          for (const emb of embeddings) {
+            if (mappedSpeakers.has(emb.speaker_id)) continue;
+
+            const speakerEmb = new Float32Array(emb.embedding.buffer, emb.embedding.byteOffset, emb.embedding.byteLength / 4);
+            const similarity = speakerEmbeddings.cosineSimilarity(profileEmb, speakerEmb);
+
+            if (similarity > 0.70) {
+              this.databaseManager.setSpeakerMapping(noteId, emb.speaker_id, profile.id, profile.display_name);
+
+              const note = this.databaseManager.getNote(noteId);
+              if (note?.transcript) {
+                try {
+                  const segments = JSON.parse(note.transcript);
+                  let changed = false;
+                  for (const seg of segments) {
+                    if (seg.speaker === emb.speaker_id && !seg.speakerName) {
+                      seg.speakerName = profile.display_name;
+                      changed = true;
+                    }
+                  }
+                  if (changed) {
+                    this.databaseManager.updateNote(noteId, { transcript: JSON.stringify(segments) });
+                  }
+                } catch (_) {}
+              }
+            }
+          }
+        }
+      } catch (err) {
+        debugLogger.warn("Retroactive speaker mapping failed", { error: err.message });
+      }
+    });
   }
 
   _startOrSkipDiarization(sessionId, rawPcmPath, transcriptSegments, win) {
@@ -5124,7 +5215,82 @@ class IPCHandlers {
           diarizationSegments
         );
 
-        send({ segments: enrichedSegments });
+        const speakerSet = new Set(diarizationSegments.map(d => d.speaker));
+        const speakerRenumber = new Map();
+        let sIdx = 0;
+        for (const sp of speakerSet) {
+          speakerRenumber.set(sp, `speaker_${sIdx}`);
+          sIdx++;
+        }
+
+        let speakerEmbeddingsMap = null;
+        const speakerEmb = require("./speakerEmbeddings");
+        try {
+          if (speakerEmb.isAvailable() && tmpWav) {
+            const speakerIds = [...new Set(diarizationSegments.map(s => s.speaker))];
+            speakerEmbeddingsMap = {};
+
+            for (const spk of speakerIds) {
+              const segs = diarizationSegments.filter(s => s.speaker === spk);
+              const sorted = segs.sort((a, b) => (b.end - b.start) - (a.end - a.start)).slice(0, 3);
+              const embeddings = [];
+              for (const seg of sorted) {
+                if (seg.end - seg.start < 2) continue;
+                const emb = await speakerEmb.extractEmbedding(tmpWav, seg.start, seg.end);
+                if (emb) embeddings.push(emb);
+              }
+              if (embeddings.length > 0) {
+                const centroid = speakerEmb.computeCentroid(embeddings);
+                const mappedId = speakerRenumber.get(spk) || spk;
+                speakerEmbeddingsMap[mappedId] = Array.from(centroid);
+              }
+            }
+          }
+        } catch (err) {
+          debugLogger.debug("Speaker embedding extraction skipped", { error: err.message });
+        }
+
+        if (speakerEmbeddingsMap) {
+          try {
+            const profiles = this.databaseManager.getSpeakerProfiles(true);
+
+            if (profiles.length > 0) {
+              for (const [mappedId, embArr] of Object.entries(speakerEmbeddingsMap)) {
+                const emb = new Float32Array(embArr);
+                let bestProfile = null;
+                let bestSim = 0;
+
+                for (const profile of profiles) {
+                  const profileEmb = new Float32Array(profile.embedding.buffer, profile.embedding.byteOffset, profile.embedding.byteLength / 4);
+                  const sim = speakerEmb.cosineSimilarity(emb, profileEmb);
+                  if (sim > bestSim) {
+                    bestSim = sim;
+                    bestProfile = profile;
+                  }
+                }
+
+                if (bestProfile && bestSim > 0.70) {
+                  for (const seg of enrichedSegments) {
+                    if (seg.speaker === mappedId) {
+                      seg.speakerName = bestProfile.display_name;
+                    }
+                  }
+                } else if (bestProfile && bestSim > 0.55) {
+                  for (const seg of enrichedSegments) {
+                    if (seg.speaker === mappedId) {
+                      seg.suggestedName = bestProfile.display_name;
+                      seg.suggestedProfileId = bestProfile.id;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            debugLogger.debug("Auto speaker recognition skipped", { error: err.message });
+          }
+        }
+
+        send({ segments: enrichedSegments, speakerEmbeddings: speakerEmbeddingsMap });
       } catch (err) {
         debugLogger.warn("Background diarization failed", { error: err.message });
         send({ segments: [] });

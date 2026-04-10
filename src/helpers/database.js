@@ -383,6 +383,40 @@ class DatabaseManager {
         )
       `);
 
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS speaker_profiles (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          display_name TEXT NOT NULL,
+          email TEXT,
+          embedding BLOB NOT NULL,
+          sample_count INTEGER DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS speaker_mappings (
+          note_id INTEGER NOT NULL,
+          speaker_id TEXT NOT NULL,
+          profile_id INTEGER,
+          display_name TEXT NOT NULL,
+          PRIMARY KEY (note_id, speaker_id),
+          FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE,
+          FOREIGN KEY (profile_id) REFERENCES speaker_profiles(id) ON DELETE SET NULL
+        )
+      `);
+
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS note_speaker_embeddings (
+          note_id INTEGER NOT NULL,
+          speaker_id TEXT NOT NULL,
+          embedding BLOB NOT NULL,
+          PRIMARY KEY (note_id, speaker_id),
+          FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE
+        )
+      `);
+
       return true;
     } catch (error) {
       debugLogger.error("Database initialization failed", { error: error.message }, "database");
@@ -1479,6 +1513,164 @@ class DatabaseManager {
         { error: error.message },
         "database"
       );
+      throw error;
+    }
+  }
+
+  upsertSpeakerProfile(name, email, embeddingBuffer, profileId = null) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const existing = profileId
+        ? this.db.prepare("SELECT * FROM speaker_profiles WHERE id = ?").get(profileId)
+        : this.db.prepare("SELECT * FROM speaker_profiles WHERE display_name = ?").get(name);
+      if (existing) {
+        const stored = new Float32Array(
+          existing.embedding.buffer,
+          existing.embedding.byteOffset,
+          existing.embedding.byteLength / 4
+        );
+        const incoming = new Float32Array(
+          embeddingBuffer.buffer,
+          embeddingBuffer.byteOffset,
+          embeddingBuffer.byteLength / 4
+        );
+        const updated = new Float32Array(stored.length);
+        for (let i = 0; i < stored.length; i++) {
+          updated[i] = 0.3 * incoming[i] + 0.7 * stored[i];
+        }
+        const updatedBuf = Buffer.from(updated.buffer);
+        this.db
+          .prepare(
+            "UPDATE speaker_profiles SET display_name = ?, email = ?, embedding = ?, sample_count = sample_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+          )
+          .run(name, email || existing.email || null, updatedBuf, existing.id);
+        return this.db.prepare("SELECT * FROM speaker_profiles WHERE id = ?").get(existing.id);
+      }
+      const result = this.db
+        .prepare(
+          "INSERT INTO speaker_profiles (display_name, email, embedding) VALUES (?, ?, ?)"
+        )
+        .run(name, email || null, embeddingBuffer);
+      return this.db
+        .prepare("SELECT * FROM speaker_profiles WHERE id = ?")
+        .get(result.lastInsertRowid);
+    } catch (error) {
+      debugLogger.error("Error upserting speaker profile", { error: error.message }, "database");
+      throw error;
+    }
+  }
+
+  getSpeakerProfiles(includeEmbedding = false) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const query = includeEmbedding
+        ? "SELECT * FROM speaker_profiles"
+        : `SELECT id, display_name, email, sample_count, created_at, updated_at
+           FROM speaker_profiles`;
+      return this.db.prepare(query).all();
+    } catch (error) {
+      debugLogger.error("Error getting speaker profiles", { error: error.message }, "database");
+      throw error;
+    }
+  }
+
+  setSpeakerMapping(noteId, speakerId, profileId, displayName) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      this.db
+        .prepare(
+          "INSERT OR REPLACE INTO speaker_mappings (note_id, speaker_id, profile_id, display_name) VALUES (?, ?, ?, ?)"
+        )
+        .run(noteId, speakerId, profileId, displayName);
+      return { success: true };
+    } catch (error) {
+      debugLogger.error("Error setting speaker mapping", { error: error.message }, "database");
+      throw error;
+    }
+  }
+
+  getSpeakerMappings(noteId) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db
+        .prepare("SELECT * FROM speaker_mappings WHERE note_id = ?")
+        .all(noteId);
+    } catch (error) {
+      debugLogger.error("Error getting speaker mappings", { error: error.message }, "database");
+      throw error;
+    }
+  }
+
+  saveNoteSpeakerEmbeddings(noteId, embeddings) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const transaction = this.db.transaction((entries) => {
+        const stmt = this.db.prepare(
+          "INSERT OR REPLACE INTO note_speaker_embeddings (note_id, speaker_id, embedding) VALUES (?, ?, ?)"
+        );
+        for (const [speakerId, buffer] of entries) {
+          stmt.run(noteId, speakerId, buffer);
+        }
+      });
+      transaction(Object.entries(embeddings));
+      return { success: true };
+    } catch (error) {
+      debugLogger.error(
+        "Error saving note speaker embeddings",
+        { error: error.message },
+        "database"
+      );
+      throw error;
+    }
+  }
+
+  getNoteSpeakerEmbeddings(noteId) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db
+        .prepare("SELECT * FROM note_speaker_embeddings WHERE note_id = ?")
+        .all(noteId);
+    } catch (error) {
+      debugLogger.error(
+        "Error getting note speaker embeddings",
+        { error: error.message },
+        "database"
+      );
+      throw error;
+    }
+  }
+
+  getNotesWithUnmappedSpeakers() {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db
+        .prepare(
+          `SELECT DISTINCT nse.note_id
+          FROM note_speaker_embeddings nse
+          LEFT JOIN speaker_mappings sm ON nse.note_id = sm.note_id AND nse.speaker_id = sm.speaker_id
+          WHERE sm.note_id IS NULL`
+        )
+        .all()
+        .map((row) => row.note_id);
+    } catch (error) {
+      debugLogger.error(
+        "Error getting notes with unmapped speakers",
+        { error: error.message },
+        "database"
+      );
+      throw error;
+    }
+  }
+
+  removeSpeakerMapping(noteId, speakerId) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      this.db
+        .prepare("DELETE FROM speaker_mappings WHERE note_id = ? AND speaker_id = ?")
+        .run(noteId, speakerId);
+      return { success: true };
+    } catch (error) {
+      debugLogger.error("Error removing speaker mapping", { error: error.message }, "database");
       throw error;
     }
   }

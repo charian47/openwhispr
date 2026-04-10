@@ -1755,7 +1755,14 @@
       "them": "對方",
       "label": "發言者 {{n}}",
       "identifyingSpeakers": "正在辨識發言者...",
-      "speakersIdentified": "Speakers identified"
+      "speakersIdentified": "Speakers identified",
+      "typeNamePlaceholder": "輸入姓名",
+      "knownSpeakers": "已知發言者",
+      "meetingAttendees": "會議參與者",
+      "assignName": "指派姓名",
+      "isThisPerson": "這是{{name}}嗎？",
+      "confirmed": "已確認",
+      "nameAssigned": "姓名已指派"
     }
   },
   "dictionary": {

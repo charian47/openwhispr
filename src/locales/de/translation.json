@@ -1755,7 +1755,14 @@
       "them": "Gegenüber",
       "label": "Sprecher {{n}}",
       "identifyingSpeakers": "Sprecher werden identifiziert...",
-      "speakersIdentified": "Speakers identified"
+      "speakersIdentified": "Speakers identified",
+      "typeNamePlaceholder": "Namen eingeben",
+      "knownSpeakers": "Bekannte Sprecher",
+      "meetingAttendees": "Meeting-Teilnehmer",
+      "assignName": "Name zuweisen",
+      "isThisPerson": "Ist das {{name}}?",
+      "confirmed": "Bestätigt",
+      "nameAssigned": "Name zugewiesen"
     }
   },
   "dictionary": {

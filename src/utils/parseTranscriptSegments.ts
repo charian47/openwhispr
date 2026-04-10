@@ -8,6 +8,9 @@ export function parseTranscriptSegments(raw: string): TranscriptSegment[] {
       source: "mic" | "system";
       timestamp?: number;
       speaker?: string;
+      speakerName?: string;
+      suggestedName?: string;
+      suggestedProfileId?: number;
     }>;
     return parsed.map((s, i) => ({
       id: `stored-${i}`,
@@ -15,6 +18,9 @@ export function parseTranscriptSegments(raw: string): TranscriptSegment[] {
       source: s.source,
       timestamp: s.timestamp,
       speaker: s.speaker,
+      speakerName: s.speakerName,
+      suggestedName: s.suggestedName,
+      suggestedProfileId: s.suggestedProfileId,
     }));
   } catch (e) {
     logger.warn("Failed to parse transcript segments", e);

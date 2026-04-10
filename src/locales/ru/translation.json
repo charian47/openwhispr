@@ -1755,7 +1755,14 @@
       "them": "Собеседник",
       "label": "Участник {{n}}",
       "identifyingSpeakers": "Определение участников...",
-      "speakersIdentified": "Speakers identified"
+      "speakersIdentified": "Speakers identified",
+      "typeNamePlaceholder": "Введите имя",
+      "knownSpeakers": "Известные собеседники",
+      "meetingAttendees": "Участники встречи",
+      "assignName": "Назначить имя",
+      "isThisPerson": "Это {{name}}?",
+      "confirmed": "Подтверждено",
+      "nameAssigned": "Имя назначено"
     }
   },
   "dictionary": {

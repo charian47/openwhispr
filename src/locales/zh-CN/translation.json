@@ -1755,7 +1755,14 @@
       "them": "对方",
       "label": "发言者 {{n}}",
       "identifyingSpeakers": "正在识别发言者...",
-      "speakersIdentified": "Speakers identified"
+      "speakersIdentified": "Speakers identified",
+      "typeNamePlaceholder": "输入姓名",
+      "knownSpeakers": "已知说话者",
+      "meetingAttendees": "会议参与者",
+      "assignName": "分配姓名",
+      "isThisPerson": "这是{{name}}吗？",
+      "confirmed": "已确认",
+      "nameAssigned": "姓名已分配"
     }
   },
   "dictionary": {

@@ -37,6 +37,20 @@ import { parseTranscriptSegments } from "../../utils/parseTranscriptSegments";
 import NoteParticipants from "./NoteParticipants";
 import type { CalendarAttendee } from "../../types/calendar";
 
+function serializeTranscript(segments: TranscriptSegment[]): string {
+  return JSON.stringify(
+    segments.map((s) => ({
+      text: s.text,
+      source: s.source,
+      timestamp: s.timestamp,
+      speaker: s.speaker,
+      speakerName: s.speakerName,
+      suggestedName: s.suggestedName,
+      suggestedProfileId: s.suggestedProfileId,
+    }))
+  );
+}
+
 function formatNoteDate(dateStr: string): string {
   const date = normalizeDbDate(dateStr);
   if (Number.isNaN(date.getTime())) return "";
@@ -128,6 +142,10 @@ export default function NoteEditor({
   const [newFolderName, setNewFolderName] = useState("");
   const [isDiarizing, setIsDiarizing] = useState(false);
   const [diarizedSegments, setDiarizedSegments] = useState<TranscriptSegment[] | null>(null);
+  const [speakerMappings, setSpeakerMappings] = useState<Record<string, string>>({});
+  const [speakerProfiles, setSpeakerProfiles] = useState<
+    Array<{ id: number; display_name: string; email: string | null }>
+  >([]);
   const editorRef = useRef<Editor | null>(null);
 
   const embeddedChat = useEmbeddedChat({
@@ -214,6 +232,7 @@ export default function NoteEditor({
       setChatMode("hidden");
       setDiarizedSegments(null);
       setIsDiarizing(false);
+      setSpeakerMappings({});
       if (!isMeetingRecording) {
         setViewMode("raw");
       }
@@ -223,6 +242,19 @@ export default function NoteEditor({
       editorRef.current?.commands.focus();
     }
   }, [note.id, isMeetingRecording]);
+
+  useEffect(() => {
+    window.electronAPI?.getSpeakerMappings?.(note.id).then((mappings) => {
+      const map: Record<string, string> = {};
+      for (const m of mappings || []) map[m.speaker_id] = m.display_name;
+      setSpeakerMappings(map);
+    });
+    window.electronAPI?.getSpeakerProfiles?.().then((profiles) => {
+      setSpeakerProfiles(
+        (profiles || []).map((p) => ({ id: p.id, display_name: p.display_name, email: p.email }))
+      );
+    });
+  }, [note.id]);
 
   // Auto-show chat when hook loads an existing conversation with messages
   useEffect(() => {
@@ -265,18 +297,85 @@ export default function NoteEditor({
       }));
       setDiarizedSegments(enriched);
 
-      const serialized = JSON.stringify(
-        enriched.map((s: TranscriptSegment) => ({
-          text: s.text,
-          source: s.source,
-          timestamp: s.timestamp,
-          speaker: s.speaker,
-        }))
-      );
-      window.electronAPI.updateNote(note.id, { transcript: serialized });
+      window.electronAPI.updateNote(note.id, { transcript: serializeTranscript(enriched) });
+
+      if (data.speakerEmbeddings) {
+        window.electronAPI?.saveNoteSpeakerEmbeddings?.(note.id, data.speakerEmbeddings);
+      }
+
+      const autoMappings: Record<string, string> = {};
+      for (const s of enriched) {
+        if (s.speakerName && s.speaker) autoMappings[s.speaker] = s.speakerName;
+      }
+      if (Object.keys(autoMappings).length > 0) {
+        setSpeakerMappings((prev) => ({ ...prev, ...autoMappings }));
+      }
     });
     return () => cleanup?.();
   }, [note.id, diarizationSessionId]);
+
+  const handleMapSpeaker = useCallback(
+    async (
+      speakerId: string,
+      displayName: string,
+      email?: string | null,
+      profileId?: number | null
+    ) => {
+      setSpeakerMappings((prev) => ({ ...prev, [speakerId]: displayName }));
+      await window.electronAPI?.setSpeakerMapping?.(
+        note.id,
+        speakerId,
+        displayName,
+        email,
+        profileId
+      );
+
+      const currentSegments = displaySegments.map((s) =>
+        s.speaker === speakerId
+          ? {
+              ...s,
+              speakerName: displayName,
+              suggestedName: undefined,
+              suggestedProfileId: undefined,
+            }
+          : s
+      );
+      window.electronAPI?.updateNote(note.id, { transcript: serializeTranscript(currentSegments) });
+
+      window.electronAPI?.getSpeakerProfiles?.().then((profiles) => {
+        setSpeakerProfiles(
+          (profiles || []).map((p) => ({
+            id: p.id,
+            display_name: p.display_name,
+            email: p.email,
+          }))
+        );
+      });
+    },
+    [note.id, displaySegments]
+  );
+
+  const handleConfirmSuggestion = useCallback(
+    async (speakerId: string, suggestedName: string, profileId: number) => {
+      await handleMapSpeaker(speakerId, suggestedName, null, profileId);
+    },
+    [handleMapSpeaker]
+  );
+
+  const handleDismissSuggestion = useCallback(
+    async (speakerId: string) => {
+      const currentSegments = displaySegments.map((s) =>
+        s.speaker === speakerId
+          ? { ...s, suggestedName: undefined, suggestedProfileId: undefined }
+          : s
+      );
+      if (diarizedSegments) {
+        setDiarizedSegments(currentSegments);
+      }
+      window.electronAPI?.updateNote(note.id, { transcript: serializeTranscript(currentSegments) });
+    },
+    [note.id, displaySegments, diarizedSegments]
+  );
 
   const handleTitleInput = useCallback(() => {
     if (titleRef.current) {
@@ -587,6 +686,12 @@ export default function NoteEditor({
                   segments={displaySegments}
                   micPartial={isMeetingRecording ? meetingMicPartial : undefined}
                   systemPartial={isMeetingRecording ? meetingSystemPartial : undefined}
+                  speakerMappings={speakerMappings}
+                  speakerProfiles={speakerProfiles}
+                  participants={parsedParticipants}
+                  onMapSpeaker={handleMapSpeaker}
+                  onConfirmSuggestion={handleConfirmSuggestion}
+                  onDismissSuggestion={handleDismissSuggestion}
                 />
                 {isDiarizing && (
                   <div className="flex items-center justify-center gap-1.5 py-2">

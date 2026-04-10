@@ -1755,7 +1755,14 @@
       "them": "Outro",
       "label": "Participante {{n}}",
       "identifyingSpeakers": "Identificando participantes...",
-      "speakersIdentified": "Speakers identified"
+      "speakersIdentified": "Speakers identified",
+      "typeNamePlaceholder": "Digite um nome",
+      "knownSpeakers": "Falantes conhecidos",
+      "meetingAttendees": "Participantes da reunião",
+      "assignName": "Atribuir nome",
+      "isThisPerson": "É {{name}}?",
+      "confirmed": "Confirmado",
+      "nameAssigned": "Nome atribuído"
     }
   },
   "dictionary": {

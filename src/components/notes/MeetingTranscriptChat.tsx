@@ -1,5 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { Check, X } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { cn } from "../lib/utils";
 import type { TranscriptSegment } from "../../hooks/useMeetingTranscription";
 
@@ -72,16 +74,209 @@ function PartialBubble({ text, source }: { text: string; source: "mic" | "system
   );
 }
 
+function SpeakerLabel({
+  speakerId,
+  segment,
+  mappedName,
+  speakerProfiles,
+  participants,
+  colorIdx,
+  isYou,
+  onMap,
+  onConfirm,
+  onDismiss,
+  t,
+}: {
+  speakerId: string;
+  segment: TranscriptSegment;
+  mappedName?: string;
+  speakerProfiles?: Array<{ id: number; display_name: string; email: string | null }>;
+  participants?: Array<{ email: string; displayName: string | null }>;
+  colorIdx: number;
+  isYou: boolean;
+  onMap?: (speakerId: string, name: string, email?: string | null, profileId?: number) => void;
+  onConfirm?: (speakerId: string, name: string, profileId: number) => void;
+  onDismiss?: (speakerId: string) => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  if (isYou) {
+    return (
+      <span className="text-[11px] font-medium mb-0.5 px-1 text-primary/60">
+        {t("notes.speaker.you")}
+      </span>
+    );
+  }
+
+  const hasSuggestion = !!segment.suggestedName && !mappedName;
+
+  if (hasSuggestion) {
+    return (
+      <span className="group inline-flex items-center gap-1 mb-0.5 px-1">
+        <span className="text-[11px] font-medium italic text-muted-foreground/60">
+          {segment.suggestedName}
+        </span>
+        <button
+          onClick={() =>
+            onConfirm?.(speakerId, segment.suggestedName!, segment.suggestedProfileId!)
+          }
+          className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-opacity cursor-pointer text-muted-foreground hover:text-emerald-500"
+        >
+          <Check size={12} />
+        </button>
+        <button
+          onClick={() => onDismiss?.(speakerId)}
+          className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-opacity cursor-pointer text-muted-foreground hover:text-destructive"
+        >
+          <X size={12} />
+        </button>
+      </span>
+    );
+  }
+
+  const speakerNumber = (() => {
+    const match = speakerId.match(/speaker_(\d+)/);
+    return match ? Number(match[1]) + 1 : 1;
+  })();
+
+  const displayLabel = mappedName || segment.speakerName || t("notes.speaker.label", { n: speakerNumber });
+  const isUnmapped = !mappedName && !segment.speakerName;
+
+  const filteredParticipants = participants?.filter(
+    (p) =>
+      search === "" ||
+      (p.displayName || p.email).toLowerCase().includes(search.toLowerCase())
+  );
+
+  const filteredProfiles = speakerProfiles?.filter(
+    (p) =>
+      search === "" ||
+      p.display_name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.email && p.email.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const handleSelect = (name: string, email?: string | null, profileId?: number) => {
+    onMap?.(speakerId, name, email, profileId);
+    setOpen(false);
+    setSearch("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && search.trim()) {
+      e.preventDefault();
+      handleSelect(search.trim());
+    }
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setSearch("");
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            "text-[11px] font-medium mb-0.5 px-1 transition-colors duration-100 cursor-pointer rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            SPEAKER_COLORS[colorIdx],
+            isUnmapped && "border-b border-dotted border-current",
+            "hover:bg-muted/50"
+          )}
+        >
+          {displayLabel}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-0">
+        <div className="p-2 border-b border-border/50">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t("notes.speaker.typeNamePlaceholder")}
+            className="w-full px-2 py-1.5 rounded-md bg-transparent text-xs text-foreground placeholder:text-foreground/20 outline-none border-none appearance-none"
+            autoFocus
+          />
+        </div>
+        <div className="max-h-40 overflow-y-auto">
+          {filteredParticipants && filteredParticipants.length > 0 && (
+            <div className="p-1 border-b border-border/30">
+              <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                {t("notes.speaker.meetingAttendees")}
+              </div>
+              {filteredParticipants.slice(0, 5).map((p) => (
+                <button
+                  key={p.email}
+                  onClick={() => handleSelect(p.displayName || p.email.split("@")[0], p.email)}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs text-foreground/70 hover:bg-foreground/5 transition-colors cursor-pointer"
+                >
+                  <span className="truncate">{p.displayName || p.email}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {filteredProfiles && filteredProfiles.length > 0 && (
+            <div className="p-1">
+              <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                {t("notes.speaker.knownSpeakers")}
+              </div>
+              {filteredProfiles.slice(0, 5).map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => handleSelect(p.display_name, p.email, p.id)}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs text-foreground/70 hover:bg-foreground/5 transition-colors cursor-pointer"
+                >
+                  <span className="truncate">{p.display_name}</span>
+                  {p.email && (
+                    <span className="text-foreground/30 truncate text-[11px]">{p.email}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+          {(!filteredParticipants || filteredParticipants.length === 0) &&
+            (!filteredProfiles || filteredProfiles.length === 0) &&
+            !search && (
+              <div className="px-3 py-4 text-center text-[11px] text-foreground/30">
+                {t("notes.speaker.typeNamePlaceholder")}
+              </div>
+            )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 interface MeetingTranscriptChatProps {
   segments: TranscriptSegment[];
   micPartial?: string;
   systemPartial?: string;
+  speakerMappings?: Record<string, string>;
+  speakerProfiles?: Array<{ id: number; display_name: string; email: string | null }>;
+  participants?: Array<{ email: string; displayName: string | null }>;
+  onMapSpeaker?: (
+    speakerId: string,
+    displayName: string,
+    email?: string | null,
+    profileId?: number
+  ) => void;
+  onConfirmSuggestion?: (speakerId: string, suggestedName: string, profileId: number) => void;
+  onDismissSuggestion?: (speakerId: string) => void;
 }
 
 export function MeetingTranscriptChat({
   segments,
   micPartial,
   systemPartial,
+  speakerMappings,
+  speakerProfiles,
+  participants,
+  onMapSpeaker,
+  onConfirmSuggestion,
+  onDismissSuggestion,
 }: MeetingTranscriptChatProps) {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -89,7 +284,6 @@ export function MeetingTranscriptChat({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    // Auto-scroll only when near the bottom (within 80px)
     const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
     if (isNearBottom) {
       el.scrollTop = el.scrollHeight;
@@ -125,17 +319,6 @@ export function MeetingTranscriptChat({
         const isSystemSpeaker = hasSpeaker && !isYou;
         const colorIdx = isSystemSpeaker ? getSpeakerColorIndex(segment.speaker!) : 0;
 
-        let speakerLabel: string | null = null;
-        if (hasSpeaker && !sameSpeaker) {
-          if (isYou) {
-            speakerLabel = t("notes.speaker.you");
-          } else {
-            const match = segment.speaker!.match(/speaker_(\d+)/);
-            const n = match ? Number(match[1]) + 1 : 1;
-            speakerLabel = t("notes.speaker.label", { n });
-          }
-        }
-
         return (
           <div
             key={segment.id}
@@ -146,15 +329,20 @@ export function MeetingTranscriptChat({
             )}
             style={{ animation: "agent-message-in 200ms ease-out both" }}
           >
-            {speakerLabel && (
-              <span
-                className={cn(
-                  "text-[11px] font-medium mb-0.5 px-1",
-                  isYou ? "text-primary/60" : SPEAKER_COLORS[colorIdx]
-                )}
-              >
-                {speakerLabel}
-              </span>
+            {hasSpeaker && !sameSpeaker && (
+              <SpeakerLabel
+                speakerId={segment.speaker!}
+                segment={segment}
+                mappedName={speakerMappings?.[segment.speaker!]}
+                speakerProfiles={speakerProfiles}
+                participants={participants}
+                colorIdx={colorIdx}
+                isYou={isYou}
+                onMap={onMapSpeaker}
+                onConfirm={onConfirmSuggestion}
+                onDismiss={onDismissSuggestion}
+                t={t}
+              />
             )}
             <div
               className={cn(

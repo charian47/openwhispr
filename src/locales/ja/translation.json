@@ -1683,7 +1683,14 @@
       "them": "相手",
       "label": "話者 {{n}}",
       "identifyingSpeakers": "話者を識別中...",
-      "speakersIdentified": "Speakers identified"
+      "speakersIdentified": "Speakers identified",
+      "typeNamePlaceholder": "名前を入力",
+      "knownSpeakers": "登録済みの話者",
+      "meetingAttendees": "会議の参加者",
+      "assignName": "名前を割り当て",
+      "isThisPerson": "{{name}}さんですか？",
+      "confirmed": "確認済み",
+      "nameAssigned": "名前を割り当てました"
     }
   },
   "dictionary": {
