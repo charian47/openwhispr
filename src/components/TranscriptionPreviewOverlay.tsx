@@ -27,7 +27,7 @@ export default function TranscriptionPreviewOverlay() {
   }
 
   return (
-    <div className="w-full h-full bg-transparent p-2">
+    <div className="meeting-notification-window w-full h-full bg-transparent p-2">
       <div
         className={[
           "bg-card/95 dark:bg-surface-2/95 backdrop-blur-xl",
