@@ -98,6 +98,7 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.windowsKeyManager = managers.windowsKeyManager;
+    this.linuxKeyManager = managers.linuxKeyManager;
     this.textEditMonitor = managers.textEditMonitor;
     this.getTrayManager = managers.getTrayManager;
     this.whisperCudaManager = managers.whisperCudaManager;
@@ -1611,6 +1612,12 @@ class IPCHandlers {
           this.windowsKeyManager.stop();
         }
 
+        // On Linux, stop the Linux key listener
+        if (process.platform === "linux" && this.linuxKeyManager) {
+          debugLogger.log("[IPC] Stopping Linux key listener for hotkey capture mode");
+          this.linuxKeyManager.stop();
+        }
+
         // On GNOME, unregister all native keybindings during capture
         if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager) {
           for (const slot of [...hotkeyManager.gnomeManager.registeredSlots]) {
@@ -1677,6 +1684,22 @@ class IPCHandlers {
             this.windowsKeyManager.start(effectiveHotkey);
           } else {
             this.windowsKeyManager.stop();
+          }
+        }
+
+        if (process.platform === "linux" && this.linuxKeyManager) {
+          const activationMode = this.windowManager.getActivationMode();
+          const needsListener =
+            effectiveHotkey &&
+            !isGlobeLikeHotkey(effectiveHotkey) &&
+            (activationMode === "push" ||
+              isModifierOnlyHotkey(effectiveHotkey) ||
+              isRightSideModifier(effectiveHotkey));
+          if (needsListener) {
+            debugLogger.log(`[IPC] Restarting Linux key listener for hotkey: ${effectiveHotkey}`);
+            this.linuxKeyManager.start(effectiveHotkey);
+          } else {
+            this.linuxKeyManager.stop();
           }
         }
 
