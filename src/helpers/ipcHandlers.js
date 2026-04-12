@@ -3059,7 +3059,7 @@ class IPCHandlers {
       };
     };
 
-    const isMeetingStreamingConnected = (systemAudioMode) =>
+    const isMeetingStreamingConnected = (systemAudioMode = getMeetingSystemAudioCapabilityMode()) =>
       !!this._meetingMicStreaming?.isConnected &&
       (systemAudioMode === "unsupported" || !!this._meetingSystemStreaming?.isConnected);
 
