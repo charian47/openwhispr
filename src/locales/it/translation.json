@@ -1094,6 +1094,16 @@
       "description": "Correggi le trascrizioni, gestisci i comandi e risolvi gli errori preservando il tuo tono.",
       "enableTextCleanup": "Attiva correzione testo",
       "enableTextCleanupDescription": "L'IA migliora la qualità della trascrizione",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "Provider cloud",
+        "local": "Locale",
+        "selfHosted": "Self-hosted",
+        "openwhisprDesc": "Funziona subito. Zero setup.",
+        "providersDesc": "Usa la tua chiave API.",
+        "localDesc": "Modelli sul dispositivo. Totalmente privato.",
+        "selfHostedDesc": "Il tuo server nella tua rete."
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Funziona subito. Nessuna configurazione necessaria.",
       "title": "Miglioramento testo con IA",
@@ -1105,6 +1115,18 @@
         "switchedCustom": {
           "description": "Configura il tuo provider e la tua chiave API.",
           "title": "Passato a configurazione personalizzata"
+        },
+        "switchedProviders": {
+          "title": "Provider cloud",
+          "description": "Utilizzo delle tue chiavi API."
+        },
+        "switchedLocal": {
+          "title": "Sul dispositivo",
+          "description": "L'IA viene eseguita localmente sulla tua macchina."
+        },
+        "switchedSelfHosted": {
+          "title": "Self-hosted",
+          "description": "Utilizzo del tuo server."
         }
       }
     },
@@ -1385,6 +1407,16 @@
       "customSetup": "Configurazione personalizzata",
       "customSetupDescription": "Usa il tuo provider e la tua chiave API.",
       "description": "Scegli come OpenWhispr trascrive la tua voce",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "Provider cloud",
+        "local": "Locale",
+        "selfHosted": "Self-hosted",
+        "openwhisprDesc": "Funziona subito. Zero setup.",
+        "providersDesc": "Usa la tua chiave API.",
+        "localDesc": "Modelli sul dispositivo. Totalmente privato.",
+        "selfHostedDesc": "Il tuo server nella tua rete."
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Funziona subito. Nessuna configurazione necessaria.",
       "title": "Riconoscimento vocale",
@@ -1396,6 +1428,18 @@
         "switchedCustom": {
           "description": "Configura il tuo provider e la tua chiave API.",
           "title": "Passato a configurazione personalizzata"
+        },
+        "switchedProviders": {
+          "title": "Provider cloud",
+          "description": "Utilizzo delle tue chiavi API."
+        },
+        "switchedLocal": {
+          "title": "Sul dispositivo",
+          "description": "La trascrizione viene eseguita localmente sulla tua macchina."
+        },
+        "switchedSelfHosted": {
+          "title": "Self-hosted",
+          "description": "Utilizzo del tuo server."
         }
       },
       "gpuDevice": {
@@ -1410,6 +1454,12 @@
         "title": "Intelligence GPU",
         "description": "GPU usata per l'elaborazione IA locale"
       }
+    },
+    "selfHosted": {
+      "endpointUrl": "URL endpoint",
+      "serverUrl": "URL server",
+      "apiKeyOptional": "API Key (opzionale)",
+      "lanHint": "L'audio resta sulla tua rete — niente esce dalla tua LAN."
     }
   },
   "models": {
@@ -1478,6 +1528,8 @@
         "llama_llama_3_1_8b_instruct_q4_k_m": "Modello potente con ottime prestazioni",
         "openai_oss_gpt_oss_20b_mxfp4": "Modello open-weight di OpenAI per hardware consumer",
         "gemma_gemma_3_4b_it_q4_k_m": "Modello open-weight di Google, ottimo equilibrio tra velocità e qualità",
+        "gemma_gemma_4_31b_it_q4_k_m": "Il più grande Gemma 4 di Google, migliore qualità",
+        "gemma_gemma_4_26b_a4b_it_q4_k_m": "Gemma 4 MoE di Google, veloce con 4B parametri attivi",
         "gemma_gemma_4_e4b_it_q4_k_m": "Ultimo multimodale di Google, ragionamento avanzato",
         "gemma_gemma_4_e2b_it_q4_k_m": "Gemma 4 compatto di Google, veloce ed efficiente",
         "gemma_gemma_3_12b_it_q4_k_m": "Modello di fascia media di Google, ragionamento solido",
@@ -1903,6 +1955,16 @@
       "systemPrompt": "Prompt di Sistema",
       "systemPromptDescription": "Istruzioni personalizzate per l'agente",
       "systemPromptPlaceholder": "Inserisci un prompt di sistema personalizzato...",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "Provider Cloud",
+        "local": "Locale",
+        "selfHosted": "Self-Hosted",
+        "openwhisprDesc": "Funziona subito. Nessuna configurazione.",
+        "providersDesc": "Porta la tua chiave API.",
+        "localDesc": "Modelli sul dispositivo. Completamente privato.",
+        "selfHostedDesc": "Il tuo server sulla tua rete."
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Usa l'IA cloud di OpenWhispr per le conversazioni agente",
       "customSetup": "Configurazione personalizzata (BYOK)",
