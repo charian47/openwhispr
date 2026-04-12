@@ -1160,6 +1160,9 @@ if (gotSingleInstanceLock) {
     if (windowManager && isLiveWindow(windowManager.agentWindow)) {
       windowManager.agentWindow.destroy();
     }
+    if (windowManager && isLiveWindow(windowManager.transcriptionPreviewWindow)) {
+      windowManager.transcriptionPreviewWindow.destroy();
+    }
     if (hotkeyManager) {
       hotkeyManager.unregisterAll();
     } else {

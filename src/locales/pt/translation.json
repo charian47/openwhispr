@@ -1370,7 +1370,9 @@
       "gpuDevice": {
         "title": "GPU de transcrição",
         "description": "GPU usada para transcrição local"
-      }
+      },
+      "transcriptionPreview": "Pré-visualização ao vivo",
+      "transcriptionPreviewDescription": "Mostrar transcrição em janela flutuante antes da correção"
     },
     "intelligence": {
       "gpuDevice": {
@@ -1445,6 +1447,8 @@
         "llama_llama_3_1_8b_instruct_q4_k_m": "Modelo poderoso com excelente desempenho",
         "openai_oss_gpt_oss_20b_mxfp4": "Modelo open-weight da OpenAI para hardware de consumo",
         "gemma_gemma_3_4b_it_q4_k_m": "Modelo open-weight do Google, ótimo equilíbrio entre velocidade e qualidade",
+        "gemma_gemma_4_31b_it_q4_k_m": "O maior Gemma 4 do Google, melhor qualidade",
+        "gemma_gemma_4_26b_a4b_it_q4_k_m": "Gemma 4 MoE do Google, rápido com 4B parâmetros ativos",
         "gemma_gemma_4_e4b_it_q4_k_m": "Último multimodal do Google, raciocínio avançado",
         "gemma_gemma_4_e2b_it_q4_k_m": "Gemma 4 compacto do Google, rápido e eficiente",
         "gemma_gemma_3_12b_it_q4_k_m": "Modelo intermediário do Google, raciocínio sólido",
@@ -2099,5 +2103,8 @@
     "close": "Fechar chat",
     "newChat": "Novo chat",
     "conversationSelector": "Trocar conversa"
+  },
+  "transcriptionPreview": {
+    "label": "Pré-visualização"
   }
 }

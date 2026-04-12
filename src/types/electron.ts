@@ -1268,9 +1268,7 @@ declare global {
       }>;
 
       // Contacts
-      searchContacts: (
-        query: string
-      ) => Promise<{
+      searchContacts: (query: string) => Promise<{
         success: boolean;
         contacts: Array<{ email: string; display_name: string | null }>;
       }>;
@@ -1382,6 +1380,27 @@ declare global {
       } | null>;
       updateNotificationReady?: () => Promise<void>;
       updateNotificationRespond?: (action: string) => Promise<{ success: boolean }>;
+      onPreviewText?: (callback: (text: string) => void) => () => void;
+      onPreviewAppend?: (callback: (text: string) => void) => () => void;
+      onPreviewHold?: (callback: (payload: { showCleanup: boolean }) => void) => () => void;
+      onPreviewResult?: (callback: (payload: { text: string }) => void) => () => void;
+      onPreviewHide?: (callback: () => void) => () => void;
+      startDictationPreview?: (opts: {
+        provider: string;
+        model: string;
+      }) => Promise<{ success: boolean }>;
+      stopDictationPreview?: (opts?: { showCleanup?: boolean }) => Promise<{ success: boolean }>;
+      dismissDictationPreview?: () => Promise<{ success: boolean }>;
+      completeDictationPreview?: (payload: { text?: string }) => Promise<{ success: boolean }>;
+      hideDictationPreview?: () => Promise<{ success: boolean }>;
+      resizeTranscriptionPreviewWindow?: (
+        width: number,
+        height: number
+      ) => Promise<{
+        success: boolean;
+        bounds?: { x: number; y: number; width: number; height: number };
+      }>;
+      sendDictationPreviewAudio?: (data: ArrayBuffer) => void;
     };
 
     api?: {
