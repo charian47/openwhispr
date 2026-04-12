@@ -251,6 +251,9 @@
       "failedCtaSettings": "Configura il tuo provider di trascrizione",
       "failedCtaAndRetry": "poi clicca su riprova",
       "failedCtaSettingsOnly": "Configura il tuo provider di trascrizione nelle Impostazioni",
+      "failedCtaSignIn": "Accedi di nuovo",
+      "failedLimitReached": "Limite giornaliero raggiunto",
+      "failedOffline": "Offline",
       "clearAll": "Cancella tutto",
       "clearAllTitle": "Cancella tutte le trascrizioni",
       "clearAllDescription": "Tutte le trascrizioni e i file audio verranno rimossi definitivamente.",
@@ -2165,6 +2168,12 @@
     "conversationSelector": "Cambia conversazione"
   },
   "transcriptionPreview": {
-    "label": "Anteprima"
+    "label": "Anteprima",
+    "listening": "In ascolto...",
+    "polishing": "Rifinitura...",
+    "ready": "Pronto",
+    "copy": "Copia",
+    "copied": "Copiato",
+    "waitingForInput": "Di qualcosa..."
   }
 }

@@ -251,6 +251,9 @@
       "failedCtaSettings": "設定您的轉錄服務供應商",
       "failedCtaAndRetry": "然後點擊重試",
       "failedCtaSettingsOnly": "在設定中配置您的轉錄服務供應商",
+      "failedCtaSignIn": "重新登入",
+      "failedLimitReached": "已達每日限額",
+      "failedOffline": "離線",
       "clearAll": "全部清除",
       "clearAllTitle": "清除所有轉錄",
       "clearAllDescription": "所有轉錄和音訊檔案將被永久刪除。",
@@ -2160,6 +2163,12 @@
     "conversationSelector": "切換對話"
   },
   "transcriptionPreview": {
-    "label": "預覽"
+    "label": "預覽",
+    "listening": "正在聆聽...",
+    "polishing": "正在潤飾...",
+    "ready": "就緒",
+    "copy": "複製",
+    "copied": "已複製",
+    "waitingForInput": "說點什麼..."
   }
 }

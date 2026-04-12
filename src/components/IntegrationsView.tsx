@@ -18,6 +18,7 @@ export default function IntegrationsView() {
   const [confirmDisconnectEmail, setConfirmDisconnectEmail] = useState<string | null>(null);
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const systemAudio = useSystemAudioPermission();
+  const { request: requestSystemAudioAccess } = systemAudio;
   const hasAccounts = gcalAccounts.length > 0;
   const needsSystemAudioGrant = !systemAudio.granted && canManageSystemAudioInApp(systemAudio);
 
@@ -39,14 +40,14 @@ export default function IntegrationsView() {
 
   const handleConnect = useCallback(async () => {
     if (needsSystemAudioGrant) {
-      const granted = await systemAudio.request();
+      const granted = await requestSystemAudioAccess();
       if (!granted) {
         setShowPermissionDialog(true);
         return;
       }
     }
     await startOAuth();
-  }, [needsSystemAudioGrant, startOAuth, systemAudio.request]);
+  }, [needsSystemAudioGrant, requestSystemAudioAccess, startOAuth]);
 
   const handleDisconnect = useCallback(
     async (email: string) => {

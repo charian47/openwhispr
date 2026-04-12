@@ -251,6 +251,9 @@
       "failedCtaSettings": "Настройте провайдер транскрипции",
       "failedCtaAndRetry": "затем нажмите повторить",
       "failedCtaSettingsOnly": "Настройте провайдер транскрипции в Настройках",
+      "failedCtaSignIn": "Войти снова",
+      "failedLimitReached": "Дневной лимит достигнут",
+      "failedOffline": "Нет подключения",
       "clearAll": "Очистить все",
       "clearAllTitle": "Очистить все транскрипции",
       "clearAllDescription": "Все транскрипции и аудиофайлы будут безвозвратно удалены.",
@@ -2165,6 +2168,12 @@
     "conversationSelector": "Сменить беседу"
   },
   "transcriptionPreview": {
-    "label": "Предпросмотр"
+    "label": "Предпросмотр",
+    "listening": "Слушаю...",
+    "polishing": "Полирую...",
+    "ready": "Готово",
+    "copy": "Копировать",
+    "copied": "Скопировано",
+    "waitingForInput": "Скажите что-нибудь..."
   }
 }

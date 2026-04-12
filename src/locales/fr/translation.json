@@ -251,6 +251,9 @@
       "failedCtaSettings": "Configurez votre fournisseur de transcription",
       "failedCtaAndRetry": "puis cliquez sur réessayer",
       "failedCtaSettingsOnly": "Configurez votre fournisseur de transcription dans les Paramètres",
+      "failedCtaSignIn": "Se reconnecter",
+      "failedLimitReached": "Limite quotidienne atteinte",
+      "failedOffline": "Hors ligne",
       "clearAll": "Tout effacer",
       "clearAllTitle": "Effacer toutes les transcriptions",
       "clearAllDescription": "Toutes les transcriptions et fichiers audio seront définitivement supprimés.",
@@ -2165,6 +2168,12 @@
     "conversationSelector": "Changer de conversation"
   },
   "transcriptionPreview": {
-    "label": "Aperçu"
+    "label": "Aperçu",
+    "listening": "Écoute...",
+    "polishing": "Finalisation...",
+    "ready": "Prêt",
+    "copy": "Copier",
+    "copied": "Copié",
+    "waitingForInput": "Dites quelque chose..."
   }
 }
