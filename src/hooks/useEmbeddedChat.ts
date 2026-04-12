@@ -40,6 +40,7 @@ export function useEmbeddedChat({
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [noteConversations, setNoteConversations] = useState<NoteConversationItem[]>([]);
   const noteIdRef = useRef(noteId);
+  const [prevNoteId, setPrevNoteId] = useState(noteId);
 
   const persistence = useChatPersistence({
     conversationId,
@@ -79,15 +80,18 @@ export function useEmbeddedChat({
     return conversations ?? [];
   }, [noteId]);
 
-  // Load conversations when noteId changes
-  useEffect(() => {
-    noteIdRef.current = noteId;
+  if (noteId !== prevNoteId) {
+    setPrevNoteId(noteId);
     if (!noteId) {
       persistence.handleNewChat();
       setConversationId(null);
       setNoteConversations([]);
-      return;
     }
+  }
+
+  useEffect(() => {
+    noteIdRef.current = noteId;
+    if (!noteId) return;
 
     let stale = false;
     (async () => {

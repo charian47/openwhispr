@@ -102,7 +102,7 @@ export default function ControlPanel() {
 
   useEffect(() => {
     loadTranscriptions();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
