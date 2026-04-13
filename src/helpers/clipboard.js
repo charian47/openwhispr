@@ -1099,6 +1099,19 @@ class ClipboardManager {
       }
     }
 
+    if (!detectedWindowClass) {
+       try {
+	 const hyprResult = spawnSync("hyprctl", ["activewindow", "-j"]);
+        if (hyprResult.status === 0) {
+          const win = JSON.parse(hyprResult.stdout.toString());
+          detectedWindowClass = win.class?.toLowerCase() || null;
+          if (detectedWindowClass) {
+            debugLogger.debug("Hyprland window class detected", { detectedWindowClass }, "clipboard");
+          }
+        }
+      } catch {}
+    }
+
     if (linuxFastPaste) {
       const earlyIsTerminal = detectedWindowClass
         ? terminalClasses.some((t) => detectedWindowClass.includes(t))
