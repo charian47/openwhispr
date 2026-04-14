@@ -40,8 +40,9 @@ const getLinuxSessionInfo = () => {
   const isGnome = isWayland && isGnomeDesktop(desktopEnv);
   const isKde = isWayland && isKdeDesktop(desktopEnv);
   const isWlroots = isWayland && isWlrootsCompositor(desktopEnv);
+  const isHyprland = isWayland && !!process.env.HYPRLAND_INSTANCE_SIGNATURE;
 
-  return { isWayland, xwaylandAvailable, desktopEnv, isGnome, isKde, isWlroots };
+  return { isWayland, xwaylandAvailable, desktopEnv, isGnome, isKde, isWlroots, isHyprland };
 };
 
 const PASTE_DELAYS = {
@@ -503,6 +504,19 @@ class ClipboardManager {
     }
 
     return null;
+  }
+
+  _detectHyprlandWindowClass() {
+    if (!this.commandExists("hyprctl")) return null;
+    try {
+      const result = spawnSync("hyprctl", ["activewindow", "-j"], { timeout: 1000 });
+      if (result.status !== 0) return null;
+      const win = JSON.parse(result.stdout.toString());
+      return win.class?.toLowerCase() || null;
+    } catch (err) {
+      debugLogger.warn("hyprctl window detection failed", { error: err?.message }, "clipboard");
+      return null;
+    }
   }
 
   _saveClipboard() {
@@ -1014,7 +1028,8 @@ class ClipboardManager {
   }
 
   async pasteLinux(originalClipboard, options = {}) {
-    const { isWayland, xwaylandAvailable, isGnome, isKde, isWlroots } = getLinuxSessionInfo();
+    const { isWayland, xwaylandAvailable, isGnome, isKde, isWlroots, isHyprland } =
+      getLinuxSessionInfo();
     const webContents = options.webContents;
     const xdotoolExists = this.commandExists("xdotool");
     const wtypeExists = this.commandExists("wtype");
@@ -1114,6 +1129,13 @@ class ClipboardManager {
       detectedWindowClass = this._detectKdeWindowClass();
       if (detectedWindowClass) {
         debugLogger.debug("KDE window class detected", { detectedWindowClass }, "clipboard");
+      }
+    }
+
+    if (!detectedWindowClass && isHyprland) {
+      detectedWindowClass = this._detectHyprlandWindowClass();
+      if (detectedWindowClass) {
+        debugLogger.debug("Hyprland window class detected", { detectedWindowClass }, "clipboard");
       }
     }
 
