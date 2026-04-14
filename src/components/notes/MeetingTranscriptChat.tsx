@@ -660,9 +660,9 @@ export function MeetingTranscriptChat({
   }
 
   const isSelfSide = (segment: TranscriptSegment): boolean => {
-    if (segment.speaker === "you") return true;
     const mapped = segment.speaker ? speakerMappings?.[segment.speaker] : undefined;
     if (mapped) return mapped.trim().toLowerCase() === t("notes.speaker.you").toLowerCase();
+    if (segment.speaker === "you") return true;
     if (segment.speakerName) return false;
     return segment.source === "mic";
   };
