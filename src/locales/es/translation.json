@@ -1812,6 +1812,7 @@
       "them": "Ellos",
       "label": "Participante {{n}}",
       "identifyingSpeakers": "Identificando participantes...",
+      "liveAccuracyHint": "Aún identificando participantes. La precisión de las etiquetas mejorará cuando termine la llamada.",
       "speakersIdentified": "Participantes identificados",
       "typeNamePlaceholder": "Escribe un nombre",
       "knownSpeakers": "Hablantes conocidos",
@@ -1828,7 +1829,13 @@
         "confirmed": "Confirmado",
         "suggested": "Sugerido",
         "locked": "Bloqueado"
-      }
+      },
+      "createNewPrefix": "Crear",
+      "emailPlaceholder": "nombre@ejemplo.com",
+      "nameOrEmailPlaceholder": "Escribe un nombre o correo",
+      "addContact": "Añadir contacto",
+      "save": "Guardar",
+      "cancel": "Cancelar"
     }
   },
   "dictionary": {

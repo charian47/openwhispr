@@ -1004,7 +1004,12 @@
           "annualEquivalent": "$16.67",
           "includesPrefix": "所有 Pro 功能 +",
           "badge": "最熱門",
-          "features": ["無限會議錄製", "代理模式", "與您的資料對話", "優先支援"],
+          "features": [
+            "無限會議錄製",
+            "代理模式",
+            "與您的資料對話",
+            "優先支援"
+          ],
           "cta": "開始使用",
           "switchToAnnual": "切換為年付"
         },
@@ -1807,6 +1812,7 @@
       "them": "對方",
       "label": "發言者 {{n}}",
       "identifyingSpeakers": "正在辨識發言者...",
+      "liveAccuracyHint": "仍在辨識發言者。通話結束後，標籤準確度會提升。",
       "speakersIdentified": "已辨識發言者",
       "typeNamePlaceholder": "輸入姓名",
       "knownSpeakers": "已知發言者",
@@ -1823,7 +1829,13 @@
         "confirmed": "已確認",
         "suggested": "建議",
         "locked": "鎖定"
-      }
+      },
+      "createNewPrefix": "建立",
+      "emailPlaceholder": "name@example.com",
+      "nameOrEmailPlaceholder": "輸入姓名或電子郵件",
+      "addContact": "新增聯絡人",
+      "save": "儲存",
+      "cancel": "取消"
     }
   },
   "dictionary": {

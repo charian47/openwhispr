@@ -270,6 +270,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   removeSpeakerMapping: (noteId, speakerId) =>
     ipcRenderer.invoke("remove-speaker-mapping", noteId, speakerId),
   getSpeakerProfiles: () => ipcRenderer.invoke("get-speaker-profiles"),
+  attachSpeakerEmail: (profileId, email) =>
+    ipcRenderer.invoke("attach-speaker-email", profileId, email),
   saveNoteSpeakerEmbeddings: (noteId, embeddings) =>
     ipcRenderer.invoke("save-note-speaker-embeddings", noteId, embeddings),
 

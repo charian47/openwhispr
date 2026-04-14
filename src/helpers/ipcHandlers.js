@@ -5397,6 +5397,29 @@ class IPCHandlers {
       return this.databaseManager.getSpeakerProfiles();
     });
 
+    ipcMain.handle("attach-speaker-email", async (_event, profileId, email) => {
+      try {
+        const profile = this.databaseManager.attachEmailToProfile(profileId, email);
+        this._retroactiveMapping(profile);
+        return {
+          success: true,
+          profile: {
+            id: profile.id,
+            display_name: profile.display_name,
+            email: profile.email,
+            sample_count: profile.sample_count,
+          },
+        };
+      } catch (error) {
+        debugLogger.error(
+          "Failed to attach email to speaker profile",
+          { error: error.message },
+          "speaker"
+        );
+        return { success: false, error: error.message };
+      }
+    });
+
     ipcMain.handle("save-note-speaker-embeddings", async (_event, noteId, embeddingsObj) => {
       const buffers = {};
       for (const [speakerId, arr] of Object.entries(embeddingsObj)) {

@@ -1807,6 +1807,7 @@
       "them": "对方",
       "label": "发言者 {{n}}",
       "identifyingSpeakers": "正在识别发言者...",
+      "liveAccuracyHint": "正在识别发言者。通话结束后，标签准确性会提升。",
       "speakersIdentified": "已识别发言者",
       "typeNamePlaceholder": "输入姓名",
       "knownSpeakers": "已知说话者",
@@ -1823,7 +1824,13 @@
         "confirmed": "已确认",
         "suggested": "建议",
         "locked": "锁定"
-      }
+      },
+      "createNewPrefix": "创建",
+      "emailPlaceholder": "name@example.com",
+      "nameOrEmailPlaceholder": "输入姓名或邮箱",
+      "addContact": "添加联系人",
+      "save": "保存",
+      "cancel": "取消"
     }
   },
   "dictionary": {

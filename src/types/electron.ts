@@ -1430,6 +1430,19 @@ declare global {
           updated_at: string;
         }>
       >;
+      attachSpeakerEmail?: (
+        profileId: number,
+        email: string | null
+      ) => Promise<{
+        success: boolean;
+        error?: string;
+        profile?: {
+          id: number;
+          display_name: string;
+          email: string | null;
+          sample_count: number;
+        };
+      }>;
       saveNoteSpeakerEmbeddings?: (
         noteId: number,
         embeddings: Record<string, number[]>

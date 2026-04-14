@@ -1812,6 +1812,7 @@
       "them": "Gegenüber",
       "label": "Sprecher {{n}}",
       "identifyingSpeakers": "Sprecher werden identifiziert...",
+      "liveAccuracyHint": "Sprecher werden noch identifiziert. Die Genauigkeit der Beschriftung verbessert sich, sobald das Gespräch endet.",
       "speakersIdentified": "Sprecher identifiziert",
       "typeNamePlaceholder": "Namen eingeben",
       "knownSpeakers": "Bekannte Sprecher",
@@ -1828,7 +1829,13 @@
         "confirmed": "Bestätigt",
         "suggested": "Vorgeschlagen",
         "locked": "Fixiert"
-      }
+      },
+      "createNewPrefix": "Erstellen",
+      "emailPlaceholder": "name@beispiel.de",
+      "nameOrEmailPlaceholder": "Name oder E-Mail eingeben",
+      "addContact": "Kontakt hinzufügen",
+      "save": "Speichern",
+      "cancel": "Abbrechen"
     }
   },
   "dictionary": {

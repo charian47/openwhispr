@@ -431,6 +431,16 @@ export default function NoteEditor({
     [handleMapSpeaker]
   );
 
+  const handleAttachSpeakerEmail = useCallback(
+    async (profileId: number, email: string | null) => {
+      const result = await window.electronAPI?.attachSpeakerEmail?.(profileId, email);
+      if (result?.success) {
+        refreshSpeakerProfiles();
+      }
+    },
+    [refreshSpeakerProfiles]
+  );
+
   const handleDismissSuggestion = useCallback(
     async (speakerId: string) => {
       const currentSegments = displaySegments.map((s) =>
@@ -796,35 +806,28 @@ export default function NoteEditor({
         <div className="flex-1 relative min-h-0">
           <div className="h-full overflow-y-auto">
             {viewMode === "transcript" && (hasChatSegments || isMeetingRecording) ? (
-              <>
-                <MeetingTranscriptChat
-                  segments={displaySegments}
-                  micPartial={isMeetingRecording ? meetingMicPartial : undefined}
-                  systemPartial={isMeetingRecording ? meetingSystemPartial : undefined}
-                  systemPartialSpeakerId={
-                    isMeetingRecording ? meetingSystemPartialSpeakerId : undefined
-                  }
-                  systemPartialSpeakerName={
-                    isMeetingRecording ? meetingSystemPartialSpeakerName : undefined
-                  }
-                  speakerMappings={speakerMappings}
-                  speakerProfiles={knownSpeakers}
-                  participants={parsedParticipants}
-                  onMapSpeaker={handleMapSpeaker}
-                  onConfirmSuggestion={handleConfirmSuggestion}
-                  onDismissSuggestion={handleDismissSuggestion}
-                  selectedSegmentIds={!isMeetingRecording ? selectedSegmentIds : undefined}
-                  onToggleSelect={!isMeetingRecording ? handleToggleSelect : undefined}
-                />
-                {isDiarizing && (
-                  <div className="flex items-center justify-center gap-1.5 py-2">
-                    <Loader2 size={10} className="animate-spin text-foreground/30" />
-                    <span className="text-[11px] text-foreground/30">
-                      {t("notes.speaker.identifyingSpeakers")}
-                    </span>
-                  </div>
-                )}
-              </>
+              <MeetingTranscriptChat
+                segments={displaySegments}
+                micPartial={isMeetingRecording ? meetingMicPartial : undefined}
+                systemPartial={isMeetingRecording ? meetingSystemPartial : undefined}
+                systemPartialSpeakerId={
+                  isMeetingRecording ? meetingSystemPartialSpeakerId : undefined
+                }
+                systemPartialSpeakerName={
+                  isMeetingRecording ? meetingSystemPartialSpeakerName : undefined
+                }
+                speakerMappings={speakerMappings}
+                speakerProfiles={knownSpeakers}
+                participants={parsedParticipants}
+                isRecording={isMeetingRecording}
+                isDiarizing={isDiarizing}
+                onMapSpeaker={handleMapSpeaker}
+                onConfirmSuggestion={handleConfirmSuggestion}
+                onDismissSuggestion={handleDismissSuggestion}
+                onAttachSpeakerEmail={handleAttachSpeakerEmail}
+                selectedSegmentIds={!isMeetingRecording ? selectedSegmentIds : undefined}
+                onToggleSelect={!isMeetingRecording ? handleToggleSelect : undefined}
+              />
             ) : viewMode === "transcript" && hasMeetingTranscript ? (
               <RichTextEditor value={effectiveTranscript} disabled />
             ) : viewMode === "enhanced" && enhancement ? (

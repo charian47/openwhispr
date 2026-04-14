@@ -12,8 +12,8 @@ const FBANK_SAMPLE_RATE = 16000;
 const FBANK_FRAME_LENGTH_MS = 25;
 const FBANK_FRAME_SHIFT_MS = 10;
 const FBANK_NUM_MELS = 80;
-const FBANK_FRAME_LENGTH = Math.round(FBANK_SAMPLE_RATE * FBANK_FRAME_LENGTH_MS / 1000);
-const FBANK_FRAME_SHIFT = Math.round(FBANK_SAMPLE_RATE * FBANK_FRAME_SHIFT_MS / 1000);
+const FBANK_FRAME_LENGTH = Math.round((FBANK_SAMPLE_RATE * FBANK_FRAME_LENGTH_MS) / 1000);
+const FBANK_FRAME_SHIFT = Math.round((FBANK_SAMPLE_RATE * FBANK_FRAME_SHIFT_MS) / 1000);
 const FBANK_FFT_SIZE = 512;
 
 let _melFilterbank = null;
@@ -30,13 +30,13 @@ function getMelFilterbank() {
 
   const melPoints = new Float64Array(FBANK_NUM_MELS + 2);
   for (let i = 0; i < melPoints.length; i++) {
-    const mel = melLow + (melHigh - melLow) * i / (FBANK_NUM_MELS + 1);
+    const mel = melLow + ((melHigh - melLow) * i) / (FBANK_NUM_MELS + 1);
     melPoints[i] = 700 * (Math.exp(mel / 1127) - 1);
   }
 
   const binPoints = new Float64Array(melPoints.length);
   for (let i = 0; i < melPoints.length; i++) {
-    binPoints[i] = Math.floor((FBANK_FFT_SIZE + 1) * melPoints[i] / FBANK_SAMPLE_RATE);
+    binPoints[i] = Math.floor(((FBANK_FFT_SIZE + 1) * melPoints[i]) / FBANK_SAMPLE_RATE);
   }
 
   _melFilterbank = new Array(FBANK_NUM_MELS);
@@ -67,23 +67,32 @@ function realFFT(frame) {
 
   for (let i = 1, j = 0; i < n; i++) {
     let bit = n >> 1;
-    while (j & bit) { j ^= bit; bit >>= 1; }
+    while (j & bit) {
+      j ^= bit;
+      bit >>= 1;
+    }
     j ^= bit;
-    if (i < j) { [re[i], re[j]] = [re[j], re[i]]; }
+    if (i < j) {
+      [re[i], re[j]] = [re[j], re[i]];
+    }
   }
 
   for (let len = 2; len <= n; len <<= 1) {
-    const angle = -2 * Math.PI / len;
+    const angle = (-2 * Math.PI) / len;
     const wRe = Math.cos(angle);
     const wIm = Math.sin(angle);
     for (let i = 0; i < n; i += len) {
-      let curRe = 1, curIm = 0;
+      let curRe = 1,
+        curIm = 0;
       for (let j = 0; j < len / 2; j++) {
-        const uRe = re[i + j], uIm = im[i + j];
+        const uRe = re[i + j],
+          uIm = im[i + j];
         const vRe = re[i + j + len / 2] * curRe - im[i + j + len / 2] * curIm;
         const vIm = re[i + j + len / 2] * curIm + im[i + j + len / 2] * curRe;
-        re[i + j] = uRe + vRe; im[i + j] = uIm + vIm;
-        re[i + j + len / 2] = uRe - vRe; im[i + j + len / 2] = uIm - vIm;
+        re[i + j] = uRe + vRe;
+        im[i + j] = uIm + vIm;
+        re[i + j + len / 2] = uRe - vRe;
+        im[i + j + len / 2] = uIm - vIm;
         const tmpRe = curRe * wRe - curIm * wIm;
         curIm = curRe * wIm + curIm * wRe;
         curRe = tmpRe;
@@ -100,12 +109,15 @@ function realFFT(frame) {
 }
 
 function computeFbank(samples) {
-  const numFrames = Math.max(0, Math.floor((samples.length - FBANK_FRAME_LENGTH) / FBANK_FRAME_SHIFT) + 1);
+  const numFrames = Math.max(
+    0,
+    Math.floor((samples.length - FBANK_FRAME_LENGTH) / FBANK_FRAME_SHIFT) + 1
+  );
   if (numFrames === 0) return null;
 
   const hamming = new Float32Array(FBANK_FRAME_LENGTH);
   for (let i = 0; i < FBANK_FRAME_LENGTH; i++) {
-    hamming[i] = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (FBANK_FRAME_LENGTH - 1));
+    hamming[i] = 0.54 - 0.46 * Math.cos((2 * Math.PI * i) / (FBANK_FRAME_LENGTH - 1));
   }
 
   const melBank = getMelFilterbank();

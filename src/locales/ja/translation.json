@@ -1740,6 +1740,7 @@
       "them": "相手",
       "label": "話者 {{n}}",
       "identifyingSpeakers": "話者を識別中...",
+      "liveAccuracyHint": "話者を識別中です。通話終了後にラベルの精度が向上します。",
       "speakersIdentified": "話者を識別しました",
       "typeNamePlaceholder": "名前を入力",
       "knownSpeakers": "登録済みの話者",
@@ -1756,7 +1757,13 @@
         "confirmed": "確認済み",
         "suggested": "候補",
         "locked": "固定"
-      }
+      },
+      "createNewPrefix": "作成",
+      "emailPlaceholder": "name@example.com",
+      "nameOrEmailPlaceholder": "名前またはメールを入力",
+      "addContact": "連絡先を追加",
+      "save": "保存",
+      "cancel": "キャンセル"
     }
   },
   "dictionary": {

@@ -1873,6 +1873,7 @@
       "them": "Eux",
       "label": "Intervenant {{n}}",
       "identifyingSpeakers": "Identification des intervenants...",
+      "liveAccuracyHint": "Identification des intervenants en cours. La précision des étiquettes s'améliorera à la fin de l'appel.",
       "speakersIdentified": "Intervenants identifiés",
       "typeNamePlaceholder": "Saisir un nom",
       "knownSpeakers": "Interlocuteurs connus",
@@ -1889,7 +1890,13 @@
         "confirmed": "Confirmé",
         "suggested": "Suggéré",
         "locked": "Verrouillé"
-      }
+      },
+      "createNewPrefix": "Créer",
+      "emailPlaceholder": "nom@exemple.com",
+      "nameOrEmailPlaceholder": "Tapez un nom ou un e-mail",
+      "addContact": "Ajouter un contact",
+      "save": "Enregistrer",
+      "cancel": "Annuler"
     }
   },
   "dictionary": {

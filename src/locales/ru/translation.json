@@ -1812,6 +1812,7 @@
       "them": "Собеседник",
       "label": "Участник {{n}}",
       "identifyingSpeakers": "Определение участников...",
+      "liveAccuracyHint": "Ещё определяем участников. Точность меток улучшится после завершения звонка.",
       "speakersIdentified": "Участники определены",
       "typeNamePlaceholder": "Введите имя",
       "knownSpeakers": "Известные собеседники",
@@ -1828,7 +1829,13 @@
         "confirmed": "Подтверждено",
         "suggested": "Предложен",
         "locked": "Закреплён"
-      }
+      },
+      "createNewPrefix": "Создать",
+      "emailPlaceholder": "name@example.com",
+      "nameOrEmailPlaceholder": "Введите имя или email",
+      "addContact": "Добавить контакт",
+      "save": "Сохранить",
+      "cancel": "Отмена"
     }
   },
   "dictionary": {
