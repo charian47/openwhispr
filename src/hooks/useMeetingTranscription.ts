@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getSettings } from "../stores/settingsStore";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
+import type { SystemAudioAccessResult, SystemAudioStrategy } from "../types/electron";
+import {
+  DEFAULT_SYSTEM_AUDIO_ACCESS,
+  getDisplayCaptureModeForStrategy,
+  getFallbackSystemAudioAccess,
+  isRendererSystemAudioStrategy,
+} from "../utils/systemAudioAccess";
 import logger from "../utils/logger";
 import {
   lockTranscriptSpeaker,
@@ -50,10 +57,7 @@ interface UseMeetingTranscriptionReturn {
   error: string | null;
   diarizationSessionId: string | null;
   prepareTranscription: () => Promise<void>;
-  startTranscription: (_options?: {
-    allowSystemAudio?: boolean;
-    seedSegments?: TranscriptSegment[];
-  }) => Promise<void>;
+  startTranscription: (_options?: { seedSegments?: TranscriptSegment[] }) => Promise<void>;
   stopTranscription: () => Promise<void>;
   lockSpeaker: (speakerId: string, displayName: string) => void;
 }
@@ -124,6 +128,86 @@ const getMeetingTranscriptionOptions = () => {
     : "gpt-4o-mini-transcribe";
   const mode = cloudTranscriptionMode === "byok" && !!openaiApiKey ? "byok" : "openwhispr";
   return { provider: "openai-realtime" as const, model, mode };
+};
+
+const stopMediaStream = (stream: MediaStream | null) => {
+  try {
+    stream?.getTracks().forEach((track) => track.stop());
+  } catch {}
+};
+
+const getDisplayCaptureOptions = (mode: "loopback" | "portal") => {
+  if (mode === "loopback") {
+    return { video: true, audio: true };
+  }
+
+  return {
+    video: true,
+    audio: true,
+    systemAudio: "include",
+    windowAudio: "system",
+    selfBrowserSurface: "exclude",
+  } as DisplayMediaStreamOptions & {
+    systemAudio?: "include";
+    windowAudio?: "system";
+    selfBrowserSurface?: "exclude";
+  };
+};
+
+const requestSystemAudioDisplayStream = async (mode: "loopback" | "portal") => {
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia(getDisplayCaptureOptions(mode));
+    const audioTrack = stream.getAudioTracks()[0];
+
+    if (!audioTrack) {
+      stopMediaStream(stream);
+      return { stream: null, error: new Error("No system-audio track was returned.") };
+    }
+
+    stream.getVideoTracks().forEach((track) => track.stop());
+    return { stream, error: null };
+  } catch (error) {
+    return { stream: null, error: error as Error };
+  }
+};
+
+const prepareMeetingSystemAudioCapture = (initialSystemAudioAccess: SystemAudioAccessResult) => {
+  const initialSystemAudioStrategy = initialSystemAudioAccess.strategy ?? "unsupported";
+  const initialDisplayCaptureStrategy = isRendererSystemAudioStrategy(initialSystemAudioStrategy)
+    ? initialSystemAudioStrategy
+    : null;
+  const systemCapturePromise = initialDisplayCaptureStrategy
+    ? requestSystemAudioDisplayStream(
+        getDisplayCaptureModeForStrategy(initialDisplayCaptureStrategy)
+      )
+    : Promise.resolve({ stream: null, error: null });
+
+  return {
+    initialSystemAudioStrategy,
+    initialDisplayCaptureStrategy,
+    systemCapturePromise,
+  };
+};
+
+const ensureRendererSystemAudioCapture = async ({
+  initialDisplayCaptureStrategy,
+  systemAudioStrategy,
+  systemCaptureResult,
+}: {
+  initialDisplayCaptureStrategy: "loopback" | "browser-portal" | null;
+  systemAudioStrategy: SystemAudioStrategy;
+  systemCaptureResult: { stream: MediaStream | null; error: Error | null };
+}) => {
+  if (
+    systemCaptureResult.stream ||
+    systemCaptureResult.error ||
+    !isRendererSystemAudioStrategy(systemAudioStrategy) ||
+    initialDisplayCaptureStrategy
+  ) {
+    return systemCaptureResult;
+  }
+
+  return requestSystemAudioDisplayStream(getDisplayCaptureModeForStrategy(systemAudioStrategy));
 };
 
 const getMeetingWorkletBlobUrl = (() => {
@@ -294,6 +378,10 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
   const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const micProcessorRef = useRef<AudioWorkletNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const systemContextRef = useRef<AudioContext | null>(null);
+  const systemSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const systemProcessorRef = useRef<AudioWorkletNode | null>(null);
+  const systemStreamRef = useRef<MediaStream | null>(null);
   const isRecordingRef = useRef(false);
   const isStartingRef = useRef(false);
   const isPreparedRef = useRef(false);
@@ -461,6 +549,20 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
     } catch {}
     micContextRef.current = null;
 
+    await flushAndDisconnectProcessor(systemProcessorRef.current);
+    systemProcessorRef.current = null;
+
+    systemSourceRef.current?.disconnect();
+    systemSourceRef.current = null;
+
+    stopMediaStream(systemStreamRef.current);
+    systemStreamRef.current = null;
+
+    try {
+      await systemContextRef.current?.close();
+    } catch {}
+    systemContextRef.current = null;
+
     ipcCleanupsRef.current.forEach((fn) => fn());
     ipcCleanupsRef.current = [];
     isPreparedRef.current = false;
@@ -537,9 +639,12 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
   }, []);
 
   const startTranscription = useCallback(
-    async (_options?: { allowSystemAudio?: boolean; seedSegments?: TranscriptSegment[] }) => {
+    async (_options?: { seedSegments?: TranscriptSegment[] }) => {
       if (isRecordingRef.current || isStartingRef.current) return;
       isStartingRef.current = true;
+      const systemAudioAccessPromise =
+        window.electronAPI?.checkSystemAudioAccess?.() ??
+        Promise.resolve(DEFAULT_SYSTEM_AUDIO_ACCESS);
 
       logger.info("Meeting transcription starting...", {}, "meeting");
       const seed = _options?.seedSegments ?? [];
@@ -575,8 +680,12 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
 
       try {
         const startTime = performance.now();
+        const initialSystemAudioAccess =
+          (await systemAudioAccessPromise) ?? getFallbackSystemAudioAccess();
+        const { initialSystemAudioStrategy, initialDisplayCaptureStrategy, systemCapturePromise } =
+          prepareMeetingSystemAudioCapture(initialSystemAudioAccess);
 
-        const [startResult, micResult] = await Promise.all([
+        const [startResult, micResult, initialSystemCaptureResult] = await Promise.all([
           window.electronAPI?.meetingTranscriptionStart?.(getMeetingTranscriptionOptions()),
           getMeetingMicConstraints().then(async (constraints) => {
             try {
@@ -614,12 +723,15 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
               return null;
             }
           }),
+          systemCapturePromise,
         ]);
+        let systemCaptureResult = initialSystemCaptureResult;
 
         const streamsMs = performance.now() - startTime;
         if (!isRecordingRef.current) {
           logger.info("Meeting transcription aborted during setup (stop called)", {}, "meeting");
-          micResult?.getTracks().forEach((t) => t.stop());
+          stopMediaStream(micResult);
+          stopMediaStream(systemCaptureResult.stream);
           isStartingRef.current = false;
           return;
         }
@@ -631,23 +743,36 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
             "meeting"
           );
           setError(startResult?.error || "Failed to start meeting transcription");
-          micResult?.getTracks().forEach((track) => track.stop());
+          stopMediaStream(micResult);
+          stopMediaStream(systemCaptureResult.stream);
           isRecordingRef.current = false;
           isStartingRef.current = false;
           setIsRecording(false);
           return;
         }
 
-        const systemAudioMode = startResult.systemAudioMode || "unsupported";
+        const systemAudioMode = startResult.systemAudioMode || initialSystemAudioAccess.mode;
+        const systemAudioStrategy = startResult.systemAudioStrategy || initialSystemAudioStrategy;
+        systemCaptureResult = await ensureRendererSystemAudioCapture({
+          initialDisplayCaptureStrategy,
+          systemAudioStrategy,
+          systemCaptureResult,
+        });
+        const systemAudioHandledInMain =
+          systemAudioMode !== "unsupported" && !isRendererSystemAudioStrategy(systemAudioStrategy);
+        const systemCaptureError = systemAudioHandledInMain ? null : systemCaptureResult.error;
 
-        if (!micResult && systemAudioMode === "native") {
+        if (!micResult && (systemAudioHandledInMain || systemCaptureResult.stream)) {
           setError("Microphone capture failed. Continuing with system audio only.");
         }
 
-        if (!micResult && systemAudioMode !== "native") {
+        if (!micResult && !systemCaptureResult.stream && !systemAudioHandledInMain) {
           logger.error("Meeting transcription has no available audio source", {}, "meeting");
           setError(
-            "No microphone is available and system audio capture is unsupported on this device."
+            systemAudioMode === "unsupported"
+              ? "No microphone is available and system audio capture is unsupported on this device."
+              : systemCaptureError?.message ||
+                  "No microphone is available and system audio capture could not be started."
           );
           await window.electronAPI?.meetingTranscriptionStop?.();
           isRecordingRef.current = false;
@@ -773,6 +898,7 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
         if (errorCleanup) ipcCleanupsRef.current.push(errorCleanup);
 
         const pendingMicChunks: ArrayBuffer[] = [];
+        const pendingSystemChunks: ArrayBuffer[] = [];
         let socketReady = false;
 
         let micPipelinePromise: Promise<void> | null = null;
@@ -813,6 +939,45 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
           await micPipelinePromise;
         }
 
+        if (systemCaptureResult.stream) {
+          const systemStream = systemCaptureResult.stream;
+          systemStreamRef.current = systemStream;
+
+          const systemContext = new AudioContext({ sampleRate: 24000 });
+          await detachFromOutputDevice(systemContext);
+          systemContextRef.current = systemContext;
+
+          await createAudioPipeline({
+            stream: systemStream,
+            context: systemContext,
+            onChunk: (chunk) => {
+              if (!isRecordingRef.current) return;
+              if (socketReady) {
+                window.electronAPI?.meetingTranscriptionSend?.(chunk, "system");
+                return;
+              }
+              pendingSystemChunks.push(chunk.slice(0));
+            },
+          }).then(({ source, processor }) => {
+            systemSourceRef.current = source;
+            systemProcessorRef.current = processor;
+          });
+        } else if (systemCaptureError) {
+          if (systemAudioStrategy === "browser-portal") {
+            logger.warn(
+              "Linux system audio capture failed, continuing with mic only",
+              { error: systemCaptureError.message },
+              "meeting"
+            );
+          } else if (systemAudioStrategy === "loopback") {
+            logger.warn(
+              "System audio loopback failed, continuing with mic only",
+              { error: systemCaptureError.message },
+              "meeting"
+            );
+          }
+        }
+
         if (!isRecordingRef.current) {
           logger.info(
             "Meeting transcription aborted during pipeline setup (stop called)",
@@ -830,13 +995,18 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
         for (const chunk of pendingMicChunks) {
           window.electronAPI?.meetingTranscriptionSend?.(chunk, "mic");
         }
+        for (const chunk of pendingSystemChunks) {
+          window.electronAPI?.meetingTranscriptionSend?.(chunk, "system");
+        }
 
         const totalMs = performance.now() - startTime;
         logger.info(
           "Meeting transcription started successfully",
           {
             systemAudioMode,
+            systemAudioStrategy,
             bufferedChunks: pendingMicChunks.length,
+            bufferedSystemChunks: pendingSystemChunks.length,
             streamsMs: Math.round(streamsMs),
             totalMs: Math.round(totalMs),
             wasPrepared: isPreparedRef.current,

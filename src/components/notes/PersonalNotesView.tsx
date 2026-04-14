@@ -175,7 +175,7 @@ export default function PersonalNotesView({
     recordingNoteIdRef.current = activeNoteRef.current;
     const note = notes.find((n) => n.id === activeNoteRef.current);
     const seedSegments = note?.transcript ? parseTranscriptSegments(note.transcript) : [];
-    await startTranscription({ allowSystemAudio: true, seedSegments });
+    await startTranscription({ seedSegments });
   }, [notes, startTranscription]);
 
   const stopRecording = useCallback(async () => {
@@ -467,7 +467,7 @@ export default function PersonalNotesView({
     isMeetingModeRef.current = true;
     const note = notes.find((n) => n.id === meetingRecordingRequest.noteId);
     const seedSegments = note?.transcript ? parseTranscriptSegments(note.transcript) : [];
-    startTranscription({ allowSystemAudio: false, seedSegments });
+    startTranscription({ seedSegments });
     onMeetingRecordingRequestHandled?.();
   }, [
     meetingRecordingRequest,

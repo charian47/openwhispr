@@ -1331,13 +1331,11 @@ declare global {
         provider?: string;
         model?: string;
         language?: string;
-        allowSystemAudio?: boolean;
       }) => Promise<{ success: boolean; alreadyPrepared?: boolean; error?: string }>;
       meetingTranscriptionStart?: (options: {
         provider?: string;
         model?: string;
         language?: string;
-        allowSystemAudio?: boolean;
       }) => Promise<{
         success: boolean;
         error?: string;

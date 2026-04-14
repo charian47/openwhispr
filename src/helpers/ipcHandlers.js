@@ -119,6 +119,7 @@ class IPCHandlers {
     this.googleCalendarManager = managers.googleCalendarManager;
     this.meetingDetectionEngine = managers.meetingDetectionEngine;
     this.audioTapManager = managers.audioTapManager;
+    this.linuxPortalAudioManager = managers.linuxPortalAudioManager;
     this.meetingAecManager = managers.meetingAecManager;
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
@@ -2448,42 +2449,145 @@ class IPCHandlers {
       return { granted: status === "granted", status };
     });
 
-    ipcMain.handle("check-system-audio-access", async () => {
-      if (process.platform !== "darwin") {
-        return { granted: true, status: "granted", mode: "unsupported" };
+    const buildSystemAudioAccess = (partial = {}) => ({
+      granted: false,
+      status: "unsupported",
+      mode: "unsupported",
+      supportsPersistentGrant: false,
+      supportsPersistentPortalGrant: false,
+      supportsNativeCapture: false,
+      supportsOnboardingGrant: false,
+      requiresRuntimeSharePrompt: false,
+      strategy: "unsupported",
+      restoreTokenAvailable: false,
+      portalVersion: null,
+      ...partial,
+    });
+
+    const getLinuxSystemAudioAccess = async () => {
+      const capability = await this.linuxPortalAudioManager?.getCapability().catch((error) => ({
+        available: false,
+        supportsPersistentGrant: false,
+        supportsPersistentPortalGrant: false,
+        supportsNativeCapture: false,
+        portalVersion: null,
+        error: error.message,
+      }));
+      const supportsPersistentGrant = !!capability?.supportsPersistentGrant;
+      const supportsPersistentPortalGrant = !!capability?.supportsPersistentPortalGrant;
+      const supportsNativeCapture = !!capability?.supportsNativeCapture;
+      const restoreTokenAvailable =
+        supportsPersistentGrant && !!this.linuxPortalAudioManager?.hasStoredRestoreToken();
+      const helperError =
+        typeof capability?.error === "string" &&
+        !capability.error.includes("helper binary not found")
+          ? capability.error
+          : undefined;
+
+      return buildSystemAudioAccess({
+        granted: restoreTokenAvailable,
+        status: supportsPersistentGrant
+          ? restoreTokenAvailable
+            ? "granted"
+            : "not-determined"
+          : "unknown",
+        mode: "portal",
+        supportsPersistentGrant,
+        supportsPersistentPortalGrant,
+        supportsNativeCapture,
+        supportsOnboardingGrant: supportsPersistentGrant,
+        requiresRuntimeSharePrompt: !supportsPersistentGrant || !restoreTokenAvailable,
+        strategy: supportsPersistentGrant ? "portal-helper" : "browser-portal",
+        restoreTokenAvailable,
+        portalVersion: capability?.portalVersion ?? null,
+        error: helperError,
+      });
+    };
+
+    const getSystemAudioAccess = async () => {
+      if (process.platform === "win32") {
+        return buildSystemAudioAccess({
+          granted: true,
+          status: "granted",
+          mode: "loopback",
+          strategy: "loopback",
+        });
+      }
+
+      if (process.platform === "linux") {
+        return getLinuxSystemAudioAccess();
       }
 
       if (!this.audioTapManager?.isSupported()) {
-        return { granted: false, status: "unsupported", mode: "unsupported" };
+        return buildSystemAudioAccess();
       }
 
       const result = await this.audioTapManager.verifyAccess();
-      return { granted: result.granted, status: result.status, mode: "native" };
-    });
+      return buildSystemAudioAccess({
+        granted: result.granted,
+        status: result.status,
+        mode: "native",
+        strategy: "native",
+      });
+    };
+
+    ipcMain.handle("check-system-audio-access", () => getSystemAudioAccess());
 
     ipcMain.handle("request-system-audio-access", async () => {
-      if (process.platform !== "darwin") {
-        return { granted: true, status: "granted", mode: "unsupported" };
+      if (process.platform === "win32") {
+        return buildSystemAudioAccess({
+          granted: true,
+          status: "granted",
+          mode: "loopback",
+          strategy: "loopback",
+        });
+      }
+
+      if (process.platform === "linux") {
+        const currentAccess = await getLinuxSystemAudioAccess();
+        if (!currentAccess.supportsOnboardingGrant) {
+          return currentAccess;
+        }
+
+        try {
+          await this.linuxPortalAudioManager?.requestAccess();
+        } catch (error) {
+          debugLogger.warn(
+            "Linux system audio persistent grant failed",
+            { error: error.message },
+            "meeting"
+          );
+        }
+
+        return getLinuxSystemAudioAccess();
       }
 
       if (!this.audioTapManager?.isSupported()) {
-        return { granted: false, status: "unsupported", mode: "unsupported" };
+        return buildSystemAudioAccess();
       }
 
-      // Probe the binary — AudioHardwareCreateProcessTap triggers the native consent dialog.
       try {
         const result = await this.audioTapManager.requestAccess();
         if (result.granted) {
-          return { granted: true, status: "granted", mode: "native" };
+          return buildSystemAudioAccess({
+            granted: true,
+            status: "granted",
+            mode: "native",
+            strategy: "native",
+          });
         }
       } catch {
         // Falls through to opening System Settings
       }
 
-      // Fallback for older macOS or if the native prompt was denied
       await openSystemSettings("systemAudio");
       const status = this.audioTapManager.getPermissionStatus();
-      return { granted: false, status, mode: "native" };
+      return buildSystemAudioAccess({
+        granted: false,
+        status,
+        mode: "native",
+        strategy: "native",
+      });
     });
 
     // Auth: clear all session cookies for sign-out.
@@ -3066,13 +3170,15 @@ class IPCHandlers {
     const captureMeetingDiarizationState = async () => {
       const diarizationPcmPath = meetingDiarizationPath;
       const diarizationSegments = meetingDiarizationSegments;
+      const diarizationStartedAt = meetingDiarizationStartedAt;
       if (meetingDiarizationStream) {
         await new Promise((resolve) => meetingDiarizationStream.end(resolve));
         meetingDiarizationStream = null;
       }
       meetingDiarizationPath = null;
+      meetingDiarizationStartedAt = null;
       meetingDiarizationSegments = [];
-      return { diarizationPcmPath, diarizationSegments };
+      return { diarizationPcmPath, diarizationSegments, diarizationStartedAt };
     };
 
     const attachMeetingStreamingHandlers = (streaming, win, source) => {
@@ -3231,14 +3337,41 @@ class IPCHandlers {
       return data.clientSecret;
     };
 
-    const getMeetingSystemAudioMode = () =>
-      this.audioTapManager?.isSupported() ? "native" : "unsupported";
+    const getMeetingSystemAudioCapabilityMode = () => {
+      if (this.audioTapManager?.isSupported()) return "native";
+      if (process.platform === "win32") return "loopback";
+      if (process.platform === "linux") return "portal";
+      return "unsupported";
+    };
+
+    const getMeetingSystemAudioMode = () => getMeetingSystemAudioCapabilityMode();
+
+    const getMeetingSystemAudioPlan = async () => {
+      const mode = getMeetingSystemAudioMode();
+      if (mode === "unsupported") {
+        return { mode, strategy: "unsupported" };
+      }
+
+      if (mode === "native") {
+        return { mode, strategy: "native" };
+      }
+
+      if (mode === "loopback") {
+        return { mode, strategy: "loopback" };
+      }
+
+      const linuxAccess = await getLinuxSystemAudioAccess();
+      return {
+        mode,
+        strategy: linuxAccess.strategy === "portal-helper" ? "portal-helper" : "browser-portal",
+      };
+    };
 
     const hasNativeMeetingSystemAudio = () => getMeetingSystemAudioMode() === "native";
 
-    const isMeetingStreamingConnected = () =>
+    const isMeetingStreamingConnected = (systemAudioMode = getMeetingSystemAudioCapabilityMode()) =>
       !!this._meetingMicStreaming?.isConnected &&
-      (!hasNativeMeetingSystemAudio() || !!this._meetingSystemStreaming?.isConnected);
+      (systemAudioMode === "unsupported" || !!this._meetingSystemStreaming?.isConnected);
 
     const connectRealtimeStreaming = async (event, options) => {
       if (this._meetingMicStreaming?.isConnected) {
@@ -3256,8 +3389,9 @@ class IPCHandlers {
         language: options.language,
         preconfigured: options.mode !== "byok",
       };
+      const { mode: systemAudioMode } = await getMeetingSystemAudioPlan();
       let pairs;
-      if (hasNativeMeetingSystemAudio()) {
+      if (systemAudioMode !== "unsupported") {
         const secrets = await fetchRealtimeToken(event, options, { streams: 2 });
         pairs = [
           { ref: "_meetingMicStreaming", secret: secrets[0], source: "mic" },
@@ -3292,6 +3426,7 @@ class IPCHandlers {
     const fs = require("fs");
     let meetingDiarizationStream = null;
     let meetingDiarizationPath = null;
+    let meetingDiarizationStartedAt = null;
     let meetingDiarizationSegments = [];
     let meetingLiveSpeakerActive = false;
     let meetingLiveSpeakerState = null;
@@ -3688,6 +3823,7 @@ class IPCHandlers {
         fs.unlink(meetingDiarizationPath, () => {});
         meetingDiarizationPath = null;
       }
+      meetingDiarizationStartedAt = null;
       meetingDiarizationSegments = [];
       meetingLocalWin = null;
       meetingLocalTranscript = "";
@@ -3733,6 +3869,9 @@ class IPCHandlers {
       if (this.audioTapManager) {
         await this.audioTapManager.stop().catch(() => {});
       }
+      if (this.linuxPortalAudioManager) {
+        await this.linuxPortalAudioManager.stop().catch(() => {});
+      }
       await stopMeetingAec();
       await stopLiveSpeakerIdentification().catch(() => {});
       resetMeetingLocalState();
@@ -3772,17 +3911,19 @@ class IPCHandlers {
         return { success: false, error: "Operation in progress" };
       }
 
-      if (isMeetingStreamingConnected()) {
-        debugLogger.debug("Meeting transcription already prepared (warm connections)");
-        return { success: true, alreadyPrepared: true };
-      }
-
       if (options.provider === "local") {
         return { success: true };
       }
 
       if (options.provider !== "openai-realtime") {
         return { success: false, error: `Unsupported provider: ${options.provider}` };
+      }
+
+      const { mode: systemAudioMode } = await getMeetingSystemAudioPlan();
+
+      if (isMeetingStreamingConnected(systemAudioMode)) {
+        debugLogger.debug("Meeting transcription already prepared (warm connections)");
+        return { success: true, alreadyPrepared: true };
       }
 
       meetingTranscriptionPrepareInProgress = true;
@@ -3818,21 +3959,32 @@ class IPCHandlers {
       meetingTranscriptionStartInProgress = true;
       this.meetingDetectionEngine?.setUserRecording(true);
       try {
-        const systemAudioMode = getMeetingSystemAudioMode();
+        const systemAudioPlan = await getMeetingSystemAudioPlan();
+        let { mode: systemAudioMode, strategy: systemAudioStrategy } = systemAudioPlan;
         meetingEchoLeakDetector.reset();
 
+        if (systemAudioMode === "unsupported" && this._meetingSystemStreaming?.isConnected) {
+          await this._meetingSystemStreaming.disconnect().catch(() => ({ text: "" }));
+          this._meetingSystemStreaming = null;
+        }
+
         // If already prepared (warm connections from prepare), just re-attach handlers
-        if (!meetingLocalMode && isMeetingStreamingConnected()) {
+        if (!meetingLocalMode && isMeetingStreamingConnected(systemAudioMode)) {
           debugLogger.debug("Meeting transcription start: reusing warm connections");
           const win = BrowserWindow.fromWebContents(event.sender);
           attachMeetingStreamingHandlers(this._meetingMicStreaming, win, "mic");
-          await startMeetingAec(systemAudioMode);
-          if (systemAudioMode === "native") {
-            await startLiveSpeakerIdentification(win, systemAudioMode);
+          if (systemAudioMode !== "unsupported") {
             attachMeetingStreamingHandlers(this._meetingSystemStreaming, win, "system");
-            await startNativeMeetingSystemAudio(event);
           }
-          return { success: true, systemAudioMode };
+          await startMeetingAec(systemAudioMode);
+          await startLiveSpeakerIdentification(win, systemAudioMode);
+          systemAudioStrategy = await startMeetingSystemAudio(
+            event,
+            systemAudioMode,
+            systemAudioStrategy,
+            "during warm-start reuse"
+          );
+          return { success: true, systemAudioMode, systemAudioStrategy };
         }
 
         if (options.provider === "local") {
@@ -3850,16 +4002,20 @@ class IPCHandlers {
             transcribeAllLocalBuffers();
           }, 5000);
 
-          if (systemAudioMode === "native") {
-            await startNativeMeetingSystemAudio(event);
-          }
+          systemAudioStrategy = await startMeetingSystemAudio(
+            event,
+            systemAudioMode,
+            systemAudioStrategy,
+            "in local meeting mode"
+          );
 
           debugLogger.debug("Meeting transcription started in local mode", {
             provider: meetingLocalProvider,
             systemAudioMode,
+            systemAudioStrategy,
           });
 
-          return { success: true, systemAudioMode };
+          return { success: true, systemAudioMode, systemAudioStrategy };
         }
 
         if (options.provider !== "openai-realtime") {
@@ -3872,10 +4028,13 @@ class IPCHandlers {
           systemAudioMode
         );
         await startMeetingAec(systemAudioMode);
-        if (systemAudioMode === "native") {
-          await startNativeMeetingSystemAudio(event);
-        }
-        return { success: true, systemAudioMode };
+        systemAudioStrategy = await startMeetingSystemAudio(
+          event,
+          systemAudioMode,
+          systemAudioStrategy,
+          "in realtime mode"
+        );
+        return { success: true, systemAudioMode, systemAudioStrategy };
       } catch (error) {
         await rollbackMeetingTranscriptionStart();
         this.meetingDetectionEngine?.setUserRecording(false);
@@ -3890,7 +4049,8 @@ class IPCHandlers {
       const outboundBuffer = Buffer.isBuffer(audioBuffer) ? audioBuffer : Buffer.from(audioBuffer);
 
       if (source === "system") {
-        meetingEchoLeakDetector.recordSystemChunk(outboundBuffer);
+        const receivedAt = Date.now();
+        meetingEchoLeakDetector.recordSystemChunk(outboundBuffer, receivedAt);
         if (meetingAecEnabled && !this.meetingAecManager?.processSystemBuffer(outboundBuffer)) {
           meetingAecEnabled = false;
         }
@@ -3904,6 +4064,7 @@ class IPCHandlers {
           const os = require("os");
           meetingDiarizationPath = path.join(os.tmpdir(), `ow-diarize-raw-${Date.now()}.pcm`);
           meetingDiarizationStream = fs.createWriteStream(meetingDiarizationPath);
+          meetingDiarizationStartedAt = receivedAt;
         }
         meetingDiarizationStream.write(outboundBuffer);
         dispatchMeetingAudioBuffer(outboundBuffer, "system");
@@ -3951,6 +4112,55 @@ class IPCHandlers {
       });
     };
 
+    const startLinuxMeetingSystemAudio = async (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      await this.linuxPortalAudioManager.start({
+        onChunk: (chunk) => {
+          sendMeetingAudio(chunk, "system");
+        },
+        onError: (error) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("meeting-transcription-error", error.message);
+          }
+        },
+        onWarning: (warning) => {
+          debugLogger.warn(
+            "Linux portal system audio warning",
+            { code: warning.code, message: warning.message },
+            "meeting"
+          );
+        },
+      });
+    };
+
+    const startMeetingSystemAudio = async (
+      event,
+      systemAudioMode,
+      systemAudioStrategy,
+      context
+    ) => {
+      if (systemAudioMode === "native") {
+        await startNativeMeetingSystemAudio(event);
+        return systemAudioStrategy;
+      }
+
+      if (systemAudioStrategy !== "portal-helper") {
+        return systemAudioStrategy;
+      }
+
+      try {
+        await startLinuxMeetingSystemAudio(event);
+        return systemAudioStrategy;
+      } catch (error) {
+        debugLogger.warn(
+          `Linux portal helper failed ${context}, falling back to browser portal`,
+          { error: error.message },
+          "meeting"
+        );
+        return "browser-portal";
+      }
+    };
+
     ipcMain.on("meeting-transcription-send", (_event, audioBuffer, source) => {
       sendMeetingAudio(audioBuffer, source);
     });
@@ -3960,6 +4170,9 @@ class IPCHandlers {
       try {
         if (this.audioTapManager) {
           await this.audioTapManager.stop();
+        }
+        if (this.linuxPortalAudioManager) {
+          await this.linuxPortalAudioManager.stop().catch(() => {});
         }
 
         flushPendingMeetingMicChunks(true);
@@ -3981,7 +4194,7 @@ class IPCHandlers {
             debugLogger.error("Local meeting final transcription failed", { error: err.message });
           }
           flushPendingMicFinals(true);
-          const { diarizationPcmPath, diarizationSegments } =
+          const { diarizationPcmPath, diarizationSegments, diarizationStartedAt } =
             await captureMeetingDiarizationState();
           const transcript =
             diarizationSegments
@@ -3994,6 +4207,7 @@ class IPCHandlers {
           this._startOrSkipDiarization(
             diarizationSessionId,
             diarizationPcmPath,
+            diarizationStartedAt,
             diarizationSegments,
             diarizationWin,
             liveSpeakerState
@@ -4003,7 +4217,8 @@ class IPCHandlers {
         }
 
         const results = await disconnectMeetingStreaming({ flushPending: true });
-        const { diarizationPcmPath, diarizationSegments } = await captureMeetingDiarizationState();
+        const { diarizationPcmPath, diarizationSegments, diarizationStartedAt } =
+          await captureMeetingDiarizationState();
         const transcript =
           diarizationSegments
             .map((segment) => segment.text)
@@ -4014,6 +4229,7 @@ class IPCHandlers {
         this._startOrSkipDiarization(
           diarizationSessionId,
           diarizationPcmPath,
+          diarizationStartedAt,
           diarizationSegments,
           diarizationWin,
           liveSpeakerState
@@ -6012,7 +6228,14 @@ class IPCHandlers {
     return reconciledSpeakers;
   }
 
-  _startOrSkipDiarization(sessionId, rawPcmPath, transcriptSegments, win, liveSpeakerState = null) {
+  _startOrSkipDiarization(
+    sessionId,
+    rawPcmPath,
+    audioStartedAt,
+    transcriptSegments,
+    win,
+    liveSpeakerState = null
+  ) {
     const send = (payload) => {
       if (win && !win.isDestroyed()) {
         win.webContents.send("meeting-diarization-complete", { sessionId, ...payload });
@@ -6051,7 +6274,11 @@ class IPCHandlers {
           expectedSpeakerCount > 0 ? { numSpeakers: expectedSpeakerCount } : {}
         );
 
-        const startMs = transcriptSegments[0]?.timestamp || 0;
+        const startMs =
+          (Number.isFinite(audioStartedAt) && audioStartedAt) ||
+          transcriptSegments.find((segment) => segment.source === "system")?.timestamp ||
+          transcriptSegments[0]?.timestamp ||
+          0;
         const isEpochMs = startMs > 1e9;
         const normalized = transcriptSegments.map((seg) => ({
           ...seg,
