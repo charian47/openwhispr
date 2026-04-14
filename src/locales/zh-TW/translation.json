@@ -1807,14 +1807,22 @@
       "them": "對方",
       "label": "發言者 {{n}}",
       "identifyingSpeakers": "正在辨識發言者...",
-      "speakersIdentified": "Speakers identified",
+      "speakersIdentified": "已辨識發言者",
       "typeNamePlaceholder": "輸入姓名",
       "knownSpeakers": "已知發言者",
       "meetingAttendees": "會議參與者",
       "assignName": "指派姓名",
       "isThisPerson": "這是{{name}}嗎？",
+      "moveBubble": "移動此氣泡",
+      "moveRun": "移動這一段",
       "confirmed": "已確認",
-      "nameAssigned": "姓名已指派"
+      "nameAssigned": "姓名已指派",
+      "state": {
+        "provisional": "暫定",
+        "confirmed": "已確認",
+        "suggested": "建議",
+        "locked": "鎖定"
+      }
     }
   },
   "dictionary": {

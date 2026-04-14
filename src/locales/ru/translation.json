@@ -1812,14 +1812,22 @@
       "them": "Собеседник",
       "label": "Участник {{n}}",
       "identifyingSpeakers": "Определение участников...",
-      "speakersIdentified": "Speakers identified",
+      "speakersIdentified": "Участники определены",
       "typeNamePlaceholder": "Введите имя",
       "knownSpeakers": "Известные собеседники",
       "meetingAttendees": "Участники встречи",
       "assignName": "Назначить имя",
       "isThisPerson": "Это {{name}}?",
+      "moveBubble": "Переместить эту реплику",
+      "moveRun": "Переместить этот блок",
       "confirmed": "Подтверждено",
-      "nameAssigned": "Имя назначено"
+      "nameAssigned": "Имя назначено",
+      "state": {
+        "provisional": "Временный",
+        "confirmed": "Подтверждено",
+        "suggested": "Предложен",
+        "locked": "Закреплён"
+      }
     }
   },
   "dictionary": {

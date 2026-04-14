@@ -1807,14 +1807,22 @@
       "them": "对方",
       "label": "发言者 {{n}}",
       "identifyingSpeakers": "正在识别发言者...",
-      "speakersIdentified": "Speakers identified",
+      "speakersIdentified": "已识别发言者",
       "typeNamePlaceholder": "输入姓名",
       "knownSpeakers": "已知说话者",
       "meetingAttendees": "会议参与者",
       "assignName": "分配姓名",
       "isThisPerson": "这是{{name}}吗？",
+      "moveBubble": "移动此气泡",
+      "moveRun": "移动这一段",
       "confirmed": "已确认",
-      "nameAssigned": "姓名已分配"
+      "nameAssigned": "姓名已分配",
+      "state": {
+        "provisional": "临时",
+        "confirmed": "已确认",
+        "suggested": "建议",
+        "locked": "锁定"
+      }
     }
   },
   "dictionary": {

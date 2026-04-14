@@ -1873,14 +1873,22 @@
       "them": "Eux",
       "label": "Intervenant {{n}}",
       "identifyingSpeakers": "Identification des intervenants...",
-      "speakersIdentified": "Speakers identified",
+      "speakersIdentified": "Intervenants identifiés",
       "typeNamePlaceholder": "Saisir un nom",
       "knownSpeakers": "Interlocuteurs connus",
       "meetingAttendees": "Participants à la réunion",
       "assignName": "Attribuer un nom",
       "isThisPerson": "Est-ce {{name}} ?",
+      "moveBubble": "Déplacer cette bulle",
+      "moveRun": "Déplacer ce bloc",
       "confirmed": "Confirmé",
-      "nameAssigned": "Nom attribué"
+      "nameAssigned": "Nom attribué",
+      "state": {
+        "provisional": "Provisoire",
+        "confirmed": "Confirmé",
+        "suggested": "Suggéré",
+        "locked": "Verrouillé"
+      }
     }
   },
   "dictionary": {

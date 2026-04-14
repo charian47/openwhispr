@@ -1812,14 +1812,22 @@
       "them": "Gegenüber",
       "label": "Sprecher {{n}}",
       "identifyingSpeakers": "Sprecher werden identifiziert...",
-      "speakersIdentified": "Speakers identified",
+      "speakersIdentified": "Sprecher identifiziert",
       "typeNamePlaceholder": "Namen eingeben",
       "knownSpeakers": "Bekannte Sprecher",
       "meetingAttendees": "Meeting-Teilnehmer",
       "assignName": "Name zuweisen",
       "isThisPerson": "Ist das {{name}}?",
+      "moveBubble": "Diese Blase verschieben",
+      "moveRun": "Diesen Block verschieben",
       "confirmed": "Bestätigt",
-      "nameAssigned": "Name zugewiesen"
+      "nameAssigned": "Name zugewiesen",
+      "state": {
+        "provisional": "Vorläufig",
+        "confirmed": "Bestätigt",
+        "suggested": "Vorgeschlagen",
+        "locked": "Fixiert"
+      }
     }
   },
   "dictionary": {

@@ -1812,14 +1812,22 @@
       "them": "Outro",
       "label": "Participante {{n}}",
       "identifyingSpeakers": "Identificando participantes...",
-      "speakersIdentified": "Speakers identified",
+      "speakersIdentified": "Participantes identificados",
       "typeNamePlaceholder": "Digite um nome",
       "knownSpeakers": "Falantes conhecidos",
       "meetingAttendees": "Participantes da reunião",
       "assignName": "Atribuir nome",
       "isThisPerson": "É {{name}}?",
+      "moveBubble": "Mover este balão",
+      "moveRun": "Mover este bloco",
       "confirmed": "Confirmado",
-      "nameAssigned": "Nome atribuído"
+      "nameAssigned": "Nome atribuído",
+      "state": {
+        "provisional": "Provisório",
+        "confirmed": "Confirmado",
+        "suggested": "Sugerido",
+        "locked": "Bloqueado"
+      }
     }
   },
   "dictionary": {
