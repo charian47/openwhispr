@@ -14,6 +14,11 @@ const AudioStorageManager = require("./audioStorage");
 const liveSpeakerIdentifier = require("./liveSpeakerIdentifier");
 const MeetingEchoLeakDetector = require("./meetingEchoLeakDetector");
 const {
+  transcriptsOverlap,
+  transcriptsLooselyOverlap,
+  buildMergedCandidates,
+} = require("./transcriptText");
+const {
   applyConfirmedSpeaker,
   applySuggestedSpeaker,
   canAutoRelabelSpeaker,
@@ -114,6 +119,7 @@ class IPCHandlers {
     this.googleCalendarManager = managers.googleCalendarManager;
     this.meetingDetectionEngine = managers.meetingDetectionEngine;
     this.audioTapManager = managers.audioTapManager;
+    this.meetingAecManager = managers.meetingAecManager;
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
     this.deepgramStreaming = null;
@@ -2813,42 +2819,37 @@ class IPCHandlers {
     let meetingTranscriptionPrepareInProgress = false;
     let meetingTranscriptionPreparePromise = null;
 
-    const normalizeTranscriptForComparison = (text) =>
-      String(text || "")
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}\s]/gu, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+    const DUPLICATE_TRANSCRIPT_WINDOW_MS = 6000;
+    const DUPLICATE_TRANSCRIPT_MERGE_LIMIT = 3;
+    const STREAMING_RISKY_MIC_SEGMENT_HOLDBACK_MS = 1500;
+    const LOCAL_RISKY_MIC_SEGMENT_HOLDBACK_MS = 4500;
 
-    const hasNearbyTranscriptMatch = (targetSource, text, timestamp) => {
-      const normalizedText = normalizeTranscriptForComparison(text);
-      if (!normalizedText) {
-        return false;
-      }
+    const buildNearbyTranscriptCandidates = (
+      targetSource,
+      timestamp,
+      { extraSegment = null } = {}
+    ) => {
+      const relevant = meetingDiarizationSegments.filter(
+        (candidate) =>
+          candidate.source === targetSource && candidate.timestamp != null && candidate.text
+      );
 
-      for (let i = meetingDiarizationSegments.length - 1; i >= 0; i -= 1) {
-        const candidate = meetingDiarizationSegments[i];
-        if (candidate.source !== targetSource || candidate.timestamp == null) {
-          continue;
-        }
+      return buildMergedCandidates({
+        segments: relevant,
+        timestamp,
+        windowMs: DUPLICATE_TRANSCRIPT_WINDOW_MS,
+        mergeLimit: DUPLICATE_TRANSCRIPT_MERGE_LIMIT,
+        extraSegment,
+      });
+    };
 
-        if (timestamp != null && Math.abs(candidate.timestamp - timestamp) > 4000) {
-          if (candidate.timestamp < timestamp) {
-            break;
-          }
-          continue;
-        }
+    const hasNearbyTranscriptMatch = (targetSource, text, timestamp, options = {}) => {
+      if (!text) return false;
 
-        const normalizedCandidate = normalizeTranscriptForComparison(candidate.text);
-        if (!normalizedCandidate) {
-          continue;
-        }
-
-        if (
-          normalizedCandidate === normalizedText ||
-          normalizedCandidate.includes(normalizedText) ||
-          normalizedText.includes(normalizedCandidate)
-        ) {
+      const matcher = options.relaxed ? transcriptsLooselyOverlap : transcriptsOverlap;
+      const candidates = buildNearbyTranscriptCandidates(targetSource, timestamp, options);
+      for (const candidateText of candidates) {
+        if (matcher(text, candidateText)) {
           return true;
         }
       }
@@ -2856,15 +2857,222 @@ class IPCHandlers {
       return false;
     };
 
-    const shouldSkipDuplicateSystemSegment = (text, timestamp) =>
-      hasNearbyTranscriptMatch("mic", text, timestamp);
-
     const shouldSkipDuplicateMicSegment = (text, timestamp, suppression = null) => {
-      if (!suppression?.likelyRenderBleed || suppression.reason === "double_talk") {
-        return false;
+      if (suppression?.likelyRenderBleed || suppression?.hasBleedEvidence) {
+        if (hasNearbyTranscriptMatch("system", text, timestamp)) {
+          return true;
+        }
       }
 
-      return hasNearbyTranscriptMatch("system", text, timestamp);
+      if (suppression?.reason === "double_talk") {
+        return hasNearbyTranscriptMatch("system", text, timestamp, { relaxed: true });
+      }
+
+      return false;
+    };
+
+    const hasRiskyMicDuplicateProfile = (suppression = null) =>
+      !!suppression &&
+      (suppression.reason === "double_talk" ||
+        suppression.hasBleedEvidence ||
+        suppression.likelyRenderBleed);
+
+    const removeRacingMicEntriesFor = (systemText, systemTimestamp) => {
+      const removed = [];
+      for (let i = meetingDiarizationSegments.length - 1; i >= 0; i -= 1) {
+        const candidate = meetingDiarizationSegments[i];
+        if (candidate.source !== "mic" || candidate.timestamp == null) continue;
+        if (systemTimestamp != null && Math.abs(candidate.timestamp - systemTimestamp) > 4000) {
+          if (candidate.timestamp < systemTimestamp) break;
+          continue;
+        }
+        const hasMicDuplicateRisk =
+          candidate.likelyRenderBleed ||
+          candidate.hasBleedEvidence ||
+          candidate.suppressionReason === "double_talk";
+        const overlapsSystem = hasNearbyTranscriptMatch(
+          "system",
+          candidate.text,
+          candidate.timestamp,
+          {
+            extraSegment: {
+              text: systemText,
+              timestamp: systemTimestamp,
+            },
+            relaxed: candidate.suppressionReason === "double_talk",
+          }
+        );
+        if (hasMicDuplicateRisk && overlapsSystem) {
+          meetingDiarizationSegments.splice(i, 1);
+          removed.push(candidate);
+        }
+      }
+      return removed;
+    };
+
+    const appendMeetingLocalTranscript = (text) => {
+      if (!text) return;
+      meetingLocalTranscript += `${meetingLocalTranscript ? " " : ""}${text}`;
+    };
+
+    const storeMeetingDiarizationSegment = (text, source, timestamp, micSuppression = null) => {
+      meetingDiarizationSegments.push({
+        text,
+        source,
+        timestamp,
+        suppressionReason: source === "mic" ? micSuppression?.reason || null : null,
+        hasBleedEvidence: source === "mic" ? !!micSuppression?.hasBleedEvidence : false,
+        likelyRenderBleed: source === "mic" ? !!micSuppression?.likelyRenderBleed : false,
+      });
+    };
+
+    const sendMeetingFinalSegment = ({
+      text,
+      source,
+      timestamp,
+      micSuppression = null,
+      send = null,
+      includeInLocalTranscript = false,
+    }) => {
+      if (includeInLocalTranscript) {
+        appendMeetingLocalTranscript(text);
+      }
+
+      storeMeetingDiarizationSegment(text, source, timestamp, micSuppression);
+
+      if (send) {
+        send("meeting-transcription-segment", {
+          text,
+          source,
+          type: "final",
+          timestamp,
+        });
+      }
+    };
+
+    function flushPendingMicFinals(force = false) {
+      if (meetingPendingMicFinals.length === 0) {
+        if (meetingPendingMicFinalTimer) {
+          clearTimeout(meetingPendingMicFinalTimer);
+          meetingPendingMicFinalTimer = null;
+        }
+        return;
+      }
+
+      const ready = [];
+      const deferred = [];
+      const now = Date.now();
+
+      for (const pending of meetingPendingMicFinals) {
+        if (!force && pending.releaseAt > now) {
+          deferred.push(pending);
+          continue;
+        }
+
+        if (
+          shouldSkipDuplicateMicSegment(pending.text, pending.timestamp, pending.micSuppression)
+        ) {
+          debugLogger.debug(
+            "Dropping buffered mic segment after system context confirmed duplicate",
+            {
+              text: pending.text.slice(0, 80),
+              averageCorrelation: pending.micSuppression?.averageCorrelation?.toFixed(3),
+              averageResidual: pending.micSuppression?.averageResidual?.toFixed(3),
+            }
+          );
+          continue;
+        }
+
+        ready.push(pending);
+      }
+
+      meetingPendingMicFinals = deferred;
+      schedulePendingMicFinalFlush();
+
+      for (const pending of ready) {
+        debugLogger.debug("Releasing buffered mic segment after duplicate holdback", {
+          text: pending.text.slice(0, 80),
+          holdbackMs: pending.holdbackMs,
+          averageCorrelation: pending.micSuppression?.averageCorrelation?.toFixed(3),
+          averageResidual: pending.micSuppression?.averageResidual?.toFixed(3),
+        });
+        pending.emit();
+      }
+    }
+
+    const schedulePendingMicFinalFlush = () => {
+      if (meetingPendingMicFinalTimer) {
+        clearTimeout(meetingPendingMicFinalTimer);
+        meetingPendingMicFinalTimer = null;
+      }
+
+      if (meetingPendingMicFinals.length === 0) {
+        return;
+      }
+
+      const nextDelay = Math.max(0, meetingPendingMicFinals[0].releaseAt - Date.now());
+      meetingPendingMicFinalTimer = setTimeout(() => {
+        meetingPendingMicFinalTimer = null;
+        flushPendingMicFinals();
+      }, nextDelay);
+    };
+
+    const resetPendingMicFinals = () => {
+      meetingPendingMicFinals = [];
+      if (meetingPendingMicFinalTimer) {
+        clearTimeout(meetingPendingMicFinalTimer);
+        meetingPendingMicFinalTimer = null;
+      }
+    };
+
+    const removePendingMicFinalsFor = (systemText, systemTimestamp) => {
+      const removed = [];
+      meetingPendingMicFinals = meetingPendingMicFinals.filter((candidate) => {
+        const overlapsSystem = hasNearbyTranscriptMatch(
+          "system",
+          candidate.text,
+          candidate.timestamp,
+          {
+            extraSegment: {
+              text: systemText,
+              timestamp: systemTimestamp,
+            },
+            relaxed: candidate.micSuppression?.reason === "double_talk",
+          }
+        );
+        if (!overlapsSystem) {
+          return true;
+        }
+        removed.push(candidate);
+        return false;
+      });
+      schedulePendingMicFinalFlush();
+      return removed;
+    };
+
+    const queuePendingMicFinal = ({ text, timestamp, micSuppression, holdbackMs, emit }) => {
+      meetingPendingMicFinals.push({
+        text,
+        timestamp,
+        micSuppression,
+        holdbackMs,
+        releaseAt: Date.now() + holdbackMs,
+        emit,
+      });
+      meetingPendingMicFinals.sort((left, right) => left.releaseAt - right.releaseAt);
+      schedulePendingMicFinalFlush();
+    };
+
+    const captureMeetingDiarizationState = async () => {
+      const diarizationPcmPath = meetingDiarizationPath;
+      const diarizationSegments = meetingDiarizationSegments;
+      if (meetingDiarizationStream) {
+        await new Promise((resolve) => meetingDiarizationStream.end(resolve));
+        meetingDiarizationStream = null;
+      }
+      meetingDiarizationPath = null;
+      meetingDiarizationSegments = [];
+      return { diarizationPcmPath, diarizationSegments };
     };
 
     const attachMeetingStreamingHandlers = (streaming, win, source) => {
@@ -2891,47 +3099,92 @@ class IPCHandlers {
       streaming.onFinalTranscript = (text, timestamp) => {
         const segments = streaming.completedSegments;
         const latestSegment = segments.length > 0 ? segments[segments.length - 1] : text;
+        let micSuppression = null;
         if (source === "mic") {
-          const suppression = shouldSuppressMicTranscriptSegment(timestamp, Date.now());
-          if (suppression.suppress) {
+          micSuppression = shouldSuppressMicTranscriptSegment(timestamp, Date.now());
+          if (micSuppression.suppress) {
             debugLogger.debug("Suppressing contaminated mic segment", {
-              reason: suppression.reason,
-              averageCorrelation: suppression.averageCorrelation?.toFixed(3),
-              averageResidual: suppression.averageResidual?.toFixed(3),
+              reason: micSuppression.reason,
+              averageCorrelation: micSuppression.averageCorrelation?.toFixed(3),
+              averageResidual: micSuppression.averageResidual?.toFixed(3),
               text: latestSegment.slice(0, 80),
             });
             send("meeting-transcription-segment", { text: "", source, type: "partial" });
             return;
           }
 
-          if (shouldSkipDuplicateMicSegment(latestSegment, timestamp, suppression)) {
+          if (shouldSkipDuplicateMicSegment(latestSegment, timestamp, micSuppression)) {
             debugLogger.debug("Skipping duplicate mic segment that matches recent system audio", {
               text: latestSegment.slice(0, 80),
-              averageCorrelation: suppression.averageCorrelation?.toFixed(3),
-              averageResidual: suppression.averageResidual?.toFixed(3),
+              averageCorrelation: micSuppression.averageCorrelation?.toFixed(3),
+              averageResidual: micSuppression.averageResidual?.toFixed(3),
             });
             send("meeting-transcription-segment", { text: "", source, type: "partial" });
             return;
           }
         }
 
-        if (source === "system" && shouldSkipDuplicateSystemSegment(latestSegment, timestamp)) {
-          debugLogger.debug("Skipping duplicate system segment that matches recent mic audio", {
-            text: latestSegment.slice(0, 80),
-          });
-          return;
+        if (source === "system") {
+          const pending = removePendingMicFinalsFor(latestSegment, timestamp);
+          if (pending.length > 0) {
+            debugLogger.debug("Dropping buffered mic segments after system transcript arrived", {
+              count: pending.length,
+              text: latestSegment.slice(0, 80),
+            });
+          }
+
+          const retracted = removeRacingMicEntriesFor(latestSegment, timestamp);
+          for (const stale of retracted) {
+            send("meeting-transcription-segment", {
+              text: stale.text,
+              source: "mic",
+              type: "retract",
+              timestamp: stale.timestamp,
+            });
+          }
         }
+
         debugLogger.debug("Meeting segment sending to renderer", {
           source,
           text: latestSegment.slice(0, 80),
           segmentCount: segments.length,
+          micCorrelation: micSuppression?.averageCorrelation?.toFixed(3),
+          micSuppressionReason: micSuppression?.reason,
+          micHasBleedEvidence: micSuppression?.hasBleedEvidence,
+          micLikelyRenderBleed: micSuppression?.likelyRenderBleed,
+          systemSpeaking: micSuppression?.systemSpeaking,
         });
-        meetingDiarizationSegments.push({ text: latestSegment, source, timestamp });
-        send("meeting-transcription-segment", {
+        if (source === "mic" && hasRiskyMicDuplicateProfile(micSuppression)) {
+          debugLogger.debug("Buffering risky mic segment before renderer commit", {
+            text: latestSegment.slice(0, 80),
+            holdbackMs: STREAMING_RISKY_MIC_SEGMENT_HOLDBACK_MS,
+            reason: micSuppression?.reason,
+            hasBleedEvidence: micSuppression?.hasBleedEvidence,
+          });
+          send("meeting-transcription-segment", { text: "", source, type: "partial" });
+          queuePendingMicFinal({
+            text: latestSegment,
+            timestamp,
+            micSuppression,
+            holdbackMs: STREAMING_RISKY_MIC_SEGMENT_HOLDBACK_MS,
+            emit: () =>
+              sendMeetingFinalSegment({
+                text: latestSegment,
+                source,
+                timestamp,
+                micSuppression,
+                send,
+              }),
+          });
+          return;
+        }
+
+        sendMeetingFinalSegment({
           text: latestSegment,
           source,
-          type: "final",
           timestamp,
+          micSuppression,
+          send,
         });
       };
       streaming.onError = (error) => {
@@ -3032,7 +3285,7 @@ class IPCHandlers {
       return win;
     };
 
-    const MEETING_MIC_REFERENCE_ALIGNMENT_MS = 180;
+    const MEETING_MIC_REFERENCE_ALIGNMENT_MS = 320;
     let meetingSendCounts = { mic: 0, system: 0 };
     const meetingEchoLeakDetector = new MeetingEchoLeakDetector();
 
@@ -3053,6 +3306,9 @@ class IPCHandlers {
     let meetingLocalModel = null;
     let meetingLocalTranscribing = false;
     let meetingPendingMicChunks = [];
+    let meetingPendingMicFinals = [];
+    let meetingPendingMicFinalTimer = null;
+    let meetingAecEnabled = false;
 
     const getLiveSpeakerProfiles = () => this.databaseManager.getSpeakerProfiles(true);
     const shouldSuppressMicTranscriptSegment = (startedAt, endedAt = Date.now()) =>
@@ -3086,6 +3342,46 @@ class IPCHandlers {
       }
     };
 
+    const stopMeetingAec = async () => {
+      meetingAecEnabled = false;
+      if (this.meetingAecManager) {
+        await this.meetingAecManager.stop().catch(() => {});
+      }
+    };
+
+    const startMeetingAec = async (systemAudioMode) => {
+      meetingAecEnabled = false;
+      if (systemAudioMode === "unsupported" || !this.meetingAecManager?.isAvailable()) {
+        return false;
+      }
+
+      const started = await this.meetingAecManager
+        .start({
+          onMicChunk: (chunk) => {
+            meetingEchoLeakDetector.analyzeMicChunk(chunk);
+            dispatchMeetingAudioBuffer(chunk, "mic");
+          },
+          onError: (error) => {
+            debugLogger.warn("Meeting AEC helper disabled", { error: error.message }, "meeting");
+            meetingAecEnabled = false;
+            void this.meetingAecManager.stop().catch(() => {});
+          },
+          onWarning: (warning) => {
+            debugLogger.debug("Meeting AEC helper warning", warning, "meeting");
+          },
+        })
+        .catch((error) => {
+          debugLogger.warn("Meeting AEC helper start failed", { error: error.message }, "meeting");
+          return false;
+        });
+
+      meetingAecEnabled = !!started;
+      if (meetingAecEnabled) {
+        debugLogger.info("Meeting AEC helper started", { systemAudioMode }, "meeting");
+      }
+      return meetingAecEnabled;
+    };
+
     const flushPendingMeetingMicChunks = (force = false) => {
       if (!meetingPendingMicChunks.length) {
         return;
@@ -3100,7 +3396,7 @@ class IPCHandlers {
 
         meetingPendingMicChunks.shift();
         const analysis = meetingEchoLeakDetector.analyzeMicChunk(next.buffer);
-        if (analysis?.shouldMute) {
+        if (analysis?.shouldMute && !meetingAecEnabled) {
           if (!meetingLocalMode) {
             dispatchMeetingAudioBuffer(Buffer.alloc(next.buffer.length), "mic");
           }
@@ -3109,6 +3405,20 @@ class IPCHandlers {
 
         dispatchMeetingAudioBuffer(next.buffer, "mic");
       }
+    };
+
+    const processMeetingMicWithAec = (buffer) => {
+      if (!meetingAecEnabled) {
+        return false;
+      }
+
+      const sent = this.meetingAecManager?.processMicBuffer(buffer);
+      if (sent) {
+        return true;
+      }
+
+      meetingAecEnabled = false;
+      return false;
     };
 
     const stopLiveSpeakerIdentification = async () => {
@@ -3227,43 +3537,116 @@ class IPCHandlers {
         if (result?.success && result.text?.trim()) {
           const text = result.text.trim();
           const segTimestamp = Date.now();
+          let micSuppression = null;
           if (source === "mic") {
             const chunkDurationMs = (pcm24k.length / 2 / 24000) * 1000;
-            const suppression = shouldSuppressMicTranscriptSegment(
+            micSuppression = shouldSuppressMicTranscriptSegment(
               segTimestamp - chunkDurationMs,
               segTimestamp
             );
-            if (suppression.suppress) {
+            debugLogger.debug("Local meeting transcription candidate", {
+              source,
+              text: text.slice(0, 80),
+              suppress: micSuppression.suppress,
+              reason: micSuppression.reason,
+              hasBleedEvidence: micSuppression.hasBleedEvidence,
+              likelyRenderBleed: micSuppression.likelyRenderBleed,
+              averageCorrelation: micSuppression.averageCorrelation?.toFixed(3),
+              averageResidual: micSuppression.averageResidual?.toFixed(3),
+            });
+            if (micSuppression.suppress) {
               debugLogger.debug("Suppressing contaminated local mic segment", {
-                reason: suppression.reason,
-                averageCorrelation: suppression.averageCorrelation?.toFixed(3),
-                averageResidual: suppression.averageResidual?.toFixed(3),
+                reason: micSuppression.reason,
+                averageCorrelation: micSuppression.averageCorrelation?.toFixed(3),
+                averageResidual: micSuppression.averageResidual?.toFixed(3),
                 text: text.slice(0, 80),
               });
               return;
             }
 
-            if (shouldSkipDuplicateMicSegment(text, segTimestamp, suppression)) {
+            if (shouldSkipDuplicateMicSegment(text, segTimestamp, micSuppression)) {
               debugLogger.debug("Skipping duplicate local mic segment that matches system audio", {
                 text: text.slice(0, 80),
-                averageCorrelation: suppression.averageCorrelation?.toFixed(3),
-                averageResidual: suppression.averageResidual?.toFixed(3),
+                averageCorrelation: micSuppression.averageCorrelation?.toFixed(3),
+                averageResidual: micSuppression.averageResidual?.toFixed(3),
               });
               return;
             }
-          }
-
-          meetingLocalTranscript += (meetingLocalTranscript ? " " : "") + text;
-          meetingDiarizationSegments.push({ text, source, timestamp: segTimestamp });
-
-          if (meetingLocalWin && !meetingLocalWin.isDestroyed()) {
-            meetingLocalWin.webContents.send("meeting-transcription-segment", {
-              text,
+          } else {
+            debugLogger.debug("Local meeting transcription candidate", {
               source,
-              type: "final",
-              timestamp: segTimestamp,
+              text: text.slice(0, 80),
             });
           }
+
+          if (source === "system") {
+            const pending = removePendingMicFinalsFor(text, segTimestamp);
+            if (pending.length > 0) {
+              debugLogger.debug(
+                "Dropping buffered local mic segments after system transcript arrived",
+                {
+                  count: pending.length,
+                  text: text.slice(0, 80),
+                }
+              );
+            }
+
+            const retracted = removeRacingMicEntriesFor(text, segTimestamp);
+            for (const stale of retracted) {
+              if (meetingLocalWin && !meetingLocalWin.isDestroyed()) {
+                meetingLocalWin.webContents.send("meeting-transcription-segment", {
+                  text: stale.text,
+                  source: "mic",
+                  type: "retract",
+                  timestamp: stale.timestamp,
+                });
+              }
+            }
+          }
+
+          const sendLocalSegment = (channel, payload) => {
+            if (channel !== "meeting-transcription-segment") {
+              return;
+            }
+
+            if (meetingLocalWin && !meetingLocalWin.isDestroyed()) {
+              meetingLocalWin.webContents.send(channel, payload);
+            }
+          };
+
+          if (source === "mic" && hasRiskyMicDuplicateProfile(micSuppression)) {
+            debugLogger.debug("Buffering risky local mic segment before renderer commit", {
+              text: text.slice(0, 80),
+              holdbackMs: LOCAL_RISKY_MIC_SEGMENT_HOLDBACK_MS,
+              reason: micSuppression?.reason,
+              hasBleedEvidence: micSuppression?.hasBleedEvidence,
+            });
+            queuePendingMicFinal({
+              text,
+              timestamp: segTimestamp,
+              micSuppression,
+              holdbackMs: LOCAL_RISKY_MIC_SEGMENT_HOLDBACK_MS,
+              emit: () =>
+                sendMeetingFinalSegment({
+                  text,
+                  source,
+                  timestamp: segTimestamp,
+                  micSuppression,
+                  send: sendLocalSegment,
+                  includeInLocalTranscript: true,
+                }),
+            });
+            return;
+          }
+
+          sendMeetingFinalSegment({
+            text,
+            source,
+            timestamp: segTimestamp,
+            micSuppression,
+            send: sendLocalSegment,
+            includeInLocalTranscript: true,
+          });
         }
       } catch (error) {
         debugLogger.error("Local meeting transcription chunk failed", {
@@ -3280,8 +3663,8 @@ class IPCHandlers {
       if (meetingLocalTranscribing) return;
       meetingLocalTranscribing = true;
       try {
-        await transcribeLocalMeetingChunk("mic");
         await transcribeLocalMeetingChunk("system");
+        await transcribeLocalMeetingChunk("mic");
       } finally {
         meetingLocalTranscribing = false;
       }
@@ -3312,6 +3695,8 @@ class IPCHandlers {
       meetingLocalModel = null;
       meetingLocalTranscribing = false;
       meetingPendingMicChunks = [];
+      resetPendingMicFinals();
+      meetingAecEnabled = false;
       meetingEchoLeakDetector.reset();
     };
 
@@ -3321,10 +3706,12 @@ class IPCHandlers {
       meetingSendCounts = { mic: 0, system: 0 };
       meetingLiveSpeakerStartedAt = null;
       meetingPendingMicChunks = [];
+      resetPendingMicFinals();
+      meetingAecEnabled = false;
       meetingEchoLeakDetector.reset();
     };
 
-    const disconnectMeetingStreaming = async () => {
+    const disconnectMeetingStreaming = async ({ flushPending = false } = {}) => {
       const results = await Promise.all([
         this._meetingMicStreaming
           ? this._meetingMicStreaming.disconnect().catch(() => ({ text: "" }))
@@ -3334,6 +3721,10 @@ class IPCHandlers {
           : Promise.resolve({ text: "" }),
       ]);
 
+      if (flushPending) {
+        flushPendingMicFinals(true);
+      }
+
       resetMeetingStreamingState();
       return results;
     };
@@ -3342,6 +3733,7 @@ class IPCHandlers {
       if (this.audioTapManager) {
         await this.audioTapManager.stop().catch(() => {});
       }
+      await stopMeetingAec();
       await stopLiveSpeakerIdentification().catch(() => {});
       resetMeetingLocalState();
       await disconnectMeetingStreaming().catch(() => {});
@@ -3434,6 +3826,7 @@ class IPCHandlers {
           debugLogger.debug("Meeting transcription start: reusing warm connections");
           const win = BrowserWindow.fromWebContents(event.sender);
           attachMeetingStreamingHandlers(this._meetingMicStreaming, win, "mic");
+          await startMeetingAec(systemAudioMode);
           if (systemAudioMode === "native") {
             await startLiveSpeakerIdentification(win, systemAudioMode);
             attachMeetingStreamingHandlers(this._meetingSystemStreaming, win, "system");
@@ -3451,6 +3844,7 @@ class IPCHandlers {
           meetingLocalTranscript = "";
 
           await startLiveSpeakerIdentification(meetingLocalWin, systemAudioMode);
+          await startMeetingAec(systemAudioMode);
 
           meetingLocalTimer = setInterval(() => {
             transcribeAllLocalBuffers();
@@ -3477,6 +3871,7 @@ class IPCHandlers {
           BrowserWindow.fromWebContents(event.sender),
           systemAudioMode
         );
+        await startMeetingAec(systemAudioMode);
         if (systemAudioMode === "native") {
           await startNativeMeetingSystemAudio(event);
         }
@@ -3496,6 +3891,9 @@ class IPCHandlers {
 
       if (source === "system") {
         meetingEchoLeakDetector.recordSystemChunk(outboundBuffer);
+        if (meetingAecEnabled && !this.meetingAecManager?.processSystemBuffer(outboundBuffer)) {
+          meetingAecEnabled = false;
+        }
         flushPendingMeetingMicChunks();
 
         if (meetingLiveSpeakerActive) {
@@ -3513,9 +3911,13 @@ class IPCHandlers {
       }
 
       if (source === "mic") {
+        if (processMeetingMicWithAec(outboundBuffer)) {
+          return;
+        }
+
         if (!hasNativeMeetingSystemAudio()) {
           const analysis = meetingEchoLeakDetector.analyzeMicChunk(outboundBuffer);
-          if (analysis?.shouldMute) {
+          if (analysis?.shouldMute && !meetingAecEnabled) {
             if (!meetingLocalMode) {
               dispatchMeetingAudioBuffer(Buffer.alloc(outboundBuffer.length), "mic");
             }
@@ -3561,18 +3963,11 @@ class IPCHandlers {
         }
 
         flushPendingMeetingMicChunks(true);
+        await stopMeetingAec();
 
         const liveSpeakerState = await stopLiveSpeakerIdentification().catch(() => null);
 
         const diarizationSessionId = `diar-${Date.now()}`;
-        const diarizationPcmPath = meetingDiarizationPath;
-        const diarizationSegments = meetingDiarizationSegments;
-        if (meetingDiarizationStream) {
-          await new Promise((resolve) => meetingDiarizationStream.end(resolve));
-          meetingDiarizationStream = null;
-        }
-        meetingDiarizationPath = null;
-        meetingDiarizationSegments = [];
         const diarizationWin = meetingLocalWin || this.windowManager.controlPanelWindow;
 
         if (meetingLocalMode) {
@@ -3585,6 +3980,9 @@ class IPCHandlers {
           } catch (err) {
             debugLogger.error("Local meeting final transcription failed", { error: err.message });
           }
+          flushPendingMicFinals(true);
+          const { diarizationPcmPath, diarizationSegments } =
+            await captureMeetingDiarizationState();
           const transcript =
             diarizationSegments
               .map((segment) => segment.text)
@@ -3604,7 +4002,8 @@ class IPCHandlers {
           return { success: true, transcript, diarizationSessionId };
         }
 
-        const results = await disconnectMeetingStreaming();
+        const results = await disconnectMeetingStreaming({ flushPending: true });
+        const { diarizationPcmPath, diarizationSegments } = await captureMeetingDiarizationState();
         const transcript =
           diarizationSegments
             .map((segment) => segment.text)

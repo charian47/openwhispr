@@ -1355,7 +1355,7 @@ declare global {
         callback: (data: {
           text: string;
           source: "mic" | "system";
-          type: "partial" | "final";
+          type: "partial" | "final" | "retract";
           timestamp?: number;
         }) => void
       ) => () => void;

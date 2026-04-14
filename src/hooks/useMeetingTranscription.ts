@@ -65,15 +65,15 @@ const MEETING_MIC_PRIMARY_AUDIO_CONSTRAINTS = {
   noiseSuppression: false,
   autoGainControl: false,
 } as const;
-const MEETING_MIC_FALLBACK_AUDIO_CONSTRAINTS = {
-  echoCancellation: false,
-  noiseSuppression: false,
-  autoGainControl: false,
-} as const;
 
 const REALTIME_MODELS = new Set(["gpt-4o-mini-transcribe", "gpt-4o-transcribe"]);
 const SPEAKER_IDENTIFICATION_RETENTION_MS = 30_000;
 const SYSTEM_SPEAKER_CARRY_FORWARD_MS = 2_500;
+const buildTranscriptText = (segments: TranscriptSegment[]) =>
+  segments
+    .map((segment) => segment.text)
+    .join(" ")
+    .trim();
 
 const getSpeakerNumericIndex = (speakerId?: string): number | null => {
   if (!speakerId) {
@@ -214,10 +214,6 @@ const getMeetingMicConstraints = async (): Promise<MediaStreamConstraints> => {
 
   return { audio: MEETING_MIC_PRIMARY_AUDIO_CONSTRAINTS };
 };
-
-const getFallbackMeetingMicConstraints = (): MediaStreamConstraints => ({
-  audio: MEETING_MIC_FALLBACK_AUDIO_CONSTRAINTS,
-});
 
 const createAudioPipeline = async ({
   stream,
@@ -556,7 +552,7 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
           locks.set(s.speaker, s.speakerName);
         }
       }
-      setTranscript(seed.map((s) => s.text).join(" "));
+      setTranscript(buildTranscriptText(seed));
       setPartialTranscript("");
       setSegments(seed);
       segmentsRef.current = seed;
@@ -586,30 +582,36 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
             try {
               return await navigator.mediaDevices.getUserMedia(constraints);
             } catch (err) {
+              const hasExactDevice =
+                typeof constraints.audio === "object" &&
+                constraints.audio !== null &&
+                "deviceId" in constraints.audio;
+              if (hasExactDevice) {
+                try {
+                  const fallbackStream = await navigator.mediaDevices.getUserMedia({
+                    audio: MEETING_MIC_PRIMARY_AUDIO_CONSTRAINTS,
+                  });
+                  logger.info(
+                    "Meeting mic capture recovered using default device",
+                    { error: (err as Error).message },
+                    "meeting"
+                  );
+                  return fallbackStream;
+                } catch (fallbackErr) {
+                  logger.error(
+                    "Meeting mic capture failed, continuing with system audio only",
+                    { error: (fallbackErr as Error).message },
+                    "meeting"
+                  );
+                  return null;
+                }
+              }
               logger.error(
-                "Meeting mic capture failed with preferred constraints",
+                "Meeting mic capture failed, continuing with system audio only",
                 { error: (err as Error).message, constraints },
                 "meeting"
               );
-
-              try {
-                const fallbackConstraints = getFallbackMeetingMicConstraints();
-                const fallbackStream =
-                  await navigator.mediaDevices.getUserMedia(fallbackConstraints);
-                logger.info(
-                  "Meeting mic capture recovered with fallback constraints",
-                  { fallbackConstraints },
-                  "meeting"
-                );
-                return fallbackStream;
-              } catch (fallbackErr) {
-                logger.error(
-                  "Mic capture failed, continuing with system audio only",
-                  { error: (fallbackErr as Error).message },
-                  "meeting"
-                );
-                return null;
-              }
+              return null;
             }
           }),
         ]);
@@ -660,10 +662,27 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
           (data: {
             text: string;
             source: "mic" | "system";
-            type: "partial" | "final";
+            type: "partial" | "final" | "retract";
             timestamp?: number;
           }) => {
             const setPartialForSource = partialSetters[data.source];
+
+            if (data.type === "retract") {
+              setSegments((prev) => {
+                const next = prev.filter(
+                  (seg) =>
+                    !(
+                      seg.source === data.source &&
+                      seg.timestamp === data.timestamp &&
+                      seg.text === data.text
+                    )
+                );
+                segmentsRef.current = next;
+                setTranscript(buildTranscriptText(next));
+                return next;
+              });
+              return;
+            }
 
             if (data.type === "partial") {
               setPartialForSource(data.text);
@@ -708,6 +727,7 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
                 const next =
                   i === prev.length ? [...prev, seg] : [...prev.slice(0, i), seg, ...prev.slice(i)];
                 segmentsRef.current = next;
+                setTranscript(buildTranscriptText(next));
                 return next;
               });
               if (data.source === "system" && seg.speaker) {
@@ -722,7 +742,6 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
               if (data.source === "system") {
                 setSystemPartialSpeakerIdentity(null, null);
               }
-              setTranscript((prev) => (prev ? prev + " " + data.text : data.text));
               setPartialTranscript("");
             }
           }

@@ -9,8 +9,41 @@ const { getModelsDirForService } = require("./modelDirUtils");
 const { convertToWav } = require("./ffmpegUtils");
 const { getSafeTempDir } = require("./safeTempDir");
 const { applyProvisionalSpeaker, applyConfirmedSpeaker } = require("./speakerAssignmentPolicy");
+const {
+  transcriptsOverlap,
+  transcriptsLooselyOverlap,
+  buildMergedCandidates,
+} = require("./transcriptText");
 
 const DIARIZATION_TIMEOUT_MS = 300000; // 5 minutes
+const POST_MERGE_CONTEXT_WINDOW_MS = 6000;
+const POST_MERGE_CONTEXT_MERGE_LIMIT = 3;
+
+const dedupeMicAgainstSystem = (segments) => {
+  const systemSegments = segments.filter((seg) => seg.source === "system" && seg.text);
+  if (!systemSegments.length) return segments;
+
+  return segments.filter((seg) => {
+    if (seg.source !== "mic" || !seg.text) return true;
+    if (
+      !seg.likelyRenderBleed &&
+      !seg.hasBleedEvidence &&
+      seg.suppressionReason !== "double_talk"
+    ) {
+      return true;
+    }
+
+    const matcher =
+      seg.suppressionReason === "double_talk" ? transcriptsLooselyOverlap : transcriptsOverlap;
+    const candidates = buildMergedCandidates({
+      segments: systemSegments,
+      timestamp: seg.timestamp,
+      windowMs: POST_MERGE_CONTEXT_WINDOW_MS,
+      mergeLimit: POST_MERGE_CONTEXT_MERGE_LIMIT,
+    });
+    return !candidates.some((candidateText) => matcher(seg.text, candidateText));
+  });
+};
 
 const SEGMENTATION_MODEL_URL =
   "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2";
@@ -383,8 +416,9 @@ class DiarizationManager {
 
   mergeWithTranscript(transcriptSegments, diarizationSegments) {
     if (!transcriptSegments || transcriptSegments.length === 0) return [];
+    const deduped = dedupeMicAgainstSystem(transcriptSegments);
     if (!diarizationSegments || diarizationSegments.length === 0) {
-      return transcriptSegments.map((seg) => ({ ...seg }));
+      return deduped.map((seg) => ({ ...seg }));
     }
 
     // Build speaker renumbering map (e.g., speaker_00 → speaker_0)
@@ -397,8 +431,8 @@ class DiarizationManager {
     }
 
     const nextSystemTimestampAt = (startIndex) => {
-      for (let i = startIndex + 1; i < transcriptSegments.length; i += 1) {
-        const candidate = transcriptSegments[i];
+      for (let i = startIndex + 1; i < deduped.length; i += 1) {
+        const candidate = deduped[i];
         if (candidate.source === "system" && candidate.timestamp != null) {
           return candidate.timestamp;
         }
@@ -408,7 +442,7 @@ class DiarizationManager {
 
     let fallbackSpeakerIndex = 0;
 
-    return transcriptSegments.map((seg, index) => {
+    return deduped.map((seg, index) => {
       const enriched = { ...seg };
 
       if (seg.source === "mic") {

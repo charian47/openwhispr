@@ -1,24 +1,29 @@
 const SAMPLE_RATE = 24000;
-const MAX_SYSTEM_HISTORY_MS = 4000;
+const MAX_SYSTEM_HISTORY_MS = 6000;
 const MAX_MIC_HISTORY_MS = 12000;
 const MIN_RMS = 0.006;
 const MIN_SYSTEM_RMS = 0.004;
-const MAX_LAG_MS = 220;
+const MAX_LAG_MS = 500;
 const LAG_STEP_SAMPLES = 120;
-const PARTIAL_WINDOW_MS = 450;
-const FINAL_PADDING_MS = 250;
-const CHUNK_MUTE_WINDOW_MS = 180;
-const STRONG_BLEED_CORRELATION = 0.94;
-const STRONG_BLEED_RESIDUAL = 0.18;
-const STRONG_BLEED_EXPLAINED = 0.82;
-const STRONG_BLEED_MIC_TO_SYSTEM_RATIO = 1.12;
-const PARTIAL_BLEED_CORRELATION = 0.9;
-const PARTIAL_BLEED_RESIDUAL = 0.22;
-const PARTIAL_BLEED_EXPLAINED = 0.78;
-const FINAL_BLEED_CORRELATION = 0.88;
-const FINAL_BLEED_RESIDUAL = 0.24;
-const FINAL_BLEED_EXPLAINED = 0.74;
-const FINAL_BLEED_MIC_TO_SYSTEM_RATIO = 1.18;
+const PARTIAL_WINDOW_MS = 600;
+const FINAL_PADDING_MS = 500;
+const CHUNK_MUTE_WINDOW_MS = 260;
+const STRONG_BLEED_CORRELATION = 0.75;
+const STRONG_BLEED_RESIDUAL = 0.32;
+const STRONG_BLEED_EXPLAINED = 0.65;
+const STRONG_BLEED_MIC_TO_SYSTEM_RATIO = 1.25;
+const PARTIAL_BLEED_CORRELATION = 0.6;
+const PARTIAL_BLEED_RESIDUAL = 0.45;
+const PARTIAL_BLEED_EXPLAINED = 0.5;
+const FINAL_BLEED_CORRELATION = 0.55;
+const FINAL_BLEED_RESIDUAL = 0.48;
+const FINAL_BLEED_EXPLAINED = 0.45;
+const FINAL_BLEED_MIC_TO_SYSTEM_RATIO = 1.35;
+const SYSTEM_VAD_TAIL_MS = 300;
+const VAD_GATED_BLEED_CORRELATION = 0.4;
+const VAD_GATED_BLEED_RESIDUAL = 0.6;
+const VAD_GATED_BLEED_EXPLAINED = 0.35;
+const VAD_GATED_SUSPECTED_SHARE = 0.3;
 const DOUBLE_TALK_CORRELATION = 0.45;
 const DOUBLE_TALK_EXPLAINED = 0.3;
 const DOUBLE_TALK_RESIDUAL = 0.2;
@@ -111,6 +116,7 @@ class MeetingEchoLeakDetector {
 
     const systemWindow = this._getSystemWindow();
     if (systemWindow.length < samples.length + this._maxLagSamples()) {
+      analysis.state = "awaiting_reference";
       this.micHistory.push(analysis);
       this._trimHistory(timestampMs);
       return analysis;
@@ -173,37 +179,54 @@ class MeetingEchoLeakDetector {
 
   isMicProbablyRenderBleed(nowMs = Date.now()) {
     const recent = this.micHistory.filter(
-      (entry) => nowMs - entry.timestampMs <= PARTIAL_WINDOW_MS && entry.rms >= MIN_RMS
+      (entry) =>
+        nowMs - entry.timestampMs <= PARTIAL_WINDOW_MS &&
+        entry.rms >= MIN_RMS &&
+        entry.state !== "awaiting_reference"
     );
 
     if (recent.length < 3) {
       return false;
     }
 
-    if (recent.some((entry) => entry.state === "double_talk")) {
+    const bleedMatches = recent.filter((entry) =>
+      this._matchesBleedProfile(
+        entry,
+        PARTIAL_BLEED_CORRELATION,
+        PARTIAL_BLEED_RESIDUAL,
+        PARTIAL_BLEED_EXPLAINED
+      )
+    );
+    if (bleedMatches.length < Math.ceil(recent.length * 0.8)) {
       return false;
     }
 
-    const suspectedCount = recent.filter(
-      (entry) => entry.state === "suspected_render_bleed"
-    ).length;
-    if (suspectedCount < Math.ceil(recent.length * 0.8)) {
-      return false;
-    }
-
-    const suspected = recent.filter((entry) => entry.state === "suspected_render_bleed");
     const averageCorrelation =
-      suspected.reduce((sum, entry) => sum + entry.correlation, 0) / suspected.length;
+      bleedMatches.reduce((sum, entry) => sum + entry.correlation, 0) / bleedMatches.length;
     const averageResidual =
-      suspected.reduce((sum, entry) => sum + entry.residualRatio, 0) / suspected.length;
+      bleedMatches.reduce((sum, entry) => sum + entry.residualRatio, 0) / bleedMatches.length;
     const averageExplained =
-      suspected.reduce((sum, entry) => sum + entry.explainedRatio, 0) / suspected.length;
+      bleedMatches.reduce((sum, entry) => sum + entry.explainedRatio, 0) / bleedMatches.length;
 
     return (
       averageCorrelation >= PARTIAL_BLEED_CORRELATION &&
       averageResidual <= PARTIAL_BLEED_RESIDUAL &&
       averageExplained >= PARTIAL_BLEED_EXPLAINED
     );
+  }
+
+  isSystemSpeaking(windowStartMs, windowEndMs = Date.now()) {
+    for (let i = this.systemHistory.length - 1; i >= 0; i -= 1) {
+      const entry = this.systemHistory[i];
+      const entryEnd = entry.timestampMs + entry.durationMs;
+      if (entryEnd < windowStartMs - SYSTEM_VAD_TAIL_MS) {
+        break;
+      }
+      if (entry.rms >= MIN_SYSTEM_RMS && entry.timestampMs <= windowEndMs + SYSTEM_VAD_TAIL_MS) {
+        return true;
+      }
+    }
+    return false;
   }
 
   shouldSuppressMicSegment(startedAtMs, endedAtMs = Date.now()) {
@@ -213,84 +236,110 @@ class MeetingEchoLeakDetector {
 
     const windowStart = startedAtMs - FINAL_PADDING_MS;
     const windowEnd = endedAtMs + FINAL_PADDING_MS;
+    const systemSpeaking = this.isSystemSpeaking(startedAtMs, endedAtMs);
     const relevant = this.micHistory.filter(
       (entry) =>
-        entry.timestampMs + entry.durationMs >= windowStart && entry.timestampMs <= windowEnd
+        entry.timestampMs + entry.durationMs >= windowStart &&
+        entry.timestampMs <= windowEnd &&
+        entry.state !== "awaiting_reference"
     );
 
     if (relevant.length < 2) {
       return { suppress: false, reason: "insufficient_signal" };
     }
 
-    const suspected = relevant.filter((entry) => entry.state === "suspected_render_bleed");
     const doubleTalk = relevant.filter((entry) => entry.state === "double_talk");
+    const bleedMatches = relevant.filter((entry) =>
+      this._matchesBleedProfile(
+        entry,
+        FINAL_BLEED_CORRELATION,
+        FINAL_BLEED_RESIDUAL,
+        FINAL_BLEED_EXPLAINED
+      )
+    );
 
     const averageCorrelation =
-      suspected.length > 0
-        ? suspected.reduce((sum, entry) => sum + entry.correlation, 0) / suspected.length
+      bleedMatches.length > 0
+        ? bleedMatches.reduce((sum, entry) => sum + entry.correlation, 0) / bleedMatches.length
         : 0;
     const averageResidual =
-      suspected.length > 0
-        ? suspected.reduce((sum, entry) => sum + entry.residualRatio, 0) / suspected.length
+      bleedMatches.length > 0
+        ? bleedMatches.reduce((sum, entry) => sum + entry.residualRatio, 0) / bleedMatches.length
         : 1;
     const averageExplained =
-      suspected.length > 0
-        ? suspected.reduce((sum, entry) => sum + entry.explainedRatio, 0) / suspected.length
+      bleedMatches.length > 0
+        ? bleedMatches.reduce((sum, entry) => sum + entry.explainedRatio, 0) / bleedMatches.length
         : 0;
     const averageMicToSystemRatio =
-      suspected.length > 0
-        ? suspected.reduce((sum, entry) => sum + (entry.micToSystemRatio || 0), 0) /
-          suspected.length
+      bleedMatches.length > 0
+        ? bleedMatches.reduce((sum, entry) => sum + (entry.micToSystemRatio || 0), 0) /
+          bleedMatches.length
         : null;
-    const suspectedShare = suspected.length / relevant.length;
-    const likelyRenderBleed =
-      suspected.length > 0 &&
-      suspectedShare >= 0.5 &&
-      averageCorrelation >= 0.84 &&
-      averageResidual <= 0.32 &&
-      averageExplained >= 0.68;
+    const hasBleedEvidence =
+      bleedMatches.length > 0 &&
+      averageCorrelation >= PARTIAL_BLEED_CORRELATION &&
+      averageResidual <= PARTIAL_BLEED_RESIDUAL &&
+      averageExplained >= PARTIAL_BLEED_EXPLAINED;
+    const bleedShare = bleedMatches.length / relevant.length;
+    const shareGate = systemSpeaking ? VAD_GATED_SUSPECTED_SHARE : 0.6;
+    const likelyRenderBleedShareGate = systemSpeaking ? VAD_GATED_SUSPECTED_SHARE : 0.4;
+    const likelyRenderBleed = hasBleedEvidence && bleedShare >= likelyRenderBleedShareGate;
 
-    if (doubleTalk.length > 0) {
+    if (doubleTalk.length > 0 && !likelyRenderBleed) {
       return {
         suppress: false,
         reason: "double_talk",
+        hasBleedEvidence,
         likelyRenderBleed,
         averageCorrelation,
         averageResidual,
         averageExplained,
         averageMicToSystemRatio,
+        bleedMatchCount: bleedMatches.length,
         sampleCount: relevant.length,
+        systemSpeaking,
       };
     }
 
-    if (suspectedShare < 0.75) {
+    if (bleedShare < shareGate) {
       return {
         suppress: false,
         reason: "mixed_signal",
+        hasBleedEvidence,
         likelyRenderBleed,
         averageCorrelation,
         averageResidual,
         averageExplained,
         averageMicToSystemRatio,
+        bleedMatchCount: bleedMatches.length,
         sampleCount: relevant.length,
+        systemSpeaking,
       };
     }
 
+    const corrGate = systemSpeaking ? VAD_GATED_BLEED_CORRELATION : FINAL_BLEED_CORRELATION;
+    const residualGate = systemSpeaking ? VAD_GATED_BLEED_RESIDUAL : FINAL_BLEED_RESIDUAL;
+    const explainedGate = systemSpeaking ? VAD_GATED_BLEED_EXPLAINED : FINAL_BLEED_EXPLAINED;
+
     const suppress =
-      averageCorrelation >= FINAL_BLEED_CORRELATION &&
-      averageResidual <= FINAL_BLEED_RESIDUAL &&
-      averageExplained >= FINAL_BLEED_EXPLAINED &&
+      doubleTalk.length === 0 &&
+      averageCorrelation >= corrGate &&
+      averageResidual <= residualGate &&
+      averageExplained >= explainedGate &&
       (averageMicToSystemRatio == null ||
         averageMicToSystemRatio <= FINAL_BLEED_MIC_TO_SYSTEM_RATIO);
 
     return {
       suppress,
+      hasBleedEvidence,
       likelyRenderBleed,
-      reason: suppress ? "render_bleed" : "weak_match",
+      systemSpeaking,
+      reason: suppress ? "render_bleed" : doubleTalk.length > 0 ? "mixed_signal" : "weak_match",
       averageCorrelation,
       averageResidual,
       averageExplained,
       averageMicToSystemRatio,
+      bleedMatchCount: bleedMatches.length,
       sampleCount: relevant.length,
     };
   }
@@ -326,10 +375,10 @@ class MeetingEchoLeakDetector {
     }
 
     if (
-      correlation >= 0.9 &&
-      residualRatio <= 0.26 &&
-      explainedRatio >= 0.72 &&
-      (micToSystemRatio == null || micToSystemRatio <= 1.2)
+      correlation >= 0.6 &&
+      residualRatio <= 0.45 &&
+      explainedRatio >= 0.5 &&
+      (micToSystemRatio == null || micToSystemRatio <= 1.3)
     ) {
       return "suspected_render_bleed";
     }
@@ -378,6 +427,17 @@ class MeetingEchoLeakDetector {
       sumSq += samples[i] * samples[i];
     }
     return sumSq;
+  }
+
+  _matchesBleedProfile(entry, correlationGate, residualGate, explainedGate) {
+    return (
+      !!entry &&
+      entry.rms >= MIN_RMS &&
+      entry.systemRms >= MIN_SYSTEM_RMS &&
+      entry.correlation >= correlationGate &&
+      entry.residualRatio <= residualGate &&
+      entry.explainedRatio >= explainedGate
+    );
   }
 
   _maxLagSamples() {
