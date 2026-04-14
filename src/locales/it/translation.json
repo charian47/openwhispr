@@ -2051,7 +2051,8 @@
     "description": "Collega servizi per potenziare il tuo flusso di lavoro",
     "googleCalendar": {
       "title": "Google Calendar",
-      "description": "Collega il tuo calendario per rilevare automaticamente le riunioni e registrare le trascrizioni.",
+      "optional": "Opzionale",
+      "description": "Compila automaticamente titoli e partecipanti delle riunioni dal tuo calendario.",
       "connect": "Collega Google Calendar",
       "connecting": "Connessione...",
       "connected": "Connesso",

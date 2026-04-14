@@ -98,9 +98,14 @@ export default function IntegrationsView() {
               <img src={googleCalendarIcon} alt="" className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-foreground">
-                {t("integrations.googleCalendar.title")}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-foreground">
+                  {t("integrations.googleCalendar.title")}
+                </p>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                  {t("integrations.googleCalendar.optional")}
+                </Badge>
+              </div>
               <p className="text-xs text-muted-foreground/70 mt-0.5 leading-relaxed">
                 {t("integrations.googleCalendar.description")}
               </p>

@@ -2051,7 +2051,8 @@
     "description": "サービスを接続してワークフローを強化",
     "googleCalendar": {
       "title": "Google カレンダー",
-      "description": "カレンダーを接続して、会議を自動検出し文字起こしを録音します。",
+      "optional": "任意",
+      "description": "カレンダーから会議名と参加者を自動で入力します。",
       "connect": "Google カレンダーを接続",
       "connecting": "接続中...",
       "connected": "接続済み",

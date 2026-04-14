@@ -2051,7 +2051,8 @@
     "description": "Conecta servicios para potenciar tu flujo de trabajo",
     "googleCalendar": {
       "title": "Google Calendar",
-      "description": "Conecta tu calendario para detectar reuniones automáticamente y grabar transcripciones.",
+      "optional": "Opcional",
+      "description": "Rellena automáticamente los títulos y asistentes de las reuniones desde tu calendario.",
       "connect": "Conectar Google Calendar",
       "connecting": "Conectando...",
       "connected": "Conectado",

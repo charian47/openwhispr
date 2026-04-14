@@ -2099,7 +2099,8 @@
     "description": "Connect services to supercharge your workflow",
     "googleCalendar": {
       "title": "Google Calendar",
-      "description": "Connect your calendar to auto-detect meetings and record transcriptions.",
+      "optional": "Optional",
+      "description": "Auto-fill meeting titles and attendees from your calendar.",
       "connect": "Connect Google Calendar",
       "connecting": "Connecting...",
       "connected": "Connected",

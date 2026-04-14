@@ -2046,7 +2046,8 @@
     "description": "連接服務以增強您的工作流程",
     "googleCalendar": {
       "title": "Google 日曆",
-      "description": "連接日曆以自動偵測會議並錄製轉錄。",
+      "optional": "可選",
+      "description": "從日曆自動填入會議名稱和參與者。",
       "connect": "連接 Google 日曆",
       "connecting": "連接中...",
       "connected": "已連接",
