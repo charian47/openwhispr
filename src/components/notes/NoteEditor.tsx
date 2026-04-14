@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { RichTextEditor } from "../ui/RichTextEditor";
 import type { Editor } from "@tiptap/react";
-import { MeetingTranscriptChat } from "./MeetingTranscriptChat";
+import { MeetingTranscriptChat, SelectionBar } from "./MeetingTranscriptChat";
 import type { TranscriptSegment } from "../../hooks/useMeetingTranscription";
 import {
   DropdownMenu,
@@ -191,6 +191,27 @@ export default function NoteEditor({
 
   const hasChatSegments = displaySegments.length > 0;
 
+  const knownSpeakers = useMemo(() => {
+    const seen = new Set<string>();
+    const list: Array<{ id?: number; display_name: string; email: string | null }> = [];
+    for (const p of speakerProfiles) {
+      const key = p.display_name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      list.push(p);
+    }
+    for (const segment of displaySegments) {
+      if (!segment.speaker) continue;
+      const name = speakerMappings[segment.speaker] || segment.speakerName;
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      list.push({ display_name: name, email: null });
+    }
+    return list;
+  }, [displaySegments, speakerMappings, speakerProfiles]);
+
   const parsedParticipants = useMemo<CalendarAttendee[]>(() => {
     try {
       return note.participants ? JSON.parse(note.participants) : [];
@@ -354,18 +375,6 @@ export default function NoteEditor({
     [note.id]
   );
 
-  const getSpeakerAssignmentState = useCallback(
-    (speakerId: string, sourceSegments: TranscriptSegment[]) => {
-      const representativeSegment = sourceSegments.find((segment) => segment.speaker === speakerId);
-      const speakerName = speakerMappings[speakerId] || representativeSegment?.speakerName;
-      return {
-        speakerName,
-        speakerIsPlaceholder: !speakerName && !!representativeSegment?.speakerIsPlaceholder,
-      };
-    },
-    [speakerMappings]
-  );
-
   const handleMapSpeaker = useCallback(
     async (
       speakerId: string,
@@ -437,70 +446,52 @@ export default function NoteEditor({
     [displaySegments, diarizedSegments, isMeetingRecording, persistDisplaySegments]
   );
 
-  const handleReassignBubble = useCallback(
-    async (segmentId: string, targetSpeakerId: string) => {
-      const targetState = getSpeakerAssignmentState(targetSpeakerId, displaySegments);
+  const [selectedSegmentIds, setSelectedSegmentIds] = useState<Set<string>>(new Set());
+  const [selectionNoteId, setSelectionNoteId] = useState(note.id);
+  if (selectionNoteId !== note.id) {
+    setSelectionNoteId(note.id);
+    setSelectedSegmentIds(new Set());
+  }
+
+  const handleToggleSelect = useCallback((segmentId: string) => {
+    setSelectedSegmentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(segmentId)) next.delete(segmentId);
+      else next.add(segmentId);
+      return next;
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedSegmentIds(new Set());
+  }, []);
+
+  useEffect(() => {
+    if (selectedSegmentIds.size === 0) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClearSelection();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedSegmentIds.size, handleClearSelection]);
+
+  const handleBulkAssignName = useCallback(
+    async (displayName: string, _email?: string | null, profileId?: number) => {
+      if (!selectedSegmentIds.size) return;
       const nextSegments = displaySegments.map((segment) =>
-        segment.id === segmentId
+        selectedSegmentIds.has(segment.id)
           ? lockTranscriptSpeaker(segment, {
-              speaker: targetSpeakerId,
-              speakerName: targetState.speakerName,
-              speakerIsPlaceholder: targetState.speakerIsPlaceholder,
+              speakerName: displayName,
+              speakerIsPlaceholder: false,
               suggestedName: undefined,
-              suggestedProfileId: undefined,
+              suggestedProfileId: profileId ?? undefined,
             })
           : segment
       );
       await persistDisplaySegments(nextSegments);
+      handleClearSelection();
     },
-    [displaySegments, getSpeakerAssignmentState, persistDisplaySegments]
-  );
-
-  const handleReassignRun = useCallback(
-    async (segmentId: string, targetSpeakerId: string) => {
-      const segmentIndex = displaySegments.findIndex((segment) => segment.id === segmentId);
-      if (segmentIndex === -1) {
-        return;
-      }
-
-      const sourceSegment = displaySegments[segmentIndex];
-      const sourceSpeaker = sourceSegment.speaker;
-      if (!sourceSpeaker) {
-        return;
-      }
-
-      let runStart = segmentIndex;
-      while (runStart > 0 && displaySegments[runStart - 1].speaker === sourceSpeaker) {
-        runStart -= 1;
-      }
-
-      let runEnd = segmentIndex;
-      while (
-        runEnd + 1 < displaySegments.length &&
-        displaySegments[runEnd + 1].speaker === sourceSpeaker
-      ) {
-        runEnd += 1;
-      }
-
-      const runSegmentIds = new Set(
-        displaySegments.slice(runStart, runEnd + 1).map((segment) => segment.id)
-      );
-      const targetState = getSpeakerAssignmentState(targetSpeakerId, displaySegments);
-      const nextSegments = displaySegments.map((segment) =>
-        runSegmentIds.has(segment.id)
-          ? lockTranscriptSpeaker(segment, {
-              speaker: targetSpeakerId,
-              speakerName: targetState.speakerName,
-              speakerIsPlaceholder: targetState.speakerIsPlaceholder,
-              suggestedName: undefined,
-              suggestedProfileId: undefined,
-            })
-          : segment
-      );
-
-      await persistDisplaySegments(nextSegments);
-    },
-    [displaySegments, getSpeakerAssignmentState, persistDisplaySegments]
+    [displaySegments, selectedSegmentIds, persistDisplaySegments, handleClearSelection]
   );
 
   const handleTitleInput = useCallback(() => {
@@ -817,13 +808,13 @@ export default function NoteEditor({
                     isMeetingRecording ? meetingSystemPartialSpeakerName : undefined
                   }
                   speakerMappings={speakerMappings}
-                  speakerProfiles={speakerProfiles}
+                  speakerProfiles={knownSpeakers}
                   participants={parsedParticipants}
                   onMapSpeaker={handleMapSpeaker}
-                  onReassignBubble={!isMeetingRecording ? handleReassignBubble : undefined}
-                  onReassignRun={!isMeetingRecording ? handleReassignRun : undefined}
                   onConfirmSuggestion={handleConfirmSuggestion}
                   onDismissSuggestion={handleDismissSuggestion}
+                  selectedSegmentIds={!isMeetingRecording ? selectedSegmentIds : undefined}
+                  onToggleSelect={!isMeetingRecording ? handleToggleSelect : undefined}
                 />
                 {isDiarizing && (
                   <div className="flex items-center justify-center gap-1.5 py-2">
@@ -858,6 +849,18 @@ export default function NoteEditor({
               background: "linear-gradient(to bottom, transparent, var(--color-background))",
             }}
           />
+          {!isMeetingRecording && selectedSegmentIds.size > 0 && (
+            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+              <SelectionBar
+                count={selectedSegmentIds.size}
+                onClear={handleClearSelection}
+                speakerProfiles={knownSpeakers}
+                participants={parsedParticipants}
+                onAssignName={handleBulkAssignName}
+                t={t}
+              />
+            </div>
+          )}
           <NoteBottomBar
             isRecording={isRecording || !!isMeetingRecording}
             isProcessing={isProcessing}

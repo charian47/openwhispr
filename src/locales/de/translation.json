@@ -1818,8 +1818,9 @@
       "meetingAttendees": "Meeting-Teilnehmer",
       "assignName": "Name zuweisen",
       "isThisPerson": "Ist das {{name}}?",
-      "moveBubble": "Diese Blase verschieben",
-      "moveRun": "Diesen Block verschieben",
+      "selected": "{{n}} ausgewählt",
+      "assignTo": "Zuweisen zu…",
+      "deselectAll": "Alle abwählen",
       "confirmed": "Bestätigt",
       "nameAssigned": "Name zugewiesen",
       "state": {
@@ -2072,13 +2073,6 @@
       "pro": "Pro",
       "proLimit": "Unbegrenzt",
       "upgrade": "Upgrade"
-    },
-    "beta": {
-      "title": "Meeting-Aufnahme ist in der Beta-Phase",
-      "description": "Wir arbeiten noch daran, wie wir diese Funktion am besten ins Produkt integrieren. Feedback ist sehr willkommen!",
-      "freeTier": "Kostenloser Plan: 5 Stunden / Monat",
-      "proTier": "Pro-Plan: 20 Stunden / Monat",
-      "feedback": "Mehr als 20 Stunden benötigt? Kontaktieren Sie gabe@openwhispr.com"
     },
     "notABot": {
       "title": "OpenWhispr ist ein Meeting-Rekorder, kein Bot",

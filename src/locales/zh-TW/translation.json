@@ -1813,8 +1813,10 @@
       "meetingAttendees": "會議參與者",
       "assignName": "指派姓名",
       "isThisPerson": "這是{{name}}嗎？",
-      "moveBubble": "移動此氣泡",
-      "moveRun": "移動這一段",
+      "reassignTo": "重新指派給",
+      "selected": "已選 {{n}} 個",
+      "assignTo": "指派給…",
+      "deselectAll": "取消全選",
       "confirmed": "已確認",
       "nameAssigned": "姓名已指派",
       "state": {
@@ -2067,13 +2069,6 @@
       "pro": "Pro",
       "proLimit": "無限",
       "upgrade": "升級"
-    },
-    "beta": {
-      "title": "會議錄製功能正在測試中",
-      "description": "我們仍在探索將此功能更好地融入產品的方式，非常歡迎您的回饋！",
-      "freeTier": "免費方案：每月 5 小時",
-      "proTier": "Pro 方案：每月 20 小時",
-      "feedback": "需要超過 20 小時？請聯繫 gabe@openwhispr.com"
     },
     "notABot": {
       "title": "OpenWhispr 是會議錄製工具，不是機器人",

@@ -1927,8 +1927,9 @@
       "meetingAttendees": "Meeting attendees",
       "assignName": "Assign name",
       "isThisPerson": "Is this {{name}}?",
-      "moveBubble": "Move this bubble",
-      "moveRun": "Move this run",
+      "selected": "{{n}} selected",
+      "assignTo": "Assign to…",
+      "deselectAll": "Deselect all",
       "confirmed": "Confirmed",
       "nameAssigned": "Name assigned",
       "state": {
@@ -2120,13 +2121,6 @@
       "pro": "Pro",
       "proLimit": "Unlimited",
       "upgrade": "Upgrade"
-    },
-    "beta": {
-      "title": "Meeting recording is in beta",
-      "description": "We're still working on how best to build this into the product. Feedback is very welcome!",
-      "freeTier": "Free plan: 5 hours / month",
-      "proTier": "Pro plan: 20 hours / month",
-      "feedback": "Need more than 20 hours? Contact gabe@openwhispr.com"
     },
     "notABot": {
       "title": "OpenWhispr is a meeting recorder, not a bot",

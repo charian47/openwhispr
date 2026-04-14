@@ -1879,8 +1879,9 @@
       "meetingAttendees": "Participants à la réunion",
       "assignName": "Attribuer un nom",
       "isThisPerson": "Est-ce {{name}} ?",
-      "moveBubble": "Déplacer cette bulle",
-      "moveRun": "Déplacer ce bloc",
+      "selected": "{{n}} sélectionné(s)",
+      "assignTo": "Assigner à…",
+      "deselectAll": "Tout désélectionner",
       "confirmed": "Confirmé",
       "nameAssigned": "Nom attribué",
       "state": {
@@ -2072,13 +2073,6 @@
       "pro": "Pro",
       "proLimit": "Illimité",
       "upgrade": "Passer au supérieur"
-    },
-    "beta": {
-      "title": "L'enregistrement de réunions est en bêta",
-      "description": "Nous travaillons encore sur la meilleure façon d'intégrer cette fonctionnalité. Vos retours sont les bienvenus !",
-      "freeTier": "Plan gratuit : 5 heures / mois",
-      "proTier": "Plan Pro : 20 heures / mois",
-      "feedback": "Besoin de plus de 20 heures ? Contactez gabe@openwhispr.com"
     },
     "notABot": {
       "title": "OpenWhispr est un enregistreur de réunions, pas un bot",

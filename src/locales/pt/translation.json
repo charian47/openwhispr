@@ -1818,8 +1818,9 @@
       "meetingAttendees": "Participantes da reunião",
       "assignName": "Atribuir nome",
       "isThisPerson": "É {{name}}?",
-      "moveBubble": "Mover este balão",
-      "moveRun": "Mover este bloco",
+      "selected": "{{n}} selecionado(s)",
+      "assignTo": "Atribuir a…",
+      "deselectAll": "Desmarcar tudo",
       "confirmed": "Confirmado",
       "nameAssigned": "Nome atribuído",
       "state": {
@@ -2072,13 +2073,6 @@
       "pro": "Pro",
       "proLimit": "Ilimitado",
       "upgrade": "Atualizar"
-    },
-    "beta": {
-      "title": "A gravação de reuniões está em beta",
-      "description": "Ainda estamos trabalhando na melhor forma de integrar isso ao produto. Seu feedback é muito bem-vindo!",
-      "freeTier": "Plano gratuito: 5 horas / mês",
-      "proTier": "Plano Pro: 20 horas / mês",
-      "feedback": "Precisa de mais de 20 horas? Entre em contato: gabe@openwhispr.com"
     },
     "notABot": {
       "title": "O OpenWhispr é um gravador de reuniões, não um bot",

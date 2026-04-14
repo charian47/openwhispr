@@ -1813,8 +1813,9 @@
       "meetingAttendees": "会议参与者",
       "assignName": "分配姓名",
       "isThisPerson": "这是{{name}}吗？",
-      "moveBubble": "移动此气泡",
-      "moveRun": "移动这一段",
+      "selected": "已选 {{n}} 个",
+      "assignTo": "分配给…",
+      "deselectAll": "取消全选",
       "confirmed": "已确认",
       "nameAssigned": "姓名已分配",
       "state": {
@@ -2067,13 +2068,6 @@
       "pro": "Pro",
       "proLimit": "无限",
       "upgrade": "升级"
-    },
-    "beta": {
-      "title": "会议录制功能正在测试中",
-      "description": "我们仍在探索将此功能更好地融入产品的方式，非常欢迎您的反馈！",
-      "freeTier": "免费计划：每月 5 小时",
-      "proTier": "Pro 计划：每月 20 小时",
-      "feedback": "需要超过 20 小时？请联系 gabe@openwhispr.com"
     },
     "notABot": {
       "title": "OpenWhispr 是会议录制工具，不是机器人",
