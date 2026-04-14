@@ -534,10 +534,14 @@ export default function NoteEditor({
 
   useEffect(() => {
     if (isRecording && !prevRecordingRef.current) {
-      pendingTranscriptSwitchRef.current = true;
+      if (isMeetingRecording) {
+        scheduleUiUpdate(() => setViewMode("transcript"));
+      } else {
+        pendingTranscriptSwitchRef.current = true;
+      }
     }
     prevRecordingRef.current = isRecording;
-  }, [isRecording]);
+  }, [isRecording, isMeetingRecording, scheduleUiUpdate]);
 
   useEffect(() => {
     if (!isRecording && !isProcessing && pendingTranscriptSwitchRef.current && liveTranscript) {
