@@ -1181,7 +1181,12 @@
         "activationMode": "Режим активации",
         "description": "Комбинация клавиш для запуска и остановки голосовой диктовки",
         "resetToDefault": "Сбросить на {{hotkey}}",
-        "title": "Горячая клавиша диктовки"
+        "title": "Горячая клавиша диктовки",
+        "linuxPttPermissionTitle": "Для режима «Удерживать для речи» нужна настройка",
+        "linuxPttPermissionDescription": "Выполните команду и перезайдите: sudo usermod -aG input $USER",
+        "linuxPttSetupTitle": "Для режима «Удерживать для речи» нужна настройка",
+        "linuxPttSetupDescription": "Вашему пользователю нужен доступ к устройствам ввода с клавиатуры.",
+        "linuxPttSetupNote": "После выполнения команды выйдите из системы и войдите снова."
       },
       "meetingHotkey": {
         "title": "Горячая клавиша режима встречи",

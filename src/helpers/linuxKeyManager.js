@@ -76,8 +76,14 @@ class LinuxKeyManager extends EventEmitter {
             debugLogger.debug("[LinuxKeyManager] Listener ready", { key });
             this.isReady = true;
             this.emit("ready");
+          } else if (line === "NO_PERMISSION") {
+            debugLogger.warn("[LinuxKeyManager] No permission to access input devices");
+            this.emit("permission-denied");
           } else if (line === "KEY_DOWN") {
             debugLogger.debug("[LinuxKeyManager] KEY_DOWN detected", { key });
+            if (this.watchdogTimer) {
+              clearTimeout(this.watchdogTimer);
+            }
             this.watchdogTimer = setTimeout(() => {
               debugLogger.warn("[LinuxKeyManager] Watchdog: no KEY_UP received within 30s, forcing release");
               this.emit("key-up", this.currentKey);

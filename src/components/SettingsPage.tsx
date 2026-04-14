@@ -63,6 +63,7 @@ import { validateHotkeyForSlot } from "../utils/hotkeyValidation";
 import { getPlatform, getCachedPlatform } from "../utils/platform";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
+import LinuxPttSetupInfo from "./ui/LinuxPttSetupInfo";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
 import AgentModeSettings from "./settings/AgentModeSettings";
@@ -1009,6 +1010,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
   const [isUsingNativeShortcut, setIsUsingNativeShortcut] = useState(false);
   const [effectiveDefaultHotkey, setEffectiveDefaultHotkey] = useState<string | null>(null);
+  const [linuxPttAvailable, setLinuxPttAvailable] = useState(true);
 
   const platform = getCachedPlatform();
 
@@ -1124,6 +1126,20 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     };
     checkHotkeyMode();
   }, [setActivationMode]);
+
+  useEffect(() => {
+    const cleanup = window.electronAPI?.onLinuxPttPermissionDenied?.(() => {
+      setLinuxPttAvailable(false);
+      toast({
+        title: t("settingsPage.general.hotkey.linuxPttPermissionTitle"),
+        description: t("settingsPage.general.hotkey.linuxPttPermissionDescription"),
+        variant: "destructive",
+        duration: 15000,
+      });
+      setActivationMode("tap");
+    });
+    return () => cleanup?.();
+  }, [toast, t, setActivationMode]);
 
   useEffect(() => {
     if (updateError) {
@@ -3000,6 +3016,9 @@ EOF`,
                       {t("settingsPage.general.hotkey.activationMode")}
                     </p>
                     <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+                    {getCachedPlatform() === "linux" && activationMode === "push" && (
+                      <LinuxPttSetupInfo isAvailable={linuxPttAvailable} />
+                    )}
                   </SettingsPanelRow>
                 )}
               </SettingsPanel>

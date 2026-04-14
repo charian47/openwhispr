@@ -1181,7 +1181,12 @@
         "activationMode": "Mode d'activation",
         "description": "La combinaison de touches qui démarre et arrête la dictée vocale",
         "resetToDefault": "Réinitialiser à {{hotkey}}",
-        "title": "Raccourci de dictée"
+        "title": "Raccourci de dictée",
+        "linuxPttPermissionTitle": "Maintenir pour parler nécessite une configuration",
+        "linuxPttPermissionDescription": "Exécutez cette commande et déconnectez-vous : sudo usermod -aG input $USER",
+        "linuxPttSetupTitle": "Maintenir pour parler nécessite une configuration",
+        "linuxPttSetupDescription": "Votre utilisateur a besoin d'accéder aux périphériques de saisie clavier.",
+        "linuxPttSetupNote": "Après avoir exécuté la commande, déconnectez-vous et reconnectez-vous."
       },
       "meetingHotkey": {
         "title": "Raccourci mode réunion",

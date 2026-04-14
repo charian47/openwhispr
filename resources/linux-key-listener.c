@@ -41,6 +41,7 @@ static unsigned char held_keys[KEY_BITS_SIZE];
 
 static int device_fds[MAX_DEVICES];
 static int device_count = 0;
+static int permission_denied_count = 0;
 static int epoll_fd = -1;
 
 static void signal_handler(int sig) {
@@ -257,8 +258,10 @@ static int add_device(const char *path) {
 
     int fd = open(path, O_RDONLY | O_NONBLOCK);
     if (fd < 0) {
-        if (errno == EACCES)
-            fprintf(stderr, "Permission denied: %s (try running with sudo or adding user to 'input' group)\n", path);
+        if (errno == EACCES) {
+            permission_denied_count++;
+            fprintf(stderr, "Permission denied: %s\n", path);
+        }
         return -1;
     }
 
@@ -410,8 +413,12 @@ int main(int argc, char *argv[]) {
 
     scan_devices();
 
-    if (device_count == 0)
+    if (device_count == 0 && permission_denied_count > 0) {
+        printf("NO_PERMISSION\n");
+        fflush(stdout);
+    } else if (device_count == 0) {
         fprintf(stderr, "Warning: no keyboard devices found, waiting for hotplug\n");
+    }
 
     printf("READY\n");
     fflush(stdout);

@@ -1062,6 +1062,13 @@ async function startApp() {
       }
     });
 
+    linuxKeyManager.on("permission-denied", () => {
+      debugLogger.warn("[Push-to-Talk] Linux key listener has no permission to access input devices");
+      if (isLiveWindow(windowManager.mainWindow)) {
+        windowManager.mainWindow.webContents.send("linux-ptt-permission-denied");
+      }
+    });
+
     linuxKeyManager.on("error", (error) => {
       debugLogger.warn("[Push-to-Talk] Linux key listener error", { error: error.message });
     });

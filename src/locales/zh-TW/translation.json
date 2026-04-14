@@ -1176,7 +1176,12 @@
         "activationMode": "啟用模式",
         "description": "用來開始和停止語音輸入的組合鍵",
         "resetToDefault": "重置為 {{hotkey}}",
-        "title": "語音輸入快捷鍵"
+        "title": "語音輸入快捷鍵",
+        "linuxPttPermissionTitle": "按住說話需要額外設定",
+        "linuxPttPermissionDescription": "執行此指令並重新登入：sudo usermod -aG input $USER",
+        "linuxPttSetupTitle": "按住說話需要設定",
+        "linuxPttSetupDescription": "您的使用者需要存取鍵盤輸入裝置的權限。",
+        "linuxPttSetupNote": "執行指令後，請登出並重新登入。"
       },
       "meetingHotkey": {
         "title": "會議模式快捷鍵",

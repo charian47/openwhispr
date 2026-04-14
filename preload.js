@@ -557,6 +557,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("dictation-key-active", listener);
   },
   onWindowsPushToTalkUnavailable: registerListener("windows-ptt-unavailable"),
+  onLinuxPttPermissionDenied: registerListener("linux-ptt-permission-denied", (callback) => () => callback()),
 
   // Settings shortcut (Cmd+, / Ctrl+,)
   onShowSettings: registerListener("show-settings", (callback) => () => callback()),
