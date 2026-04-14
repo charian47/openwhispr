@@ -251,6 +251,9 @@
       "failedCtaSettings": "Настройте провайдер транскрипции",
       "failedCtaAndRetry": "затем нажмите повторить",
       "failedCtaSettingsOnly": "Настройте провайдер транскрипции в Настройках",
+      "failedCtaSignIn": "Войти снова",
+      "failedLimitReached": "Дневной лимит достигнут",
+      "failedOffline": "Нет подключения",
       "clearAll": "Очистить все",
       "clearAllTitle": "Очистить все транскрипции",
       "clearAllDescription": "Все транскрипции и аудиофайлы будут безвозвратно удалены.",
@@ -1091,6 +1094,16 @@
       "description": "Очищайте транскрипции, обрабатывайте команды и исправляйте ошибки, сохраняя вашу манеру речи.",
       "enableTextCleanup": "Включить очистку текста",
       "enableTextCleanupDescription": "ИИ улучшает качество транскрипции",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "Облачные провайдеры",
+        "local": "Локально",
+        "selfHosted": "Свой сервер",
+        "openwhisprDesc": "Работает сразу. Без настройки.",
+        "providersDesc": "Используйте свой API-ключ.",
+        "localDesc": "Модели на устройстве. Полная приватность.",
+        "selfHostedDesc": "Свой сервер в вашей сети."
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Просто работает. Настройка не требуется.",
       "title": "ИИ-улучшение текста",
@@ -1102,6 +1115,18 @@
         "switchedCustom": {
           "description": "Настройте собственного провайдера и API-ключ.",
           "title": "Переключено на пользовательскую настройку"
+        },
+        "switchedProviders": {
+          "title": "Облачные провайдеры",
+          "description": "Используются ваши собственные API-ключи."
+        },
+        "switchedLocal": {
+          "title": "На устройстве",
+          "description": "ИИ работает локально на вашем компьютере."
+        },
+        "switchedSelfHosted": {
+          "title": "Свой сервер",
+          "description": "Используется ваш собственный сервер."
         }
       }
     },
@@ -1382,6 +1407,16 @@
       "customSetup": "Пользовательская настройка",
       "customSetupDescription": "Используйте собственного провайдера и API-ключ.",
       "description": "Выберите, как OpenWhispr будет транскрибировать вашу речь",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "Облачные провайдеры",
+        "local": "Локально",
+        "selfHosted": "Свой сервер",
+        "openwhisprDesc": "Работает сразу. Без настройки.",
+        "providersDesc": "Используйте свой API-ключ.",
+        "localDesc": "Модели на устройстве. Полная приватность.",
+        "selfHostedDesc": "Свой сервер в вашей сети."
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Просто работает. Настройка не требуется.",
       "title": "Распознавание речи",
@@ -1393,6 +1428,18 @@
         "switchedCustom": {
           "description": "Настройте собственного провайдера и API-ключ.",
           "title": "Переключено на пользовательскую настройку"
+        },
+        "switchedProviders": {
+          "title": "Облачные провайдеры",
+          "description": "Используются ваши собственные API-ключи."
+        },
+        "switchedLocal": {
+          "title": "На устройстве",
+          "description": "Транскрипция выполняется локально на вашем компьютере."
+        },
+        "switchedSelfHosted": {
+          "title": "Свой сервер",
+          "description": "Используется ваш собственный сервер."
         }
       },
       "gpuDevice": {
@@ -1404,13 +1451,21 @@
         "description": "Identify individual speakers in meeting recordings",
         "modelsReady": "Models Ready",
         "deleteModels": "Delete Models"
-      }
+      },
+      "transcriptionPreview": "Предпросмотр транскрипции",
+      "transcriptionPreviewDescription": "Показывать транскрипцию в плавающем окне перед обработкой"
     },
     "intelligence": {
       "gpuDevice": {
         "title": "Intelligence GPU",
         "description": "GPU для локальной обработки ИИ"
       }
+    },
+    "selfHosted": {
+      "endpointUrl": "URL эндпоинта",
+      "serverUrl": "URL сервера",
+      "apiKeyOptional": "API-ключ (необязательно)",
+      "lanHint": "Аудио остаётся в вашей сети — ничего не покидает вашу LAN."
     }
   },
   "models": {
@@ -1479,6 +1534,8 @@
         "llama_llama_3_1_8b_instruct_q4_k_m": "Мощная модель с отличной производительностью",
         "openai_oss_gpt_oss_20b_mxfp4": "Открытая модель OpenAI для потребительского оборудования",
         "gemma_gemma_3_4b_it_q4_k_m": "Открытая модель Google, отличный баланс скорости и качества",
+        "gemma_gemma_4_31b_it_q4_k_m": "Крупнейшая Gemma 4 от Google, лучшее качество",
+        "gemma_gemma_4_26b_a4b_it_q4_k_m": "Gemma 4 MoE от Google, быстрая с 4B активными параметрами",
         "gemma_gemma_4_e4b_it_q4_k_m": "Новейшая мультимодальная модель Google, продвинутое рассуждение",
         "gemma_gemma_4_e2b_it_q4_k_m": "Компактная Gemma 4 от Google, быстрая и эффективная",
         "gemma_gemma_3_12b_it_q4_k_m": "Средняя модель Google, сильное рассуждение",
@@ -1871,7 +1928,8 @@
   "app": {
     "toasts": {
       "hotkeyChanged": {
-        "title": "Горячая клавиша изменена"
+        "title": "Горячая клавиша изменена",
+        "description": "\"{{original}}\" была недоступна. Вместо неё используется \"{{fallback}}\". Вы можете изменить это в Настройках."
       },
       "hotkeyUnavailable": {
         "title": "Горячая клавиша недоступна",
@@ -1917,6 +1975,16 @@
       "systemPrompt": "Системный промпт",
       "systemPromptDescription": "Пользовательские инструкции для агента",
       "systemPromptPlaceholder": "Введите пользовательский системный промпт...",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "Облачные провайдеры",
+        "local": "Локально",
+        "selfHosted": "Свой сервер",
+        "openwhisprDesc": "Просто работает. Настройка не нужна.",
+        "providersDesc": "Свой API-ключ.",
+        "localDesc": "Модели на устройстве. Полная приватность.",
+        "selfHostedDesc": "Ваш сервер в вашей сети."
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Использовать облачный ИИ OpenWhispr для разговоров с агентом",
       "customSetup": "Своя настройка (BYOK)",
@@ -2118,5 +2186,14 @@
     "close": "Закрыть чат",
     "newChat": "Новый чат",
     "conversationSelector": "Сменить беседу"
+  },
+  "transcriptionPreview": {
+    "label": "Предпросмотр",
+    "listening": "Слушаю...",
+    "polishing": "Полирую...",
+    "ready": "Готово",
+    "copy": "Копировать",
+    "copied": "Скопировано",
+    "waitingForInput": "Скажите что-нибудь..."
   }
 }

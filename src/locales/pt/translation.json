@@ -223,6 +223,9 @@
       "failedCtaSettings": "Configure seu provedor de transcrição",
       "failedCtaAndRetry": "e depois clique em tentar novamente",
       "failedCtaSettingsOnly": "Configure seu provedor de transcrição nas Configurações",
+      "failedCtaSignIn": "Entrar novamente",
+      "failedLimitReached": "Limite diário atingido",
+      "failedOffline": "Sem conexão",
       "clearAll": "Limpar tudo",
       "clearAllTitle": "Limpar todas as transcrições",
       "clearAllDescription": "Todas as transcrições e arquivos de áudio serão removidos permanentemente.",
@@ -1063,6 +1066,16 @@
       "description": "Limpe transcrições, processe comandos e corrija erros preservando seu tom de voz.",
       "enableTextCleanup": "Ativar limpeza de texto",
       "enableTextCleanupDescription": "A IA melhora a qualidade da transcrição",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "Provedores na nuvem",
+        "local": "Local",
+        "selfHosted": "Auto-hospedado",
+        "openwhisprDesc": "Funciona de imediato. Sem setup.",
+        "providersDesc": "Use sua própria chave API.",
+        "localDesc": "Modelos no dispositivo. Privado.",
+        "selfHostedDesc": "Seu servidor na sua rede."
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Funciona de imediato. Sem configuração necessária.",
       "title": "Melhoria de texto com IA",
@@ -1074,6 +1087,18 @@
         "switchedCustom": {
           "description": "Configure seu próprio provedor e chave API.",
           "title": "Mudou para configuração personalizada"
+        },
+        "switchedProviders": {
+          "title": "Provedores na nuvem",
+          "description": "Usando suas próprias chaves API."
+        },
+        "switchedLocal": {
+          "title": "No dispositivo",
+          "description": "A IA é executada localmente na sua máquina."
+        },
+        "switchedSelfHosted": {
+          "title": "Auto-hospedado",
+          "description": "Usando seu próprio servidor."
         }
       }
     },
@@ -1354,6 +1379,16 @@
       "customSetup": "Configuração personalizada",
       "customSetupDescription": "Use seu próprio provedor e chave API.",
       "description": "Escolha como o OpenWhispr transcreve sua voz",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "Provedores na nuvem",
+        "local": "Local",
+        "selfHosted": "Auto-hospedado",
+        "openwhisprDesc": "Funciona de imediato. Sem setup.",
+        "providersDesc": "Use sua própria chave API.",
+        "localDesc": "Modelos no dispositivo. Privado.",
+        "selfHostedDesc": "Seu servidor na sua rede."
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Funciona de imediato. Sem configuração necessária.",
       "title": "Fala para texto",
@@ -1365,6 +1400,18 @@
         "switchedCustom": {
           "description": "Configure seu próprio provedor e chave API.",
           "title": "Mudou para configuração personalizada"
+        },
+        "switchedProviders": {
+          "title": "Provedores na nuvem",
+          "description": "Usando suas próprias chaves API."
+        },
+        "switchedLocal": {
+          "title": "No dispositivo",
+          "description": "A transcrição é executada localmente na sua máquina."
+        },
+        "switchedSelfHosted": {
+          "title": "Auto-hospedado",
+          "description": "Usando seu próprio servidor."
         }
       },
       "gpuDevice": {
@@ -1376,13 +1423,21 @@
         "description": "Identify individual speakers in meeting recordings",
         "modelsReady": "Models Ready",
         "deleteModels": "Delete Models"
-      }
+      },
+      "transcriptionPreview": "Pré-visualização ao vivo",
+      "transcriptionPreviewDescription": "Mostrar transcrição em janela flutuante antes da correção"
     },
     "intelligence": {
       "gpuDevice": {
         "title": "Intelligence GPU",
         "description": "GPU usado para processamento IA local"
       }
+    },
+    "selfHosted": {
+      "endpointUrl": "URL do endpoint",
+      "serverUrl": "URL do servidor",
+      "apiKeyOptional": "API Key (opcional)",
+      "lanHint": "O áudio permanece na sua rede — nada sai da sua LAN."
     }
   },
   "models": {
@@ -1451,6 +1506,8 @@
         "llama_llama_3_1_8b_instruct_q4_k_m": "Modelo poderoso com excelente desempenho",
         "openai_oss_gpt_oss_20b_mxfp4": "Modelo open-weight da OpenAI para hardware de consumo",
         "gemma_gemma_3_4b_it_q4_k_m": "Modelo open-weight do Google, ótimo equilíbrio entre velocidade e qualidade",
+        "gemma_gemma_4_31b_it_q4_k_m": "O maior Gemma 4 do Google, melhor qualidade",
+        "gemma_gemma_4_26b_a4b_it_q4_k_m": "Gemma 4 MoE do Google, rápido com 4B parâmetros ativos",
         "gemma_gemma_4_e4b_it_q4_k_m": "Último multimodal do Google, raciocínio avançado",
         "gemma_gemma_4_e2b_it_q4_k_m": "Gemma 4 compacto do Google, rápido e eficiente",
         "gemma_gemma_3_12b_it_q4_k_m": "Modelo intermediário do Google, raciocínio sólido",
@@ -1871,7 +1928,8 @@
   "app": {
     "toasts": {
       "hotkeyChanged": {
-        "title": "Atalho alterado"
+        "title": "Atalho alterado",
+        "description": "\"{{original}}\" não estava disponível. Usando \"{{fallback}}\" em vez disso. Você pode alterar isso nas Configurações."
       },
       "hotkeyUnavailable": {
         "title": "Atalho indisponível",
@@ -1917,6 +1975,16 @@
       "systemPrompt": "Prompt do Sistema",
       "systemPromptDescription": "Instruções personalizadas para o agente",
       "systemPromptPlaceholder": "Digite um prompt de sistema personalizado...",
+      "modes": {
+        "openwhispr": "OpenWhispr",
+        "providers": "Provedores Cloud",
+        "local": "Local",
+        "selfHosted": "Auto-hospedado",
+        "openwhisprDesc": "Funciona de imediato. Sem configuração.",
+        "providersDesc": "Traga sua própria chave API.",
+        "localDesc": "Modelos no dispositivo. Totalmente privado.",
+        "selfHostedDesc": "Seu próprio servidor na sua rede."
+      },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Usar a IA na nuvem da OpenWhispr para conversas do agente",
       "customSetup": "Configuração personalizada (BYOK)",
@@ -2118,5 +2186,14 @@
     "close": "Fechar chat",
     "newChat": "Novo chat",
     "conversationSelector": "Trocar conversa"
+  },
+  "transcriptionPreview": {
+    "label": "Pré-visualização",
+    "listening": "Ouvindo...",
+    "polishing": "Aperfeiçoando...",
+    "ready": "Pronto",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "waitingForInput": "Diga algo..."
   }
 }

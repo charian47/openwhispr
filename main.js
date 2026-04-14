@@ -18,6 +18,7 @@ if (
 
 const {
   app,
+  desktopCapturer,
   globalShortcut,
   BrowserWindow,
   dialog,
@@ -203,6 +204,7 @@ const GoogleCalendarManager = require("./src/helpers/googleCalendarManager");
 const MeetingProcessDetector = require("./src/helpers/meetingProcessDetector");
 const AudioActivityDetector = require("./src/helpers/audioActivityDetector");
 const AudioTapManager = require("./src/helpers/audioTapManager");
+const LinuxPortalAudioManager = require("./src/helpers/linuxPortalAudioManager");
 const MeetingDetectionEngine = require("./src/helpers/meetingDetectionEngine");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
 const { ensureYdotool } = require("./src/helpers/ensureYdotool");
@@ -226,6 +228,7 @@ let whisperCudaManager = null;
 let googleCalendarManager = null;
 let meetingDetectionEngine = null;
 let audioTapManager = null;
+let linuxPortalAudioManager = null;
 let qdrantManager = null;
 let ipcHandlers = null;
 let globeKeyAlertShown = false;
@@ -305,6 +308,7 @@ function initializeCoreManagers() {
   windowsKeyManager = new WindowsKeyManager();
   textEditMonitor = new TextEditMonitor();
   audioTapManager = new AudioTapManager();
+  linuxPortalAudioManager = new LinuxPortalAudioManager();
   windowManager.textEditMonitor = textEditMonitor;
 
   // IPC handlers must be registered before window content loads
@@ -323,6 +327,7 @@ function initializeCoreManagers() {
     googleCalendarManager,
     meetingDetectionEngine,
     audioTapManager,
+    linuxPortalAudioManager,
     getTrayManager: () => trayManager,
   });
 }
@@ -1088,6 +1093,14 @@ if (gotSingleInstanceLock) {
       return new Promise((resolve) => setTimeout(resolve, delay));
     })
     .then(() => {
+      if (process.platform === "win32") {
+        session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+          desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
+            callback({ video: sources[0], audio: "loopback" });
+          });
+        });
+      }
+
       startApp().catch((error) => {
         console.error("Failed to start app:", error);
         dialog.showErrorBox(
@@ -1159,6 +1172,9 @@ if (gotSingleInstanceLock) {
     if (windowManager && isLiveWindow(windowManager.agentWindow)) {
       windowManager.agentWindow.destroy();
     }
+    if (windowManager && isLiveWindow(windowManager.transcriptionPreviewWindow)) {
+      windowManager.transcriptionPreviewWindow.destroy();
+    }
     if (hotkeyManager) {
       hotkeyManager.unregisterAll();
     } else {
@@ -1178,6 +1194,9 @@ if (gotSingleInstanceLock) {
     }
     if (audioTapManager) {
       audioTapManager.stop().catch(() => {});
+    }
+    if (linuxPortalAudioManager) {
+      linuxPortalAudioManager.stop().catch(() => {});
     }
     if (ipcHandlers) {
       ipcHandlers._cleanupTextEditMonitor();
