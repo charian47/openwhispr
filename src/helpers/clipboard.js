@@ -507,6 +507,7 @@ class ClipboardManager {
   }
 
   _detectHyprlandWindowClass() {
+    if (!this.commandExists("hyprctl")) return null;
     try {
       const result = spawnSync("hyprctl", ["activewindow", "-j"], { timeout: 1000 });
       if (result.status !== 0) return null;
