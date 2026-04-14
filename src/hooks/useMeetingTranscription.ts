@@ -815,6 +815,7 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
       cleanup,
       rememberSystemSpeaker,
       reserveSpeakerIndex,
+      setSystemPartialSpeakerIdentity,
     ]
   );
 

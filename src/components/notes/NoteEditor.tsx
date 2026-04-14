@@ -158,6 +158,10 @@ export default function NoteEditor({
 
   const segmentContainerRef = useRef<HTMLDivElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({ opacity: 0 });
+  const scheduleUiUpdate = useCallback((callback: () => void) => {
+    const frameId = window.requestAnimationFrame(callback);
+    return () => window.cancelAnimationFrame(frameId);
+  }, []);
 
   const effectiveTranscript = liveTranscript || meetingTranscript || note.transcript || "";
   const hasMeetingTranscript = !isMeetingRecording && !!effectiveTranscript;
@@ -191,7 +195,7 @@ export default function NoteEditor({
     } catch {
       return [];
     }
-  }, [note.id, note.participants]);
+  }, [note.participants]);
 
   const refreshSpeakerProfiles = useCallback(() => {
     window.electronAPI?.getSpeakerProfiles?.().then((profiles) => {
@@ -235,29 +239,35 @@ export default function NoteEditor({
 
   const prevProcessingStateRef = useRef(actionProcessingState);
   useEffect(() => {
+    let cancelScheduledUpdate: (() => void) | undefined;
+
     if (prevProcessingStateRef.current === "processing" && actionProcessingState === "success") {
-      setViewMode("enhanced");
+      cancelScheduledUpdate = scheduleUiUpdate(() => setViewMode("enhanced"));
     }
     prevProcessingStateRef.current = actionProcessingState;
-  }, [actionProcessingState]);
+
+    return cancelScheduledUpdate;
+  }, [actionProcessingState, scheduleUiUpdate]);
 
   useEffect(() => {
     if (note.id !== prevNoteIdRef.current) {
       prevNoteIdRef.current = note.id;
       autoShowDoneRef.current = false;
-      setChatMode("hidden");
-      setDiarizedSegments(null);
-      setIsDiarizing(false);
-      setSpeakerMappings({});
-      if (!isMeetingRecording) {
-        setViewMode("raw");
-      }
-      if (titleRef.current && titleRef.current.textContent !== note.title) {
-        titleRef.current.textContent = note.title || "";
-      }
-      editorRef.current?.commands.focus();
+      return scheduleUiUpdate(() => {
+        setChatMode("hidden");
+        setDiarizedSegments(null);
+        setIsDiarizing(false);
+        setSpeakerMappings({});
+        if (!isMeetingRecording) {
+          setViewMode("raw");
+        }
+        if (titleRef.current && titleRef.current.textContent !== note.title) {
+          titleRef.current.textContent = note.title || "";
+        }
+        editorRef.current?.commands.focus();
+      });
     }
-  }, [note.id, isMeetingRecording]);
+  }, [isMeetingRecording, note.id, note.title, scheduleUiUpdate]);
 
   useEffect(() => {
     window.electronAPI?.getSpeakerMappings?.(note.id).then((mappings) => {
@@ -275,9 +285,9 @@ export default function NoteEditor({
       embeddedChat.messages.length > 0
     ) {
       autoShowDoneRef.current = true;
-      setChatMode("floating");
+      return scheduleUiUpdate(() => setChatMode("floating"));
     }
-  }, [embeddedChat.activeConversationId, embeddedChat.messages.length]);
+  }, [embeddedChat.activeConversationId, embeddedChat.messages.length, scheduleUiUpdate]);
 
   useEffect(() => {
     if (titleRef.current && titleRef.current.textContent !== note.title) {
@@ -288,10 +298,12 @@ export default function NoteEditor({
   const prevMeetingRecordingRef = useRef(false);
   useEffect(() => {
     if (prevMeetingRecordingRef.current && !isMeetingRecording && diarizationSessionId) {
-      setIsDiarizing(true);
+      const cancelScheduledUpdate = scheduleUiUpdate(() => setIsDiarizing(true));
+      prevMeetingRecordingRef.current = !!isMeetingRecording;
+      return cancelScheduledUpdate;
     }
     prevMeetingRecordingRef.current = !!isMeetingRecording;
-  }, [isMeetingRecording, diarizationSessionId]);
+  }, [diarizationSessionId, isMeetingRecording, scheduleUiUpdate]);
 
   useEffect(() => {
     const expectedSession = diarizationSessionId;
@@ -519,9 +531,9 @@ export default function NoteEditor({
   useEffect(() => {
     if (!isRecording && !isProcessing && pendingTranscriptSwitchRef.current && liveTranscript) {
       pendingTranscriptSwitchRef.current = false;
-      setViewMode("transcript");
+      return scheduleUiUpdate(() => setViewMode("transcript"));
     }
-  }, [isRecording, isProcessing, liveTranscript]);
+  }, [isRecording, isProcessing, liveTranscript, scheduleUiUpdate]);
 
   const handleContentChange = useCallback(
     (newValue: string) => {
