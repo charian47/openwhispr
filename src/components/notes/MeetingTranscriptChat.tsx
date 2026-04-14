@@ -1,9 +1,18 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, X } from "lucide-react";
+import { Check, Lock, Sparkles, X } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { cn } from "../lib/utils";
 import type { TranscriptSegment } from "../../hooks/useMeetingTranscription";
+import {
+  isTranscriptSpeakerLocked,
+  type TranscriptSpeakerStatus,
+} from "../../utils/transcriptSpeakerState";
+
+interface SpeakerOption {
+  speakerId: string;
+  label: string;
+}
 
 const BUBBLE_STYLES = {
   mic: {
@@ -42,6 +51,8 @@ const SPEAKER_BORDER_COLORS = [
   "border-l-red-400/50",
 ];
 
+const STICKY_SCROLL_THRESHOLD_PX = 80;
+
 const getSpeakerKey = (segment: TranscriptSegment) => segment.speaker || segment.source;
 
 const getSpeakerColorIndex = (speaker: string): number => {
@@ -49,30 +60,80 @@ const getSpeakerColorIndex = (speaker: string): number => {
   return match ? Number(match[1]) % SPEAKER_COLORS.length : 0;
 };
 
-function PartialBubble({ text, source }: { text: string; source: "mic" | "system" }) {
+const getSpeakerNumber = (speakerId: string) => {
+  const match = speakerId.match(/speaker_(\d+)/);
+  return match ? Number(match[1]) + 1 : 1;
+};
+
+function PartialBubble({
+  text,
+  source,
+  speakerLabel,
+  speakerState,
+  t,
+}: {
+  text: string;
+  source: "mic" | "system";
+  speakerLabel?: string;
+  speakerState?: TranscriptSpeakerStatus;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
   const s = BUBBLE_STYLES[source];
   return (
     <div
       className={cn("flex", s.align)}
       style={{ animation: "agent-message-in 150ms ease-out both" }}
     >
-      <div
-        className={cn(
-          "max-w-[80%] px-3 py-1.5 rounded-lg",
-          s.radius,
-          s.bg,
-          "text-[13px] leading-relaxed italic"
+      <div className="max-w-[80%] flex flex-col">
+        {speakerLabel && (
+          <div className="mb-0.5 flex items-center gap-1 px-1">
+            <span className="text-[11px] font-medium text-muted-foreground/70">{speakerLabel}</span>
+            {speakerState === "provisional" && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-muted-foreground/40">
+                <Sparkles size={9} />
+                {getSpeakerStateLabel("provisional", t)}
+              </span>
+            )}
+            {speakerState === "locked" && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-muted-foreground/40">
+                <Lock size={9} />
+                {getSpeakerStateLabel("locked", t)}
+              </span>
+            )}
+          </div>
         )}
-      >
-        {text}
-        <span
-          className={cn("inline-block w-[2px] h-[13px] align-middle ml-0.5", s.cursor)}
-          style={{ animation: "agent-cursor-blink 800ms steps(1) infinite" }}
-        />
+        <div
+          className={cn(
+            "px-3 py-1.5 rounded-lg",
+            s.radius,
+            s.bg,
+            "text-[13px] leading-relaxed italic"
+          )}
+        >
+          {text}
+          <span
+            className={cn("inline-block w-[2px] h-[13px] align-middle ml-0.5", s.cursor)}
+            style={{ animation: "agent-cursor-blink 800ms steps(1) infinite" }}
+          />
+        </div>
       </div>
     </div>
   );
 }
+
+const getSpeakerStateLabel = (state: TranscriptSpeakerStatus, t: (key: string) => string) => {
+  switch (state) {
+    case "locked":
+      return t("notes.speaker.state.locked");
+    case "provisional":
+      return t("notes.speaker.state.provisional");
+    case "suggested":
+      return t("notes.speaker.state.suggested");
+    case "confirmed":
+    default:
+      return t("notes.speaker.state.confirmed");
+  }
+};
 
 function SpeakerLabel({
   speakerId,
@@ -82,7 +143,10 @@ function SpeakerLabel({
   participants,
   colorIdx,
   isYou,
+  availableSpeakers,
   onMap,
+  onReassignBubble,
+  onReassignRun,
   onConfirm,
   onDismiss,
   t,
@@ -94,13 +158,27 @@ function SpeakerLabel({
   participants?: Array<{ email: string; displayName: string | null }>;
   colorIdx: number;
   isYou: boolean;
+  availableSpeakers?: SpeakerOption[];
   onMap?: (speakerId: string, name: string, email?: string | null, profileId?: number) => void;
+  onReassignBubble?: (segmentId: string, targetSpeakerId: string) => void;
+  onReassignRun?: (segmentId: string, targetSpeakerId: string) => void;
   onConfirm?: (speakerId: string, name: string, profileId: number) => void;
   onDismiss?: (speakerId: string) => void;
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const speakerState =
+    segment.speakerLocked || isTranscriptSpeakerLocked(segment)
+      ? "locked"
+      : segment.speakerStatus ||
+        (segment.suggestedName && !mappedName
+          ? "suggested"
+          : segment.speakerName || mappedName
+            ? "confirmed"
+            : segment.speakerIsPlaceholder
+              ? "provisional"
+              : undefined);
 
   if (isYou) {
     return (
@@ -136,18 +214,17 @@ function SpeakerLabel({
     );
   }
 
-  const speakerNumber = (() => {
-    const match = speakerId.match(/speaker_(\d+)/);
-    return match ? Number(match[1]) + 1 : 1;
-  })();
-
-  const displayLabel = mappedName || segment.speakerName || t("notes.speaker.label", { n: speakerNumber });
+  const displayLabel =
+    mappedName ||
+    segment.speakerName ||
+    t("notes.speaker.label", { n: getSpeakerNumber(speakerId) });
   const isUnmapped = !mappedName && !segment.speakerName;
+  const reassignmentTargets = (availableSpeakers || []).filter(
+    (candidate) => candidate.speakerId !== speakerId
+  );
 
   const filteredParticipants = participants?.filter(
-    (p) =>
-      search === "" ||
-      (p.displayName || p.email).toLowerCase().includes(search.toLowerCase())
+    (p) => search === "" || (p.displayName || p.email).toLowerCase().includes(search.toLowerCase())
   );
 
   const filteredProfiles = speakerProfiles?.filter(
@@ -181,13 +258,27 @@ function SpeakerLabel({
       <PopoverTrigger asChild>
         <button
           className={cn(
-            "text-[11px] font-medium mb-0.5 px-1 transition-colors duration-100 cursor-pointer rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            "group inline-flex items-center gap-1 text-[11px] font-medium mb-0.5 px-1 transition-colors duration-100 cursor-pointer rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-ring",
             SPEAKER_COLORS[colorIdx],
             isUnmapped && "border-b border-dotted border-current",
+            speakerState === "provisional" && "italic text-foreground/55",
+            speakerState === "locked" && "text-foreground/70",
             "hover:bg-muted/50"
           )}
         >
-          {displayLabel}
+          <span>{displayLabel}</span>
+          {speakerState === "provisional" && (
+            <span className="inline-flex items-center gap-0.5 rounded border border-border/50 bg-background/80 px-1 py-0.5 text-[10px] font-medium text-muted-foreground/50">
+              <Sparkles size={8} />
+              {t("notes.speaker.state.provisional")}
+            </span>
+          )}
+          {speakerState === "locked" && (
+            <span className="inline-flex items-center gap-0.5 rounded border border-border/50 bg-background/80 px-1 py-0.5 text-[10px] font-medium text-muted-foreground/50">
+              <Lock size={8} />
+              {t("notes.speaker.state.locked")}
+            </span>
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-0">
@@ -219,7 +310,9 @@ function SpeakerLabel({
             </div>
           )}
           {filteredProfiles && filteredProfiles.length > 0 && (
-            <div className="p-1">
+            <div
+              className={cn("p-1", reassignmentTargets.length > 0 && "border-b border-border/30")}
+            >
               <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
                 {t("notes.speaker.knownSpeakers")}
               </div>
@@ -237,8 +330,43 @@ function SpeakerLabel({
               ))}
             </div>
           )}
+          {reassignmentTargets.length > 0 && (
+            <div className="p-1">
+              <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                {t("notes.speaker.moveBubble")}
+              </div>
+              {reassignmentTargets.map((candidate) => (
+                <button
+                  key={`bubble-${candidate.speakerId}`}
+                  onClick={() => {
+                    onReassignBubble?.(segment.id, candidate.speakerId);
+                    setOpen(false);
+                  }}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs text-foreground/70 hover:bg-foreground/5 transition-colors cursor-pointer"
+                >
+                  <span className="truncate">{candidate.label}</span>
+                </button>
+              ))}
+              <div className="px-2 pt-2 pb-1 text-[11px] font-medium text-muted-foreground">
+                {t("notes.speaker.moveRun")}
+              </div>
+              {reassignmentTargets.map((candidate) => (
+                <button
+                  key={`run-${candidate.speakerId}`}
+                  onClick={() => {
+                    onReassignRun?.(segment.id, candidate.speakerId);
+                    setOpen(false);
+                  }}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs text-foreground/70 hover:bg-foreground/5 transition-colors cursor-pointer"
+                >
+                  <span className="truncate">{candidate.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {(!filteredParticipants || filteredParticipants.length === 0) &&
             (!filteredProfiles || filteredProfiles.length === 0) &&
+            reassignmentTargets.length === 0 &&
             !search && (
               <div className="px-3 py-4 text-center text-[11px] text-foreground/30">
                 {t("notes.speaker.typeNamePlaceholder")}
@@ -254,6 +382,8 @@ interface MeetingTranscriptChatProps {
   segments: TranscriptSegment[];
   micPartial?: string;
   systemPartial?: string;
+  systemPartialSpeakerId?: string | null;
+  systemPartialSpeakerName?: string | null;
   speakerMappings?: Record<string, string>;
   speakerProfiles?: Array<{ id: number; display_name: string; email: string | null }>;
   participants?: Array<{ email: string; displayName: string | null }>;
@@ -263,6 +393,8 @@ interface MeetingTranscriptChatProps {
     email?: string | null,
     profileId?: number
   ) => void;
+  onReassignBubble?: (segmentId: string, targetSpeakerId: string) => void;
+  onReassignRun?: (segmentId: string, targetSpeakerId: string) => void;
   onConfirmSuggestion?: (speakerId: string, suggestedName: string, profileId: number) => void;
   onDismissSuggestion?: (speakerId: string) => void;
 }
@@ -271,26 +403,73 @@ export function MeetingTranscriptChat({
   segments,
   micPartial,
   systemPartial,
+  systemPartialSpeakerId,
+  systemPartialSpeakerName,
   speakerMappings,
   speakerProfiles,
   participants,
   onMapSpeaker,
+  onReassignBubble,
+  onReassignRun,
   onConfirmSuggestion,
   onDismissSuggestion,
 }: MeetingTranscriptChatProps) {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const shouldStickToBottomRef = useRef(true);
+  const availableSpeakers = useMemo(
+    () =>
+      segments.reduce<SpeakerOption[]>((acc, segment) => {
+        if (!segment.speaker || segment.speaker === "you") {
+          return acc;
+        }
+
+        if (acc.some((candidate) => candidate.speakerId === segment.speaker)) {
+          return acc;
+        }
+
+        acc.push({
+          speakerId: segment.speaker,
+          label:
+            speakerMappings?.[segment.speaker] ||
+            segment.speakerName ||
+            t("notes.speaker.label", { n: getSpeakerNumber(segment.speaker) }),
+        });
+        return acc;
+      }, []),
+    [segments, speakerMappings, t]
+  );
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    if (isNearBottom) {
-      el.scrollTop = el.scrollHeight;
-    }
+    const updateStickyScroll = () => {
+      shouldStickToBottomRef.current =
+        el.scrollHeight - el.scrollTop - el.clientHeight < STICKY_SCROLL_THRESHOLD_PX;
+    };
+
+    updateStickyScroll();
+    el.addEventListener("scroll", updateStickyScroll);
+    return () => el.removeEventListener("scroll", updateStickyScroll);
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !shouldStickToBottomRef.current) return;
+    el.scrollTop = el.scrollHeight;
   }, [segments, micPartial, systemPartial]);
 
   const hasContent = segments.length > 0 || micPartial || systemPartial;
+  const systemPartialSpeakerLabel =
+    systemPartialSpeakerName ||
+    (systemPartialSpeakerId
+      ? t("notes.speaker.label", { n: getSpeakerNumber(systemPartialSpeakerId) })
+      : undefined);
+  const systemPartialSpeakerState = systemPartialSpeakerId
+    ? systemPartialSpeakerName
+      ? "confirmed"
+      : "provisional"
+    : undefined;
 
   if (!hasContent) {
     return (
@@ -338,7 +517,10 @@ export function MeetingTranscriptChat({
                 participants={participants}
                 colorIdx={colorIdx}
                 isYou={isYou}
+                availableSpeakers={availableSpeakers}
                 onMap={onMapSpeaker}
+                onReassignBubble={onReassignBubble}
+                onReassignRun={onReassignRun}
                 onConfirm={onConfirmSuggestion}
                 onDismiss={onDismissSuggestion}
                 t={t}
@@ -367,10 +549,24 @@ export function MeetingTranscriptChat({
       })}
 
       {[
-        { text: micPartial, source: "mic" as const },
-        { text: systemPartial, source: "system" as const },
+        { text: micPartial, source: "mic" as const, speakerLabel: undefined },
+        {
+          text: systemPartial,
+          source: "system" as const,
+          speakerLabel: systemPartialSpeakerLabel,
+        },
       ].map(
-        ({ text, source }) => text && <PartialBubble key={source} text={text} source={source} />
+        ({ text, source, speakerLabel }) =>
+          text && (
+            <PartialBubble
+              key={source}
+              text={text}
+              source={source}
+              speakerLabel={speakerLabel}
+              speakerState={source === "system" ? systemPartialSpeakerState : undefined}
+              t={t}
+            />
+          )
       )}
     </div>
   );

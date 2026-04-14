@@ -12,6 +12,13 @@ const DeepgramStreaming = require("./deepgramStreaming");
 const OpenAIRealtimeStreaming = require("./openaiRealtimeStreaming");
 const AudioStorageManager = require("./audioStorage");
 const liveSpeakerIdentifier = require("./liveSpeakerIdentifier");
+const MeetingEchoLeakDetector = require("./meetingEchoLeakDetector");
+const {
+  applyConfirmedSpeaker,
+  applySuggestedSpeaker,
+  canAutoRelabelSpeaker,
+  isSpeakerLocked,
+} = require("./speakerAssignmentPolicy");
 const { downsample24kTo16k, pcm16ToWav } = require("../utils/audioUtils");
 
 const MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions";
@@ -2806,6 +2813,60 @@ class IPCHandlers {
     let meetingTranscriptionPrepareInProgress = false;
     let meetingTranscriptionPreparePromise = null;
 
+    const normalizeTranscriptForComparison = (text) =>
+      String(text || "")
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const hasNearbyTranscriptMatch = (targetSource, text, timestamp) => {
+      const normalizedText = normalizeTranscriptForComparison(text);
+      if (!normalizedText) {
+        return false;
+      }
+
+      for (let i = meetingDiarizationSegments.length - 1; i >= 0; i -= 1) {
+        const candidate = meetingDiarizationSegments[i];
+        if (candidate.source !== targetSource || candidate.timestamp == null) {
+          continue;
+        }
+
+        if (timestamp != null && Math.abs(candidate.timestamp - timestamp) > 4000) {
+          if (candidate.timestamp < timestamp) {
+            break;
+          }
+          continue;
+        }
+
+        const normalizedCandidate = normalizeTranscriptForComparison(candidate.text);
+        if (!normalizedCandidate) {
+          continue;
+        }
+
+        if (
+          normalizedCandidate === normalizedText ||
+          normalizedCandidate.includes(normalizedText) ||
+          normalizedText.includes(normalizedCandidate)
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    };
+
+    const shouldSkipDuplicateSystemSegment = (text, timestamp) =>
+      hasNearbyTranscriptMatch("mic", text, timestamp);
+
+    const shouldSkipDuplicateMicSegment = (text, timestamp, suppression = null) => {
+      if (!suppression?.likelyRenderBleed || suppression.reason === "double_talk") {
+        return false;
+      }
+
+      return hasNearbyTranscriptMatch("system", text, timestamp);
+    };
+
     const attachMeetingStreamingHandlers = (streaming, win, source) => {
       const send = (channel, data) => {
         if (!win || win.isDestroyed()) {
@@ -2820,11 +2881,46 @@ class IPCHandlers {
       };
 
       streaming.onPartialTranscript = (text) => {
+        if (source === "mic" && meetingEchoLeakDetector.isMicProbablyRenderBleed()) {
+          send("meeting-transcription-segment", { text: "", source, type: "partial" });
+          return;
+        }
+
         send("meeting-transcription-segment", { text, source, type: "partial" });
       };
       streaming.onFinalTranscript = (text, timestamp) => {
         const segments = streaming.completedSegments;
         const latestSegment = segments.length > 0 ? segments[segments.length - 1] : text;
+        if (source === "mic") {
+          const suppression = shouldSuppressMicTranscriptSegment(timestamp, Date.now());
+          if (suppression.suppress) {
+            debugLogger.debug("Suppressing contaminated mic segment", {
+              reason: suppression.reason,
+              averageCorrelation: suppression.averageCorrelation?.toFixed(3),
+              averageResidual: suppression.averageResidual?.toFixed(3),
+              text: latestSegment.slice(0, 80),
+            });
+            send("meeting-transcription-segment", { text: "", source, type: "partial" });
+            return;
+          }
+
+          if (shouldSkipDuplicateMicSegment(latestSegment, timestamp, suppression)) {
+            debugLogger.debug("Skipping duplicate mic segment that matches recent system audio", {
+              text: latestSegment.slice(0, 80),
+              averageCorrelation: suppression.averageCorrelation?.toFixed(3),
+              averageResidual: suppression.averageResidual?.toFixed(3),
+            });
+            send("meeting-transcription-segment", { text: "", source, type: "partial" });
+            return;
+          }
+        }
+
+        if (source === "system" && shouldSkipDuplicateSystemSegment(latestSegment, timestamp)) {
+          debugLogger.debug("Skipping duplicate system segment that matches recent mic audio", {
+            text: latestSegment.slice(0, 80),
+          });
+          return;
+        }
         debugLogger.debug("Meeting segment sending to renderer", {
           source,
           text: latestSegment.slice(0, 80),
@@ -2936,7 +3032,9 @@ class IPCHandlers {
       return win;
     };
 
+    const MEETING_MIC_REFERENCE_ALIGNMENT_MS = 180;
     let meetingSendCounts = { mic: 0, system: 0 };
+    const meetingEchoLeakDetector = new MeetingEchoLeakDetector();
 
     const fs = require("fs");
     let meetingDiarizationStream = null;
@@ -2944,6 +3042,7 @@ class IPCHandlers {
     let meetingDiarizationSegments = [];
     let meetingLiveSpeakerActive = false;
     let meetingLiveSpeakerState = null;
+    let meetingLiveSpeakerStartedAt = null;
 
     let meetingLocalMode = false;
     let meetingLocalBuffers = { mic: [], system: [] };
@@ -2953,17 +3052,72 @@ class IPCHandlers {
     let meetingLocalProvider = null;
     let meetingLocalModel = null;
     let meetingLocalTranscribing = false;
+    let meetingPendingMicChunks = [];
 
     const getLiveSpeakerProfiles = () => this.databaseManager.getSpeakerProfiles(true);
+    const shouldSuppressMicTranscriptSegment = (startedAt, endedAt = Date.now()) =>
+      meetingEchoLeakDetector.shouldSuppressMicSegment(startedAt, endedAt);
+
+    const dispatchMeetingAudioBuffer = (buffer, source) => {
+      if (meetingLocalMode) {
+        meetingLocalBuffers[source].push(buffer);
+        return;
+      }
+
+      const streaming = source === "mic" ? this._meetingMicStreaming : this._meetingSystemStreaming;
+      if (!streaming) {
+        if (meetingSendCounts[source] === 0) {
+          debugLogger.error("Meeting audio send: no streaming instance", { source });
+        }
+        return;
+      }
+
+      const sent = streaming.sendAudio(buffer);
+      meetingSendCounts[source]++;
+      if (meetingSendCounts[source] <= 5 || meetingSendCounts[source] % 100 === 0) {
+        debugLogger.debug("Meeting audio send", {
+          source,
+          bytes: buffer.length,
+          sent,
+          wsReady: streaming.ws?.readyState,
+          totalSent: streaming.audioBytesSent,
+          count: meetingSendCounts[source],
+        });
+      }
+    };
+
+    const flushPendingMeetingMicChunks = (force = false) => {
+      if (!meetingPendingMicChunks.length) {
+        return;
+      }
+
+      const now = Date.now();
+      while (meetingPendingMicChunks.length > 0) {
+        const next = meetingPendingMicChunks[0];
+        if (!force && now - next.queuedAt < MEETING_MIC_REFERENCE_ALIGNMENT_MS) {
+          break;
+        }
+
+        meetingPendingMicChunks.shift();
+        const analysis = meetingEchoLeakDetector.analyzeMicChunk(next.buffer);
+        if (analysis?.shouldMute) {
+          if (!meetingLocalMode) {
+            dispatchMeetingAudioBuffer(Buffer.alloc(next.buffer.length), "mic");
+          }
+          continue;
+        }
+
+        dispatchMeetingAudioBuffer(next.buffer, "mic");
+      }
+    };
 
     const stopLiveSpeakerIdentification = async () => {
       if (!meetingLiveSpeakerActive) {
         return null;
       }
 
-      meetingLiveSpeakerState = liveSpeakerIdentifier.getTransientMap();
       meetingLiveSpeakerActive = false;
-      liveSpeakerIdentifier.stop();
+      meetingLiveSpeakerState = await liveSpeakerIdentifier.stop();
       return meetingLiveSpeakerState;
     };
 
@@ -2975,17 +3129,42 @@ class IPCHandlers {
       }
 
       meetingLiveSpeakerState = null;
+      meetingLiveSpeakerStartedAt = Date.now();
       const started = await liveSpeakerIdentifier.start(
         (identification) => {
           if (!win || win.isDestroyed()) {
             return;
           }
 
-          win.webContents.send("meeting-speaker-identified", identification);
+          const startTime = Math.max(
+            meetingLiveSpeakerStartedAt || 0,
+            (meetingLiveSpeakerStartedAt || 0) + identification.startTime * 1000
+          );
+          const endTime = Math.max(
+            startTime,
+            (meetingLiveSpeakerStartedAt || 0) + identification.endTime * 1000
+          );
+          const enrichedIdentification = {
+            ...identification,
+            startTime,
+            endTime,
+          };
+
+          win.webContents.send("meeting-speaker-identified", enrichedIdentification);
 
           for (const seg of meetingDiarizationSegments) {
-            if (seg.source === "system" && !seg.speaker) {
-              seg.speaker = identification.speakerId;
+            if (
+              seg.source === "system" &&
+              seg.timestamp != null &&
+              seg.timestamp >= startTime &&
+              seg.timestamp <= endTime &&
+              (!seg.speaker || seg.speakerIsPlaceholder)
+            ) {
+              applyConfirmedSpeaker(seg, {
+                speaker: identification.speakerId,
+                speakerName: identification.displayName || seg.speakerName,
+                speakerIsPlaceholder: false,
+              });
             }
           }
         },
@@ -2996,6 +3175,8 @@ class IPCHandlers {
 
       if (started) {
         meetingLiveSpeakerActive = true;
+      } else {
+        meetingLiveSpeakerStartedAt = null;
       }
 
       return started;
@@ -3036,9 +3217,34 @@ class IPCHandlers {
 
         if (result?.success && result.text?.trim()) {
           const text = result.text.trim();
-          meetingLocalTranscript += (meetingLocalTranscript ? " " : "") + text;
-
           const segTimestamp = Date.now();
+          if (source === "mic") {
+            const chunkDurationMs = (pcm24k.length / 2 / 24000) * 1000;
+            const suppression = shouldSuppressMicTranscriptSegment(
+              segTimestamp - chunkDurationMs,
+              segTimestamp
+            );
+            if (suppression.suppress) {
+              debugLogger.debug("Suppressing contaminated local mic segment", {
+                reason: suppression.reason,
+                averageCorrelation: suppression.averageCorrelation?.toFixed(3),
+                averageResidual: suppression.averageResidual?.toFixed(3),
+                text: text.slice(0, 80),
+              });
+              return;
+            }
+
+            if (shouldSkipDuplicateMicSegment(text, segTimestamp, suppression)) {
+              debugLogger.debug("Skipping duplicate local mic segment that matches system audio", {
+                text: text.slice(0, 80),
+                averageCorrelation: suppression.averageCorrelation?.toFixed(3),
+                averageResidual: suppression.averageResidual?.toFixed(3),
+              });
+              return;
+            }
+          }
+
+          meetingLocalTranscript += (meetingLocalTranscript ? " " : "") + text;
           meetingDiarizationSegments.push({ text, source, timestamp: segTimestamp });
 
           if (meetingLocalWin && !meetingLocalWin.isDestroyed()) {
@@ -3079,6 +3285,7 @@ class IPCHandlers {
       }
       void stopLiveSpeakerIdentification();
       meetingLiveSpeakerState = null;
+      meetingLiveSpeakerStartedAt = null;
       meetingLocalMode = false;
       meetingLocalBuffers = { mic: [], system: [] };
       if (meetingDiarizationStream) {
@@ -3095,12 +3302,17 @@ class IPCHandlers {
       meetingLocalProvider = null;
       meetingLocalModel = null;
       meetingLocalTranscribing = false;
+      meetingPendingMicChunks = [];
+      meetingEchoLeakDetector.reset();
     };
 
     const resetMeetingStreamingState = () => {
       this._meetingMicStreaming = null;
       this._meetingSystemStreaming = null;
       meetingSendCounts = { mic: 0, system: 0 };
+      meetingLiveSpeakerStartedAt = null;
+      meetingPendingMicChunks = [];
+      meetingEchoLeakDetector.reset();
     };
 
     const disconnectMeetingStreaming = async () => {
@@ -3205,6 +3417,7 @@ class IPCHandlers {
       meetingTranscriptionStartInProgress = true;
       try {
         const systemAudioMode = getMeetingSystemAudioMode();
+        meetingEchoLeakDetector.reset();
 
         // If already prepared (warm connections from prepare), just re-attach handlers
         if (!meetingLocalMode && isMeetingStreamingConnected()) {
@@ -3250,7 +3463,10 @@ class IPCHandlers {
         }
 
         await connectRealtimeStreaming(event, options);
-        await startLiveSpeakerIdentification(BrowserWindow.fromWebContents(event.sender), systemAudioMode);
+        await startLiveSpeakerIdentification(
+          BrowserWindow.fromWebContents(event.sender),
+          systemAudioMode
+        );
         if (systemAudioMode === "native") {
           await startNativeMeetingSystemAudio(event);
         }
@@ -3265,11 +3481,14 @@ class IPCHandlers {
     });
 
     const sendMeetingAudio = (audioBuffer, source) => {
+      const outboundBuffer = Buffer.isBuffer(audioBuffer) ? audioBuffer : Buffer.from(audioBuffer);
+
       if (source === "system") {
-        const buf = Buffer.isBuffer(audioBuffer) ? audioBuffer : Buffer.from(audioBuffer);
+        meetingEchoLeakDetector.recordSystemChunk(outboundBuffer);
+        flushPendingMeetingMicChunks();
 
         if (meetingLiveSpeakerActive) {
-          void liveSpeakerIdentifier.feedAudio(buf);
+          void liveSpeakerIdentifier.feedAudio(outboundBuffer);
         }
 
         if (!meetingDiarizationStream) {
@@ -3277,34 +3496,31 @@ class IPCHandlers {
           meetingDiarizationPath = path.join(os.tmpdir(), `ow-diarize-raw-${Date.now()}.pcm`);
           meetingDiarizationStream = fs.createWriteStream(meetingDiarizationPath);
         }
-        meetingDiarizationStream.write(buf);
-      }
-
-      if (meetingLocalMode) {
-        const buf = Buffer.isBuffer(audioBuffer) ? audioBuffer : Buffer.from(audioBuffer);
-        meetingLocalBuffers[source].push(buf);
+        meetingDiarizationStream.write(outboundBuffer);
+        dispatchMeetingAudioBuffer(outboundBuffer, "system");
         return;
       }
 
-      const streaming = source === "mic" ? this._meetingMicStreaming : this._meetingSystemStreaming;
-      if (!streaming) {
-        if (meetingSendCounts[source] === 0) {
-          debugLogger.error("Meeting audio send: no streaming instance", { source });
+      if (source === "mic") {
+        if (!hasNativeMeetingSystemAudio()) {
+          const analysis = meetingEchoLeakDetector.analyzeMicChunk(outboundBuffer);
+          if (analysis?.shouldMute) {
+            if (!meetingLocalMode) {
+              dispatchMeetingAudioBuffer(Buffer.alloc(outboundBuffer.length), "mic");
+            }
+            return;
+          }
+
+          dispatchMeetingAudioBuffer(outboundBuffer, "mic");
+          return;
         }
-        return;
-      }
-      const buf = Buffer.isBuffer(audioBuffer) ? audioBuffer : Buffer.from(audioBuffer);
-      const sent = streaming.sendAudio(buf);
-      meetingSendCounts[source]++;
-      if (meetingSendCounts[source] <= 5 || meetingSendCounts[source] % 100 === 0) {
-        debugLogger.debug("Meeting audio send", {
-          source,
-          bytes: buf.length,
-          sent,
-          wsReady: streaming.ws?.readyState,
-          totalSent: streaming.audioBytesSent,
-          count: meetingSendCounts[source],
+
+        meetingPendingMicChunks.push({
+          buffer: outboundBuffer,
+          queuedAt: Date.now(),
         });
+        flushPendingMeetingMicChunks();
+        return;
       }
     };
 
@@ -3332,6 +3548,8 @@ class IPCHandlers {
           await this.audioTapManager.stop();
         }
 
+        flushPendingMeetingMicChunks(true);
+
         const liveSpeakerState = await stopLiveSpeakerIdentification().catch(() => null);
 
         const diarizationSessionId = `diar-${Date.now()}`;
@@ -3355,7 +3573,11 @@ class IPCHandlers {
           } catch (err) {
             debugLogger.error("Local meeting final transcription failed", { error: err.message });
           }
-          const transcript = meetingLocalTranscript;
+          const transcript =
+            diarizationSegments
+              .map((segment) => segment.text)
+              .join(" ")
+              .trim() || meetingLocalTranscript;
           resetMeetingLocalState();
 
           // Fire-and-forget background diarization (or notify skip)
@@ -3371,7 +3593,11 @@ class IPCHandlers {
         }
 
         const results = await disconnectMeetingStreaming();
-        const transcript = [results[0]?.text, results[1]?.text].filter(Boolean).join(" ");
+        const transcript =
+          diarizationSegments
+            .map((segment) => segment.text)
+            .join(" ")
+            .trim() || [results[0]?.text, results[1]?.text].filter(Boolean).join(" ");
 
         // Fire-and-forget background diarization (or notify skip)
         this._startOrSkipDiarization(
@@ -5137,8 +5363,9 @@ class IPCHandlers {
         const embeddings = this.databaseManager.getNoteSpeakerEmbeddings(noteId);
         const noteSpeakerEmbedding = embeddings.find((e) => e.speaker_id === speakerId);
         const liveSpeakerEmbedding = liveSpeakerIdentifier.getSpeakerEmbedding(speakerId);
-        const speakerEmbeddingBuffer = noteSpeakerEmbedding?.embedding
-          || (liveSpeakerEmbedding ? Buffer.from(liveSpeakerEmbedding.buffer) : null);
+        const speakerEmbeddingBuffer =
+          noteSpeakerEmbedding?.embedding ||
+          (liveSpeakerEmbedding ? Buffer.from(liveSpeakerEmbedding.buffer) : null);
 
         let resolvedProfileId = profileId ?? null;
         if (speakerEmbeddingBuffer) {
@@ -5183,20 +5410,33 @@ class IPCHandlers {
         const speakerEmbeddings = require("./speakerEmbeddings");
         const noteIds = this.databaseManager.getNotesWithUnmappedSpeakers();
 
-        const profileEmb = new Float32Array(profile.embedding.buffer, profile.embedding.byteOffset, profile.embedding.byteLength / 4);
+        const profileEmb = new Float32Array(
+          profile.embedding.buffer,
+          profile.embedding.byteOffset,
+          profile.embedding.byteLength / 4
+        );
 
         for (const noteId of noteIds) {
           const embeddings = this.databaseManager.getNoteSpeakerEmbeddings(noteId);
           const existing = this.databaseManager.getSpeakerMappings(noteId);
-          const mappedSpeakers = new Set(existing.map(m => m.speaker_id));
+          const mappedSpeakers = new Set(existing.map((m) => m.speaker_id));
           for (const emb of embeddings) {
             if (mappedSpeakers.has(emb.speaker_id)) continue;
 
-            const speakerEmb = new Float32Array(emb.embedding.buffer, emb.embedding.byteOffset, emb.embedding.byteLength / 4);
+            const speakerEmb = new Float32Array(
+              emb.embedding.buffer,
+              emb.embedding.byteOffset,
+              emb.embedding.byteLength / 4
+            );
             const similarity = speakerEmbeddings.cosineSimilarity(profileEmb, speakerEmb);
 
-            if (similarity > 0.70) {
-              this.databaseManager.setSpeakerMapping(noteId, emb.speaker_id, profile.id, profile.display_name);
+            if (similarity > 0.7) {
+              this.databaseManager.setSpeakerMapping(
+                noteId,
+                emb.speaker_id,
+                profile.id,
+                profile.display_name
+              );
 
               const note = this.databaseManager.getNote(noteId);
               if (note?.transcript) {
@@ -5205,12 +5445,22 @@ class IPCHandlers {
                   let changed = false;
                   for (const seg of segments) {
                     if (seg.speaker === emb.speaker_id && !seg.speakerName) {
-                      seg.speakerName = profile.display_name;
+                      if (canAutoRelabelSpeaker(seg)) {
+                        applyConfirmedSpeaker(seg, {
+                          speakerName: profile.display_name,
+                          speakerIsPlaceholder: false,
+                        });
+                      } else {
+                        seg.speakerName = profile.display_name;
+                        seg.speakerIsPlaceholder = false;
+                      }
                       changed = true;
                     }
                   }
                   if (changed) {
-                    this.databaseManager.updateNote(noteId, { transcript: JSON.stringify(segments) });
+                    this.databaseManager.updateNote(noteId, {
+                      transcript: JSON.stringify(segments),
+                    });
                   }
                 } catch (_) {}
               }
@@ -5233,9 +5483,12 @@ class IPCHandlers {
         continue;
       }
 
-      segment.speakerName = displayName;
-      segment.suggestedName = undefined;
-      segment.suggestedProfileId = undefined;
+      applyConfirmedSpeaker(segment, {
+        speakerName: displayName,
+        speakerIsPlaceholder: false,
+        suggestedName: undefined,
+        suggestedProfileId: undefined,
+      });
     }
   }
 
@@ -5302,10 +5555,20 @@ class IPCHandlers {
         if (liveMapping) {
           displayName = liveMapping.display_name || displayName;
           profileId = liveMapping.profile_id ?? profileId;
-          this.databaseManager.setSpeakerMapping(bestEntry.noteId, mappedId, profileId, displayName);
+          this.databaseManager.setSpeakerMapping(
+            bestEntry.noteId,
+            mappedId,
+            profileId,
+            displayName
+          );
           this.databaseManager.removeSpeakerMapping(bestEntry.noteId, bestEntry.speakerId);
         } else if (displayName) {
-          this.databaseManager.setSpeakerMapping(bestEntry.noteId, mappedId, profileId, displayName);
+          this.databaseManager.setSpeakerMapping(
+            bestEntry.noteId,
+            mappedId,
+            profileId,
+            displayName
+          );
         }
       }
 
@@ -5323,7 +5586,12 @@ class IPCHandlers {
     };
 
     if (!this.diarizationManager?.isAvailable() || !rawPcmPath) {
-      send({ segments: [] });
+      send({
+        segments: transcriptSegments.map((segment, index) => ({
+          ...segment,
+          id: segment.id || `segment-${index}`,
+        })),
+      });
       return;
     }
 
@@ -5333,8 +5601,21 @@ class IPCHandlers {
       let tmpWav = null;
       try {
         tmpWav = await this.diarizationManager.convertRawPcmToWav(rawPcmPath, 24000);
+        const observedSpeakerIds = new Set(
+          transcriptSegments
+            .filter((segment) => segment.source === "system" && segment.speaker)
+            .map((segment) => segment.speaker)
+        );
+        for (const speakerId of Object.keys(liveSpeakerState || {})) {
+          observedSpeakerIds.add(speakerId);
+        }
 
-        const diarizationSegments = await this.diarizationManager.diarize(tmpWav);
+        const expectedSpeakerCount =
+          observedSpeakerIds.size >= 2 ? Math.min(observedSpeakerIds.size, 4) : -1;
+        const diarizationSegments = await this.diarizationManager.diarize(
+          tmpWav,
+          expectedSpeakerCount > 0 ? { numSpeakers: expectedSpeakerCount } : {}
+        );
 
         const startMs = transcriptSegments[0]?.timestamp || 0;
         const isEpochMs = startMs > 1e9;
@@ -5353,7 +5634,7 @@ class IPCHandlers {
           diarizationSegments
         );
 
-        const speakerSet = new Set(diarizationSegments.map(d => d.speaker));
+        const speakerSet = new Set(diarizationSegments.map((d) => d.speaker));
         const speakerRenumber = new Map();
         let sIdx = 0;
         for (const sp of speakerSet) {
@@ -5365,12 +5646,12 @@ class IPCHandlers {
         const speakerEmb = require("./speakerEmbeddings");
         try {
           if (speakerEmb.isAvailable() && tmpWav) {
-            const speakerIds = [...new Set(diarizationSegments.map(s => s.speaker))];
+            const speakerIds = [...new Set(diarizationSegments.map((s) => s.speaker))];
             speakerEmbeddingsMap = {};
 
             for (const spk of speakerIds) {
-              const segs = diarizationSegments.filter(s => s.speaker === spk);
-              const sorted = segs.sort((a, b) => (b.end - b.start) - (a.end - a.start)).slice(0, 3);
+              const segs = diarizationSegments.filter((s) => s.speaker === spk);
+              const sorted = segs.sort((a, b) => b.end - b.start - (a.end - a.start)).slice(0, 3);
               const embeddings = [];
               for (const seg of sorted) {
                 if (seg.end - seg.start < 1.5) continue;
@@ -5412,7 +5693,11 @@ class IPCHandlers {
                 let bestSim = 0;
 
                 for (const profile of profiles) {
-                  const profileEmb = new Float32Array(profile.embedding.buffer, profile.embedding.byteOffset, profile.embedding.byteLength / 4);
+                  const profileEmb = new Float32Array(
+                    profile.embedding.buffer,
+                    profile.embedding.byteOffset,
+                    profile.embedding.byteLength / 4
+                  );
                   const sim = speakerEmb.cosineSimilarity(emb, profileEmb);
                   if (sim > bestSim) {
                     bestSim = sim;
@@ -5420,17 +5705,27 @@ class IPCHandlers {
                   }
                 }
 
-                if (bestProfile && bestSim > 0.70) {
+                if (bestProfile && bestSim > 0.7) {
                   for (const seg of enrichedSegments) {
                     if (seg.speaker === mappedId) {
-                      seg.speakerName = bestProfile.display_name;
+                      applyConfirmedSpeaker(seg, {
+                        speakerName: bestProfile.display_name,
+                        speakerIsPlaceholder: false,
+                        suggestedName: undefined,
+                        suggestedProfileId: undefined,
+                      });
                     }
                   }
                 } else if (bestProfile && bestSim > 0.55) {
                   for (const seg of enrichedSegments) {
                     if (seg.speaker === mappedId) {
-                      seg.suggestedName = bestProfile.display_name;
-                      seg.suggestedProfileId = bestProfile.id;
+                      if (isSpeakerLocked(seg)) {
+                        continue;
+                      }
+                      applySuggestedSpeaker(seg, {
+                        suggestedName: bestProfile.display_name,
+                        suggestedProfileId: bestProfile.id,
+                      });
                     }
                   }
                 }
@@ -5446,9 +5741,13 @@ class IPCHandlers {
         debugLogger.warn("Background diarization failed", { error: err.message });
         send({ segments: [] });
       } finally {
-        try { fs.unlinkSync(rawPcmPath); } catch (_) {}
+        try {
+          fs.unlinkSync(rawPcmPath);
+        } catch (_) {}
         if (tmpWav) {
-          try { fs.unlinkSync(tmpWav); } catch (_) {}
+          try {
+            fs.unlinkSync(tmpWav);
+          } catch (_) {}
         }
       }
     })();

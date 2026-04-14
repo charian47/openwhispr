@@ -1356,12 +1356,13 @@ declare global {
           text: string;
           source: "mic" | "system";
           type: "partial" | "final";
+          timestamp?: number;
         }) => void
       ) => () => void;
       onMeetingSpeakerIdentified?: (
         callback: (data: {
           speakerId: string;
-          displayName?: string;
+          displayName?: string | null;
           startTime: number;
           endTime: number;
         }) => void
@@ -1391,20 +1392,26 @@ declare global {
             timestamp?: number;
             speaker?: string;
             speakerName?: string;
+            speakerIsPlaceholder?: boolean;
             suggestedName?: string;
             suggestedProfileId?: number;
+            speakerStatus?: "provisional" | "confirmed" | "suggested" | "locked";
+            speakerLocked?: boolean;
+            speakerLockSource?: "user" | "diarization" | "suggestion";
           }>;
           speakerEmbeddings?: Record<string, number[]> | null;
         }) => void
       ) => () => void;
 
       // Speaker name mapping
-      getSpeakerMappings?: (noteId: number) => Promise<Array<{
-        note_id: number;
-        speaker_id: string;
-        profile_id: number | null;
-        display_name: string;
-      }>>;
+      getSpeakerMappings?: (noteId: number) => Promise<
+        Array<{
+          note_id: number;
+          speaker_id: string;
+          profile_id: number | null;
+          display_name: string;
+        }>
+      >;
       setSpeakerMapping?: (
         noteId: number,
         speakerId: string,
@@ -1413,14 +1420,16 @@ declare global {
         profileId?: number | null
       ) => Promise<{ success: boolean; profileId: number | null }>;
       removeSpeakerMapping?: (noteId: number, speakerId: string) => Promise<{ success: boolean }>;
-      getSpeakerProfiles?: () => Promise<Array<{
-        id: number;
-        display_name: string;
-        email: string | null;
-        sample_count: number;
-        created_at: string;
-        updated_at: string;
-      }>>;
+      getSpeakerProfiles?: () => Promise<
+        Array<{
+          id: number;
+          display_name: string;
+          email: string | null;
+          sample_count: number;
+          created_at: string;
+          updated_at: string;
+        }>
+      >;
       saveNoteSpeakerEmbeddings?: (
         noteId: number,
         embeddings: Record<string, number[]>

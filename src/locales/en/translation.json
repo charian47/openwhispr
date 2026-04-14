@@ -1927,8 +1927,16 @@
       "meetingAttendees": "Meeting attendees",
       "assignName": "Assign name",
       "isThisPerson": "Is this {{name}}?",
+      "moveBubble": "Move this bubble",
+      "moveRun": "Move this run",
       "confirmed": "Confirmed",
-      "nameAssigned": "Name assigned"
+      "nameAssigned": "Name assigned",
+      "state": {
+        "provisional": "Provisional",
+        "confirmed": "Confirmed",
+        "suggested": "Suggested",
+        "locked": "Locked"
+      }
     }
   },
   "dictionary": {

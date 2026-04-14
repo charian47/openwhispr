@@ -34,22 +34,14 @@ import EmbeddedChat, { type EmbeddedChatMode } from "./EmbeddedChat";
 import { useEmbeddedChat } from "../../hooks/useEmbeddedChat";
 import { normalizeDbDate } from "../../utils/dateFormatting";
 import { parseTranscriptSegments } from "../../utils/parseTranscriptSegments";
+import {
+  applyTranscriptSpeakerPatch,
+  lockTranscriptSpeaker,
+  mergeTranscriptSegments,
+  serializeTranscriptSegments,
+} from "../../utils/transcriptSpeakerState";
 import NoteParticipants from "./NoteParticipants";
 import type { CalendarAttendee } from "../../types/calendar";
-
-function serializeTranscript(segments: TranscriptSegment[]): string {
-  return JSON.stringify(
-    segments.map((s) => ({
-      text: s.text,
-      source: s.source,
-      timestamp: s.timestamp,
-      speaker: s.speaker,
-      speakerName: s.speakerName,
-      suggestedName: s.suggestedName,
-      suggestedProfileId: s.suggestedProfileId,
-    }))
-  );
-}
 
 function formatNoteDate(dateStr: string): string {
   const date = normalizeDbDate(dateStr);
@@ -97,6 +89,8 @@ interface NoteEditorProps {
   meetingSegments?: TranscriptSegment[];
   meetingMicPartial?: string;
   meetingSystemPartial?: string;
+  meetingSystemPartialSpeakerId?: string | null;
+  meetingSystemPartialSpeakerName?: string | null;
   onStopMeetingRecording?: () => void;
   liveTranscript?: string;
   folderName?: string | null;
@@ -126,6 +120,8 @@ export default function NoteEditor({
   meetingSegments,
   meetingMicPartial,
   meetingSystemPartial,
+  meetingSystemPartialSpeakerId,
+  meetingSystemPartialSpeakerName,
   onStopMeetingRecording,
   liveTranscript,
   folderName,
@@ -147,6 +143,7 @@ export default function NoteEditor({
     Array<{ id: number; display_name: string; email: string | null }>
   >([]);
   const editorRef = useRef<Editor | null>(null);
+  const displaySegmentsRef = useRef<TranscriptSegment[]>([]);
 
   const embeddedChat = useEmbeddedChat({
     noteId: note.id,
@@ -174,10 +171,17 @@ export default function NoteEditor({
   );
 
   const displaySegments = useMemo<TranscriptSegment[]>(() => {
+    if (isMeetingRecording) {
+      return meetingSegments ?? [];
+    }
     if (diarizedSegments && diarizedSegments.length > 0) return diarizedSegments;
     if (meetingSegments && meetingSegments.length > 0) return meetingSegments;
     return parseTranscriptSegments(note.transcript || "");
-  }, [diarizedSegments, meetingSegments, note.transcript]);
+  }, [diarizedSegments, isMeetingRecording, meetingSegments, note.transcript]);
+
+  useEffect(() => {
+    displaySegmentsRef.current = displaySegments;
+  }, [displaySegments]);
 
   const hasChatSegments = displaySegments.length > 0;
 
@@ -188,6 +192,18 @@ export default function NoteEditor({
       return [];
     }
   }, [note.id, note.participants]);
+
+  const refreshSpeakerProfiles = useCallback(() => {
+    window.electronAPI?.getSpeakerProfiles?.().then((profiles) => {
+      setSpeakerProfiles(
+        (profiles || []).map((profile) => ({
+          id: profile.id,
+          display_name: profile.display_name,
+          email: profile.email,
+        }))
+      );
+    });
+  }, []);
 
   const updateSegmentIndicator = useCallback(() => {
     const container = segmentContainerRef.current;
@@ -249,14 +265,9 @@ export default function NoteEditor({
       for (const m of mappings || []) map[m.speaker_id] = m.display_name;
       setSpeakerMappings(map);
     });
-    window.electronAPI?.getSpeakerProfiles?.().then((profiles) => {
-      setSpeakerProfiles(
-        (profiles || []).map((p) => ({ id: p.id, display_name: p.display_name, email: p.email }))
-      );
-    });
-  }, [note.id]);
+    refreshSpeakerProfiles();
+  }, [note.id, refreshSpeakerProfiles]);
 
-  // Auto-show chat when hook loads an existing conversation with messages
   useEffect(() => {
     if (
       !autoShowDoneRef.current &&
@@ -291,13 +302,16 @@ export default function NoteEditor({
 
       if (!data?.segments?.length) return;
 
-      const enriched = data.segments.map((s: any, i: number) => ({
-        ...s,
-        id: s.id || `diarized-${i}`,
-      }));
+      const enriched = mergeTranscriptSegments(
+        displaySegmentsRef.current,
+        data.segments.map((s: any, i: number) => ({
+          ...s,
+          id: s.id || `diarized-${i}`,
+        }))
+      );
       setDiarizedSegments(enriched);
 
-      window.electronAPI.updateNote(note.id, { transcript: serializeTranscript(enriched) });
+      window.electronAPI.updateNote(note.id, { transcript: serializeTranscriptSegments(enriched) });
 
       if (data.speakerEmbeddings) {
         window.electronAPI?.saveNoteSpeakerEmbeddings?.(note.id, data.speakerEmbeddings);
@@ -308,11 +322,35 @@ export default function NoteEditor({
         if (s.speakerName && s.speaker) autoMappings[s.speaker] = s.speakerName;
       }
       if (Object.keys(autoMappings).length > 0) {
-        setSpeakerMappings((prev) => ({ ...prev, ...autoMappings }));
+        setSpeakerMappings((prev) => ({ ...autoMappings, ...prev }));
       }
     });
     return () => cleanup?.();
   }, [note.id, diarizationSessionId]);
+
+  const persistDisplaySegments = useCallback(
+    async (nextSegments: TranscriptSegment[], updateOverlay = true) => {
+      if (updateOverlay) {
+        setDiarizedSegments(nextSegments);
+      }
+      await window.electronAPI?.updateNote(note.id, {
+        transcript: serializeTranscriptSegments(nextSegments),
+      });
+    },
+    [note.id]
+  );
+
+  const getSpeakerAssignmentState = useCallback(
+    (speakerId: string, sourceSegments: TranscriptSegment[]) => {
+      const representativeSegment = sourceSegments.find((segment) => segment.speaker === speakerId);
+      const speakerName = speakerMappings[speakerId] || representativeSegment?.speakerName;
+      return {
+        speakerName,
+        speakerIsPlaceholder: !speakerName && !!representativeSegment?.speakerIsPlaceholder,
+      };
+    },
+    [speakerMappings]
+  );
 
   const handleMapSpeaker = useCallback(
     async (
@@ -330,29 +368,34 @@ export default function NoteEditor({
         profileId
       );
 
+      if (isMeetingRecording) {
+        refreshSpeakerProfiles();
+        return;
+      }
+
       const currentSegments = displaySegments.map((s) =>
         s.speaker === speakerId
-          ? {
-              ...s,
+          ? lockTranscriptSpeaker(s, {
               speakerName: displayName,
+              speaker: speakerId,
+              speakerIsPlaceholder: false,
               suggestedName: undefined,
               suggestedProfileId: undefined,
-            }
+            })
           : s
       );
-      window.electronAPI?.updateNote(note.id, { transcript: serializeTranscript(currentSegments) });
+      await persistDisplaySegments(currentSegments, !!diarizedSegments || !isMeetingRecording);
 
-      window.electronAPI?.getSpeakerProfiles?.().then((profiles) => {
-        setSpeakerProfiles(
-          (profiles || []).map((p) => ({
-            id: p.id,
-            display_name: p.display_name,
-            email: p.email,
-          }))
-        );
-      });
+      refreshSpeakerProfiles();
     },
-    [note.id, displaySegments]
+    [
+      diarizedSegments,
+      displaySegments,
+      isMeetingRecording,
+      note.id,
+      persistDisplaySegments,
+      refreshSpeakerProfiles,
+    ]
   );
 
   const handleConfirmSuggestion = useCallback(
@@ -366,15 +409,81 @@ export default function NoteEditor({
     async (speakerId: string) => {
       const currentSegments = displaySegments.map((s) =>
         s.speaker === speakerId
-          ? { ...s, suggestedName: undefined, suggestedProfileId: undefined }
+          ? applyTranscriptSpeakerPatch(s, {
+              suggestedName: undefined,
+              suggestedProfileId: undefined,
+            })
           : s
       );
-      if (diarizedSegments) {
-        setDiarizedSegments(currentSegments);
-      }
-      window.electronAPI?.updateNote(note.id, { transcript: serializeTranscript(currentSegments) });
+      await persistDisplaySegments(currentSegments, !!diarizedSegments || !isMeetingRecording);
     },
-    [note.id, displaySegments, diarizedSegments]
+    [displaySegments, diarizedSegments, isMeetingRecording, persistDisplaySegments]
+  );
+
+  const handleReassignBubble = useCallback(
+    async (segmentId: string, targetSpeakerId: string) => {
+      const targetState = getSpeakerAssignmentState(targetSpeakerId, displaySegments);
+      const nextSegments = displaySegments.map((segment) =>
+        segment.id === segmentId
+          ? lockTranscriptSpeaker(segment, {
+              speaker: targetSpeakerId,
+              speakerName: targetState.speakerName,
+              speakerIsPlaceholder: targetState.speakerIsPlaceholder,
+              suggestedName: undefined,
+              suggestedProfileId: undefined,
+            })
+          : segment
+      );
+      await persistDisplaySegments(nextSegments);
+    },
+    [displaySegments, getSpeakerAssignmentState, persistDisplaySegments]
+  );
+
+  const handleReassignRun = useCallback(
+    async (segmentId: string, targetSpeakerId: string) => {
+      const segmentIndex = displaySegments.findIndex((segment) => segment.id === segmentId);
+      if (segmentIndex === -1) {
+        return;
+      }
+
+      const sourceSegment = displaySegments[segmentIndex];
+      const sourceSpeaker = sourceSegment.speaker;
+      if (!sourceSpeaker) {
+        return;
+      }
+
+      let runStart = segmentIndex;
+      while (runStart > 0 && displaySegments[runStart - 1].speaker === sourceSpeaker) {
+        runStart -= 1;
+      }
+
+      let runEnd = segmentIndex;
+      while (
+        runEnd + 1 < displaySegments.length &&
+        displaySegments[runEnd + 1].speaker === sourceSpeaker
+      ) {
+        runEnd += 1;
+      }
+
+      const runSegmentIds = new Set(
+        displaySegments.slice(runStart, runEnd + 1).map((segment) => segment.id)
+      );
+      const targetState = getSpeakerAssignmentState(targetSpeakerId, displaySegments);
+      const nextSegments = displaySegments.map((segment) =>
+        runSegmentIds.has(segment.id)
+          ? lockTranscriptSpeaker(segment, {
+              speaker: targetSpeakerId,
+              speakerName: targetState.speakerName,
+              speakerIsPlaceholder: targetState.speakerIsPlaceholder,
+              suggestedName: undefined,
+              suggestedProfileId: undefined,
+            })
+          : segment
+      );
+
+      await persistDisplaySegments(nextSegments);
+    },
+    [displaySegments, getSpeakerAssignmentState, persistDisplaySegments]
   );
 
   const handleTitleInput = useCallback(() => {
@@ -397,7 +506,6 @@ export default function NoteEditor({
     document.execCommand("insertText", false, text);
   }, []);
 
-  // Auto-switch to transcript view after recording stops and transcript is ready
   const prevRecordingRef = useRef(false);
   const pendingTranscriptSwitchRef = useRef(false);
 
@@ -464,7 +572,6 @@ export default function NoteEditor({
             role="textbox"
             aria-label={t("notes.editor.noteTitle")}
           />
-          {/* Metadata + toolbar row */}
           <div className="flex items-center gap-2 mt-1.5">
             {shortDate && (
               <span
@@ -686,10 +793,18 @@ export default function NoteEditor({
                   segments={displaySegments}
                   micPartial={isMeetingRecording ? meetingMicPartial : undefined}
                   systemPartial={isMeetingRecording ? meetingSystemPartial : undefined}
+                  systemPartialSpeakerId={
+                    isMeetingRecording ? meetingSystemPartialSpeakerId : undefined
+                  }
+                  systemPartialSpeakerName={
+                    isMeetingRecording ? meetingSystemPartialSpeakerName : undefined
+                  }
                   speakerMappings={speakerMappings}
                   speakerProfiles={speakerProfiles}
                   participants={parsedParticipants}
                   onMapSpeaker={handleMapSpeaker}
+                  onReassignBubble={!isMeetingRecording ? handleReassignBubble : undefined}
+                  onReassignRun={!isMeetingRecording ? handleReassignRun : undefined}
                   onConfirmSuggestion={handleConfirmSuggestion}
                   onDismissSuggestion={handleDismissSuggestion}
                 />

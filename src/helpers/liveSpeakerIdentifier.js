@@ -7,10 +7,18 @@ const SAMPLE_RATE = 16000;
 const VAD_WINDOW_SIZE = 512;
 const MIN_SEGMENT_SECONDS = 0.8;
 const MIN_SEGMENT_SAMPLES = Math.round(SAMPLE_RATE * MIN_SEGMENT_SECONDS);
+const LIVE_IDENTIFICATION_MIN_SECONDS = 1.6;
+const LIVE_IDENTIFICATION_MIN_SAMPLES = Math.round(SAMPLE_RATE * LIVE_IDENTIFICATION_MIN_SECONDS);
+const LIVE_IDENTIFICATION_INTERVAL_SECONDS = 1.0;
+const LIVE_IDENTIFICATION_INTERVAL_SAMPLES = Math.round(
+  SAMPLE_RATE * LIVE_IDENTIFICATION_INTERVAL_SECONDS
+);
 const SPEECH_THRESHOLD = 0.15;
 const SILENCE_THRESHOLD = 0.08;
 const SILENCE_WINDOWS_TO_END = 4;
-const MATCH_THRESHOLD = 0.7;
+const MATCH_THRESHOLD = 0.82;
+const MATCH_MARGIN = 0.04;
+const LIVE_WINDOW_PADDING_SECONDS = 0.75;
 const DEFAULT_VAD_STATE_SHAPE = [2, 1, 64];
 
 function pcm16BufferToFloat32(buffer) {
@@ -66,7 +74,9 @@ function normalizeVadShape(shape) {
 }
 
 function normalizeVadStateName(name) {
-  return String(name || "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+  return String(name || "")
+    .replace(/[^a-z0-9]/gi, "")
+    .toLowerCase();
 }
 
 function getBufferFloat32View(buffer) {
@@ -94,7 +104,11 @@ class LiveSpeakerIdentifier {
     this.transientCounts = new Map();
     this.transientDisplayNames = new Map();
     this.transientProfileIds = new Map();
+    this.transientNoteIds = new Map();
     this.nextLiveIndex = 0;
+    this.currentSegmentSpeakerId = null;
+    this.currentSegmentSpeakerName = null;
+    this.lastLiveIdentificationSample = 0;
     this._diarizationManager = null;
   }
 
@@ -106,12 +120,19 @@ class LiveSpeakerIdentifier {
     return this._diarizationManager?.isVadModelDownloaded() && speakerEmbeddings.isAvailable();
   }
 
-  getTransientMap() {
-    const map = new Map();
+  getTransientState() {
+    const state = {};
+
     for (const [speakerId, embedding] of this.transientEmbeddings.entries()) {
-      map.set(speakerId, cloneFloat32Array(embedding));
+      state[speakerId] = {
+        embedding: Array.from(embedding),
+        displayName: this.transientDisplayNames.get(speakerId) || null,
+        profileId: this.transientProfileIds.get(speakerId) ?? null,
+        noteId: this.transientNoteIds.get(speakerId) ?? null,
+      };
     }
-    return map;
+
+    return state;
   }
 
   getSpeakerEmbedding(speakerId) {
@@ -119,11 +140,10 @@ class LiveSpeakerIdentifier {
     return embedding ? cloneFloat32Array(embedding) : null;
   }
 
-  async start(options = {}) {
-    const {
-      onSpeakerIdentified = null,
-      getSpeakerProfiles = null,
-    } = typeof options === "function" ? { onSpeakerIdentified: options } : options;
+  async start(options = {}, extraOptions = {}) {
+    const resolvedOptions =
+      typeof options === "function" ? { onSpeakerIdentified: options, ...extraOptions } : options;
+    const { onSpeakerIdentified = null, getSpeakerProfiles = null } = resolvedOptions;
 
     this.onSpeakerIdentified =
       typeof onSpeakerIdentified === "function" ? onSpeakerIdentified : null;
@@ -156,11 +176,11 @@ class LiveSpeakerIdentifier {
       await this._finalizeSpeechSegment();
     }
 
-    const transientMap = this.getTransientMap();
+    const transientState = this.getTransientState();
     this._resetMeetingState();
     this.onSpeakerIdentified = null;
     this.getSpeakerProfiles = null;
-    return transientMap;
+    return transientState;
   }
 
   feedAudio(pcmBuffer) {
@@ -177,7 +197,7 @@ class LiveSpeakerIdentifier {
     return this.queue;
   }
 
-  mapSpeaker(liveId, profileId, displayName) {
+  mapSpeaker(liveId, profileId, displayName, noteId) {
     if (!liveId || !this.transientEmbeddings.has(liveId)) {
       return false;
     }
@@ -188,6 +208,10 @@ class LiveSpeakerIdentifier {
 
     if (displayName) {
       this.transientDisplayNames.set(liveId, displayName);
+    }
+
+    if (noteId != null) {
+      this.transientNoteIds.set(liveId, noteId);
     }
 
     return true;
@@ -203,9 +227,7 @@ class LiveSpeakerIdentifier {
 
     const ort = require("onnxruntime-node");
     this.session = await ort.InferenceSession.create(vadModelPath);
-    this.vadStateInputs = (this.session.inputNames || []).filter((name) =>
-      /state|h|c/i.test(name)
-    );
+    this.vadStateInputs = (this.session.inputNames || []).filter((name) => /state|h|c/i.test(name));
     this.vadStateOutputs = (this.session.outputNames || []).filter((name) =>
       /state|h|c/i.test(name)
     );
@@ -225,7 +247,11 @@ class LiveSpeakerIdentifier {
     this.transientCounts = new Map();
     this.transientDisplayNames = new Map();
     this.transientProfileIds = new Map();
+    this.transientNoteIds = new Map();
     this.nextLiveIndex = 0;
+    this.currentSegmentSpeakerId = null;
+    this.currentSegmentSpeakerName = null;
+    this.lastLiveIdentificationSample = 0;
     this._resetVadRuntimeState();
   }
 
@@ -275,6 +301,7 @@ class LiveSpeakerIdentifier {
 
       if (probability >= SILENCE_THRESHOLD) {
         this.silenceWindows = 0;
+        await this._identifyActiveSpeechSegment();
         return;
       }
 
@@ -294,6 +321,9 @@ class LiveSpeakerIdentifier {
     this.segmentEndSample = windowEndSample;
     this.speechChunks = [cloneFloat32Array(window)];
     this.silenceWindows = 0;
+    this.currentSegmentSpeakerId = null;
+    this.currentSegmentSpeakerName = null;
+    this.lastLiveIdentificationSample = 0;
   }
 
   async _getVadProbability(window) {
@@ -350,8 +380,8 @@ class LiveSpeakerIdentifier {
 
     for (const inputName of this.vadStateInputs) {
       const expectedName = normalizeVadStateName(inputName);
-      const matchingOutput = this.vadStateOutputs.find(
-        (outputName) => normalizeVadStateName(outputName).startsWith(expectedName)
+      const matchingOutput = this.vadStateOutputs.find((outputName) =>
+        normalizeVadStateName(outputName).startsWith(expectedName)
       );
       const output = (matchingOutput && results[matchingOutput]) || results[inputName];
 
@@ -359,6 +389,43 @@ class LiveSpeakerIdentifier {
         this.vadStates.set(inputName, new Float32Array(output.data));
       }
     }
+  }
+
+  async _identifyActiveSpeechSegment(force = false) {
+    const currentSamples = concatFloat32Arrays(this.speechChunks);
+    if (currentSamples.length < LIVE_IDENTIFICATION_MIN_SAMPLES) {
+      return;
+    }
+
+    if (
+      !force &&
+      this.lastLiveIdentificationSample > 0 &&
+      this.segmentEndSample - this.lastLiveIdentificationSample <
+        LIVE_IDENTIFICATION_INTERVAL_SAMPLES
+    ) {
+      return;
+    }
+
+    const embedding = await speakerEmbeddings.extractEmbeddingFromSamples(currentSamples);
+    if (!embedding) {
+      return;
+    }
+
+    const resolved = this._resolveSpeakerForEmbedding(embedding, { updateCentroid: false });
+    if (!resolved?.speakerId) {
+      return;
+    }
+
+    this.currentSegmentSpeakerId = resolved.speakerId;
+    this.currentSegmentSpeakerName = resolved.displayName || null;
+    this.lastLiveIdentificationSample = this.segmentEndSample;
+
+    this.onSpeakerIdentified?.({
+      speakerId: resolved.speakerId,
+      displayName: resolved.displayName || null,
+      startTime: Math.max(0, this.segmentStartSample / SAMPLE_RATE - LIVE_WINDOW_PADDING_SECONDS),
+      endTime: this.segmentEndSample / SAMPLE_RATE + LIVE_WINDOW_PADDING_SECONDS,
+    });
   }
 
   async _finalizeSpeechSegment() {
@@ -376,47 +443,50 @@ class LiveSpeakerIdentifier {
       return;
     }
 
-    let speakerId = this._findTransientMatch(embedding);
-    if (speakerId) {
-      this._updateCentroid(speakerId, embedding);
-    } else {
-      const matchedProfile = this._findStoredProfileMatch(embedding);
-      if (matchedProfile) {
-        speakerId = this._findTransientSpeakerForProfile(matchedProfile.id);
-        if (!speakerId) {
-          speakerId = this._assignSpeakerId(embedding);
-        } else {
-          this._updateCentroid(speakerId, embedding);
-        }
-
-        this.transientProfileIds.set(speakerId, matchedProfile.id);
-        this.transientDisplayNames.set(speakerId, matchedProfile.display_name);
-      } else {
-        speakerId = this._assignSpeakerId(embedding);
-      }
+    const resolved = this._resolveSpeakerForEmbedding(embedding, { updateCentroid: true });
+    if (!resolved?.speakerId) {
+      return;
     }
+
+    const speakerId = resolved.speakerId;
+    const displayName =
+      resolved.displayName ||
+      this.currentSegmentSpeakerName ||
+      this.transientDisplayNames.get(speakerId) ||
+      null;
 
     this.onSpeakerIdentified?.({
       speakerId,
-      displayName: this.transientDisplayNames.get(speakerId) || null,
-      startTime: Math.max(0, this.segmentStartSample / SAMPLE_RATE - 10),
-      endTime: this.segmentEndSample / SAMPLE_RATE + 10,
+      displayName,
+      startTime: Math.max(0, this.segmentStartSample / SAMPLE_RATE - LIVE_WINDOW_PADDING_SECONDS),
+      endTime: this.segmentEndSample / SAMPLE_RATE + LIVE_WINDOW_PADDING_SECONDS,
     });
+
+    this.currentSegmentSpeakerId = null;
+    this.currentSegmentSpeakerName = null;
+    this.lastLiveIdentificationSample = 0;
   }
 
   _findTransientMatch(embedding) {
     let bestSpeakerId = null;
     let bestSimilarity = 0;
+    let secondBestSimilarity = 0;
 
     for (const [speakerId, centroid] of this.transientEmbeddings.entries()) {
       const similarity = speakerEmbeddings.cosineSimilarity(embedding, centroid);
       if (similarity > bestSimilarity) {
+        secondBestSimilarity = bestSimilarity;
         bestSimilarity = similarity;
         bestSpeakerId = speakerId;
+      } else if (similarity > secondBestSimilarity) {
+        secondBestSimilarity = similarity;
       }
     }
 
-    return bestSimilarity >= MATCH_THRESHOLD ? bestSpeakerId : null;
+    return bestSimilarity >= MATCH_THRESHOLD &&
+      bestSimilarity - secondBestSimilarity >= MATCH_MARGIN
+      ? bestSpeakerId
+      : null;
   }
 
   _findStoredProfileMatch(embedding) {
@@ -431,6 +501,7 @@ class LiveSpeakerIdentifier {
 
     let bestProfile = null;
     let bestSimilarity = 0;
+    let secondBestSimilarity = 0;
 
     for (const profile of profiles) {
       if (!profile?.embedding) continue;
@@ -446,12 +517,63 @@ class LiveSpeakerIdentifier {
 
       const similarity = speakerEmbeddings.cosineSimilarity(embedding, profileEmbedding);
       if (similarity > bestSimilarity) {
+        secondBestSimilarity = bestSimilarity;
         bestSimilarity = similarity;
         bestProfile = profile;
+      } else if (similarity > secondBestSimilarity) {
+        secondBestSimilarity = similarity;
       }
     }
 
-    return bestSimilarity >= MATCH_THRESHOLD ? bestProfile : null;
+    return bestSimilarity >= MATCH_THRESHOLD &&
+      bestSimilarity - secondBestSimilarity >= MATCH_MARGIN
+      ? bestProfile
+      : null;
+  }
+
+  _resolveSpeakerForEmbedding(embedding, options = {}) {
+    const { updateCentroid = false } = options;
+
+    let speakerId = this.currentSegmentSpeakerId || this._findTransientMatch(embedding);
+    let displayName = this.currentSegmentSpeakerName || null;
+
+    if (speakerId) {
+      if (updateCentroid) {
+        this._updateCentroid(speakerId, embedding);
+      }
+
+      return {
+        speakerId,
+        displayName: displayName || this.transientDisplayNames.get(speakerId) || null,
+      };
+    }
+
+    const matchedProfile = this._findStoredProfileMatch(embedding);
+    if (matchedProfile) {
+      speakerId = this._findTransientSpeakerForProfile(matchedProfile.id);
+      if (!speakerId) {
+        speakerId = this._assignSpeakerId(embedding);
+      } else if (updateCentroid) {
+        this._updateCentroid(speakerId, embedding);
+      }
+
+      this.transientProfileIds.set(speakerId, matchedProfile.id);
+      this.transientDisplayNames.set(speakerId, matchedProfile.display_name);
+      return {
+        speakerId,
+        displayName: matchedProfile.display_name,
+      };
+    }
+
+    speakerId = this.currentSegmentSpeakerId || this._assignSpeakerId(embedding);
+    if (updateCentroid && this.currentSegmentSpeakerId) {
+      this._updateCentroid(speakerId, embedding);
+    }
+
+    return {
+      speakerId,
+      displayName: this.transientDisplayNames.get(speakerId) || null,
+    };
   }
 
   _findTransientSpeakerForProfile(profileId) {

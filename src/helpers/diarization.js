@@ -8,6 +8,7 @@ const { resolveBinaryPath, gracefulStopProcess } = require("../utils/serverUtils
 const { getModelsDirForService } = require("./modelDirUtils");
 const { convertToWav } = require("./ffmpegUtils");
 const { getSafeTempDir } = require("./safeTempDir");
+const { applyProvisionalSpeaker, applyConfirmedSpeaker } = require("./speakerAssignmentPolicy");
 
 const DIARIZATION_TIMEOUT_MS = 300000; // 5 minutes
 
@@ -395,31 +396,68 @@ class DiarizationManager {
       idx++;
     }
 
-    return transcriptSegments.map((seg) => {
+    const nextSystemTimestampAt = (startIndex) => {
+      for (let i = startIndex + 1; i < transcriptSegments.length; i += 1) {
+        const candidate = transcriptSegments[i];
+        if (candidate.source === "system" && candidate.timestamp != null) {
+          return candidate.timestamp;
+        }
+      }
+      return null;
+    };
+
+    let fallbackSpeakerIndex = 0;
+
+    return transcriptSegments.map((seg, index) => {
       const enriched = { ...seg };
 
       if (seg.source === "mic") {
-        enriched.speaker = "you";
+        applyConfirmedSpeaker(enriched, {
+          speaker: "you",
+          speakerIsPlaceholder: false,
+        });
         return enriched;
       }
 
       if (seg.source === "system" && seg.timestamp != null) {
-        const ts = seg.timestamp;
+        const segStart = seg.timestamp;
+        const segEnd = nextSystemTimestampAt(index) ?? segStart + 2.5;
+        const midpoint = segStart + (segEnd - segStart) / 2;
         let bestSpeaker = null;
         let bestOverlap = 0;
+        let bestDistance = Number.POSITIVE_INFINITY;
 
         for (const dSeg of diarizationSegments) {
-          if (ts >= dSeg.start && ts <= dSeg.end) {
-            const overlap = dSeg.end - dSeg.start;
-            if (overlap > bestOverlap) {
-              bestOverlap = overlap;
-              bestSpeaker = dSeg.speaker;
-            }
+          const overlap = Math.min(segEnd, dSeg.end) - Math.max(segStart, dSeg.start);
+          if (overlap > bestOverlap) {
+            bestOverlap = overlap;
+            bestSpeaker = dSeg.speaker;
+          }
+
+          const distance =
+            midpoint < dSeg.start
+              ? dSeg.start - midpoint
+              : midpoint > dSeg.end
+                ? midpoint - dSeg.end
+                : 0;
+
+          if (!bestSpeaker && distance < bestDistance) {
+            bestDistance = distance;
+            bestSpeaker = dSeg.speaker;
           }
         }
 
         if (bestSpeaker) {
-          enriched.speaker = speakerMap.get(bestSpeaker) || bestSpeaker;
+          applyConfirmedSpeaker(enriched, {
+            speaker: speakerMap.get(bestSpeaker) || bestSpeaker,
+            speakerIsPlaceholder: false,
+          });
+        } else if (!enriched.speaker) {
+          applyProvisionalSpeaker(enriched, {
+            speaker: `speaker_${fallbackSpeakerIndex}`,
+            speakerIsPlaceholder: true,
+          });
+          fallbackSpeakerIndex += 1;
         }
       }
 

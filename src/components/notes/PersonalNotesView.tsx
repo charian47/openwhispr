@@ -116,6 +116,8 @@ export default function PersonalNotesView({
     segments: realtimeSegments,
     micPartial,
     systemPartial,
+    systemPartialSpeakerId,
+    systemPartialSpeakerName,
     diarizationSessionId,
     prepareTranscription,
     startTranscription,
@@ -884,6 +886,12 @@ export default function PersonalNotesView({
               meetingSegments={isActiveNoteRecording ? realtimeSegments : []}
               meetingMicPartial={isActiveNoteRecording ? micPartial : ""}
               meetingSystemPartial={isActiveNoteRecording ? systemPartial : ""}
+              meetingSystemPartialSpeakerId={
+                isActiveNoteRecording ? systemPartialSpeakerId : undefined
+              }
+              meetingSystemPartialSpeakerName={
+                isActiveNoteRecording ? systemPartialSpeakerName : undefined
+              }
               onStopMeetingRecording={stopTranscription}
               liveTranscript={isActiveNoteRecording ? realtimeTranscript : ""}
               folderName={activeFolderName}
