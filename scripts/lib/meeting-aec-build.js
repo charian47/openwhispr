@@ -358,6 +358,10 @@ function getLinkOptions(targetPlatform) {
     return ["-framework", "CoreFoundation"];
   }
 
+  if (targetPlatform === "win32") {
+    return ["/DEFAULTLIB:winmm.lib"];
+  }
+
   return [];
 }
 
