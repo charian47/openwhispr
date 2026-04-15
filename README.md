@@ -52,6 +52,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - 📅 **Google Calendar Integration**: Connect multiple Google accounts, view upcoming meetings in the sidebar, and receive auto-detection prompts
 - 🎙️ **Live Meeting Transcription**: Record and transcribe meetings in real-time via OpenAI Realtime API with automatic meeting detection (Zoom, Teams, FaceTime)
+- 🗣️ **Speaker Diarization**: Live speaker labels during recording, refined into stable speaker clusters on post-processing — plus one-click reassignment and attendee-aware speaker picker
+- 🔗 **Voice Fingerprint Linking**: Attach voice profiles to contacts so a recognized speaker carries their name and color across meetings
+- 🎧 **Meeting Echo Cancellation**: Native WebRTC AEC3 sidecar removes mic echo from captured system audio, with a JS fallback when the helper is unavailable
 - ⚡ **WebSocket Streaming for BYOK**: Real-time OpenAI Realtime API streaming for standard dictation mode, not just meetings — unified streaming path for all transcription
 - ⌨️ **Meeting Hotkey**: Dedicated hotkey to start/stop meeting transcription independently from dictation
 - 🔍 **Smart Detection**: Combines process monitoring, sustained audio detection, and calendar awareness to detect meetings automatically
@@ -394,7 +397,7 @@ npm run build:linux  # Linux
 2. **Grant Permissions**:
    - **Microphone Access**: Required for voice recording
    - **Accessibility Permissions**: Required for automatic text pasting (macOS)
-   - **Screen Recording** (optional, macOS): Required for meeting audio capture — prompted during onboarding if you want meeting features
+   - **Screen Recording / System Audio**: macOS prompts during onboarding for meeting capture. On Linux, system audio is shared through the desktop portal when recording starts
 
 3. **Name Your Agent**: Give your AI assistant a personal name (e.g., "Assistant", "Jarvis", "Alex")
    - Makes interactions feel more natural and conversational
@@ -494,6 +497,7 @@ Automatically detect and transcribe meetings with Google Calendar integration:
 3. **Auto-Detection**: When a meeting starts (Zoom, Teams, FaceTime), a notification appears asking to record
 4. **Live Transcription**: Meeting audio is transcribed in real-time via OpenAI Realtime API
 5. **Review**: Meeting transcriptions are saved as notes for later review and AI enhancement
+6. **Linux system audio**: Uses the standard desktop portal chooser today, with runtime capability detection and fallback handling for future persistent portal support
 
 ### Processing Options
 
@@ -515,7 +519,6 @@ Automatically detect and transcribe meetings with Google Calendar integration:
 open-whispr/
 ├── main.js              # Electron main process & IPC handlers
 ├── preload.js           # Electron preload script & API bridge
-├── setup.js             # First-time setup script
 ├── package.json         # Dependencies and scripts
 ├── env.example          # Environment variables template
 ├── CHANGELOG.md         # Project changelog
@@ -578,7 +581,8 @@ open-whispr/
 - **Build Tool**: Vite with optimized Tailwind plugin
 - **Desktop**: Electron 39 with context isolation
 - **UI Components**: shadcn/ui with Radix primitives
-- **Database**: better-sqlite3 with FTS5 for local storage (transcriptions, notes, agents, calendar)
+- **Local Database**: better-sqlite3 with FTS5 for local storage (transcriptions, notes, agents, calendar)
+- **Cloud Database**: [Neon Serverless Postgres](https://console.neon.tech/app/?promo=openwhispr) — powers OpenWhispr Cloud accounts, sync, and authentication
 - **Speech-to-Text**: OpenAI Whisper (whisper.cpp) + NVIDIA Parakeet (sherpa-onnx) for local, OpenAI API for cloud
 - **Live Transcription**: OpenAI Realtime API over WebSocket for meeting transcription
 - **AI Processing**: Multi-provider streaming (OpenAI, Anthropic, Gemini, Groq, local llama.cpp)
@@ -591,7 +595,6 @@ open-whispr/
 
 - `npm run dev` - Start development with hot reload
 - `npm run start` - Start production build
-- `npm run setup` - First-time setup (creates .env file)
 - `npm run build:renderer` - Build the React app only
 - `npm run download:whisper-cpp` - Download whisper.cpp for the current platform
 - `npm run download:whisper-cpp:all` - Download whisper.cpp for all platforms
@@ -667,7 +670,7 @@ Note: build/pack/dist scripts automatically download whisper.cpp, llama-server, 
 
 ### Environment Variables
 
-Create a `.env` file in the root directory (or use `npm run setup`):
+Create a `.env` file in the root directory (see [.env.example](.env.example) for the template):
 
 ```env
 # OpenAI API Configuration (optional - only needed for cloud processing)
@@ -875,6 +878,20 @@ OpenWhispr is actively maintained and ready for production use. Current version:
 - ✅ Dedicated meeting mode hotkey
 - ✅ CodeQL static analysis and Dependabot dependency updates
 
+## Sponsors
+
+<p align="center">
+  <a href="https://console.neon.tech/app/?promo=openwhispr">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://neon.com/brand/neon-logo-dark-color.svg">
+      <source media="(prefers-color-scheme: light)" srcset="https://neon.com/brand/neon-logo-light-color.svg">
+      <img width="250" alt="Neon" src="https://neon.com/brand/neon-logo-light-color.svg">
+    </picture>
+  </a>
+</p>
+
+<p align="center"><a href="https://console.neon.tech/app/?promo=openwhispr">Neon</a> is the serverless Postgres platform powering OpenWhispr Cloud accounts, sync, and authentication.</p>
+
 ## Acknowledgments
 
 - **[OpenAI Whisper](https://github.com/openai/whisper)** - The speech recognition model that powers both local and cloud transcription
@@ -886,3 +903,4 @@ OpenWhispr is actively maintained and ready for production use. Current version:
 - **[shadcn/ui](https://ui.shadcn.com/)** - Beautiful UI components built on Radix primitives
 - **[Hugging Face](https://huggingface.co/)** - Model hosting platform for our local speech recognition and language models
 - **[llama.cpp](https://github.com/ggerganov/llama.cpp)** - Local LLM inference for AI-powered text processing
+- **[Neon](https://console.neon.tech/app/?promo=openwhispr)** - Serverless Postgres powering OpenWhispr Cloud accounts and sync. Official sponsor of the OpenWhispr Open Source project.

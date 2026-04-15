@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Sliders,
@@ -12,7 +12,7 @@ import {
   Shield,
   MessageSquare,
 } from "lucide-react";
-import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
+import SidebarModal, { type SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
 
 export type { SettingsSectionType };
@@ -113,14 +113,15 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
   );
 
   const [activeSection, setActiveSection] = React.useState<SettingsSectionType>("account");
+  const [prevOpen, setPrevOpen] = useState(open);
 
-  // Navigate to initial section when modal opens, resolving legacy aliases
-  useEffect(() => {
-    if (open && initialSection) {
-      const resolved = (SECTION_ALIASES[initialSection] ?? initialSection) as SettingsSectionType;
-      setActiveSection(resolved);
-    }
-  }, [open, initialSection]);
+  if (open && !prevOpen && initialSection) {
+    setPrevOpen(open);
+    const resolved = (SECTION_ALIASES[initialSection] ?? initialSection) as SettingsSectionType;
+    setActiveSection(resolved);
+  } else if (open !== prevOpen) {
+    setPrevOpen(open);
+  }
 
   return (
     <SidebarModal<SettingsSectionType>
