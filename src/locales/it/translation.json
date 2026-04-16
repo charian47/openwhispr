@@ -392,6 +392,7 @@
         "server": "Errore server ({{error}}). Riprova più tardi.",
         "generic": "Download non riuscito: {{error}}",
         "extractionFailed": "Modello scaricato, ma l'installazione non è riuscita. Clicca su scarica per ritentare l'installazione senza riscaricare.",
+        "tlsError": "Errore di certificato — la tua rete potrebbe usare l'ispezione SSL che blocca i download. Prova a scaricare da un'altra rete.",
         "unknown": "Errore sconosciuto"
       },
       "downloadFailed": {

@@ -392,6 +392,7 @@
         "server": "伺服器錯誤（{{error}}）。請稍後再試。",
         "generic": "下載失敗：{{error}}",
         "extractionFailed": "模型已下載，但安裝失敗。點擊下載可重試安裝，無需重新下載。",
+        "tlsError": "憑證錯誤 — 您的網路可能使用了阻擋下載的SSL檢查。請嘗試從其他網路下載。",
         "unknown": "未知錯誤"
       },
       "downloadFailed": {
