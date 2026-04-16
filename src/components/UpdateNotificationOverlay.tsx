@@ -11,6 +11,7 @@ export default function UpdateNotificationOverlay() {
   const { t } = useTranslation();
   const [data, setData] = useState<UpdateNotificationData | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     let shown = false;
@@ -52,7 +53,7 @@ export default function UpdateNotificationOverlay() {
     <div className="meeting-notification-window w-full h-full bg-transparent pl-4 pr-2 pt-4 pb-2 overflow-visible">
       <div
         className={[
-          "group relative",
+          "relative",
           "bg-card/95 dark:bg-surface-2/95 backdrop-blur-xl",
           "border border-border/40 dark:border-border-subtle/40",
           "rounded-xl shadow-lg p-2.5",
@@ -61,10 +62,20 @@ export default function UpdateNotificationOverlay() {
             ? "translate-x-0 opacity-100 scale-100"
             : "translate-x-[120%] opacity-0 scale-95",
         ].join(" ")}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
         <button
           onClick={() => respond("dismiss")}
-          className="absolute -left-2 -top-2 size-6 rounded-full flex items-center justify-center bg-white/10 backdrop-blur-sm border border-white/10 text-white/70 hover:text-white hover:bg-white/20 opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
+          className={[
+            "absolute -left-2 -top-2 z-10 size-6 rounded-full",
+            "flex items-center justify-center",
+            "bg-white/10 backdrop-blur-sm border border-white/10",
+            "text-white/70 hover:text-white hover:bg-white/20",
+            "transition-all duration-150",
+            "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30",
+            isHovered ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none",
+          ].join(" ")}
         >
           <X className="size-3" />
         </button>
