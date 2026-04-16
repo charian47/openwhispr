@@ -3026,6 +3026,9 @@ class IPCHandlers {
         if (data.statusCode === 401) {
           return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
         }
+        if (data.statusCode === 503) {
+          return { success: false, error: "Request timed out", code: "SERVER_ERROR" };
+        }
         if (data.statusCode === 429) {
           return {
             success: false,
@@ -4825,6 +4828,9 @@ class IPCHandlers {
           if (response.status === 401) {
             return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
           }
+          if (response.status === 503) {
+            return { success: false, error: "Request timed out", code: "SERVER_ERROR" };
+          }
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.error || `API error: ${response.status}`);
         }
@@ -4883,7 +4889,12 @@ class IPCHandlers {
           const errorData = await response.json().catch(() => ({}));
           event.sender.send("cloud-agent-stream-error", {
             error: errorData.error || `API error: ${response.status}`,
-            code: response.status === 401 ? "AUTH_EXPIRED" : undefined,
+            code:
+              response.status === 401
+                ? "AUTH_EXPIRED"
+                : response.status === 503
+                  ? "SERVER_ERROR"
+                  : undefined,
           });
           return;
         }
@@ -4966,6 +4977,9 @@ class IPCHandlers {
           if (response.status === 401) {
             return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
           }
+          if (response.status === 503) {
+            return { success: false, error: "Request timed out", code: "SERVER_ERROR" };
+          }
           const errorData = await response.json().catch(() => ({}));
           return {
             success: false,
@@ -5018,6 +5032,9 @@ class IPCHandlers {
           if (response.status === 401) {
             return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
           }
+          if (response.status === 503) {
+            return { success: false, error: "Request timed out", code: "SERVER_ERROR" };
+          }
           if (!response.ok) {
             throw new Error(`API error: ${response.status}`);
           }
@@ -5046,6 +5063,9 @@ class IPCHandlers {
         if (!response.ok) {
           if (response.status === 401) {
             return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          if (response.status === 503) {
+            return { success: false, error: "Request timed out", code: "SERVER_ERROR" };
           }
           throw new Error(`API error: ${response.status}`);
         }
@@ -5078,6 +5098,9 @@ class IPCHandlers {
         if (!response.ok) {
           if (response.status === 401) {
             return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          if (response.status === 503) {
+            return { success: false, error: "Request timed out", code: "SERVER_ERROR" };
           }
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.error || `API error: ${response.status}`);
@@ -5116,6 +5139,9 @@ class IPCHandlers {
         if (response.status === 401) {
           return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
         }
+        if (response.status === 503) {
+          return { success: false, error: "Request timed out", code: "SERVER_ERROR" };
+        }
 
         const data = await response.json();
         if (!response.ok) {
@@ -5145,6 +5171,9 @@ class IPCHandlers {
         if (response.status === 401) {
           return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
         }
+        if (response.status === 503) {
+          return { success: false, error: "Request timed out", code: "SERVER_ERROR" };
+        }
 
         const data = await response.json();
         if (!response.ok) {
@@ -5172,6 +5201,9 @@ class IPCHandlers {
         if (!response.ok) {
           if (response.status === 401) {
             return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          if (response.status === 503) {
+            return { success: false, error: "Request timed out", code: "SERVER_ERROR" };
           }
           throw new Error(`API error: ${response.status}`);
         }
@@ -5248,6 +5280,9 @@ class IPCHandlers {
 
               if (data.statusCode === 401) {
                 throw Object.assign(new Error("Session expired"), { code: "AUTH_EXPIRED" });
+              }
+              if (data.statusCode === 503) {
+                throw Object.assign(new Error("Request timed out"), { code: "SERVER_ERROR" });
               }
               if (data.statusCode === 429) {
                 throw Object.assign(new Error("Daily word limit reached"), {
@@ -5337,6 +5372,9 @@ class IPCHandlers {
 
         if (data.statusCode === 401) {
           return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+        if (data.statusCode === 503) {
+          return { success: false, error: "Request timed out", code: "SERVER_ERROR" };
         }
         if (data.statusCode === 429) {
           return {
@@ -5438,6 +5476,9 @@ class IPCHandlers {
           if (response.status === 401) {
             throw new Error("Unauthorized - please sign in");
           }
+          if (response.status === 503) {
+            throw new Error("Service temporarily unavailable");
+          }
           throw new Error(`Failed to fetch referral stats: ${response.status}`);
         }
 
@@ -5508,6 +5549,9 @@ class IPCHandlers {
         if (!response.ok) {
           if (response.status === 401) {
             throw new Error("Unauthorized - please sign in");
+          }
+          if (response.status === 503) {
+            throw new Error("Service temporarily unavailable");
           }
           throw new Error(`Failed to fetch referral invites: ${response.status}`);
         }
