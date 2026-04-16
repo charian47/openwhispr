@@ -109,6 +109,7 @@ export type SettingsSectionType =
 
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;
+  onNavigateToSection?: (section: SettingsSectionType) => void;
 }
 
 const UI_LANGUAGE_OPTIONS: import("./ui/LanguageSelector").LanguageOption[] = [
@@ -643,7 +644,10 @@ function GpuDeviceSelector({ purpose }: { purpose: "transcription" | "intelligen
   );
 }
 
-export default function SettingsPage({ activeSection = "general" }: SettingsPageProps) {
+export default function SettingsPage({
+  activeSection = "general",
+  onNavigateToSection,
+}: SettingsPageProps) {
   const { isCompact } = useSettingsLayout();
   const {
     confirmDialog,
@@ -2174,10 +2178,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => usage?.openCheckout?.({ tier: "pro" })}
+                        onClick={() => onNavigateToSection?.("account")}
                       >
-                        <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                        {t("settingsPage.apiKeys.upgradeToPro")}
+                        {t("settingsPage.apiKeys.viewPlans")}
                       </Button>
                     </div>
                   </SettingsPanelRow>

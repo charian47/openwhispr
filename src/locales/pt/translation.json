@@ -1073,7 +1073,7 @@
       "signInRequiredDescription": "Faça login para gerenciar suas chaves de API.",
       "proRequired": "O acesso à API requer um plano pago",
       "proRequiredDescription": "Faça upgrade para Pro para criar chaves de API e integrar o OpenWhispr aos seus fluxos de trabalho.",
-      "upgradeToPro": "Upgrade para Pro"
+      "viewPlans": "Ver planos"
     },
     "aiModels": {
       "customSetup": "Configuração personalizada",

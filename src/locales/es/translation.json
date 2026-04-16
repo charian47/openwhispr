@@ -1149,7 +1149,7 @@
       "signInRequiredDescription": "Inicia sesión para administrar tus claves de API.",
       "proRequired": "El acceso a la API requiere un plan de pago",
       "proRequiredDescription": "Actualiza a Pro para crear claves API e integrar OpenWhispr en tus flujos de trabajo.",
-      "upgradeToPro": "Actualizar a Pro"
+      "viewPlans": "Ver planes"
     },
     "aiModels": {
       "customSetup": "Configuración personalizada",

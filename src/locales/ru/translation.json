@@ -1101,7 +1101,7 @@
       "signInRequiredDescription": "Войдите, чтобы управлять API-ключами.",
       "proRequired": "Для доступа к API требуется платный план",
       "proRequiredDescription": "Перейдите на Pro, чтобы создавать API-ключи и интегрировать OpenWhispr в рабочие процессы.",
-      "upgradeToPro": "Перейти на Pro"
+      "viewPlans": "Посмотреть тарифы"
     },
     "aiModels": {
       "customSetup": "Пользовательская настройка",

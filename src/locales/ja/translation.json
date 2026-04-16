@@ -1101,7 +1101,7 @@
       "signInRequiredDescription": "APIキーを管理するにはサインインしてください。",
       "proRequired": "APIアクセスには有料プランが必要です",
       "proRequiredDescription": "Proにアップグレードして、APIキーを作成しワークフローにOpenWhisprを統合しましょう。",
-      "upgradeToPro": "Proにアップグレード"
+      "viewPlans": "プランを見る"
     },
     "aiModels": {
       "customSetup": "カスタム設定",

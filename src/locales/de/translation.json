@@ -1101,7 +1101,7 @@
       "signInRequiredDescription": "Melden Sie sich an, um Ihre API-Schlüssel zu verwalten.",
       "proRequired": "API-Zugriff erfordert einen kostenpflichtigen Plan",
       "proRequiredDescription": "Upgraden Sie auf Pro, um API-Schlüssel zu erstellen und OpenWhispr in Ihre Workflows zu integrieren.",
-      "upgradeToPro": "Auf Pro upgraden"
+      "viewPlans": "Pläne anzeigen"
     },
     "aiModels": {
       "customSetup": "Benutzerdefinierte Einrichtung",

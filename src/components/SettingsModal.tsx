@@ -132,7 +132,7 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
       activeSection={activeSection}
       onSectionChange={setActiveSection}
     >
-      <SettingsPage activeSection={activeSection} />
+      <SettingsPage activeSection={activeSection} onNavigateToSection={setActiveSection} />
     </SidebarModal>
   );
 }
