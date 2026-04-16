@@ -94,7 +94,7 @@ class MarkdownMirror {
       fs.mkdirSync(dirPath, { recursive: true });
 
       const slug = this._slugify(note.title);
-      const newFileName = `${note.id}-${slug}-transcript.txt`;
+      const newFileName = `${note.id}-${slug}-transcript.md`;
       const newFilePath = path.join(dirPath, newFileName);
 
       const stale = this._globTranscriptFiles(note.id);
@@ -106,8 +106,8 @@ class MarkdownMirror {
         }
       }
 
-      const { formatTxt } = require("./transcriptFormatter");
-      fs.writeFileSync(newFilePath, formatTxt(note, segments, speakerMappings || {}), "utf-8");
+      const { formatMd } = require("./transcriptFormatter");
+      fs.writeFileSync(newFilePath, formatMd(note, segments, speakerMappings || {}), "utf-8");
     } catch (err) {
       debugLogger.error(
         "Failed to write transcript file",
@@ -234,14 +234,16 @@ class MarkdownMirror {
     const results = [];
     try {
       const prefix = `${noteId}-`;
-      const suffix = "-transcript.txt";
       const dirs = fs.readdirSync(this._basePath, { withFileTypes: true });
       for (const dir of dirs) {
         if (!dir.isDirectory()) continue;
         const dirPath = path.join(this._basePath, dir.name);
         const files = fs.readdirSync(dirPath);
         for (const file of files) {
-          if (file.startsWith(prefix) && file.endsWith(suffix)) {
+          if (
+            file.startsWith(prefix) &&
+            (file.endsWith("-transcript.md") || file.endsWith("-transcript.txt"))
+          ) {
             results.push(path.join(dirPath, file));
           }
         }
