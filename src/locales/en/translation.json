@@ -662,6 +662,7 @@
   "apiKeysSection": {
     "title": "API Keys",
     "description": "Create keys to access the OpenWhispr API programmatically.",
+    "docsLink": "API Docs",
     "empty": "No API keys yet",
     "createButton": "Create API Key",
     "create": {

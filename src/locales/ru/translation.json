@@ -2210,6 +2210,7 @@
   "apiKeysSection": {
     "title": "API-ключи",
     "description": "Создавайте ключи для программного доступа к API OpenWhispr.",
+    "docsLink": "Документация API",
     "empty": "API-ключей пока нет",
     "createButton": "Создать API-ключ",
     "create": {

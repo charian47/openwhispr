@@ -2210,6 +2210,7 @@
   "apiKeysSection": {
     "title": "API-Schlüssel",
     "description": "Erstellen Sie Schlüssel für den programmatischen Zugriff auf die OpenWhispr-API.",
+    "docsLink": "API-Dokumentation",
     "empty": "Noch keine API-Schlüssel",
     "createButton": "API-Schlüssel erstellen",
     "create": {

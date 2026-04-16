@@ -614,6 +614,7 @@
   "apiKeysSection": {
     "title": "Claves API",
     "description": "Crea claves para acceder a la API de OpenWhispr de forma programática.",
+    "docsLink": "Docs de la API",
     "empty": "Aún no hay claves API",
     "createButton": "Crear clave API",
     "create": {

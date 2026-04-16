@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Key, Copy, Check, Trash2, Plus, Shield, AlertTriangle } from "lucide-react";
+import { Key, Copy, Check, Trash2, Plus, Shield, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -89,10 +89,25 @@ export default function ApiKeysSection() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <SectionHeader
-          title={t("apiKeysSection.title")}
-          description={t("apiKeysSection.description")}
-        />
+        <div className="mb-3">
+          <h3 className="text-xs font-semibold text-foreground tracking-tight">
+            {t("apiKeysSection.title")}
+          </h3>
+          <p className="text-xs text-muted-foreground/80 mt-0.5 leading-relaxed">
+            {t("apiKeysSection.description")}
+            <span className="mx-1.5 text-muted-foreground/30">·</span>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-primary/80 hover:text-primary transition-colors"
+              onClick={() =>
+                window.electronAPI?.openExternal?.("https://docs.openwhispr.com/api/overview")
+              }
+            >
+              {t("apiKeysSection.docsLink")}
+              <ExternalLink className="h-2.5 w-2.5" />
+            </button>
+          </p>
+        </div>
         {!isLoading && keys.length > 0 && keys.length < MAX_API_KEYS && (
           <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="h-3.5 w-3.5 mr-1.5" />

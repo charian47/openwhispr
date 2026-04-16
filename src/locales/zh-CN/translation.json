@@ -2205,6 +2205,7 @@
   "apiKeysSection": {
     "title": "API 密钥",
     "description": "创建密钥以编程方式访问 OpenWhispr API。",
+    "docsLink": "API 文档",
     "empty": "暂无 API 密钥",
     "createButton": "创建 API 密钥",
     "create": {

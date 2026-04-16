@@ -2210,6 +2210,7 @@
   "apiKeysSection": {
     "title": "APIキー",
     "description": "アカウントへのプログラムアクセス用のキーを管理",
+    "docsLink": "APIドキュメント",
     "empty": "APIキーはまだありません",
     "createButton": "キーを作成",
     "create": {
