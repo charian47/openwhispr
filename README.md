@@ -27,7 +27,7 @@
 
 ---
 
-OpenWhispr turns your voice into text, notes, and actions from your desktop. Press a hotkey, speak, and your words appear at your cursor. It works with local speech-to-text engines like Whisper and NVIDIA Parakeet for fully private offline transcription, or cloud processing for speed — your choice.
+OpenWhispr turns your voice into text, notes, and actions from your desktop. Press a hotkey, speak, and your words appear at your cursor. Choose between fully private offline transcription with local speech-to-text engines like Whisper and NVIDIA Parakeet — where your audio never leaves your device — or cloud processing for speed. No data collection, no telemetry, fully open source.
 
 ## Download
 
