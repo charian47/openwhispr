@@ -860,6 +860,10 @@
         "description": "Piani, utilizzo e fatturazione",
         "label": "Piani e fatturazione"
       },
+      "apiKeys": {
+        "label": "Chiavi API",
+        "description": "Gestisci accesso API"
+      },
       "general": {
         "description": "Aspetto, suoni e avvio",
         "label": "Preferenze"
@@ -1088,6 +1092,11 @@
         "professional": "Hey {{agentName}}, rendi questo più professionale",
         "bulletPoints": "Hey {{agentName}}, converti questo in elenco puntato"
       }
+    },
+    "apiKeys": {
+      "title": "Chiavi API",
+      "signInRequired": "Accesso richiesto",
+      "signInRequiredDescription": "Accedi per gestire le tue chiavi API."
     },
     "aiModels": {
       "customSetup": "Configurazione personalizzata",
@@ -1923,6 +1932,7 @@
     "upgradeUnlimited": "Passa a Pro — trascrizioni illimitate"
   },
   "support": {
+    "documentation": "Documentazione",
     "joinDiscord": "Unisciti a Discord",
     "contactSupport": "Contatta il supporto",
     "submitBug": "Segnala un bug"
@@ -2194,6 +2204,54 @@
     "title": "Autorizzazioni necessarie",
     "description": "OpenWhispr ha bisogno di alcune autorizzazioni per funzionare su questo computer.",
     "continue": "Continua"
+  },
+  "apiKeysSection": {
+    "title": "Chiavi API",
+    "description": "Crea chiavi per accedere all'API di OpenWhispr in modo programmatico.",
+    "empty": "Nessuna chiave API ancora",
+    "createButton": "Crea chiave API",
+    "create": {
+      "title": "Crea chiave API",
+      "nameLabel": "Nome della chiave",
+      "namePlaceholder": "es. La mia integrazione",
+      "scopesLabel": "Permessi",
+      "expiryLabel": "Scadenza",
+      "expiryOptions": {
+        "never": "Non scade mai",
+        "30days": "30 giorni",
+        "60days": "60 giorni",
+        "90days": "90 giorni",
+        "1year": "1 anno"
+      },
+      "submit": "Crea",
+      "cancel": "Annulla"
+    },
+    "created": {
+      "title": "Chiave API creata",
+      "warning": "Copia questa chiave ora. Non verrà più mostrata.",
+      "copied": "Copiato!",
+      "copyButton": "Copia negli appunti",
+      "done": "Fatto"
+    },
+    "scopes": {
+      "notesRead": "Leggi note",
+      "notesWrite": "Crea e modifica note",
+      "transcriptionsRead": "Leggi trascrizioni",
+      "usageRead": "Visualizza utilizzo"
+    },
+    "revoke": {
+      "button": "Revoca",
+      "confirm": "Revocare questa chiave? Le integrazioni che la utilizzano smetteranno di funzionare.",
+      "success": "Chiave API revocata"
+    },
+    "neverUsed": "Mai utilizzata",
+    "lastUsed": "Ultimo utilizzo {{time}}",
+    "maxKeysReached": "Massimo {{max}} chiavi consentite",
+    "errors": {
+      "loadFailed": "Impossibile caricare le chiavi API",
+      "createFailed": "Impossibile creare la chiave API",
+      "revokeFailed": "Impossibile revocare la chiave API"
+    }
   },
   "embeddedChat": {
     "askPlaceholder": "Chiedi qualcosa...",
