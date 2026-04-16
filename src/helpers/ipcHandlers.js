@@ -5104,6 +5104,92 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("cloud-api-keys-list", async (event) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        const response = await fetch(`${apiUrl}/api/v1/keys/list`, {
+          headers: { Cookie: cookieHeader },
+        });
+
+        if (response.status === 401) {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+        const { data } = await response.json();
+        return { success: true, keys: data.keys };
+      } catch (error) {
+        debugLogger.error("Cloud API keys list error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("cloud-api-keys-create", async (event, opts) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        const response = await fetch(`${apiUrl}/api/v1/keys/create`, {
+          method: "POST",
+          headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
+          body: JSON.stringify(opts),
+        });
+
+        if (response.status === 401) {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error?.message || `API error: ${response.status}`);
+        }
+
+        const { data } = await response.json();
+        return { success: true, ...data };
+      } catch (error) {
+        debugLogger.error("Cloud API keys create error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("cloud-api-keys-revoke", async (event, id) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        const response = await fetch(`${apiUrl}/api/v1/keys/${id}/revoke`, {
+          method: "POST",
+          headers: { Cookie: cookieHeader },
+        });
+
+        if (response.status === 401) {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error?.message || `API error: ${response.status}`);
+        }
+
+        return { success: true, revoked: true };
+      } catch (error) {
+        debugLogger.error("Cloud API keys revoke error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
     ipcMain.handle("get-stt-config", async (event) => {
       try {
         const apiUrl = getApiUrl();

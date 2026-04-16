@@ -1,5 +1,3 @@
-import { OPENWHISPR_API_URL } from "../config/constants.js";
-
 interface ApiKey {
   id: string;
   name: string;
@@ -21,42 +19,25 @@ interface CreateApiKeyOptions {
 }
 
 async function listApiKeys(): Promise<{ keys: ApiKey[] }> {
-  const res = await fetch(`${OPENWHISPR_API_URL}/api/v1/keys/list`, {
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error(await res.text());
-  const json = await res.json();
-  return json.data as { keys: ApiKey[] };
+  const result = await window.electronAPI?.cloudApiKeysList?.();
+  if (!result?.success) throw new Error(result?.error ?? "Failed to list API keys");
+  return { keys: result.keys ?? [] };
 }
 
 async function createApiKey(options: CreateApiKeyOptions): Promise<CreateApiKeyResponse> {
-  const body: Record<string, unknown> = {
+  const result = await window.electronAPI?.cloudApiKeysCreate?.({
     name: options.name,
     scopes: options.scopes,
-  };
-  if (options.expiresInDays != null) {
-    body.expires_in_days = options.expiresInDays;
-  }
-
-  const res = await fetch(`${OPENWHISPR_API_URL}/api/v1/keys/create`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(body),
+    expires_in_days: options.expiresInDays ?? undefined,
   });
-  if (!res.ok) throw new Error(await res.text());
-  const json = await res.json();
-  return json.data as CreateApiKeyResponse;
+  if (!result?.success) throw new Error(result?.error ?? "Failed to create API key");
+  return result as unknown as CreateApiKeyResponse;
 }
 
 async function revokeApiKey(id: string): Promise<{ revoked: true }> {
-  const res = await fetch(`${OPENWHISPR_API_URL}/api/v1/keys/${id}/revoke`, {
-    method: "POST",
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error(await res.text());
-  const json = await res.json();
-  return json.data as { revoked: true };
+  const result = await window.electronAPI?.cloudApiKeysRevoke?.(id);
+  if (!result?.success) throw new Error(result?.error ?? "Failed to revoke API key");
+  return { revoked: true };
 }
 
 export { listApiKeys, createApiKey, revokeApiKey };

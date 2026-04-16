@@ -1008,6 +1008,44 @@ declare global {
         error?: string;
       }>;
 
+      // Cloud API keys
+      cloudApiKeysList?: () => Promise<{
+        success: boolean;
+        keys?: Array<{
+          id: string;
+          name: string;
+          key_prefix: string;
+          scopes: string[];
+          last_used_at: string | null;
+          expires_at: string | null;
+          created_at: string;
+        }>;
+        error?: string;
+        code?: string;
+      }>;
+      cloudApiKeysCreate?: (opts: {
+        name: string;
+        scopes: string[];
+        expires_in_days?: number | null;
+      }) => Promise<{
+        success: boolean;
+        key?: string;
+        id?: string;
+        name?: string;
+        key_prefix?: string;
+        scopes?: string[];
+        expires_at?: string | null;
+        created_at?: string;
+        error?: string;
+        code?: string;
+      }>;
+      cloudApiKeysRevoke?: (id: string) => Promise<{
+        success: boolean;
+        revoked?: boolean;
+        error?: string;
+        code?: string;
+      }>;
+
       // Cloud audio file transcription
       transcribeAudioFileCloud?: (filePath: string) => Promise<{
         success: boolean;
