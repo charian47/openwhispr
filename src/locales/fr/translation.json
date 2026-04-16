@@ -392,6 +392,7 @@
         "server": "Erreur serveur ({{error}}). Réessayez plus tard.",
         "generic": "Échec du téléchargement : {{error}}",
         "extractionFailed": "Modèle téléchargé, mais l'installation a échoué. Cliquez sur télécharger pour relancer l'installation sans retélécharger.",
+        "tlsError": "Erreur de certificat — votre réseau utilise peut-être une inspection SSL qui bloque les téléchargements. Essayez depuis un autre réseau.",
         "unknown": "Erreur inconnue"
       },
       "downloadFailed": {

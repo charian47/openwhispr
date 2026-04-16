@@ -392,6 +392,7 @@
         "server": "Error del servidor ({{error}}). Inténtalo más tarde.",
         "generic": "Falló la descarga: {{error}}",
         "extractionFailed": "Modelo descargado, pero la instalación falló. Haz clic en descargar para reintentar la instalación sin volver a descargar.",
+        "tlsError": "Error de certificado — tu red puede usar inspección SSL que bloquea las descargas. Intenta descargar desde otra red.",
         "unknown": "Error desconocido"
       },
       "downloadFailed": {
