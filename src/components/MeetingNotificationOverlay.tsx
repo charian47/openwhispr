@@ -62,13 +62,14 @@ export default function MeetingNotificationOverlay() {
             : "translate-x-[120%] opacity-0 scale-95",
         ].join(" ")}
       >
+        <button
+          onClick={() => respond("dismiss")}
+          className="absolute left-1 top-1 z-10 size-5 rounded-full flex items-center justify-center bg-black/8 dark:bg-white/10 text-muted-foreground/60 hover:text-foreground hover:bg-black/15 dark:hover:bg-white/20 transition-colors duration-150"
+        >
+          <X className="size-2.5" />
+        </button>
+
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => respond("dismiss")}
-            className="shrink-0 size-6 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/8 text-muted-foreground/50 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/15 transition-colors duration-150"
-          >
-            <X className="size-3" />
-          </button>
           <div className="shrink-0 bg-primary/10 rounded-md p-1">
             <svg viewBox="0 0 1024 1024" className="w-4.5 h-4.5">
               <rect width="1024" height="1024" rx="241" fill="#2056DF" />
