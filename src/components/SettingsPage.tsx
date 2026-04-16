@@ -2093,10 +2093,12 @@ export default function SettingsPage({
                           ) : (
                             <Button
                               onClick={async () => {
+                                setCheckoutTier("plan-upgrade");
                                 const result = await usage.openCheckout({
                                   plan: billingState.pro ? "annual" : "monthly",
                                   tier: "pro",
                                 });
+                                setCheckoutTier(null);
                                 if (!result.success) {
                                   toast({
                                     title: t("settingsPage.account.checkout.couldNotOpenTitle"),
@@ -2109,9 +2111,9 @@ export default function SettingsPage({
                               }}
                               size="sm"
                               className="w-full"
-                              disabled={usage.checkoutLoading}
+                              disabled={checkoutTier === "plan-upgrade"}
                             >
-                              {usage.checkoutLoading
+                              {checkoutTier === "plan-upgrade"
                                 ? t("settingsPage.account.checkout.opening")
                                 : t("settingsPage.account.checkout.upgradeToPro")}
                             </Button>
