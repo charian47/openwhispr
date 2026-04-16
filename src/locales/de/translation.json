@@ -1232,6 +1232,8 @@
       },
       "clipboard": {
         "title": "Zwischenablage",
+        "autoPaste": "Automatisches Einfügen",
+        "autoPasteDescription": "Transkribierten Text nach dem Diktieren automatisch in die aktive App einfügen",
         "keepInClipboard": "Transkription in der Zwischenablage behalten",
         "keepInClipboardDescription": "Diktierten Text in der Zwischenablage behalten, damit Sie ihn bei Bedarf manuell einfügen können"
       },
