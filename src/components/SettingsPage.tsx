@@ -1658,7 +1658,7 @@ export default function SettingsPage({
                         onClick={() =>
                           handleCheckout(billingState.pro ? "annual" : "monthly", "pro")
                         }
-                        disabled={!!checkoutTier}
+                        disabled={checkoutTier === "pro"}
                         size="sm"
                         className="mt-2 w-full h-6 text-[10px]"
                       >
@@ -1752,7 +1752,7 @@ export default function SettingsPage({
                         onClick={() =>
                           handleCheckout(billingState.business ? "annual" : "monthly", "business")
                         }
-                        disabled={!!checkoutTier}
+                        disabled={checkoutTier === "business"}
                         size="sm"
                         className="mt-2 w-full h-6 text-[10px]"
                       >
@@ -2097,7 +2097,7 @@ export default function SettingsPage({
                               }
                               size="sm"
                               className="w-full"
-                              disabled={!!checkoutTier}
+                              disabled={checkoutTier === "pro"}
                             >
                               {checkoutTier === "pro"
                                 ? t("settingsPage.account.checkout.opening")
