@@ -72,7 +72,7 @@ const MEETING_MIC_PRIMARY_AUDIO_CONSTRAINTS = {
 
 const REALTIME_MODELS = new Set(["gpt-4o-mini-transcribe", "gpt-4o-transcribe"]);
 const SPEAKER_IDENTIFICATION_RETENTION_MS = 30_000;
-const SYSTEM_SPEAKER_CARRY_FORWARD_MS = 2_500;
+const SYSTEM_SPEAKER_CARRY_FORWARD_MS = 8_000;
 const buildTranscriptText = (segments: TranscriptSegment[]) =>
   segments
     .map((segment) => segment.text)
@@ -508,7 +508,7 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
             nowMs - candidate.timestamp <= SYSTEM_SPEAKER_CARRY_FORWARD_MS
         );
 
-      if (previousSystemSegment?.speaker && previousSystemSegment.speakerIsPlaceholder) {
+      if (previousSystemSegment?.speaker) {
         reserveSpeakerIndex(previousSystemSegment.speaker);
         return normalizeTranscriptSegment({
           ...segment,

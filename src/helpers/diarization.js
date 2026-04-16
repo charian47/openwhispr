@@ -303,7 +303,7 @@ class DiarizationManager {
   }
 
   async diarize(wavPath, options = {}) {
-    const { numSpeakers = -1, threshold = 0.5 } = options;
+    const { numSpeakers = -1, threshold = 0.35 } = options;
 
     const binaryPath = this.getBinaryPath();
     if (!binaryPath) {

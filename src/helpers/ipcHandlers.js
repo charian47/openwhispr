@@ -6080,7 +6080,7 @@ class IPCHandlers {
             );
             const similarity = speakerEmbeddings.cosineSimilarity(profileEmb, speakerEmb);
 
-            if (similarity > 0.7) {
+            if (similarity > 0.6) {
               this.databaseManager.setSpeakerMapping(
                 noteId,
                 emb.speaker_id,
@@ -6188,7 +6188,7 @@ class IPCHandlers {
         }
       }
 
-      if (!bestEntry || bestSimilarity <= 0.7) {
+      if (!bestEntry || bestSimilarity <= 0.6) {
         continue;
       }
 
@@ -6267,6 +6267,12 @@ class IPCHandlers {
           observedSpeakerIds.add(speakerId);
         }
 
+        if (observedSpeakerIds.size > 10) {
+          debugLogger.warn("Excessive speaker count from live identification", {
+            observedSpeakers: observedSpeakerIds.size,
+          });
+        }
+
         const expectedSpeakerCount =
           observedSpeakerIds.size >= 2 ? Math.min(observedSpeakerIds.size, 4) : -1;
         const diarizationSegments = await this.diarizationManager.diarize(
@@ -6312,7 +6318,7 @@ class IPCHandlers {
 
             for (const spk of speakerIds) {
               const segs = diarizationSegments.filter((s) => s.speaker === spk);
-              const sorted = segs.sort((a, b) => b.end - b.start - (a.end - a.start)).slice(0, 3);
+              const sorted = segs.sort((a, b) => (b.end - b.start) - (a.end - a.start)).slice(0, 3);
               const embeddings = [];
               for (const seg of sorted) {
                 if (seg.end - seg.start < 1.5) continue;
@@ -6366,7 +6372,7 @@ class IPCHandlers {
                   }
                 }
 
-                if (bestProfile && bestSim > 0.7) {
+                if (bestProfile && bestSim > 0.6) {
                   for (const seg of enrichedSegments) {
                     if (seg.speaker === mappedId) {
                       applyConfirmedSpeaker(seg, {
@@ -6377,7 +6383,7 @@ class IPCHandlers {
                       });
                     }
                   }
-                } else if (bestProfile && bestSim > 0.55) {
+                } else if (bestProfile && bestSim > 0.5) {
                   for (const seg of enrichedSegments) {
                     if (seg.speaker === mappedId) {
                       if (isSpeakerLocked(seg)) {
