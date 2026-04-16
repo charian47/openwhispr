@@ -1206,7 +1206,12 @@
         "activationMode": "Aktivierungsmodus",
         "description": "Die Tastenkombination, die das Sprachdiktat startet und stoppt",
         "resetToDefault": "Auf {{hotkey}} zurücksetzen",
-        "title": "Diktat-Hotkey"
+        "title": "Diktat-Hotkey",
+        "linuxPttPermissionTitle": "Gedrückt halten zum Sprechen erfordert zusätzliche Einrichtung",
+        "linuxPttPermissionDescription": "Führen Sie diesen Befehl aus und melden Sie sich ab/an: sudo usermod -aG input $USER",
+        "linuxPttSetupTitle": "Gedrückt halten zum Sprechen erfordert Einrichtung",
+        "linuxPttSetupDescription": "Ihr Benutzer benötigt Zugriff auf die Tastatureingabegeräte.",
+        "linuxPttSetupNote": "Melden Sie sich nach dem Ausführen des Befehls ab und wieder an."
       },
       "meetingHotkey": {
         "title": "Meeting-Modus-Hotkey",

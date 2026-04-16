@@ -1206,7 +1206,12 @@
         "activationMode": "起動モード",
         "description": "音声ディクテーションの開始/停止に使用するキーの組み合わせ",
         "resetToDefault": "{{hotkey}}にリセット",
-        "title": "ディクテーションホットキー"
+        "title": "ディクテーションホットキー",
+        "linuxPttPermissionTitle": "長押しして話すには追加の設定が必要です",
+        "linuxPttPermissionDescription": "次のコマンドを実行してログアウト/ログインしてください：sudo usermod -aG input $USER",
+        "linuxPttSetupTitle": "長押しして話すには設定が必要です",
+        "linuxPttSetupDescription": "キーボード入力デバイスへのアクセス権が必要です。",
+        "linuxPttSetupNote": "コマンド実行後、ログアウトして再度ログインしてください。"
       },
       "meetingHotkey": {
         "title": "ミーティングモードホットキー",

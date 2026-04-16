@@ -1206,7 +1206,12 @@
         "activationMode": "Modalità di attivazione",
         "description": "La combinazione di tasti che avvia e ferma la dettatura vocale",
         "resetToDefault": "Ripristina a {{hotkey}}",
-        "title": "Scorciatoia di dettatura"
+        "title": "Scorciatoia di dettatura",
+        "linuxPttPermissionTitle": "Tieni premuto per parlare richiede configurazione",
+        "linuxPttPermissionDescription": "Esegui questo comando e riavvia la sessione: sudo usermod -aG input $USER",
+        "linuxPttSetupTitle": "Tieni premuto per parlare richiede configurazione",
+        "linuxPttSetupDescription": "Il tuo utente ha bisogno di accesso ai dispositivi di input della tastiera.",
+        "linuxPttSetupNote": "Dopo aver eseguito il comando, esci e riaccedi."
       },
       "meetingHotkey": {
         "title": "Scorciatoia modalità meeting",

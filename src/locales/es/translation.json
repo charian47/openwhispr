@@ -1206,7 +1206,12 @@
         "activationMode": "Modo de activación",
         "description": "La combinación de teclas que inicia y detiene el dictado por voz",
         "resetToDefault": "Restablecer a {{hotkey}}",
-        "title": "Atajo de dictado"
+        "title": "Atajo de dictado",
+        "linuxPttPermissionTitle": "Mantener para hablar requiere configuración adicional",
+        "linuxPttPermissionDescription": "Ejecuta este comando y cierra sesión: sudo usermod -aG input $USER",
+        "linuxPttSetupTitle": "Mantener para hablar requiere configuración",
+        "linuxPttSetupDescription": "Tu usuario necesita acceso a los dispositivos de entrada del teclado.",
+        "linuxPttSetupNote": "Después de ejecutar el comando, cierra sesión y vuelve a iniciarla."
       },
       "meetingHotkey": {
         "title": "Atajo modo reunión",
