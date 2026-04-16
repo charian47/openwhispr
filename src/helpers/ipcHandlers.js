@@ -1002,6 +1002,22 @@ class IPCHandlers {
           participants = parsed.map((p) => p.name).filter(Boolean);
         } catch {}
 
+        const { dialog } = require("electron");
+        const fs = require("fs");
+        const ext = format === "srt" ? "srt" : format === "json" ? "json" : "txt";
+        const safeName = title.replace(/[/\\?%*:|"<>]/g, "-");
+
+        const result = await dialog.showSaveDialog({
+          defaultPath: `${safeName}.${ext}`,
+          filters: [
+            { name: "Text", extensions: ["txt"] },
+            { name: "SubRip Subtitles", extensions: ["srt"] },
+            { name: "JSON", extensions: ["json"] },
+          ],
+        });
+
+        if (result.canceled || !result.filePath) return { success: false };
+
         const resolveSpeaker = (seg) => {
           if (seg.speakerName && !seg.speakerIsPlaceholder) return seg.speakerName;
           if (seg.speaker && speakerMappings[seg.speaker]) return speakerMappings[seg.speaker];
@@ -1085,22 +1101,6 @@ class IPCHandlers {
             })),
           }, null, 2);
         }
-
-        const { dialog } = require("electron");
-        const fs = require("fs");
-        const ext = format === "srt" ? "srt" : format === "json" ? "json" : "txt";
-        const safeName = title.replace(/[/\\?%*:|"<>]/g, "-");
-
-        const result = await dialog.showSaveDialog({
-          defaultPath: `${safeName}.${ext}`,
-          filters: [
-            { name: "Text", extensions: ["txt"] },
-            { name: "SubRip Subtitles", extensions: ["srt"] },
-            { name: "JSON", extensions: ["json"] },
-          ],
-        });
-
-        if (result.canceled || !result.filePath) return { success: false };
 
         fs.writeFileSync(result.filePath, exportContent, "utf-8");
         return { success: true };
