@@ -392,6 +392,7 @@
         "server": "服务器错误（{{error}}），请稍后重试。",
         "generic": "下载失败：{{error}}",
         "extractionFailed": "模型已下载但安装失败。点击下载以重新安装，无需重新下载。",
+        "tlsError": "证书错误 — 您的网络可能使用了阻止下载的SSL检查。请尝试从其他网络下载。",
         "unknown": "未知错误"
       },
       "downloadFailed": {
@@ -1478,6 +1479,7 @@
     }
   },
   "models": {
+    "learnMore": "了解更多",
     "descriptions": {
       "parakeet": {
         "parakeet_tdt_0_6b_v3": "快速多语言语音识别，自动语言检测（25 种语言）"

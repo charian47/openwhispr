@@ -392,6 +392,7 @@
         "server": "Server error ({{error}}). Please try again later.",
         "generic": "Download failed: {{error}}",
         "extractionFailed": "Model downloaded but installation failed. Click download to retry installation without re-downloading.",
+        "tlsError": "Certificate error — your network may use SSL inspection that blocks downloads. Try downloading from a different network.",
         "unknown": "Unknown error"
       },
       "downloadFailed": {
@@ -1579,6 +1580,7 @@
     }
   },
   "models": {
+    "learnMore": "Learn more",
     "descriptions": {
       "parakeet": {
         "parakeet_tdt_0_6b_v3": "Fast multilingual ASR with auto language detection (25 languages)"

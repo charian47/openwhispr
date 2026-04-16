@@ -364,6 +364,7 @@
         "server": "Erro do servidor ({{error}}). Tente mais tarde.",
         "generic": "Falha no download: {{error}}",
         "extractionFailed": "Modelo baixado, mas a instalação falhou. Clique em baixar para tentar a instalação novamente sem precisar baixar de novo.",
+        "tlsError": "Erro de certificado — sua rede pode usar inspeção SSL que bloqueia downloads. Tente baixar de outra rede.",
         "unknown": "Erro desconhecido"
       },
       "downloadFailed": {
@@ -1455,6 +1456,7 @@
     }
   },
   "models": {
+    "learnMore": "Saiba mais",
     "descriptions": {
       "parakeet": {
         "parakeet_tdt_0_6b_v3": "ASR multilíngue rápido com detecção automática de idioma (25 idiomas)"

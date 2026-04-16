@@ -391,8 +391,9 @@
         "rateLimited": "Download-Server begrenzt Anfragen. Bitte warten Sie einige Minuten und versuchen Sie es erneut.",
         "server": "Serverfehler ({{error}}). Bitte versuchen Sie es später erneut.",
         "generic": "Download fehlgeschlagen: {{error}}",
-        "extractionFailed": "Modell heruntergeladen, aber Installation fehlgeschlagen. Klicken Sie auf „Herunterladen“, um die Installation ohne erneuten Download zu wiederholen.",
-        "unknown": "Unbekannter Fehler"
+        “extractionFailed”: “Modell heruntergeladen, aber Installation fehlgeschlagen. Klicken Sie auf „Herunterladen”, um die Installation ohne erneuten Download zu wiederholen.”,
+        “tlsError”: “Zertifikatsfehler — Ihr Netzwerk verwendet möglicherweise SSL-Inspektion, die Downloads blockiert. Versuchen Sie es über ein anderes Netzwerk.”,
+        “unknown”: “Unbekannter Fehler”
       },
       "downloadFailed": {
         "title": "Download fehlgeschlagen"
@@ -1483,6 +1484,7 @@
     }
   },
   "models": {
+    "learnMore": "Mehr erfahren",
     "descriptions": {
       "parakeet": {
         "parakeet_tdt_0_6b_v3": "Schnelle mehrsprachige ASR mit automatischer Spracherkennung (25 Sprachen)"
