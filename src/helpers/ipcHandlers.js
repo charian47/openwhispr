@@ -5104,7 +5104,7 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("cloud-api-keys-list", async (event) => {
+    ipcMain.handle("cloud-api-request", async (event, opts) => {
       try {
         const apiUrl = getApiUrl();
         if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
@@ -5112,80 +5112,34 @@ class IPCHandlers {
         const cookieHeader = await getSessionCookies(event);
         if (!cookieHeader) throw new Error("No session cookies available");
 
-        const response = await fetch(`${apiUrl}/api/v1/keys/list`, {
-          headers: { Cookie: cookieHeader },
-        });
+        const method = (opts.method || "GET").toUpperCase();
+        const headers = { Cookie: cookieHeader };
+        const fetchOpts = { method, headers };
+
+        if (opts.body !== undefined) {
+          headers["Content-Type"] = "application/json";
+          fetchOpts.body = JSON.stringify(opts.body);
+        }
+
+        const response = await fetch(`${apiUrl}${opts.path}`, fetchOpts);
 
         if (response.status === 401) {
           return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
         }
-
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
-
-        const { data } = await response.json();
-        return { success: true, keys: data.keys };
-      } catch (error) {
-        debugLogger.error("Cloud API keys list error:", error);
-        return { success: false, error: error.message };
-      }
-    });
-
-    ipcMain.handle("cloud-api-keys-create", async (event, opts) => {
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
-
-        const cookieHeader = await getSessionCookies(event);
-        if (!cookieHeader) throw new Error("No session cookies available");
-
-        const response = await fetch(`${apiUrl}/api/v1/keys/create`, {
-          method: "POST",
-          headers: { Cookie: cookieHeader, "Content-Type": "application/json" },
-          body: JSON.stringify(opts),
-        });
-
-        if (response.status === 401) {
-          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        if (response.status === 503) {
+          return { success: false, error: "Service temporarily unavailable", code: "SERVER_ERROR" };
         }
+
+        const data = await response.json().catch(() => null);
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error?.message || `API error: ${response.status}`);
+          const message = data?.error?.message || data?.error || `API error: ${response.status}`;
+          return { success: false, error: message };
         }
 
-        const { data } = await response.json();
-        return { success: true, ...data };
+        return { success: true, data };
       } catch (error) {
-        debugLogger.error("Cloud API keys create error:", error);
-        return { success: false, error: error.message };
-      }
-    });
-
-    ipcMain.handle("cloud-api-keys-revoke", async (event, id) => {
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
-
-        const cookieHeader = await getSessionCookies(event);
-        if (!cookieHeader) throw new Error("No session cookies available");
-
-        const response = await fetch(`${apiUrl}/api/v1/keys/${id}/revoke`, {
-          method: "POST",
-          headers: { Cookie: cookieHeader },
-        });
-
-        if (response.status === 401) {
-          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
-        }
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error?.message || `API error: ${response.status}`);
-        }
-
-        return { success: true, revoked: true };
-      } catch (error) {
-        debugLogger.error("Cloud API keys revoke error:", error);
+        debugLogger.error(`Cloud API request error (${opts?.path}):`, error);
         return { success: false, error: error.message };
       }
     });

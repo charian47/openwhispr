@@ -439,9 +439,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   cloudBillingPortal: () => ipcRenderer.invoke("cloud-billing-portal"),
   cloudSwitchPlan: (opts) => ipcRenderer.invoke("cloud-switch-plan", opts),
   cloudPreviewSwitch: (opts) => ipcRenderer.invoke("cloud-preview-switch", opts),
-  cloudApiKeysList: () => ipcRenderer.invoke("cloud-api-keys-list"),
-  cloudApiKeysCreate: (opts) => ipcRenderer.invoke("cloud-api-keys-create", opts),
-  cloudApiKeysRevoke: (id) => ipcRenderer.invoke("cloud-api-keys-revoke", id),
+  cloudApiRequest: (opts) => ipcRenderer.invoke("cloud-api-request", opts),
   getSttConfig: () => ipcRenderer.invoke("get-stt-config"),
 
   // Cloud audio file transcription

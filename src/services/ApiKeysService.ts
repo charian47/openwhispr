@@ -1,3 +1,5 @@
+import { cloudGet, cloudPost } from "./cloudApi.js";
+
 interface ApiKey {
   id: string;
   name: string;
@@ -18,25 +20,26 @@ interface CreateApiKeyOptions {
   expiresInDays?: number | null;
 }
 
+interface V1Response<T> {
+  data: T;
+}
+
 async function listApiKeys(): Promise<{ keys: ApiKey[] }> {
-  const result = await window.electronAPI?.cloudApiKeysList?.();
-  if (!result?.success) throw new Error(result?.error ?? "Failed to list API keys");
-  return { keys: result.keys ?? [] };
+  const res = await cloudGet<V1Response<{ keys: ApiKey[] }>>("/api/v1/keys/list");
+  return { keys: res.data.keys };
 }
 
 async function createApiKey(options: CreateApiKeyOptions): Promise<CreateApiKeyResponse> {
-  const result = await window.electronAPI?.cloudApiKeysCreate?.({
+  const res = await cloudPost<V1Response<CreateApiKeyResponse>>("/api/v1/keys/create", {
     name: options.name,
     scopes: options.scopes,
-    expires_in_days: options.expiresInDays ?? undefined,
+    ...(options.expiresInDays != null ? { expires_in_days: options.expiresInDays } : {}),
   });
-  if (!result?.success) throw new Error(result?.error ?? "Failed to create API key");
-  return result as unknown as CreateApiKeyResponse;
+  return res.data;
 }
 
 async function revokeApiKey(id: string): Promise<{ revoked: true }> {
-  const result = await window.electronAPI?.cloudApiKeysRevoke?.(id);
-  if (!result?.success) throw new Error(result?.error ?? "Failed to revoke API key");
+  await cloudPost(`/api/v1/keys/${id}/revoke`);
   return { revoked: true };
 }
 
