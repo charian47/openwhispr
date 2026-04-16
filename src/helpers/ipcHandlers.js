@@ -445,6 +445,11 @@ class IPCHandlers {
       return { success: true };
     });
 
+    ipcMain.handle("set-notification-interactivity", (event, interactive) => {
+      this.windowManager.setNotificationInteractivity(Boolean(interactive));
+      return { success: true };
+    });
+
     ipcMain.handle("resize-main-window", (event, sizeKey) => {
       return this.windowManager.resizeMainWindow(sizeKey);
     });
@@ -988,14 +993,17 @@ class IPCHandlers {
 
         const title = note.title || "Untitled";
         const noteDate = new Date(note.created_at);
-        const dateStr = noteDate.toLocaleDateString(undefined, {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }) + " " + noteDate.toLocaleTimeString(undefined, {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
+        const dateStr =
+          noteDate.toLocaleDateString(undefined, {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }) +
+          " " +
+          noteDate.toLocaleTimeString(undefined, {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
         let participants = [];
         try {
           const parsed = JSON.parse(note.participants || "[]");
@@ -1085,21 +1093,25 @@ class IPCHandlers {
           const speakersSet = new Set();
           for (const seg of merged) speakersSet.add(resolveSpeaker(seg));
           const lastSeg = merged[merged.length - 1];
-          exportContent = JSON.stringify({
-            metadata: {
-              title,
-              date: dateStr,
-              duration_seconds: lastSeg ? Math.round(lastSeg.timestamp) : 0,
-              speaker_count: speakersSet.size,
-              segment_count: merged.length,
+          exportContent = JSON.stringify(
+            {
+              metadata: {
+                title,
+                date: dateStr,
+                duration_seconds: lastSeg ? Math.round(lastSeg.timestamp) : 0,
+                speaker_count: speakersSet.size,
+                segment_count: merged.length,
+              },
+              speakers: [...speakersSet],
+              segments: merged.map((seg) => ({
+                speaker: resolveSpeaker(seg),
+                timestamp: seg.timestamp,
+                text: seg.text,
+              })),
             },
-            speakers: [...speakersSet],
-            segments: merged.map((seg) => ({
-              speaker: resolveSpeaker(seg),
-              timestamp: seg.timestamp,
-              text: seg.text,
-            })),
-          }, null, 2);
+            null,
+            2
+          );
         }
 
         fs.writeFileSync(result.filePath, exportContent, "utf-8");

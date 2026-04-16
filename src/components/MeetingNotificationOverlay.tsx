@@ -13,6 +13,7 @@ interface NotificationData {
 export default function MeetingNotificationOverlay() {
   const [data, setData] = useState<NotificationData | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     let shown = false;
@@ -48,8 +49,18 @@ export default function MeetingNotificationOverlay() {
     [data]
   );
 
+  const handleMouseEnter = useCallback(() => {
+    setIsHovered(true);
+    window.electronAPI?.setNotificationInteractivity?.(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsHovered(false);
+    window.electronAPI?.setNotificationInteractivity?.(false);
+  }, []);
+
   return (
-    <div className="meeting-notification-window w-full h-full bg-transparent p-2">
+    <div className="meeting-notification-window w-full h-full bg-transparent p-3">
       <div
         className={[
           "relative",
@@ -61,12 +72,21 @@ export default function MeetingNotificationOverlay() {
             ? "translate-x-0 opacity-100 scale-100"
             : "translate-x-[120%] opacity-0 scale-95",
         ].join(" ")}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
         <button
           onClick={() => respond("dismiss")}
-          className="absolute left-1 top-1 z-10 size-5 rounded-full flex items-center justify-center bg-black/8 dark:bg-white/10 text-muted-foreground/60 hover:text-foreground hover:bg-black/15 dark:hover:bg-white/20 transition-colors duration-150"
+          className={[
+            "absolute -left-2.5 -top-2.5 z-10 size-6 rounded-full",
+            "flex items-center justify-center",
+            "bg-card dark:bg-surface-2 border border-border/40 dark:border-border-subtle/40 shadow-sm",
+            "text-muted-foreground/70 hover:text-foreground hover:bg-muted",
+            "transition-all duration-150",
+            isHovered ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none",
+          ].join(" ")}
         >
-          <X className="size-2.5" />
+          <X className="size-3" />
         </button>
 
         <div className="flex items-center gap-2.5">
