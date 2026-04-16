@@ -1980,6 +1980,7 @@
     "inputHint": "Séparez les mots par des virgules. Ajoutez des phrases de contexte comme « Le mot est Synty » pour une meilleure reconnaissance."
   },
   "support": {
+    "documentation": "Documentation",
     "joinDiscord": "Rejoindre Discord",
     "contactSupport": "Contacter le support",
     "submitBug": "Signaler un bug"

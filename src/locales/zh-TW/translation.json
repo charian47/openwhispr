@@ -1927,6 +1927,7 @@
     "upgradeUnlimited": "升級至 Pro — 無限轉錄"
   },
   "support": {
+    "documentation": "文件",
     "joinDiscord": "加入 Discord",
     "contactSupport": "聯絡支援",
     "submitBug": "提交 Bug"

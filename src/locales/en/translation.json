@@ -2028,6 +2028,7 @@
     "inputHint": "Separate multiple words with commas. Add context phrases like \"The word is Synty\" for better recognition."
   },
   "support": {
+    "documentation": "Documentation",
     "joinDiscord": "Join Discord",
     "contactSupport": "Contact Support",
     "submitBug": "Submit Bug"

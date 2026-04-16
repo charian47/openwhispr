@@ -1980,6 +1980,7 @@
     "upgradeUnlimited": "Actualizar a Pro — transcripciones ilimitadas"
   },
   "support": {
+    "documentation": "Documentación",
     "joinDiscord": "Unirse a Discord",
     "contactSupport": "Contactar soporte",
     "submitBug": "Reportar un error"

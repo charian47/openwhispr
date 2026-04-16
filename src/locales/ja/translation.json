@@ -1932,6 +1932,7 @@
     "upgradeUnlimited": "Proにアップグレード — 無制限の文字起こし"
   },
   "support": {
+    "documentation": "ドキュメント",
     "joinDiscord": "Discord に参加",
     "contactSupport": "サポートに問い合わせ",
     "submitBug": "バグを報告"

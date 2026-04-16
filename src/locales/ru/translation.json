@@ -1932,6 +1932,7 @@
     "upgradeUnlimited": "Pro — без ограничений"
   },
   "support": {
+    "documentation": "Документация",
     "joinDiscord": "Присоединиться к Discord",
     "contactSupport": "Связаться с поддержкой",
     "submitBug": "Сообщить об ошибке"
