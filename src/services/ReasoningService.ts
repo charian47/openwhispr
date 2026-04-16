@@ -29,6 +29,7 @@ class ReasoningService extends BaseReasoningService {
   private static readonly MAX_TOOL_STEPS = 20;
   private cacheCleanupStop: (() => void) | undefined;
   private streamAbortController: AbortController | null = null;
+  private probedBases = new Set<string>();
 
   constructor() {
     super();
@@ -203,20 +204,9 @@ class ReasoningService extends BaseReasoningService {
     } catch {}
   }
 
-  /**
-   * Probe /v1/models to detect servers (notably llama.cpp's llama-server) that
-   * respond 200 to /v1/responses but perform ~100 MiB of state serialization per
-   * request, producing 5-29s latency vs 1-4s on /v1/chat/completions. Since the
-   * 404-fallback in processWithOpenAI never triggers for llama.cpp (it returns
-   * 200, not 404), proactively set the "chat" preference before the first call.
-   *
-   * Fail-closed: probe failure leaves the existing two-candidate selection
-   * (/responses then /chat/completions) unchanged. No-op if preference already
-   * stored for this base URL or if base already points at a fully-qualified
-   * endpoint.
-   */
+  /** Probe /v1/models to detect llama.cpp and prefer /chat/completions. */
   private async detectReasoningServerType(base: string): Promise<void> {
-    if (this.getStoredOpenAiPreference(base) !== undefined) {
+    if (this.probedBases.has(base) || this.getStoredOpenAiPreference(base) !== undefined) {
       return;
     }
 
@@ -235,28 +225,25 @@ class ReasoningService extends BaseReasoningService {
       clearTimeout(timeoutId);
 
       if (!res.ok) {
+        this.probedBases.add(base);
         return;
       }
 
       const body = await res.json();
       const first = body?.data?.[0];
-      const ownedBy = typeof first?.owned_by === "string" ? first.owned_by : undefined;
-      const hasMeta =
-        first && typeof first === "object" && "meta" in first && first.meta !== undefined;
-      const isLlamaCpp = ownedBy === "llamacpp" || hasMeta;
 
-      if (isLlamaCpp) {
+      if (first?.owned_by === "llamacpp") {
         this.rememberOpenAiPreference(base, "chat");
         logger.logReasoning("LLAMACPP_DETECTED_VIA_MODELS", {
           base,
-          modelId: typeof first?.id === "string" ? first.id : undefined,
-          ownedBy,
-          hasMeta,
+          modelId: first?.id,
+          ownedBy: first.owned_by,
         });
       }
+
+      this.probedBases.add(base);
     } catch {
-      // Swallow probe errors; we fall through to the existing candidate
-      // selection so behavior on unreachable/OpenAI/other servers is unchanged.
+      this.probedBases.add(base);
     }
   }
 
