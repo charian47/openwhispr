@@ -13,8 +13,8 @@
 </p>
 
 <p align="center">
-  Open-source voice-to-text dictation app with AI agents, meeting transcription, and notes.<br/>
-  Privacy-first alternative to Dragon, SuperWhisper, and Otter. Available on macOS, Windows, and Linux.
+  Free, open-source voice-to-text dictation app with AI agents, meeting transcription, and notes.<br/>
+  Privacy-first alternative to Dragon, SuperWhisper, and Otter. Cross-platform for macOS, Windows, and Linux.
 </p>
 
 <p align="center">
@@ -27,16 +27,7 @@
 
 ---
 
-OpenWhispr turns your voice into text, notes, and actions from your desktop. Press a hotkey, speak, and your words appear at your cursor. It works with local speech recognition for full privacy or cloud processing for speed — your choice.
-
-## Features
-
-- **Voice dictation** — global hotkey to dictate into any app with automatic pasting
-- **AI agent** — talk to GPT-5, Claude, Gemini, Groq, or local models with a named voice assistant
-- **Meeting transcription** — auto-detect Zoom, Teams, and FaceTime calls with live speaker diarization and Google Calendar integration
-- **Notes** — create, organize, and search notes with folders, semantic search, cloud sync, and AI actions
-- **Local processing** — download OpenAI Whisper or NVIDIA Parakeet models for completely private, offline transcription
-- **Public API & MCP** — manage notes and transcriptions programmatically or connect your AI assistant via the [MCP server](https://docs.openwhispr.com/integrations/mcp)
+OpenWhispr turns your voice into text, notes, and actions from your desktop. Press a hotkey, speak, and your words appear at your cursor. It works with local speech-to-text engines like Whisper and NVIDIA Parakeet for fully private offline transcription, or cloud processing for speed — your choice.
 
 ## Download
 
@@ -46,6 +37,15 @@ OpenWhispr turns your voice into text, notes, and actions from your desktop. Pre
 | macOS (Intel) | [`.dmg`](https://github.com/OpenWhispr/openwhispr/releases/latest) |
 | Windows | [`.exe`](https://github.com/OpenWhispr/openwhispr/releases/latest) |
 | Linux | [`.AppImage`](https://github.com/OpenWhispr/openwhispr/releases/latest) / [`.deb`](https://github.com/OpenWhispr/openwhispr/releases/latest) / [`.rpm`](https://github.com/OpenWhispr/openwhispr/releases/latest) |
+
+## Features
+
+- **Voice dictation** — global hotkey to dictate into any app with automatic pasting
+- **AI agent** — talk to GPT-5, Claude, Gemini, Groq, or local models with a named voice assistant
+- **Meeting transcription** — auto-detect Zoom, Teams, and FaceTime calls with live speaker diarization and Google Calendar integration
+- **Notes** — create, organize, and search notes with folders, semantic search, cloud sync, and AI actions
+- **Local processing** — download OpenAI Whisper or NVIDIA Parakeet models for completely private, offline transcription
+- **Public API & MCP** — manage notes and transcriptions programmatically or connect your AI assistant via the [MCP server](https://docs.openwhispr.com/integrations/mcp)
 
 ## Quick start
 
@@ -100,4 +100,12 @@ We welcome contributions. Fork the repo, create a feature branch, and open a pul
 
 ## Acknowledgments
 
-[OpenAI Whisper](https://github.com/openai/whisper) · [whisper.cpp](https://github.com/ggerganov/whisper.cpp) · [NVIDIA Parakeet](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) · [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) · [Electron](https://www.electronjs.org/) · [React](https://react.dev/) · [shadcn/ui](https://ui.shadcn.com/) · [llama.cpp](https://github.com/ggerganov/llama.cpp) · [Neon](https://console.neon.tech/app/?promo=openwhispr)
+- **[OpenAI Whisper](https://github.com/openai/whisper)** — speech recognition model powering local and cloud transcription
+- **[whisper.cpp](https://github.com/ggerganov/whisper.cpp)** — high-performance C++ implementation for local processing
+- **[NVIDIA Parakeet](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)** — fast multilingual ASR model
+- **[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)** — cross-platform ONNX runtime for Parakeet inference
+- **[llama.cpp](https://github.com/ggerganov/llama.cpp)** — local LLM inference for AI text processing
+- **[Electron](https://www.electronjs.org/)** — cross-platform desktop framework
+- **[React](https://react.dev/)** — UI component library
+- **[shadcn/ui](https://ui.shadcn.com/)** — accessible components built on Radix primitives
+- **[Neon](https://console.neon.tech/app/?promo=openwhispr)** — serverless Postgres powering OpenWhispr Cloud
