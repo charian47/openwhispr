@@ -66,6 +66,7 @@ import { validateHotkeyForSlot } from "../utils/hotkeyValidation";
 import { getPlatform, getCachedPlatform } from "../utils/platform";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
+import LinuxPttSetupInfo from "./ui/LinuxPttSetupInfo";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
 import AgentModeSettings from "./settings/AgentModeSettings";
@@ -194,6 +195,8 @@ interface TranscriptionSectionProps {
   setTranscriptionMode: (mode: InferenceMode) => void;
   remoteTranscriptionUrl: string;
   setRemoteTranscriptionUrl: (url: string) => void;
+  showTranscriptionPreview: boolean;
+  setShowTranscriptionPreview: (value: boolean) => void;
   toast: (opts: {
     title: string;
     description: string;
@@ -233,6 +236,8 @@ function TranscriptionSection({
   setTranscriptionMode,
   remoteTranscriptionUrl,
   setRemoteTranscriptionUrl,
+  showTranscriptionPreview,
+  setShowTranscriptionPreview,
   toast,
 }: TranscriptionSectionProps) {
   const { t } = useTranslation();
@@ -296,6 +301,19 @@ function TranscriptionSection({
     [localTranscriptionProvider, setParakeetModel, setWhisperModel]
   );
 
+  const renderPreviewToggle = () => (
+    <SettingsPanel>
+      <SettingsPanelRow>
+        <SettingsRow
+          label={t("settingsPage.transcription.transcriptionPreview")}
+          description={t("settingsPage.transcription.transcriptionPreviewDescription")}
+        >
+          <Toggle checked={showTranscriptionPreview} onChange={setShowTranscriptionPreview} />
+        </SettingsRow>
+      </SettingsPanelRow>
+    </SettingsPanel>
+  );
+
   const renderTranscriptionPicker = (mode?: "cloud" | "local") => (
     <TranscriptionModelPicker
       selectedCloudProvider={cloudTranscriptionProvider}
@@ -347,7 +365,12 @@ function TranscriptionSection({
           />
 
           {transcriptionMode === "providers" && renderTranscriptionPicker("cloud")}
-          {transcriptionMode === "local" && renderTranscriptionPicker("local")}
+          {transcriptionMode === "local" && (
+            <>
+              {renderTranscriptionPicker("local")}
+              {renderPreviewToggle()}
+            </>
+          )}
 
           {transcriptionMode === "self-hosted" && (
             <SelfHostedPanel
@@ -358,7 +381,10 @@ function TranscriptionSection({
           )}
         </>
       ) : (
-        renderTranscriptionPicker()
+        <>
+          {renderTranscriptionPicker()}
+          {useLocalWhisper && renderPreviewToggle()}
+        </>
       )}
 
       <GpuDeviceSelector purpose="transcription" />
@@ -695,6 +721,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setAudioCuesEnabled,
     pauseMediaOnDictation,
     setPauseMediaOnDictation,
+    showTranscriptionPreview,
+    setShowTranscriptionPreview,
     keepTranscriptionInClipboard,
     setKeepTranscriptionInClipboard,
     floatingIconAutoHide,
@@ -917,6 +945,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
   const [isUsingNativeShortcut, setIsUsingNativeShortcut] = useState(false);
   const [effectiveDefaultHotkey, setEffectiveDefaultHotkey] = useState<string | null>(null);
+  const [linuxPttAvailable, setLinuxPttAvailable] = useState(true);
 
   const platform = getCachedPlatform();
 
@@ -1018,7 +1047,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         const info = await window.electronAPI?.getHotkeyModeInfo();
         if (info?.isUsingNativeShortcut) {
           setIsUsingNativeShortcut(true);
-          setActivationMode("tap");
+          if (!info.supportsPushToTalk) {
+            setActivationMode("tap");
+          }
         }
       } catch (error) {
         logger.error("Failed to check hotkey mode", error, "settings");
@@ -1032,6 +1063,20 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     };
     checkHotkeyMode();
   }, [setActivationMode]);
+
+  useEffect(() => {
+    const cleanup = window.electronAPI?.onLinuxPttPermissionDenied?.(() => {
+      setLinuxPttAvailable(false);
+      toast({
+        title: t("settingsPage.general.hotkey.linuxPttPermissionTitle"),
+        description: t("settingsPage.general.hotkey.linuxPttPermissionDescription"),
+        variant: "destructive",
+        duration: 15000,
+      });
+      setActivationMode("tap");
+    });
+    return () => cleanup?.();
+  }, [toast, t, setActivationMode]);
 
   useEffect(() => {
     if (updateError) {
@@ -2904,12 +2949,15 @@ EOF`,
                     )}
                 </SettingsPanelRow>
 
-                {!isUsingNativeShortcut && (
+                {(!isUsingNativeShortcut || getCachedPlatform() === "linux") && (
                   <SettingsPanelRow>
                     <p className="text-xs font-medium text-muted-foreground/80 mb-2">
                       {t("settingsPage.general.hotkey.activationMode")}
                     </p>
                     <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+                    {getCachedPlatform() === "linux" && activationMode === "push" && (
+                      <LinuxPttSetupInfo isAvailable={linuxPttAvailable} />
+                    )}
                   </SettingsPanelRow>
                 )}
               </SettingsPanel>
@@ -2982,6 +3030,8 @@ EOF`,
             setTranscriptionMode={setTranscriptionMode}
             remoteTranscriptionUrl={remoteTranscriptionUrl}
             setRemoteTranscriptionUrl={setRemoteTranscriptionUrl}
+            showTranscriptionPreview={showTranscriptionPreview}
+            setShowTranscriptionPreview={setShowTranscriptionPreview}
             toast={toast}
           />
         );

@@ -66,6 +66,7 @@ const BOOLEAN_SETTINGS = new Set([
   "keepTranscriptionInClipboard",
   "dataRetentionEnabled",
   "noteFilesEnabled",
+  "showTranscriptionPreview",
 ]);
 
 const ARRAY_SETTINGS = new Set(["customDictionary", "gcalAccounts"]);
@@ -179,6 +180,7 @@ export interface SettingsState
   meetingProcessDetection: boolean;
   meetingAudioDetection: boolean;
   panelStartPosition: "bottom-right" | "center" | "bottom-left";
+  showTranscriptionPreview: boolean;
   keepTranscriptionInClipboard: boolean;
   noteFilesEnabled: boolean;
   noteFilesPath: string;
@@ -246,6 +248,7 @@ export interface SettingsState
   setMeetingProcessDetection: (value: boolean) => void;
   setMeetingAudioDetection: (value: boolean) => void;
   setPanelStartPosition: (position: "bottom-right" | "center" | "bottom-left") => void;
+  setShowTranscriptionPreview: (value: boolean) => void;
   setKeepTranscriptionInClipboard: (value: boolean) => void;
   setNoteFilesEnabled: (value: boolean) => void;
   setNoteFilesPath: (value: string) => void;
@@ -410,6 +413,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     if (v === "bottom-right" || v === "center" || v === "bottom-left") return v;
     return "bottom-right" as const;
   })(),
+  showTranscriptionPreview: readBoolean("showTranscriptionPreview", false),
   keepTranscriptionInClipboard: readBoolean("keepTranscriptionInClipboard", false),
   noteFilesEnabled: readBoolean("noteFilesEnabled", false),
   noteFilesPath: readString("noteFilesPath", ""),
@@ -595,12 +599,10 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
 
   setActivationMode: (mode: "tap" | "push") => {
-    // Linux has no native key listener for push-to-talk — force tap
-    const effective = isBrowser && window.electronAPI?.getPlatform?.() === "linux" ? "tap" : mode;
-    if (isBrowser) localStorage.setItem("activationMode", effective);
-    set({ activationMode: effective });
+    if (isBrowser) localStorage.setItem("activationMode", mode);
+    set({ activationMode: mode });
     if (isBrowser) {
-      window.electronAPI?.notifyActivationModeChanged?.(effective);
+      window.electronAPI?.notifyActivationModeChanged?.(mode);
     }
   },
 
@@ -669,6 +671,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     }
   },
 
+  setShowTranscriptionPreview: createBooleanSetter("showTranscriptionPreview"),
   setKeepTranscriptionInClipboard: createBooleanSetter("keepTranscriptionInClipboard"),
   setNoteFilesEnabled: createBooleanSetter("noteFilesEnabled"),
   setNoteFilesPath: createStringSetter("noteFilesPath"),
@@ -781,6 +784,8 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     if (settings.customDictionary !== undefined) s.setCustomDictionary(settings.customDictionary);
     if (settings.assemblyAiStreaming !== undefined)
       s.setAssemblyAiStreaming(settings.assemblyAiStreaming);
+    if (settings.showTranscriptionPreview !== undefined)
+      s.setShowTranscriptionPreview(settings.showTranscriptionPreview);
   },
 
   updateReasoningSettings: (settings: Partial<ReasoningSettings>) => {
@@ -952,10 +957,8 @@ export async function initializeSettings(): Promise<void> {
       );
     }
 
-    // Sync activation mode from main process (Linux forces tap — no native key listener)
     try {
       let envMode = await window.electronAPI.getActivationMode?.();
-      if (window.electronAPI?.getPlatform?.() === "linux") envMode = "tap";
       if (envMode && envMode !== state.activationMode) {
         if (isBrowser) localStorage.setItem("activationMode", envMode);
         useSettingsStore.setState({ activationMode: envMode });

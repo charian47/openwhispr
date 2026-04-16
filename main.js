@@ -198,6 +198,7 @@ const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
 const DevServerManager = require("./src/helpers/devServerManager");
 const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
+const LinuxKeyManager = require("./src/helpers/linuxKeyManager");
 const TextEditMonitor = require("./src/helpers/textEditMonitor");
 const WhisperCudaManager = require("./src/helpers/whisperCudaManager");
 const GoogleCalendarManager = require("./src/helpers/googleCalendarManager");
@@ -224,6 +225,7 @@ let trayManager = null;
 let updateManager = null;
 let globeKeyManager = null;
 let windowsKeyManager = null;
+let linuxKeyManager = null;
 let textEditMonitor = null;
 let whisperCudaManager = null;
 let googleCalendarManager = null;
@@ -308,6 +310,7 @@ function initializeCoreManagers() {
   updateManager = new UpdateManager();
   updateManager.setWindowManager(windowManager);
   windowsKeyManager = new WindowsKeyManager();
+  linuxKeyManager = new LinuxKeyManager();
   textEditMonitor = new TextEditMonitor();
   audioTapManager = new AudioTapManager();
   linuxPortalAudioManager = new LinuxPortalAudioManager();
@@ -325,6 +328,7 @@ function initializeCoreManagers() {
     windowManager,
     updateManager,
     windowsKeyManager,
+    linuxKeyManager,
     textEditMonitor,
     whisperCudaManager,
     googleCalendarManager,
@@ -1041,6 +1045,99 @@ async function startApp() {
       }
     });
   }
+
+  if (process.platform === "linux") {
+    debugLogger.debug("[Push-to-Talk] Linux Push-to-Talk setup starting");
+
+    const {
+      isGlobeLikeHotkey: isGlobeLike,
+      isModifierOnlyHotkey,
+    } = require("./src/helpers/hotkeyManager");
+    const isValidHotkey = (hotkey) => hotkey && !isGlobeLike(hotkey);
+
+    const isRightSideMod = (hotkey) =>
+      /^Right(Control|Ctrl|Alt|Option|Shift|Super|Win|Meta|Command|Cmd)$/i.test(hotkey);
+
+    const needsNativeListener = (hotkey, mode) => {
+      if (!isValidHotkey(hotkey)) return false;
+      if (mode === "push") return true;
+      return isRightSideMod(hotkey) || isModifierOnlyHotkey(hotkey);
+    };
+
+    linuxKeyManager.on("key-down", (_key) => {
+      if (!isLiveWindow(windowManager.mainWindow)) return;
+
+      const activationMode = windowManager.getActivationMode();
+      if (activationMode === "push") {
+        windowManager.startWindowsPushToTalk();
+      } else if (activationMode === "tap") {
+        windowManager.sendToggleDictation();
+      }
+    });
+
+    linuxKeyManager.on("key-up", () => {
+      if (!isLiveWindow(windowManager.mainWindow)) return;
+
+      const activationMode = windowManager.getActivationMode();
+      if (activationMode === "push") {
+        windowManager.handleWindowsPushKeyUp();
+      }
+    });
+
+    linuxKeyManager.on("permission-denied", () => {
+      debugLogger.warn("[Push-to-Talk] Linux key listener has no permission to access input devices");
+      if (isLiveWindow(windowManager.mainWindow)) {
+        windowManager.mainWindow.webContents.send("linux-ptt-permission-denied");
+      }
+    });
+
+    linuxKeyManager.on("error", (error) => {
+      debugLogger.warn("[Push-to-Talk] Linux key listener error", { error: error.message });
+    });
+
+    linuxKeyManager.on("unavailable", () => {
+      debugLogger.debug(
+        "[Push-to-Talk] Linux key listener not available - falling back to toggle mode"
+      );
+    });
+
+    linuxKeyManager.on("ready", () => {
+      debugLogger.debug("[Push-to-Talk] LinuxKeyManager is ready and listening");
+    });
+
+    const startLinuxKeyListener = () => {
+      if (!isLiveWindow(windowManager.mainWindow)) return;
+      const activationMode = windowManager.getActivationMode();
+      const currentHotkey = hotkeyManager.getCurrentHotkey();
+
+      if (needsNativeListener(currentHotkey, activationMode)) {
+        linuxKeyManager.start(currentHotkey);
+      }
+    };
+
+    const STARTUP_DELAY_MS = 3000;
+    setTimeout(startLinuxKeyListener, STARTUP_DELAY_MS);
+
+    ipcMain.on("activation-mode-changed", (_event, mode) => {
+      windowManager.resetWindowsPushState();
+      const currentHotkey = hotkeyManager.getCurrentHotkey();
+      if (needsNativeListener(currentHotkey, mode)) {
+        linuxKeyManager.start(currentHotkey);
+      } else {
+        linuxKeyManager.stop();
+      }
+    });
+
+    ipcMain.on("hotkey-changed", (_event, hotkey) => {
+      if (!isLiveWindow(windowManager.mainWindow)) return;
+      windowManager.resetWindowsPushState();
+      const activationMode = windowManager.getActivationMode();
+      linuxKeyManager.stop();
+      if (needsNativeListener(hotkey, activationMode)) {
+        linuxKeyManager.start(hotkey);
+      }
+    });
+  }
 }
 
 // Listen for usage limit reached from dictation overlay, forward to control panel
@@ -1190,6 +1287,9 @@ if (gotSingleInstanceLock) {
     }
     if (windowsKeyManager) {
       windowsKeyManager.stop();
+    }
+    if (linuxKeyManager) {
+      linuxKeyManager.stop();
     }
     if (meetingDetectionEngine) {
       meetingDetectionEngine.stop();

@@ -1201,7 +1201,12 @@
         "activationMode": "激活模式",
         "description": "用于开始和停止语音听写的组合键",
         "resetToDefault": "重置为 {{hotkey}}",
-        "title": "听写快捷键"
+        "title": "听写快捷键",
+        "linuxPttPermissionTitle": "按住说话需要额外设置",
+        "linuxPttPermissionDescription": "运行此命令并重新登录：sudo usermod -aG input $USER",
+        "linuxPttSetupTitle": "按住说话需要设置",
+        "linuxPttSetupDescription": "您的用户需要访问键盘输入设备的权限。",
+        "linuxPttSetupNote": "运行命令后，请注销并重新登录。"
       },
       "meetingHotkey": {
         "title": "会议模式快捷键",
@@ -1448,7 +1453,7 @@
         "deleteModels": "Delete Models"
       },
       "transcriptionPreview": "实时转录预览",
-      "transcriptionPreviewDescription": "在浮动窗口中显示转录结果，然后再进行优化"
+      "transcriptionPreviewDescription": "在浮动窗口中显示转录结果，然后再进行文本整理"
     },
     "intelligence": {
       "gpuDevice": {

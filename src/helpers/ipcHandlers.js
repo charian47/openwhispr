@@ -113,6 +113,7 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.windowsKeyManager = managers.windowsKeyManager;
+    this.linuxKeyManager = managers.linuxKeyManager;
     this.textEditMonitor = managers.textEditMonitor;
     this.getTrayManager = managers.getTrayManager;
     this.whisperCudaManager = managers.whisperCudaManager;
@@ -1658,14 +1659,21 @@ class IPCHandlers {
         isRightSideModifier(hotkey);
 
       if (enabled) {
-        // Entering capture mode - unregister globalShortcut so it doesn't consume key events
-        const currentHotkey = hotkeyManager.getCurrentHotkey();
-        if (currentHotkey && !usesNativeListener(currentHotkey)) {
-          debugLogger.log(
-            `[IPC] Unregistering globalShortcut "${currentHotkey}" for hotkey capture mode`
-          );
-          const { globalShortcut } = require("electron");
-          globalShortcut.unregister(currentHotkey);
+        // Entering capture mode — unregister ALL slots so none intercept keypresses.
+        // Dictation is always active; meeting and agent may or may not be set.
+        const allSlots = hotkeyManager.slots;
+        for (const [slot, info] of allSlots) {
+          if (!info?.hotkey) continue;
+
+          if (!usesNativeListener(info.hotkey)) {
+            debugLogger.log(
+              `[IPC] Unregistering globalShortcut "${info.hotkey}" (slot "${slot}") for capture mode`
+            );
+            const { globalShortcut } = require("electron");
+            try {
+              globalShortcut.unregister(info.hotkey);
+            } catch {}
+          }
         }
 
         // On Windows, stop the Windows key listener
@@ -1674,12 +1682,22 @@ class IPCHandlers {
           this.windowsKeyManager.stop();
         }
 
-        // On GNOME Wayland, unregister the keybinding during capture
+        // On Linux, stop the Linux key listener
+        if (process.platform === "linux" && this.linuxKeyManager) {
+          debugLogger.log("[IPC] Stopping Linux key listener for hotkey capture mode");
+          this.linuxKeyManager.stop();
+        }
+
+        // On GNOME, unregister all native keybindings during capture
         if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager) {
-          debugLogger.log("[IPC] Unregistering GNOME keybinding for hotkey capture mode");
-          await hotkeyManager.gnomeManager.unregisterKeybinding().catch((err) => {
-            debugLogger.warn("[IPC] Failed to unregister GNOME keybinding:", err.message);
-          });
+          for (const slot of [...hotkeyManager.gnomeManager.registeredSlots]) {
+            debugLogger.log(
+              `[IPC] Unregistering GNOME keybinding (slot "${slot}") for capture mode`
+            );
+            await hotkeyManager.gnomeManager.unregisterKeybinding(slot).catch((err) => {
+              debugLogger.warn(`[IPC] Failed to unregister GNOME slot "${slot}":`, err.message);
+            });
+          }
         }
 
         // On Hyprland Wayland, unregister the keybinding during capture
@@ -1691,7 +1709,12 @@ class IPCHandlers {
         }
       } else {
         // Exiting capture mode - re-register globalShortcut if not already registered
-        if (effectiveHotkey && !usesNativeListener(effectiveHotkey)) {
+        // Skip for KDE/GNOME/Hyprland — updateHotkey handles re-registration via native path
+        const usesNativePath =
+          hotkeyManager.isUsingKDE() ||
+          hotkeyManager.isUsingGnome() ||
+          hotkeyManager.isUsingHyprland();
+        if (effectiveHotkey && !usesNativeListener(effectiveHotkey) && !usesNativePath) {
           const { globalShortcut } = require("electron");
           const accelerator = effectiveHotkey.startsWith("Fn+")
             ? effectiveHotkey.slice(3)
@@ -1729,7 +1752,23 @@ class IPCHandlers {
           }
         }
 
-        // On GNOME Wayland, re-register the keybinding with the effective hotkey
+        if (process.platform === "linux" && this.linuxKeyManager) {
+          const activationMode = this.windowManager.getActivationMode();
+          const needsListener =
+            effectiveHotkey &&
+            !isGlobeLikeHotkey(effectiveHotkey) &&
+            (activationMode === "push" ||
+              isModifierOnlyHotkey(effectiveHotkey) ||
+              isRightSideModifier(effectiveHotkey));
+          if (needsListener) {
+            debugLogger.log(`[IPC] Restarting Linux key listener for hotkey: ${effectiveHotkey}`);
+            this.linuxKeyManager.start(effectiveHotkey);
+          } else {
+            this.linuxKeyManager.stop();
+          }
+        }
+
+        // On GNOME, re-register the keybinding with the effective hotkey
         if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager && effectiveHotkey) {
           const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(effectiveHotkey);
           debugLogger.log(
@@ -1751,17 +1790,57 @@ class IPCHandlers {
             hotkeyManager.currentHotkey = effectiveHotkey;
           }
         }
+
+        // On KDE (X11 or Wayland), re-register the keybinding with the effective hotkey
+        if (hotkeyManager.isUsingKDE() && hotkeyManager.kdeManager && effectiveHotkey) {
+          debugLogger.log(
+            `[IPC] Re-registering KDE keybinding "${effectiveHotkey}" after capture mode`
+          );
+          const callback = this.windowManager.createHotkeyCallback();
+          const result = await hotkeyManager.kdeManager.registerKeybinding(
+            effectiveHotkey,
+            "dictation",
+            callback
+          );
+          if (result === true) {
+            hotkeyManager.currentHotkey = effectiveHotkey;
+          } else {
+            debugLogger.warn(
+              `[IPC] Failed to re-register KDE keybinding "${effectiveHotkey}" after capture mode`,
+              { result }
+            );
+          }
+        }
+
+        // Re-register non-dictation slots (meeting, agent) that were unregistered on capture enter
+        for (const [slot, info] of hotkeyManager.slots) {
+          if (slot === "dictation" || slot === "cancel" || !info?.hotkey || !info?.callback)
+            continue;
+          debugLogger.log(
+            `[IPC] Re-registering slot "${slot}" ("${info.hotkey}") after capture mode`
+          );
+          await hotkeyManager.registerSlot(slot, info.hotkey, info.callback).catch((err) => {
+            debugLogger.warn(`[IPC] Failed to re-register slot "${slot}":`, err.message);
+          });
+        }
       }
 
       return { success: true };
     });
 
     ipcMain.handle("get-hotkey-mode-info", async () => {
+      const isUsingNativeShortcut = this.windowManager.isUsingNativeShortcutHotkeys();
+      const supportsPushToTalk =
+        process.platform === "linux"
+          ? this.linuxKeyManager?.isAvailable?.() === true
+          : !isUsingNativeShortcut;
+
       return {
         isUsingGnome: this.windowManager.isUsingGnomeHotkeys(),
         isUsingHyprland: this.windowManager.isUsingHyprlandHotkeys(),
         isUsingKDE: this.windowManager.isUsingKDEHotkeys(),
-        isUsingNativeShortcut: this.windowManager.isUsingNativeShortcutHotkeys(),
+        isUsingNativeShortcut,
+        supportsPushToTalk,
       };
     });
 
@@ -3863,6 +3942,84 @@ class IPCHandlers {
       meetingEchoLeakDetector.reset();
     };
 
+    let dictationPreviewMode = false;
+    let dictationPreviewBuffer = [];
+    let dictationPreviewTimer = null;
+    let dictationPreviewTranscribing = false;
+    let dictationPreviewProvider = null;
+    let dictationPreviewModel = null;
+    let dictationPreviewSessionActive = false;
+    let dictationPreviewChunkCount = 0;
+
+    const resetDictationPreviewState = ({ preserveSession = false } = {}) => {
+      if (dictationPreviewTimer) {
+        clearInterval(dictationPreviewTimer);
+        dictationPreviewTimer = null;
+      }
+      dictationPreviewMode = false;
+      if (!preserveSession) {
+        dictationPreviewSessionActive = false;
+      }
+      dictationPreviewBuffer = [];
+      dictationPreviewTranscribing = false;
+      dictationPreviewProvider = null;
+      dictationPreviewModel = null;
+    };
+
+    const transcribeDictationPreviewChunk = async () => {
+      if (dictationPreviewTranscribing) return;
+      if (!dictationPreviewBuffer.length) return;
+
+      dictationPreviewTranscribing = true;
+      try {
+        const pcm = Buffer.concat(dictationPreviewBuffer);
+        dictationPreviewBuffer = [];
+
+        const samples = new Int16Array(pcm.buffer, pcm.byteOffset, pcm.length / 2);
+        let sumSq = 0;
+        for (let i = 0; i < samples.length; i++) {
+          const n = samples[i] / 0x7fff;
+          sumSq += n * n;
+        }
+        const rms = Math.sqrt(sumSq / samples.length);
+        debugLogger.debug("Dictation preview chunk", {
+          pcmBytes: pcm.length,
+          rms: rms.toFixed(6),
+          samples: samples.length,
+        });
+        if (rms < 0.002) return;
+
+        const wav = pcm16ToWav(pcm);
+
+        let result;
+        if (dictationPreviewProvider === "nvidia") {
+          result = await this.parakeetManager.transcribeLocalParakeet(wav, {
+            model: dictationPreviewModel,
+          });
+        } else {
+          result = await this.whisperManager.transcribeLocalWhisper(wav, {
+            model: dictationPreviewModel,
+          });
+        }
+
+        if (result?.success && result.text?.trim()) {
+          this.windowManager.appendTranscriptionPreview(result.text.trim());
+        } else if (result && !result.success) {
+          debugLogger.warn("Dictation preview chunk returned failure", {
+            error: result.error || result.message,
+            provider: dictationPreviewProvider,
+          });
+        }
+      } catch (error) {
+        debugLogger.error("Dictation preview transcription chunk failed", {
+          error: error.message,
+          provider: dictationPreviewProvider,
+        });
+      } finally {
+        dictationPreviewTranscribing = false;
+      }
+    };
+
     const resetMeetingStreamingState = () => {
       this._meetingMicStreaming = null;
       this._meetingSystemStreaming = null;
@@ -4298,6 +4455,80 @@ class IPCHandlers {
       const result = await this._dictationStreaming.disconnect().catch(() => ({ text: "" }));
       this._dictationStreaming = null;
       return { success: true, text: result.text || "" };
+    });
+
+    ipcMain.handle("start-dictation-preview", async (_event, { provider, model }) => {
+      resetDictationPreviewState();
+      dictationPreviewMode = true;
+      dictationPreviewSessionActive = true;
+      dictationPreviewProvider = provider;
+      dictationPreviewModel = model;
+      dictationPreviewChunkCount = 0;
+      this.windowManager.showTranscriptionPreview("");
+      dictationPreviewTimer = setInterval(() => transcribeDictationPreviewChunk(), 1500);
+      return { success: true };
+    });
+
+    ipcMain.on("dictation-preview-audio", (_event, audioBuffer) => {
+      if (!dictationPreviewMode) return;
+      dictationPreviewChunkCount++;
+      if (dictationPreviewChunkCount <= 3 || dictationPreviewChunkCount % 50 === 0) {
+        debugLogger.debug("Dictation preview audio received", {
+          bytes: audioBuffer?.byteLength || audioBuffer?.length,
+          count: dictationPreviewChunkCount,
+          bufferSize: dictationPreviewBuffer.length,
+        });
+      }
+      dictationPreviewBuffer.push(
+        Buffer.isBuffer(audioBuffer) ? audioBuffer : Buffer.from(audioBuffer)
+      );
+    });
+
+    ipcMain.handle("dismiss-dictation-preview", async () => {
+      resetDictationPreviewState();
+      this.windowManager.hideTranscriptionPreview();
+      return { success: true };
+    });
+
+    ipcMain.handle("complete-dictation-preview", async (_event, { text } = {}) => {
+      if (!dictationPreviewSessionActive) {
+        return { success: true };
+      }
+      if (typeof text === "string" && text.trim()) {
+        this.windowManager.completeTranscriptionPreview(text);
+      } else {
+        resetDictationPreviewState();
+        this.windowManager.hideTranscriptionPreview();
+      }
+      return { success: true };
+    });
+
+    ipcMain.handle("hide-dictation-preview", async () => {
+      resetDictationPreviewState();
+      this.windowManager.hideTranscriptionPreview();
+      return { success: true };
+    });
+
+    ipcMain.handle("resize-transcription-preview-window", async (_event, width, height) => {
+      if (!dictationPreviewSessionActive) {
+        return { success: false, error: "Preview session not active" };
+      }
+      return this.windowManager.resizeTranscriptionPreview(width, height);
+    });
+
+    ipcMain.handle("stop-dictation-preview", async (_event, options = {}) => {
+      if (!dictationPreviewMode && !dictationPreviewSessionActive) {
+        return { success: true };
+      }
+      clearInterval(dictationPreviewTimer);
+      dictationPreviewTimer = null;
+      await transcribeDictationPreviewChunk();
+      resetDictationPreviewState({ preserveSession: true });
+      if (!dictationPreviewSessionActive) {
+        return { success: true };
+      }
+      this.windowManager.holdTranscriptionPreview(options);
+      return { success: true };
     });
 
     ipcMain.handle("update-transcription-text", async (_event, id, text, rawText) => {
