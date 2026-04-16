@@ -10,11 +10,11 @@
     },
     "noteFiles": {
       "title": "Save notes as files",
-      "description": "Automatically save notes as .md files on disk, organized by folder",
+      "description": "Automatically save notes and transcripts as files on disk, organized by folder",
       "path": "Save location",
       "changePath": "Change location",
       "rebuild": "Rebuild all files",
-      "rebuildDescription": "Re-sync all notes to disk"
+      "rebuildDescription": "Re-sync all notes and transcripts to disk"
     }
   },
   "tray": {

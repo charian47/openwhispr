@@ -10,11 +10,11 @@
     },
     "noteFiles": {
       "title": "Enregistrer les notes en fichiers",
-      "description": "Enregistrer automatiquement les notes en fichiers .md sur le disque, organisées par dossier",
+      "description": "Enregistrer automatiquement les notes et transcriptions en fichiers sur le disque, organisés par dossier",
       "path": "Emplacement de sauvegarde",
       "changePath": "Changer l'emplacement",
       "rebuild": "Reconstruire tous les fichiers",
-      "rebuildDescription": "Resynchroniser toutes les notes sur le disque"
+      "rebuildDescription": "Resynchroniser toutes les notes et transcriptions sur le disque"
     }
   },
   "tray": {

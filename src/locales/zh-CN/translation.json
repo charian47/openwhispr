@@ -10,11 +10,11 @@
     },
     "noteFiles": {
       "title": "将笔记保存为文件",
-      "description": "自动将笔记保存为 .md 文件到磁盘，按文件夹分类",
+      "description": "自动将笔记和转录保存为文件���磁盘，按文件夹分类",
       "path": "保存位置",
       "changePath": "更改位置",
       "rebuild": "重建所有文件",
-      "rebuildDescription": "将所有笔记重新同步到磁盘"
+      "rebuildDescription": "将所有笔记和转录重新同步到磁盘"
     }
   },
   "tray": {

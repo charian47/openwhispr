@@ -10,11 +10,11 @@
     },
     "noteFiles": {
       "title": "ノートをファイルとして保存",
-      "description": "ノートを .md ファイルとしてディスクに自動保存し、フォルダごとに整理",
+      "description": "ノートと文字起こしをファイルとしてディスクに自動保存し、フォルダごとに整理",
       "path": "保存先",
       "changePath": "保存先を変更",
       "rebuild": "すべてのファイルを再構築",
-      "rebuildDescription": "すべてのノートをディスクに再同期"
+      "rebuildDescription": "すべてのノートと文字起こしをディスクに再同期"
     }
   },
   "tray": {

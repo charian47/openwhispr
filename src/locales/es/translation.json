@@ -10,11 +10,11 @@
     },
     "noteFiles": {
       "title": "Guardar notas como archivos",
-      "description": "Guardar notas automáticamente como archivos .md en disco, organizadas por carpeta",
+      "description": "Guardar notas y transcripciones automáticamente como archivos en disco, organizados por carpeta",
       "path": "Ubicación de guardado",
       "changePath": "Cambiar ubicación",
       "rebuild": "Reconstruir todos los archivos",
-      "rebuildDescription": "Resincronizar todas las notas al disco"
+      "rebuildDescription": "Resincronizar todas las notas y transcripciones al disco"
     }
   },
   "tray": {

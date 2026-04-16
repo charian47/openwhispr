@@ -10,11 +10,11 @@
     },
     "noteFiles": {
       "title": "Notizen als Dateien speichern",
-      "description": "Notizen automatisch als .md-Dateien auf der Festplatte speichern, nach Ordner sortiert",
+      "description": "Notizen und Transkripte automatisch als Dateien auf der Festplatte speichern, nach Ordner sortiert",
       "path": "Speicherort",
       "changePath": "Speicherort ändern",
       "rebuild": "Alle Dateien neu erstellen",
-      "rebuildDescription": "Alle Notizen erneut auf die Festplatte synchronisieren"
+      "rebuildDescription": "Alle Notizen und Transkripte erneut auf die Festplatte synchronisieren"
     }
   },
   "tray": {

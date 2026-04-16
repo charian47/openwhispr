@@ -10,11 +10,11 @@
     },
     "noteFiles": {
       "title": "Salva note come file",
-      "description": "Salva automaticamente le note come file .md su disco, organizzate per cartella",
+      "description": "Salva automaticamente note e trascrizioni come file su disco, organizzati per cartella",
       "path": "Percorso di salvataggio",
       "changePath": "Cambia percorso",
       "rebuild": "Ricostruisci tutti i file",
-      "rebuildDescription": "Risincronizza tutte le note su disco"
+      "rebuildDescription": "Risincronizza tutte le note e trascrizioni su disco"
     }
   },
   "tray": {
