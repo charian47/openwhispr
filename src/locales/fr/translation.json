@@ -1143,7 +1143,10 @@
     "apiKeys": {
       "title": "Clés API",
       "signInRequired": "Connexion requise",
-      "signInRequiredDescription": "Connectez-vous pour gérer vos clés API."
+      "signInRequiredDescription": "Connectez-vous pour gérer vos clés API.",
+      "proRequired": "L'accès à l'API nécessite un abonnement",
+      "proRequiredDescription": "Passez à Pro pour créer des clés API et intégrer OpenWhispr dans vos workflows.",
+      "upgradeToPro": "Passer à Pro"
     },
     "aiModels": {
       "customSetup": "Configuration personnalisée",

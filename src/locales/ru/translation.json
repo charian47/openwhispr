@@ -1095,7 +1095,10 @@
     "apiKeys": {
       "title": "API-ключи",
       "signInRequired": "Требуется вход",
-      "signInRequiredDescription": "Войдите, чтобы управлять API-ключами."
+      "signInRequiredDescription": "Войдите, чтобы управлять API-ключами.",
+      "proRequired": "Для доступа к API требуется платный план",
+      "proRequiredDescription": "Перейдите на Pro, чтобы создавать API-ключи и интегрировать OpenWhispr в рабочие процессы.",
+      "upgradeToPro": "Перейти на Pro"
     },
     "aiModels": {
       "customSetup": "Пользовательская настройка",

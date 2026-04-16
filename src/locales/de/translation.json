@@ -1095,7 +1095,10 @@
     "apiKeys": {
       "title": "API-Schlüssel",
       "signInRequired": "Anmeldung erforderlich",
-      "signInRequiredDescription": "Melden Sie sich an, um Ihre API-Schlüssel zu verwalten."
+      "signInRequiredDescription": "Melden Sie sich an, um Ihre API-Schlüssel zu verwalten.",
+      "proRequired": "API-Zugriff erfordert einen kostenpflichtigen Plan",
+      "proRequiredDescription": "Upgraden Sie auf Pro, um API-Schlüssel zu erstellen und OpenWhispr in Ihre Workflows zu integrieren.",
+      "upgradeToPro": "Auf Pro upgraden"
     },
     "aiModels": {
       "customSetup": "Benutzerdefinierte Einrichtung",

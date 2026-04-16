@@ -1191,7 +1191,10 @@
     "apiKeys": {
       "title": "API Keys",
       "signInRequired": "Sign in required",
-      "signInRequiredDescription": "Sign in to manage your API keys."
+      "signInRequiredDescription": "Sign in to manage your API keys.",
+      "proRequired": "API access requires a paid plan",
+      "proRequiredDescription": "Upgrade to Pro to create API keys and integrate OpenWhispr with your workflows.",
+      "upgradeToPro": "Upgrade to Pro"
     },
     "aiModels": {
       "customSetup": "Custom Setup",

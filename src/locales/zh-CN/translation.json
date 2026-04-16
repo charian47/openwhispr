@@ -1090,7 +1090,10 @@
     "apiKeys": {
       "title": "API 密钥",
       "signInRequired": "需要登录",
-      "signInRequiredDescription": "登录以管理您的 API 密钥。"
+      "signInRequiredDescription": "登录以管理您的 API 密钥。",
+      "proRequired": "API 访问需要付费计划",
+      "proRequiredDescription": "升级到 Pro 以创建 API 密钥并将 OpenWhispr 集成到您的工作流程中。",
+      "upgradeToPro": "升级到 Pro"
     },
     "aiModels": {
       "customSetup": "自定义设置",

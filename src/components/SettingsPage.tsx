@@ -2143,8 +2143,35 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   </SettingsPanelRow>
                 </SettingsPanel>
               </>
-            ) : isLoaded && isSignedIn && user ? (
+            ) : isLoaded && isSignedIn && user && (usage?.isSubscribed || usage?.isTrial) ? (
               <ApiKeysSection />
+            ) : isLoaded && isSignedIn && user ? (
+              <>
+                <SectionHeader title={t("settingsPage.apiKeys.title")} />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <div className="flex flex-col items-center py-5 text-center">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 mb-2.5">
+                        <Key className="h-4 w-4 text-primary" />
+                      </div>
+                      <p className="text-xs font-medium text-foreground mb-1">
+                        {t("settingsPage.apiKeys.proRequired")}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground/70 mb-3 max-w-[260px] leading-relaxed">
+                        {t("settingsPage.apiKeys.proRequiredDescription")}
+                      </p>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => usage?.openCheckout?.({ tier: "pro" })}
+                      >
+                        <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                        {t("settingsPage.apiKeys.upgradeToPro")}
+                      </Button>
+                    </div>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
             ) : isLoaded ? (
               <>
                 <SectionHeader title={t("settingsPage.apiKeys.title")} />
