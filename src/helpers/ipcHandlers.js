@@ -3676,10 +3676,40 @@ class IPCHandlers {
     let meetingPendingMicFinals = [];
     let meetingPendingMicFinalTimer = null;
     let meetingAecEnabled = false;
+    let meetingOneOnOneAttendeeName = null;
 
     const getLiveSpeakerProfiles = () => this.databaseManager.getSpeakerProfiles(true);
     const shouldSuppressMicTranscriptSegment = (startedAt, endedAt = Date.now()) =>
       meetingEchoLeakDetector.shouldSuppressMicSegment(startedAt, endedAt);
+
+    const resolveOneOnOneAttendeeName = () => {
+      try {
+        const activeEvents = this.databaseManager.getActiveEvents();
+        if (!activeEvents.length) return null;
+
+        const googleEmails = new Set(
+          this.databaseManager.getGoogleAccounts().map((a) => a.email.toLowerCase())
+        );
+        const isSelf = (p) => p.self === true || googleEmails.has((p.email || "").toLowerCase());
+
+        for (const event of activeEvents) {
+          let attendees;
+          try {
+            attendees = JSON.parse(event.attendees || "[]");
+          } catch (_) {
+            continue;
+          }
+          if (!Array.isArray(attendees)) continue;
+
+          const others = attendees.filter((a) => !isSelf(a));
+          if (others.length === 1) {
+            const name = others[0].displayName || others[0].email;
+            if (name) return name;
+          }
+        }
+      } catch (_) {}
+      return null;
+    };
 
     const dispatchMeetingAudioBuffer = (buffer, source) => {
       if (meetingLocalMode) {
@@ -3881,6 +3911,18 @@ class IPCHandlers {
       return started;
     };
 
+    const emitOneOnOneAttendeeSpeaker = (win) => {
+      if (!meetingOneOnOneAttendeeName || !win || win.isDestroyed()) return;
+      const speakerId = "speaker_0";
+      const now = Date.now();
+      win.webContents.send("meeting-speaker-identified", {
+        speakerId,
+        displayName: meetingOneOnOneAttendeeName,
+        startTime: now,
+        endTime: now + 24 * 60 * 60 * 1000,
+      });
+    };
+
     const transcribeLocalMeetingChunk = async (source) => {
       const chunks = meetingLocalBuffers[source];
       if (!chunks.length) return;
@@ -4071,6 +4113,7 @@ class IPCHandlers {
       void stopLiveSpeakerIdentification();
       meetingLiveSpeakerState = null;
       meetingLiveSpeakerStartedAt = null;
+      meetingOneOnOneAttendeeName = null;
       meetingLocalMode = false;
       meetingLocalBuffers = { mic: [], system: [] };
       if (meetingDiarizationStream) {
@@ -4298,6 +4341,7 @@ class IPCHandlers {
         const systemAudioPlan = await getMeetingSystemAudioPlan();
         let { mode: systemAudioMode, strategy: systemAudioStrategy } = systemAudioPlan;
         meetingEchoLeakDetector.reset();
+        meetingOneOnOneAttendeeName = resolveOneOnOneAttendeeName();
 
         if (systemAudioMode === "unsupported" && this._meetingSystemStreaming?.isConnected) {
           await this._meetingSystemStreaming.disconnect().catch(() => ({ text: "" }));
@@ -4314,6 +4358,7 @@ class IPCHandlers {
           }
           await startMeetingAec(systemAudioMode);
           await startLiveSpeakerIdentification(win, systemAudioMode);
+          emitOneOnOneAttendeeSpeaker(win);
           systemAudioStrategy = await startMeetingSystemAudio(
             event,
             systemAudioMode,
@@ -4332,6 +4377,7 @@ class IPCHandlers {
           meetingLocalTranscript = "";
 
           await startLiveSpeakerIdentification(meetingLocalWin, systemAudioMode);
+          emitOneOnOneAttendeeSpeaker(meetingLocalWin);
           await startMeetingAec(systemAudioMode);
 
           meetingLocalTimer = setInterval(() => {
@@ -4359,10 +4405,9 @@ class IPCHandlers {
         }
 
         await connectRealtimeStreaming(event, options);
-        await startLiveSpeakerIdentification(
-          BrowserWindow.fromWebContents(event.sender),
-          systemAudioMode
-        );
+        const realtimeWin = BrowserWindow.fromWebContents(event.sender);
+        await startLiveSpeakerIdentification(realtimeWin, systemAudioMode);
+        emitOneOnOneAttendeeSpeaker(realtimeWin);
         await startMeetingAec(systemAudioMode);
         systemAudioStrategy = await startMeetingSystemAudio(
           event,
