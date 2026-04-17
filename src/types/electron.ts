@@ -1376,6 +1376,7 @@ declare global {
         error?: string;
         systemAudioMode?: SystemAudioMode;
         systemAudioStrategy?: SystemAudioStrategy;
+        oneOnOneAttendee?: { displayName: string; email: string | null } | null;
       }>;
       meetingTranscriptionSend?: (buffer: ArrayBuffer, source: "mic" | "system") => void;
       meetingTranscriptionStop?: () => Promise<{

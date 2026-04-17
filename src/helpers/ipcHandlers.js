@@ -3676,13 +3676,14 @@ class IPCHandlers {
     let meetingPendingMicFinals = [];
     let meetingPendingMicFinalTimer = null;
     let meetingAecEnabled = false;
-    let meetingOneOnOneAttendeeName = null;
+    let meetingOneOnOneAttendee = null;
+    let meetingOneOnOneProfileBound = false;
 
     const getLiveSpeakerProfiles = () => this.databaseManager.getSpeakerProfiles(true);
     const shouldSuppressMicTranscriptSegment = (startedAt, endedAt = Date.now()) =>
       meetingEchoLeakDetector.shouldSuppressMicSegment(startedAt, endedAt);
 
-    const resolveOneOnOneAttendeeName = () => {
+    const resolveOneOnOneAttendee = () => {
       try {
         const activeEvents = this.databaseManager.getActiveEvents();
         if (!activeEvents.length) return null;
@@ -3703,12 +3704,39 @@ class IPCHandlers {
 
           const others = attendees.filter((a) => !isSelf(a));
           if (others.length === 1) {
-            const name = others[0].displayName || others[0].email;
-            if (name) return name;
+            const displayName = others[0].displayName || others[0].email;
+            if (displayName) return { displayName, email: others[0].email || null };
           }
         }
       } catch (_) {}
       return null;
+    };
+
+    const bindOneOnOneAttendeeToSpeaker = (speakerId) => {
+      if (!meetingOneOnOneAttendee || meetingOneOnOneProfileBound || !speakerId) return;
+      const embedding = liveSpeakerIdentifier.getSpeakerEmbedding(speakerId);
+      if (!embedding) return;
+      try {
+        const buffer = Buffer.from(embedding.buffer, embedding.byteOffset, embedding.byteLength);
+        const profile = this.databaseManager.upsertSpeakerProfile(
+          meetingOneOnOneAttendee.displayName,
+          meetingOneOnOneAttendee.email,
+          buffer
+        );
+        liveSpeakerIdentifier.mapSpeaker(
+          speakerId,
+          profile.id,
+          meetingOneOnOneAttendee.displayName,
+          null
+        );
+        meetingOneOnOneProfileBound = true;
+      } catch (error) {
+        debugLogger.warn(
+          "1-on-1 attendee profile binding failed",
+          { error: error.message },
+          "speaker"
+        );
+      }
     };
 
     const dispatchMeetingAudioBuffer = (buffer, source) => {
@@ -3848,6 +3876,12 @@ class IPCHandlers {
             return;
           }
 
+          bindOneOnOneAttendeeToSpeaker(identification.speakerId);
+
+          const displayName = meetingOneOnOneAttendee
+            ? meetingOneOnOneAttendee.displayName
+            : identification.displayName;
+
           const startTime = Math.max(
             meetingLiveSpeakerStartedAt || 0,
             (meetingLiveSpeakerStartedAt || 0) + identification.startTime * 1000
@@ -3858,6 +3892,7 @@ class IPCHandlers {
           );
           const enrichedIdentification = {
             ...identification,
+            displayName,
             startTime,
             endTime,
           };
@@ -3874,7 +3909,7 @@ class IPCHandlers {
             ) {
               applyConfirmedSpeaker(seg, {
                 speaker: identification.speakerId,
-                speakerName: identification.displayName || seg.speakerName,
+                speakerName: displayName || seg.speakerName,
                 speakerIsPlaceholder: false,
               });
             }
@@ -3909,18 +3944,6 @@ class IPCHandlers {
       }
 
       return started;
-    };
-
-    const emitOneOnOneAttendeeSpeaker = (win) => {
-      if (!meetingOneOnOneAttendeeName || !win || win.isDestroyed()) return;
-      const speakerId = "speaker_0";
-      const now = Date.now();
-      win.webContents.send("meeting-speaker-identified", {
-        speakerId,
-        displayName: meetingOneOnOneAttendeeName,
-        startTime: now,
-        endTime: now + 24 * 60 * 60 * 1000,
-      });
     };
 
     const transcribeLocalMeetingChunk = async (source) => {
@@ -4113,7 +4136,8 @@ class IPCHandlers {
       void stopLiveSpeakerIdentification();
       meetingLiveSpeakerState = null;
       meetingLiveSpeakerStartedAt = null;
-      meetingOneOnOneAttendeeName = null;
+      meetingOneOnOneAttendee = null;
+      meetingOneOnOneProfileBound = false;
       meetingLocalMode = false;
       meetingLocalBuffers = { mic: [], system: [] };
       if (meetingDiarizationStream) {
@@ -4341,7 +4365,8 @@ class IPCHandlers {
         const systemAudioPlan = await getMeetingSystemAudioPlan();
         let { mode: systemAudioMode, strategy: systemAudioStrategy } = systemAudioPlan;
         meetingEchoLeakDetector.reset();
-        meetingOneOnOneAttendeeName = resolveOneOnOneAttendeeName();
+        meetingOneOnOneAttendee = resolveOneOnOneAttendee();
+        meetingOneOnOneProfileBound = false;
 
         if (systemAudioMode === "unsupported" && this._meetingSystemStreaming?.isConnected) {
           await this._meetingSystemStreaming.disconnect().catch(() => ({ text: "" }));
@@ -4358,14 +4383,18 @@ class IPCHandlers {
           }
           await startMeetingAec(systemAudioMode);
           await startLiveSpeakerIdentification(win, systemAudioMode);
-          emitOneOnOneAttendeeSpeaker(win);
           systemAudioStrategy = await startMeetingSystemAudio(
             event,
             systemAudioMode,
             systemAudioStrategy,
             "during warm-start reuse"
           );
-          return { success: true, systemAudioMode, systemAudioStrategy };
+          return {
+            success: true,
+            systemAudioMode,
+            systemAudioStrategy,
+            oneOnOneAttendee: meetingOneOnOneAttendee,
+          };
         }
 
         if (options.provider === "local") {
@@ -4377,7 +4406,6 @@ class IPCHandlers {
           meetingLocalTranscript = "";
 
           await startLiveSpeakerIdentification(meetingLocalWin, systemAudioMode);
-          emitOneOnOneAttendeeSpeaker(meetingLocalWin);
           await startMeetingAec(systemAudioMode);
 
           meetingLocalTimer = setInterval(() => {
@@ -4397,7 +4425,12 @@ class IPCHandlers {
             systemAudioStrategy,
           });
 
-          return { success: true, systemAudioMode, systemAudioStrategy };
+          return {
+            success: true,
+            systemAudioMode,
+            systemAudioStrategy,
+            oneOnOneAttendee: meetingOneOnOneAttendee,
+          };
         }
 
         if (options.provider !== "openai-realtime") {
@@ -4407,7 +4440,6 @@ class IPCHandlers {
         await connectRealtimeStreaming(event, options);
         const realtimeWin = BrowserWindow.fromWebContents(event.sender);
         await startLiveSpeakerIdentification(realtimeWin, systemAudioMode);
-        emitOneOnOneAttendeeSpeaker(realtimeWin);
         await startMeetingAec(systemAudioMode);
         systemAudioStrategy = await startMeetingSystemAudio(
           event,
@@ -4415,7 +4447,12 @@ class IPCHandlers {
           systemAudioStrategy,
           "in realtime mode"
         );
-        return { success: true, systemAudioMode, systemAudioStrategy };
+        return {
+          success: true,
+          systemAudioMode,
+          systemAudioStrategy,
+          oneOnOneAttendee: meetingOneOnOneAttendee,
+        };
       } catch (error) {
         await rollbackMeetingTranscriptionStart();
         this.meetingDetectionEngine?.setUserRecording(false);

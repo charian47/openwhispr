@@ -933,6 +933,19 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
         });
         if (errorCleanup) ipcCleanupsRef.current.push(errorCleanup);
 
+        if (startResult.oneOnOneAttendee) {
+          const synthetic: SpeakerIdentification = {
+            speakerId: "speaker_0",
+            displayName: startResult.oneOnOneAttendee.displayName,
+            startTime: 0,
+            endTime: Number.MAX_SAFE_INTEGER,
+          };
+          reserveSpeakerIndex(synthetic.speakerId);
+          setSystemPartialSpeakerIdentity(synthetic.speakerId, synthetic.displayName);
+          rememberSystemSpeaker(synthetic.speakerId, synthetic.displayName, false, Date.now());
+          speakerIdentificationsRef.current.push(synthetic);
+        }
+
         const pendingMicChunks: ArrayBuffer[] = [];
         const pendingSystemChunks: ArrayBuffer[] = [];
         let socketReady = false;
