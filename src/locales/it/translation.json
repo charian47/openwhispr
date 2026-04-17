@@ -131,6 +131,7 @@
     "cancel": "Annulla",
     "recommended": "Consigliato",
     "active": "Attivo",
+    "freeAccountRequired": "Account gratuito richiesto",
     "cloud": "Cloud",
     "local": "Locale",
     "apiKey": "Chiave API",

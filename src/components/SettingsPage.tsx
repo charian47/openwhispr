@@ -170,6 +170,7 @@ function SectionHeader({ title, description }: { title: string; description?: st
 
 interface TranscriptionSectionProps {
   isSignedIn: boolean;
+  startOnboarding: () => void;
   cloudTranscriptionMode: string;
   setCloudTranscriptionMode: (mode: string) => void;
   useLocalWhisper: boolean;
@@ -211,6 +212,7 @@ interface TranscriptionSectionProps {
 
 function TranscriptionSection({
   isSignedIn,
+  startOnboarding,
   cloudTranscriptionMode,
   setCloudTranscriptionMode,
   useLocalWhisper,
@@ -252,6 +254,8 @@ function TranscriptionSection({
       label: t("settingsPage.transcription.modes.openwhispr"),
       description: t("settingsPage.transcription.modes.openwhisprDesc"),
       icon: <Cloud className="w-4 h-4" />,
+      disabled: !isSignedIn,
+      badge: !isSignedIn ? t("common.freeAccountRequired") : undefined,
     },
     {
       id: "providers",
@@ -274,6 +278,10 @@ function TranscriptionSection({
   ];
 
   const handleTranscriptionModeSelect = (mode: InferenceMode) => {
+    if (mode === "openwhispr" && !isSignedIn) {
+      startOnboarding();
+      return;
+    }
     if (mode === transcriptionMode) return;
     setTranscriptionMode(mode);
     setUseLocalWhisper(mode === "local");
@@ -360,35 +368,26 @@ function TranscriptionSection({
         description={t("settingsPage.transcription.description")}
       />
 
-      {isSignedIn ? (
-        <>
-          <InferenceModeSelector
-            modes={transcriptionModes}
-            activeMode={transcriptionMode}
-            onSelect={handleTranscriptionModeSelect}
-          />
+      <InferenceModeSelector
+        modes={transcriptionModes}
+        activeMode={transcriptionMode}
+        onSelect={handleTranscriptionModeSelect}
+      />
 
-          {transcriptionMode === "providers" && renderTranscriptionPicker("cloud")}
-          {transcriptionMode === "local" && (
-            <>
-              {renderTranscriptionPicker("local")}
-              {renderPreviewToggle()}
-            </>
-          )}
-
-          {transcriptionMode === "self-hosted" && (
-            <SelfHostedPanel
-              service="transcription"
-              url={remoteTranscriptionUrl}
-              onUrlChange={setRemoteTranscriptionUrl}
-            />
-          )}
-        </>
-      ) : (
+      {transcriptionMode === "providers" && renderTranscriptionPicker("cloud")}
+      {transcriptionMode === "local" && (
         <>
-          {renderTranscriptionPicker()}
-          {useLocalWhisper && renderPreviewToggle()}
+          {renderTranscriptionPicker("local")}
+          {renderPreviewToggle()}
         </>
+      )}
+
+      {transcriptionMode === "self-hosted" && (
+        <SelfHostedPanel
+          service="transcription"
+          url={remoteTranscriptionUrl}
+          onUrlChange={setRemoteTranscriptionUrl}
+        />
       )}
 
       <GpuDeviceSelector purpose="transcription" />
@@ -398,6 +397,7 @@ function TranscriptionSection({
 
 interface AiModelsSectionProps {
   isSignedIn: boolean;
+  startOnboarding: () => void;
   cloudReasoningMode: string;
   setCloudReasoningMode: (mode: string) => void;
   useReasoningModel: boolean;
@@ -432,6 +432,7 @@ interface AiModelsSectionProps {
 
 function AiModelsSection({
   isSignedIn,
+  startOnboarding,
   cloudReasoningMode,
   setCloudReasoningMode,
   useReasoningModel,
@@ -466,6 +467,8 @@ function AiModelsSection({
       label: t("settingsPage.aiModels.modes.openwhispr"),
       description: t("settingsPage.aiModels.modes.openwhisprDesc"),
       icon: <Cloud className="w-4 h-4" />,
+      disabled: !isSignedIn,
+      badge: !isSignedIn ? t("common.freeAccountRequired") : undefined,
     },
     {
       id: "providers",
@@ -488,6 +491,10 @@ function AiModelsSection({
   ];
 
   const handleReasoningModeSelect = (mode: InferenceMode) => {
+    if (mode === "openwhispr" && !isSignedIn) {
+      startOnboarding();
+      return;
+    }
     if (mode === reasoningMode) return;
     setReasoningMode(mode);
     setCloudReasoningMode(mode === "openwhispr" ? "openwhispr" : "byok");
@@ -551,27 +558,21 @@ function AiModelsSection({
 
       {useReasoningModel && (
         <>
-          {isSignedIn ? (
-            <>
-              <InferenceModeSelector
-                modes={aiModes}
-                activeMode={reasoningMode}
-                onSelect={handleReasoningModeSelect}
-              />
+          <InferenceModeSelector
+            modes={aiModes}
+            activeMode={reasoningMode}
+            onSelect={handleReasoningModeSelect}
+          />
 
-              {reasoningMode === "providers" && renderReasoningSelector("cloud")}
-              {reasoningMode === "local" && renderReasoningSelector("local")}
+          {reasoningMode === "providers" && renderReasoningSelector("cloud")}
+          {reasoningMode === "local" && renderReasoningSelector("local")}
 
-              {reasoningMode === "self-hosted" && (
-                <SelfHostedPanel
-                  service="reasoning"
-                  url={remoteReasoningUrl}
-                  onUrlChange={setRemoteReasoningUrl}
-                />
-              )}
-            </>
-          ) : (
-            renderReasoningSelector()
+          {reasoningMode === "self-hosted" && (
+            <SelfHostedPanel
+              service="reasoning"
+              url={remoteReasoningUrl}
+              onUrlChange={setRemoteReasoningUrl}
+            />
           )}
           <GpuDeviceSelector purpose="intelligence" />
         </>
@@ -3109,6 +3110,7 @@ EOF`,
         return (
           <TranscriptionSection
             isSignedIn={isSignedIn ?? false}
+            startOnboarding={startOnboarding}
             cloudTranscriptionMode={cloudTranscriptionMode}
             setCloudTranscriptionMode={setCloudTranscriptionMode}
             useLocalWhisper={useLocalWhisper}
@@ -3148,6 +3150,7 @@ EOF`,
         return (
           <AiModelsSection
             isSignedIn={isSignedIn ?? false}
+            startOnboarding={startOnboarding}
             cloudReasoningMode={cloudReasoningMode}
             setCloudReasoningMode={setCloudReasoningMode}
             useReasoningModel={useReasoningModel}
@@ -3294,6 +3297,7 @@ EOF`,
             {/* Text Cleanup (AI Models) */}
             <AiModelsSection
               isSignedIn={isSignedIn ?? false}
+              startOnboarding={startOnboarding}
               cloudReasoningMode={cloudReasoningMode}
               setCloudReasoningMode={setCloudReasoningMode}
               useReasoningModel={useReasoningModel}

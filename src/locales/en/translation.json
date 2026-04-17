@@ -131,6 +131,7 @@
     "cancel": "Cancel",
     "recommended": "Recommended",
     "active": "Active",
+    "freeAccountRequired": "Free account required",
     "cloud": "Cloud",
     "local": "Local",
     "apiKey": "API Key",

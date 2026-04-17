@@ -131,6 +131,7 @@
     "cancel": "取消",
     "recommended": "推薦",
     "active": "使用中",
+    "freeAccountRequired": "需要免費帳戶",
     "cloud": "雲端",
     "local": "本機",
     "apiKey": "API Key",

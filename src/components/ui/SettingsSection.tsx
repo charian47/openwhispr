@@ -131,6 +131,8 @@ export function SectionHeader({ title, description }: { title: string; descripti
 
 export interface InferenceModeOption {
   id: InferenceMode;
+  disabled?: boolean;
+  badge?: string;
   label: string;
   description: string;
   icon: React.ReactNode;
@@ -151,11 +153,14 @@ export function InferenceModeSelector({
     <SettingsPanel>
       {modes.map((mode) => {
         const isActive = activeMode === mode.id;
+        const isDisabled = !!mode.disabled;
         return (
           <SettingsPanelRow key={mode.id}>
             <button
               onClick={() => onSelect(mode.id)}
-              className="w-full flex items-center gap-3 text-left cursor-pointer group"
+              className={`w-full flex items-center gap-3 text-left cursor-pointer group ${
+                isDisabled ? "opacity-60" : ""
+              }`}
             >
               <div
                 className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
@@ -173,9 +178,14 @@ export function InferenceModeSelector({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-foreground">{mode.label}</span>
-                  {isActive && (
+                  {isActive && !isDisabled && (
                     <span className="text-xs font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
                       {t("common.active")}
+                    </span>
+                  )}
+                  {isDisabled && mode.badge && (
+                    <span className="text-xs font-medium text-muted-foreground bg-muted/80 dark:bg-surface-3 px-1.5 py-px rounded-sm">
+                      {mode.badge}
                     </span>
                   )}
                 </div>

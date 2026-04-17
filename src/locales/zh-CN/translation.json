@@ -131,6 +131,7 @@
     "cancel": "取消",
     "recommended": "推荐",
     "active": "已激活",
+    "freeAccountRequired": "需要免费账户",
     "cloud": "云端",
     "local": "本地",
     "apiKey": "API Key",

@@ -66,12 +66,21 @@ export default function AgentModeSettings() {
     [dictationKey, meetingKey, t]
   );
 
+  const startOnboarding = useCallback(() => {
+    localStorage.setItem("pendingCloudMigration", "true");
+    localStorage.setItem("onboardingCurrentStep", "0");
+    localStorage.removeItem("onboardingCompleted");
+    window.location.reload();
+  }, []);
+
   const agentModes: InferenceModeOption[] = [
     {
       id: "openwhispr",
       label: t("agentMode.settings.modes.openwhispr"),
       description: t("agentMode.settings.modes.openwhisprDesc"),
       icon: <Cloud className="w-4 h-4" />,
+      disabled: !isSignedIn,
+      badge: !isSignedIn ? t("common.freeAccountRequired") : undefined,
     },
     {
       id: "providers",
@@ -94,6 +103,10 @@ export default function AgentModeSettings() {
   ];
 
   const handleAgentModeSelect = (mode: InferenceMode) => {
+    if (mode === "openwhispr" && !isSignedIn) {
+      startOnboarding();
+      return;
+    }
     if (mode === agentInferenceMode) return;
     setAgentInferenceMode(mode);
     setCloudAgentMode(mode === "openwhispr" ? "openwhispr" : "byok");
@@ -152,27 +165,21 @@ export default function AgentModeSettings() {
             <HotkeyInput value={agentKey} onChange={setAgentKey} validate={validateAgentHotkey} />
           </div>
 
-          {isSignedIn ? (
-            <>
-              <InferenceModeSelector
-                modes={agentModes}
-                activeMode={agentInferenceMode}
-                onSelect={handleAgentModeSelect}
-              />
+          <InferenceModeSelector
+            modes={agentModes}
+            activeMode={agentInferenceMode}
+            onSelect={handleAgentModeSelect}
+          />
 
-              {agentInferenceMode === "providers" && renderModelSelector("cloud")}
-              {agentInferenceMode === "local" && renderModelSelector("local")}
+          {agentInferenceMode === "providers" && renderModelSelector("cloud")}
+          {agentInferenceMode === "local" && renderModelSelector("local")}
 
-              {agentInferenceMode === "self-hosted" && (
-                <SelfHostedPanel
-                  service="reasoning"
-                  url={remoteAgentUrl}
-                  onUrlChange={setRemoteAgentUrl}
-                />
-              )}
-            </>
-          ) : (
-            renderModelSelector()
+          {agentInferenceMode === "self-hosted" && (
+            <SelfHostedPanel
+              service="reasoning"
+              url={remoteAgentUrl}
+              onUrlChange={setRemoteAgentUrl}
+            />
           )}
 
           <div>

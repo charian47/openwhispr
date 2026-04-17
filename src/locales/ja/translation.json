@@ -131,6 +131,7 @@
     "cancel": "キャンセル",
     "recommended": "推奨",
     "active": "有効",
+    "freeAccountRequired": "無料アカウントが必要です",
     "cloud": "クラウド",
     "local": "ローカル",
     "apiKey": "API キー",

@@ -131,6 +131,7 @@
     "cancel": "Отмена",
     "recommended": "Рекомендуется",
     "active": "Активно",
+    "freeAccountRequired": "Требуется бесплатный аккаунт",
     "cloud": "Облако",
     "local": "Локально",
     "apiKey": "API-ключ",
