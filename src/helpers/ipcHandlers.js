@@ -5267,7 +5267,7 @@ class IPCHandlers {
       const fs = require("fs");
       const os = require("os");
       const { splitAudioFile } = require("./ffmpegUtils");
-      const FILE_SIZE_LIMIT = 25 * 1024 * 1024;
+      const FILE_SIZE_LIMIT = 4 * 1024 * 1024; // 4 MB — Vercel function body limit is ~4.5 MB
       const CONCURRENCY_LIMIT = 5;
       try {
         const apiUrl = getApiUrl();
