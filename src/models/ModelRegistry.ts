@@ -212,6 +212,19 @@ export interface ReasoningProvider {
 
 export type ReasoningProviders = Record<string, ReasoningProvider>;
 
+export type EnterpriseProvider = "bedrock" | "azure" | "vertex";
+export const ENTERPRISE_PROVIDERS: readonly EnterpriseProvider[] = [
+  "bedrock",
+  "azure",
+  "vertex",
+];
+export function isEnterpriseProvider(value: unknown): value is EnterpriseProvider {
+  return (
+    typeof value === "string" &&
+    (ENTERPRISE_PROVIDERS as readonly string[]).includes(value)
+  );
+}
+
 function buildReasoningProviders(): ReasoningProviders {
   const providers: ReasoningProviders = {};
 

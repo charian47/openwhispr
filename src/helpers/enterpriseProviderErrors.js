@@ -133,4 +133,57 @@ function mapEnterpriseError(provider, error, config = {}) {
   }
 }
 
-module.exports = { mapEnterpriseError };
+const ENTERPRISE_PROVIDERS = ["bedrock", "azure", "vertex"];
+
+function isEnterpriseProvider(value) {
+  return typeof value === "string" && ENTERPRISE_PROVIDERS.includes(value);
+}
+
+/**
+ * SSRF guard for enterprise HTTP endpoints (currently only Azure).
+ * Throws if the URL is non-HTTPS or resolves to a private/metadata host.
+ */
+function validateEnterpriseEndpoint(endpoint) {
+  if (!endpoint) return;
+  const url = new URL(endpoint);
+  if (url.protocol !== "https:") {
+    throw new Error("Endpoint must use HTTPS.");
+  }
+  const hostname = url.hostname.toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname === "169.254.169.254" ||
+    hostname === "metadata.google.internal" ||
+    hostname.startsWith("10.") ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("127.")
+  ) {
+    throw new Error("Private/metadata endpoints are not allowed.");
+  }
+}
+
+/**
+ * Extracts the enterprise credential/config subset from an IPC payload
+ * so SDK factories receive only the fields they expect.
+ */
+function pickEnterpriseConfig(config = {}) {
+  return {
+    bedrockRegion: config.bedrockRegion,
+    bedrockProfile: config.bedrockProfile,
+    bedrockAccessKeyId: config.bedrockAccessKeyId,
+    bedrockSecretAccessKey: config.bedrockSecretAccessKey,
+    bedrockSessionToken: config.bedrockSessionToken,
+    azureEndpoint: config.azureEndpoint,
+    azureApiVersion: config.azureApiVersion,
+    vertexProject: config.vertexProject,
+    vertexLocation: config.vertexLocation,
+  };
+}
+
+module.exports = {
+  ENTERPRISE_PROVIDERS,
+  isEnterpriseProvider,
+  mapEnterpriseError,
+  pickEnterpriseConfig,
+  validateEnterpriseEndpoint,
+};

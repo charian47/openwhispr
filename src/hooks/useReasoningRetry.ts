@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 
 interface ReasoningRetryPayload {
   text: string;
@@ -9,19 +9,19 @@ interface ReasoningRetryPayload {
 
 const STORAGE_KEY = "pendingReasoningInput";
 
-export function useReasoningRetry() {
-  const [retryPayload, setRetryPayload] = useState<ReasoningRetryPayload | null>(null);
+function readStoredPayload(): ReasoningRetryPayload | null {
+  try {
+    const stored = sessionStorage.getItem(STORAGE_KEY);
+    return stored ? (JSON.parse(stored) as ReasoningRetryPayload) : null;
+  } catch {
+    return null;
+  }
+}
 
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setRetryPayload(JSON.parse(stored));
-      }
-    } catch {
-      // ignore parse errors
-    }
-  }, []);
+export function useReasoningRetry() {
+  const [retryPayload, setRetryPayload] = useState<ReasoningRetryPayload | null>(() =>
+    readStoredPayload()
+  );
 
   const clearRetry = useCallback(() => {
     sessionStorage.removeItem(STORAGE_KEY);
@@ -29,16 +29,7 @@ export function useReasoningRetry() {
   }, []);
 
   const refreshRetry = useCallback(() => {
-    try {
-      const stored = sessionStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setRetryPayload(JSON.parse(stored));
-      } else {
-        setRetryPayload(null);
-      }
-    } catch {
-      setRetryPayload(null);
-    }
+    setRetryPayload(readStoredPayload());
   }, []);
 
   return {

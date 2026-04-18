@@ -360,28 +360,28 @@
       "allowCustomModelId": true,
       "models": [
         {
-          "id": "anthropic.claude-sonnet-4-20250514-v1:0",
-          "name": "Claude Sonnet 4",
-          "description": "Anthropic Claude Sonnet 4 via Bedrock",
-          "descriptionKey": "models.descriptions.enterprise.bedrock_claude_sonnet_4"
+          "id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+          "name": "Claude Haiku 4.5",
+          "description": "Fast and cheap. Great default for text cleanup.",
+          "descriptionKey": "models.descriptions.enterprise.bedrock_claude_haiku_4_5"
         },
         {
-          "id": "anthropic.claude-3-5-haiku-20241022-v1:0",
-          "name": "Claude 3.5 Haiku",
-          "description": "Fast and efficient via Bedrock",
-          "descriptionKey": "models.descriptions.enterprise.bedrock_claude_3_5_haiku"
+          "id": "us.anthropic.claude-sonnet-4-6",
+          "name": "Claude Sonnet 4.6",
+          "description": "Balanced workhorse. Best default for Agent Mode.",
+          "descriptionKey": "models.descriptions.enterprise.bedrock_claude_sonnet_4_6"
         },
         {
-          "id": "amazon.nova-pro-v1:0",
-          "name": "Amazon Nova Pro",
-          "description": "Amazon's reasoning model",
-          "descriptionKey": "models.descriptions.enterprise.bedrock_nova_pro"
+          "id": "us.anthropic.claude-opus-4-7",
+          "name": "Claude Opus 4.7",
+          "description": "Max intelligence. Best for complex Agent Mode tasks.",
+          "descriptionKey": "models.descriptions.enterprise.bedrock_claude_opus_4_7"
         },
         {
-          "id": "meta.llama4-scout-17b-16e-instruct-v1:0",
-          "name": "Llama 4 Scout",
-          "description": "Meta's Llama 4 Scout via Bedrock",
-          "descriptionKey": "models.descriptions.enterprise.bedrock_llama_4_scout"
+          "id": "us.amazon.nova-lite-v1:0",
+          "name": "Amazon Nova Lite",
+          "description": "Cheapest option. AWS-native, ideal for high volume.",
+          "descriptionKey": "models.descriptions.enterprise.bedrock_nova_lite"
         }
       ]
     },

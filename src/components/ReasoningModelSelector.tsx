@@ -16,7 +16,7 @@ import { ProviderTabs } from "./ui/ProviderTabs";
 import EnterpriseProviderConfig from "./EnterpriseProviderConfig";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
-import { REASONING_PROVIDERS } from "../models/ModelRegistry";
+import { REASONING_PROVIDERS, ENTERPRISE_PROVIDERS } from "../models/ModelRegistry";
 import { modelRegistry } from "../models/ModelRegistry";
 import { useSettingsStore } from "../stores/settingsStore";
 import { Building2 } from "lucide-react";
@@ -328,7 +328,9 @@ export default function ReasoningModelSelector({
   mode,
 }: ReasoningModelSelectorProps) {
   const { t } = useTranslation();
-  const [selectedMode, setSelectedMode] = useState<"cloud" | "local">(mode || "cloud");
+  const [selectedMode, setSelectedMode] = useState<"cloud" | "local" | "enterprise">(
+    mode || "cloud"
+  );
   const [selectedCloudProvider, setSelectedCloudProvider] = useState("openai");
   const [selectedLocalProvider, setSelectedLocalProvider] = useState("qwen");
   const [customModelOptions, setCustomModelOptions] = useState<CloudModelOption[]>([]);
@@ -601,6 +603,10 @@ export default function ReasoningModelSelector({
     } else if (CLOUD_PROVIDER_IDS.includes(localReasoningProvider)) {
       setSelectedMode("cloud");
       setSelectedCloudProvider(localReasoningProvider);
+    } else if (
+      (ENTERPRISE_PROVIDERS as readonly string[]).includes(localReasoningProvider)
+    ) {
+      setSelectedMode("enterprise");
     }
   }, [localProviders, localReasoningProvider]);
 
@@ -646,8 +652,15 @@ export default function ReasoningModelSelector({
     loadDownloadedModels();
   }, [loadDownloadedModels]);
 
-  const handleModeChange = async (newMode: "cloud" | "local") => {
+  const handleModeChange = async (newMode: "cloud" | "local" | "enterprise") => {
     setSelectedMode(newMode);
+
+    if (newMode === "enterprise") {
+      window.electronAPI?.llamaServerStop?.();
+      // Selection of the specific enterprise provider happens inside
+      // EnterpriseSection; nothing else to do here.
+      return;
+    }
 
     if (newMode === "cloud") {
       window.electronAPI?.llamaServerStop?.();
@@ -729,11 +742,26 @@ export default function ReasoningModelSelector({
   const MODE_TABS = [
     { id: "cloud", name: t("reasoning.mode.cloud") },
     { id: "local", name: t("reasoning.mode.local") },
+    {
+      id: "enterprise",
+      name: t("reasoning.mode.enterprise", { defaultValue: "Enterprise" }),
+    },
   ];
 
   const renderModeIcon = (id: string) => {
     if (id === "cloud") return <Cloud className="w-4 h-4" />;
+    if (id === "enterprise") return <Building2 className="w-4 h-4" />;
     return <Lock className="w-4 h-4" />;
+  };
+
+  const describeMode = (m: "cloud" | "local" | "enterprise") => {
+    if (m === "local") return t("reasoning.mode.localDescription");
+    if (m === "enterprise") {
+      return t("reasoning.mode.enterpriseDescription", {
+        defaultValue: "Use your organization's own cloud provider credentials.",
+      });
+    }
+    return t("reasoning.mode.cloudDescription");
   };
 
   return (
@@ -743,19 +771,15 @@ export default function ReasoningModelSelector({
           <ProviderTabs
             providers={MODE_TABS}
             selectedId={effectiveMode}
-            onSelect={(id) => handleModeChange(id as "cloud" | "local")}
+            onSelect={(id) => handleModeChange(id as "cloud" | "local" | "enterprise")}
             renderIcon={renderModeIcon}
             colorScheme="purple"
           />
-          <p className="text-xs text-muted-foreground text-center">
-            {effectiveMode === "local"
-              ? t("reasoning.mode.localDescription")
-              : t("reasoning.mode.cloudDescription")}
-          </p>
+          <p className="text-xs text-muted-foreground text-center">{describeMode(effectiveMode)}</p>
         </div>
       )}
 
-      {effectiveMode === "cloud" ? (
+      {effectiveMode === "cloud" && (
         <div className="space-y-2">
           <ProviderTabs
             providers={cloudProviders}
@@ -983,7 +1007,9 @@ export default function ReasoningModelSelector({
             )}
           </div>
         </div>
-      ) : (
+      )}
+
+      {effectiveMode === "local" && (
         <>
           <LocalModelPicker
             providers={localProviders}
@@ -999,40 +1025,44 @@ export default function ReasoningModelSelector({
         </>
       )}
 
-      <EnterpriseSection
-        reasoningModel={reasoningModel}
-        setReasoningModel={setReasoningModel}
-        setLocalReasoningProvider={setLocalReasoningProvider}
-      />
+      {effectiveMode === "enterprise" && (
+        <EnterpriseSection
+          currentProvider={localReasoningProvider}
+          reasoningModel={reasoningModel}
+          setReasoningModel={setReasoningModel}
+          setLocalReasoningProvider={setLocalReasoningProvider}
+        />
+      )}
     </div>
   );
 }
 
 const ENTERPRISE_PROVIDER_TABS = [
   { id: "bedrock", name: "AWS Bedrock" },
-  { id: "azure", name: "Azure OpenAI" },
-  { id: "vertex", name: "Vertex AI" },
+  { id: "azure", name: "Azure OpenAI", disabled: true, disabledLabel: "Soon" },
+  { id: "vertex", name: "Vertex AI", disabled: true, disabledLabel: "Soon" },
 ];
 
 function EnterpriseSection({
+  currentProvider,
   reasoningModel,
   setReasoningModel,
   setLocalReasoningProvider,
 }: {
+  currentProvider: string;
   reasoningModel: string;
   setReasoningModel: (m: string) => void;
   setLocalReasoningProvider: (p: string) => void;
 }) {
-  const { t } = useTranslation();
-  const [selectedEnterprise, setSelectedEnterprise] = useState("");
+  // Selected tab is derived from currentProvider. Clicking a tab propagates
+  // through setLocalReasoningProvider so currentProvider stays authoritative.
+  const selectedEnterprise = ENTERPRISE_PROVIDER_TABS.some((p) => p.id === currentProvider)
+    ? currentProvider
+    : "";
   const store = useSettingsStore();
 
   const handleEnterpriseSelect = (providerId: string) => {
-    if (selectedEnterprise === providerId) {
-      setSelectedEnterprise("");
-      return;
-    }
-    setSelectedEnterprise(providerId);
+    if (selectedEnterprise === providerId) return;
     setLocalReasoningProvider(providerId);
 
     const providerData = REASONING_PROVIDERS[providerId];
@@ -1044,19 +1074,7 @@ function EnterpriseSection({
   };
 
   return (
-    <div className="space-y-2 pt-3 border-t border-border">
-      <div className="flex items-center gap-1.5">
-        <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
-        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          {t("reasoning.enterprise.title", { defaultValue: "Enterprise Providers" })}
-        </h3>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        {t("reasoning.enterprise.description", {
-          defaultValue: "Connect to cloud providers using your organization's credentials.",
-        })}
-      </p>
-
+    <div className="space-y-2">
       <div className="border border-border rounded-lg overflow-hidden">
         <ProviderTabs
           providers={ENTERPRISE_PROVIDER_TABS}

@@ -395,6 +395,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   processAnthropicReasoning: (text, modelId, agentName, config) =>
     ipcRenderer.invoke("process-anthropic-reasoning", text, modelId, agentName, config),
 
+  // Enterprise reasoning (Bedrock, Azure, Vertex) — runs in main process so
+  // Node-only SDKs (AWS/Azure/Google credential providers) can resolve.
+  processEnterpriseReasoning: (text, modelId, agentName, config) =>
+    ipcRenderer.invoke("process-enterprise-reasoning", text, modelId, agentName, config),
+
   // llama.cpp
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),
