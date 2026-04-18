@@ -327,41 +327,41 @@
     "selectModel": "モデルを選択",
     "availableModels": "利用可能なモデル",
     "enterprise": {
-      "title": "Enterprise Providers",
-      "description": "Connect to cloud providers using your organization's credentials.",
-      "testConnection": "Test Connection",
-      "testing": "Testing...",
-      "testSuccess": "Connected",
-      "testFailed": "Connection failed",
-      "authMode": "Authentication",
-      "ssoProfile": "SSO Profile",
-      "accessKeys": "Access Keys",
+      "title": "エンタープライズプロバイダー",
+      "description": "組織のクラウドプロバイダー認証情報を使用して接続します。",
+      "testConnection": "接続をテスト",
+      "testing": "テスト中…",
+      "testSuccess": "接続成功",
+      "testFailed": "接続失敗",
+      "authMode": "認証",
+      "ssoProfile": "SSO プロファイル",
+      "accessKeys": "アクセスキー",
       "adc": "Application Default Credentials",
-      "apiKeyMode": "API Key",
-      "region": "Region",
-      "profile": "Profile Name",
+      "apiKeyMode": "API キー",
+      "region": "リージョン",
+      "profile": "プロファイル名",
       "accessKeyId": "Access Key ID",
       "secretAccessKey": "Secret Access Key",
-      "sessionToken": "Session Token (optional)",
-      "endpoint": "Endpoint URL",
-      "deploymentName": "Deployment Name",
-      "apiVersion": "API Version",
-      "projectId": "Project ID",
-      "location": "Location",
-      "customModelId": "Custom Model ID",
-      "customModelPlaceholder": "Enter model ID or deployment name",
-      "suggestedModels": "Suggested Models",
+      "sessionToken": "Session Token（任意）",
+      "endpoint": "エンドポイント URL",
+      "deploymentName": "デプロイメント名",
+      "apiVersion": "API バージョン",
+      "projectId": "プロジェクト ID",
+      "location": "ロケーション",
+      "customModelId": "カスタムモデル ID",
+      "customModelPlaceholder": "モデル ID またはデプロイメント名を入力",
+      "suggestedModels": "推奨モデル",
       "bedrock": {
-        "ssoHelp": "Uses your AWS CLI SSO configuration. Ensure you have run 'aws sso login'.",
-        "keysHelp": "Enter your AWS IAM access keys."
+        "ssoHelp": "AWS CLI の SSO 設定を使用します。'aws sso login' を実行済みであることを確認してください。",
+        "keysHelp": "AWS IAM のアクセスキーを入力してください。"
       },
       "azure": {
-        "endpointHelp": "Your Azure OpenAI resource endpoint (e.g., https://myresource.openai.azure.com).",
-        "deploymentHelp": "The name of your model deployment in Azure OpenAI."
+        "endpointHelp": "Azure OpenAI リソースのエンドポイント（例: https://myresource.openai.azure.com）。",
+        "deploymentHelp": "Azure OpenAI 内のモデルデプロイメント名。"
       },
       "vertex": {
-        "adcHelp": "Uses Application Default Credentials. Run: gcloud auth application-default login",
-        "apikeyHelp": "Vertex AI Express Mode API key from Google AI Studio."
+        "adcHelp": "Application Default Credentials を使用します。次を実行してください: gcloud auth application-default login",
+        "apikeyHelp": "Google AI Studio で取得した Vertex AI Express Mode の API キー。"
       }
     }
   },

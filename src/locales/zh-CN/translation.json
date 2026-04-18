@@ -327,41 +327,41 @@
     "selectModel": "选择模型",
     "availableModels": "可用模型",
     "enterprise": {
-      "title": "Enterprise Providers",
-      "description": "Connect to cloud providers using your organization's credentials.",
-      "testConnection": "Test Connection",
-      "testing": "Testing...",
-      "testSuccess": "Connected",
-      "testFailed": "Connection failed",
-      "authMode": "Authentication",
-      "ssoProfile": "SSO Profile",
-      "accessKeys": "Access Keys",
+      "title": "企业级提供商",
+      "description": "使用你组织的凭据连接云端提供商。",
+      "testConnection": "测试连接",
+      "testing": "测试中…",
+      "testSuccess": "已连接",
+      "testFailed": "连接失败",
+      "authMode": "认证方式",
+      "ssoProfile": "SSO 配置文件",
+      "accessKeys": "访问密钥",
       "adc": "Application Default Credentials",
-      "apiKeyMode": "API Key",
-      "region": "Region",
-      "profile": "Profile Name",
+      "apiKeyMode": "API 密钥",
+      "region": "区域",
+      "profile": "配置文件名称",
       "accessKeyId": "Access Key ID",
       "secretAccessKey": "Secret Access Key",
-      "sessionToken": "Session Token (optional)",
-      "endpoint": "Endpoint URL",
-      "deploymentName": "Deployment Name",
-      "apiVersion": "API Version",
-      "projectId": "Project ID",
-      "location": "Location",
-      "customModelId": "Custom Model ID",
-      "customModelPlaceholder": "Enter model ID or deployment name",
-      "suggestedModels": "Suggested Models",
+      "sessionToken": "Session Token（可选）",
+      "endpoint": "端点 URL",
+      "deploymentName": "部署名称",
+      "apiVersion": "API 版本",
+      "projectId": "项目 ID",
+      "location": "位置",
+      "customModelId": "自定义模型 ID",
+      "customModelPlaceholder": "输入模型 ID 或部署名称",
+      "suggestedModels": "推荐模型",
       "bedrock": {
-        "ssoHelp": "Uses your AWS CLI SSO configuration. Ensure you have run 'aws sso login'.",
-        "keysHelp": "Enter your AWS IAM access keys."
+        "ssoHelp": "使用你的 AWS CLI SSO 配置。请确保已运行 'aws sso login'。",
+        "keysHelp": "输入你的 AWS IAM 访问密钥。"
       },
       "azure": {
-        "endpointHelp": "Your Azure OpenAI resource endpoint (e.g., https://myresource.openai.azure.com).",
-        "deploymentHelp": "The name of your model deployment in Azure OpenAI."
+        "endpointHelp": "你的 Azure OpenAI 资源端点（例如 https://myresource.openai.azure.com）。",
+        "deploymentHelp": "Azure OpenAI 中的模型部署名称。"
       },
       "vertex": {
-        "adcHelp": "Uses Application Default Credentials. Run: gcloud auth application-default login",
-        "apikeyHelp": "Vertex AI Express Mode API key from Google AI Studio."
+        "adcHelp": "使用 Application Default Credentials。请执行：gcloud auth application-default login",
+        "apikeyHelp": "从 Google AI Studio 获取的 Vertex AI Express Mode API 密钥。"
       }
     }
   },

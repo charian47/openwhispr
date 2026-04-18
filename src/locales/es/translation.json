@@ -327,41 +327,41 @@
     "selectModel": "Seleccionar modelo",
     "availableModels": "Modelos disponibles",
     "enterprise": {
-      "title": "Enterprise Providers",
-      "description": "Connect to cloud providers using your organization's credentials.",
-      "testConnection": "Test Connection",
-      "testing": "Testing...",
-      "testSuccess": "Connected",
-      "testFailed": "Connection failed",
-      "authMode": "Authentication",
-      "ssoProfile": "SSO Profile",
-      "accessKeys": "Access Keys",
+      "title": "Proveedores empresariales",
+      "description": "Conecta con proveedores de nube usando las credenciales de tu organización.",
+      "testConnection": "Probar conexión",
+      "testing": "Probando…",
+      "testSuccess": "Conectado",
+      "testFailed": "Conexión fallida",
+      "authMode": "Autenticación",
+      "ssoProfile": "Perfil SSO",
+      "accessKeys": "Claves de acceso",
       "adc": "Application Default Credentials",
-      "apiKeyMode": "API Key",
-      "region": "Region",
-      "profile": "Profile Name",
+      "apiKeyMode": "Clave API",
+      "region": "Región",
+      "profile": "Nombre del perfil",
       "accessKeyId": "Access Key ID",
       "secretAccessKey": "Secret Access Key",
-      "sessionToken": "Session Token (optional)",
-      "endpoint": "Endpoint URL",
-      "deploymentName": "Deployment Name",
-      "apiVersion": "API Version",
-      "projectId": "Project ID",
-      "location": "Location",
-      "customModelId": "Custom Model ID",
-      "customModelPlaceholder": "Enter model ID or deployment name",
-      "suggestedModels": "Suggested Models",
+      "sessionToken": "Session Token (opcional)",
+      "endpoint": "URL del endpoint",
+      "deploymentName": "Nombre del deployment",
+      "apiVersion": "Versión de la API",
+      "projectId": "ID del proyecto",
+      "location": "Ubicación",
+      "customModelId": "ID de modelo personalizado",
+      "customModelPlaceholder": "Introduce un ID de modelo o nombre de deployment",
+      "suggestedModels": "Modelos sugeridos",
       "bedrock": {
-        "ssoHelp": "Uses your AWS CLI SSO configuration. Ensure you have run 'aws sso login'.",
-        "keysHelp": "Enter your AWS IAM access keys."
+        "ssoHelp": "Usa tu configuración SSO de AWS CLI. Asegúrate de haber ejecutado 'aws sso login'.",
+        "keysHelp": "Introduce tus claves de acceso de AWS IAM."
       },
       "azure": {
-        "endpointHelp": "Your Azure OpenAI resource endpoint (e.g., https://myresource.openai.azure.com).",
-        "deploymentHelp": "The name of your model deployment in Azure OpenAI."
+        "endpointHelp": "El endpoint de tu recurso Azure OpenAI (por ejemplo, https://myresource.openai.azure.com).",
+        "deploymentHelp": "Nombre del deployment de tu modelo en Azure OpenAI."
       },
       "vertex": {
-        "adcHelp": "Uses Application Default Credentials. Run: gcloud auth application-default login",
-        "apikeyHelp": "Vertex AI Express Mode API key from Google AI Studio."
+        "adcHelp": "Usa Application Default Credentials. Ejecuta: gcloud auth application-default login",
+        "apikeyHelp": "Clave API de Vertex AI Express Mode obtenida en Google AI Studio."
       }
     }
   },
