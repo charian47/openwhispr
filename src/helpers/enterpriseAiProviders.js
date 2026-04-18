@@ -1,22 +1,15 @@
-const { createOpenAI } = require("@ai-sdk/openai");
-const { createGroq } = require("@ai-sdk/groq");
-const { createAnthropic } = require("@ai-sdk/anthropic");
-const { createGoogleGenerativeAI } = require("@ai-sdk/google");
+// Main-process AI SDK factory for enterprise providers (Bedrock, Azure,
+// Vertex). These SDKs depend on Node-only APIs (fs, process, AWS/Azure/Google
+// credential chains) and can't run in a Vite-bundled renderer, which is why
+// they live here and not in `src/services/ai/providers.ts`. The renderer's
+// counterpart handles cloud + local providers only.
+//
+// Each enterprise SDK is required lazily inside its create*Model function so
+// app startup doesn't eager-load ~100 MB of AWS/Azure/Google SDKs for users
+// who never select an enterprise provider.
 
-function getAIModel(provider, model, apiKey, baseURL, enterprise) {
+function getEnterpriseAIModel(provider, model, apiKey, enterprise) {
   switch (provider) {
-    case "openai":
-      return createOpenAI({ apiKey })(model);
-    case "groq":
-      return createGroq({ apiKey })(model);
-    case "anthropic":
-      return createAnthropic({ apiKey })(model);
-    case "gemini":
-      return createGoogleGenerativeAI({ apiKey })(model);
-    case "custom":
-      return createOpenAI({ apiKey, baseURL })(model);
-    case "local":
-      return createOpenAI({ apiKey: "no-key", baseURL }).chat(model);
     case "bedrock":
       return createBedrockModel(model, enterprise);
     case "azure":
@@ -24,7 +17,7 @@ function getAIModel(provider, model, apiKey, baseURL, enterprise) {
     case "vertex":
       return createVertexModel(model, apiKey, enterprise);
     default:
-      throw new Error(`Unsupported AI SDK provider: ${provider}`);
+      throw new Error(`Unsupported enterprise provider: ${provider}`);
   }
 }
 
@@ -72,4 +65,4 @@ function createVertexModel(model, apiKey, enterprise) {
   })(model);
 }
 
-module.exports = { getAIModel };
+module.exports = { getEnterpriseAIModel };

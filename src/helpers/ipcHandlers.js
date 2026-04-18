@@ -2267,13 +2267,12 @@ class IPCHandlers {
         validateEnterpriseEndpoint(config.azureEndpoint);
 
         const { generateText } = require("ai");
-        const { getAIModel } = require("./aiProviders");
+        const { getEnterpriseAIModel } = require("./enterpriseAiProviders");
 
-        const model = getAIModel(
+        const model = getEnterpriseAIModel(
           provider,
           config.model || "test",
           config.apiKey || "",
-          undefined,
           pickEnterpriseConfig(config)
         );
 
@@ -2316,13 +2315,12 @@ class IPCHandlers {
           validateEnterpriseEndpoint(config?.azureEndpoint);
 
           const { generateText } = require("ai");
-          const { getAIModel } = require("./aiProviders");
+          const { getEnterpriseAIModel } = require("./enterpriseAiProviders");
 
-          const model = getAIModel(
+          const model = getEnterpriseAIModel(
             provider,
             modelId,
             config.apiKey || "",
-            undefined,
             pickEnterpriseConfig(config)
           );
 
