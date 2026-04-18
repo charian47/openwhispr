@@ -113,6 +113,12 @@ function migrateProviderSettings() {
     if (reasoningProvider === "custom") {
       newReasoningMode = "self-hosted";
     } else if (
+      reasoningProvider === "bedrock" ||
+      reasoningProvider === "azure" ||
+      reasoningProvider === "vertex"
+    ) {
+      newReasoningMode = "enterprise";
+    } else if (
       reasoningProvider === "qwen" ||
       reasoningProvider === "llama" ||
       reasoningProvider === "mistral" ||
@@ -147,6 +153,12 @@ function migrateAgentMode() {
     const localProviders = ["qwen", "llama", "mistral", "openai-oss", "gemma"];
     if (agentProvider === "custom") {
       agentInferenceMode = "self-hosted";
+    } else if (
+      agentProvider === "bedrock" ||
+      agentProvider === "azure" ||
+      agentProvider === "vertex"
+    ) {
+      agentInferenceMode = "enterprise";
     } else if (agentProvider && localProviders.includes(agentProvider)) {
       agentInferenceMode = "local";
     } else {
@@ -481,7 +493,14 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   remoteTranscriptionUrl: readString("remoteTranscriptionUrl", ""),
   reasoningMode: (() => {
     const v = readString("reasoningMode", "openwhispr");
-    if (v === "openwhispr" || v === "providers" || v === "local" || v === "self-hosted") return v;
+    if (
+      v === "openwhispr" ||
+      v === "providers" ||
+      v === "local" ||
+      v === "self-hosted" ||
+      v === "enterprise"
+    )
+      return v;
     return "openwhispr" as InferenceMode;
   })(),
   remoteReasoningType: (() => {
@@ -509,7 +528,14 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   cloudAgentMode: readString("cloudAgentMode", "openwhispr"),
   agentInferenceMode: (() => {
     const v = readString("agentInferenceMode", "openwhispr");
-    if (v === "openwhispr" || v === "providers" || v === "local" || v === "self-hosted") return v;
+    if (
+      v === "openwhispr" ||
+      v === "providers" ||
+      v === "local" ||
+      v === "self-hosted" ||
+      v === "enterprise"
+    )
+      return v;
     return "openwhispr" as InferenceMode;
   })(),
   remoteAgentUrl: readString("remoteAgentUrl", ""),

@@ -1130,7 +1130,9 @@
         "openwhisprDesc": "Resultados confiáveis. Sem configuração.",
         "providersDesc": "Use sua própria chave API.",
         "localDesc": "Modelos no dispositivo. Privado.",
-        "selfHostedDesc": "Seu servidor na sua rede."
+        "selfHostedDesc": "Seu servidor na sua rede.",
+        "enterprise": "Corporativo",
+        "enterpriseDesc": "Use a conta de nuvem da sua organização (AWS, Azure, GCP)."
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Resultados confiáveis. Sem configuração.",
@@ -1155,6 +1157,10 @@
         "switchedSelfHosted": {
           "title": "Auto-hospedado",
           "description": "Usando seu próprio servidor."
+        },
+        "switchedEnterprise": {
+          "title": "Corporativo",
+          "description": "Usando a conta de nuvem da sua organização."
         }
       }
     },
@@ -2080,7 +2086,9 @@
         "openwhisprDesc": "Resultados confiáveis. Sem configuração.",
         "providersDesc": "Traga sua própria chave API.",
         "localDesc": "Modelos no dispositivo. Totalmente privado.",
-        "selfHostedDesc": "Seu próprio servidor na sua rede."
+        "selfHostedDesc": "Seu próprio servidor na sua rede.",
+        "enterprise": "Corporativo",
+        "enterpriseDesc": "Use a conta de nuvem da sua organização (AWS, Azure, GCP)."
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Resultados confiáveis. Sem configuração.",

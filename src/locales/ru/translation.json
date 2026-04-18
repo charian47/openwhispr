@@ -1158,7 +1158,9 @@
         "openwhisprDesc": "Надёжные результаты. Без настройки.",
         "providersDesc": "Используйте свой API-ключ.",
         "localDesc": "Модели на устройстве. Полная приватность.",
-        "selfHostedDesc": "Свой сервер в вашей сети."
+        "selfHostedDesc": "Свой сервер в вашей сети.",
+        "enterprise": "Корпоративный",
+        "enterpriseDesc": "Используйте облачный аккаунт вашей организации (AWS, Azure, GCP)."
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Надёжные результаты. Без настройки.",
@@ -1183,6 +1185,10 @@
         "switchedSelfHosted": {
           "title": "Свой сервер",
           "description": "Используется ваш собственный сервер."
+        },
+        "switchedEnterprise": {
+          "title": "Корпоративный",
+          "description": "Используется облачный аккаунт вашей организации."
         }
       }
     },
@@ -2080,7 +2086,9 @@
         "openwhisprDesc": "Надёжные результаты. Без настройки.",
         "providersDesc": "Свой API-ключ.",
         "localDesc": "Модели на устройстве. Полная приватность.",
-        "selfHostedDesc": "Ваш сервер в вашей сети."
+        "selfHostedDesc": "Ваш сервер в вашей сети.",
+        "enterprise": "Корпоративный",
+        "enterpriseDesc": "Используйте облачный аккаунт вашей организации (AWS, Azure, GCP)."
       },
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Надёжные результаты. Без настройки.",

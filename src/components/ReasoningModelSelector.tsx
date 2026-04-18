@@ -13,13 +13,10 @@ import ApiKeyInput from "./ui/ApiKeyInput";
 import ModelCardList from "./ui/ModelCardList";
 import LocalModelPicker, { type LocalProvider } from "./LocalModelPicker";
 import { ProviderTabs } from "./ui/ProviderTabs";
-import EnterpriseProviderConfig from "./EnterpriseProviderConfig";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
-import { REASONING_PROVIDERS, ENTERPRISE_PROVIDERS } from "../models/ModelRegistry";
+import { REASONING_PROVIDERS } from "../models/ModelRegistry";
 import { modelRegistry } from "../models/ModelRegistry";
-import { useSettingsStore } from "../stores/settingsStore";
-import { Building2 } from "lucide-react";
 import { getProviderIcon, isMonochromeProvider } from "../utils/providerIcons";
 import { isSecureEndpoint } from "../utils/urlUtils";
 import { createExternalLinkHandler } from "../utils/externalLinks";
@@ -328,9 +325,7 @@ export default function ReasoningModelSelector({
   mode,
 }: ReasoningModelSelectorProps) {
   const { t } = useTranslation();
-  const [selectedMode, setSelectedMode] = useState<"cloud" | "local" | "enterprise">(
-    mode || "cloud"
-  );
+  const [selectedMode, setSelectedMode] = useState<"cloud" | "local">(mode || "cloud");
   const [selectedCloudProvider, setSelectedCloudProvider] = useState("openai");
   const [selectedLocalProvider, setSelectedLocalProvider] = useState("qwen");
   const [customModelOptions, setCustomModelOptions] = useState<CloudModelOption[]>([]);
@@ -603,10 +598,6 @@ export default function ReasoningModelSelector({
     } else if (CLOUD_PROVIDER_IDS.includes(localReasoningProvider)) {
       setSelectedMode("cloud");
       setSelectedCloudProvider(localReasoningProvider);
-    } else if (
-      (ENTERPRISE_PROVIDERS as readonly string[]).includes(localReasoningProvider)
-    ) {
-      setSelectedMode("enterprise");
     }
   }, [localProviders, localReasoningProvider]);
 
@@ -652,15 +643,8 @@ export default function ReasoningModelSelector({
     loadDownloadedModels();
   }, [loadDownloadedModels]);
 
-  const handleModeChange = async (newMode: "cloud" | "local" | "enterprise") => {
+  const handleModeChange = async (newMode: "cloud" | "local") => {
     setSelectedMode(newMode);
-
-    if (newMode === "enterprise") {
-      window.electronAPI?.llamaServerStop?.();
-      // Selection of the specific enterprise provider happens inside
-      // EnterpriseSection; nothing else to do here.
-      return;
-    }
 
     if (newMode === "cloud") {
       window.electronAPI?.llamaServerStop?.();
@@ -742,26 +726,11 @@ export default function ReasoningModelSelector({
   const MODE_TABS = [
     { id: "cloud", name: t("reasoning.mode.cloud") },
     { id: "local", name: t("reasoning.mode.local") },
-    {
-      id: "enterprise",
-      name: t("reasoning.mode.enterprise", { defaultValue: "Enterprise" }),
-    },
   ];
 
   const renderModeIcon = (id: string) => {
     if (id === "cloud") return <Cloud className="w-4 h-4" />;
-    if (id === "enterprise") return <Building2 className="w-4 h-4" />;
     return <Lock className="w-4 h-4" />;
-  };
-
-  const describeMode = (m: "cloud" | "local" | "enterprise") => {
-    if (m === "local") return t("reasoning.mode.localDescription");
-    if (m === "enterprise") {
-      return t("reasoning.mode.enterpriseDescription", {
-        defaultValue: "Use your organization's own cloud provider credentials.",
-      });
-    }
-    return t("reasoning.mode.cloudDescription");
   };
 
   return (
@@ -771,11 +740,15 @@ export default function ReasoningModelSelector({
           <ProviderTabs
             providers={MODE_TABS}
             selectedId={effectiveMode}
-            onSelect={(id) => handleModeChange(id as "cloud" | "local" | "enterprise")}
+            onSelect={(id) => handleModeChange(id as "cloud" | "local")}
             renderIcon={renderModeIcon}
             colorScheme="purple"
           />
-          <p className="text-xs text-muted-foreground text-center">{describeMode(effectiveMode)}</p>
+          <p className="text-xs text-muted-foreground text-center">
+            {effectiveMode === "local"
+              ? t("reasoning.mode.localDescription")
+              : t("reasoning.mode.cloudDescription")}
+          </p>
         </div>
       )}
 
@@ -1025,102 +998,6 @@ export default function ReasoningModelSelector({
         </>
       )}
 
-      {effectiveMode === "enterprise" && (
-        <EnterpriseSection
-          currentProvider={localReasoningProvider}
-          reasoningModel={reasoningModel}
-          setReasoningModel={setReasoningModel}
-          setLocalReasoningProvider={setLocalReasoningProvider}
-        />
-      )}
-    </div>
-  );
-}
-
-const ENTERPRISE_PROVIDER_TABS = [
-  { id: "bedrock", name: "AWS Bedrock" },
-  { id: "azure", name: "Azure OpenAI", disabled: true, disabledLabel: "Soon" },
-  { id: "vertex", name: "Vertex AI", disabled: true, disabledLabel: "Soon" },
-];
-
-function EnterpriseSection({
-  currentProvider,
-  reasoningModel,
-  setReasoningModel,
-  setLocalReasoningProvider,
-}: {
-  currentProvider: string;
-  reasoningModel: string;
-  setReasoningModel: (m: string) => void;
-  setLocalReasoningProvider: (p: string) => void;
-}) {
-  // Selected tab is derived from currentProvider. Clicking a tab propagates
-  // through setLocalReasoningProvider so currentProvider stays authoritative.
-  const selectedEnterprise = ENTERPRISE_PROVIDER_TABS.some((p) => p.id === currentProvider)
-    ? currentProvider
-    : "";
-  const store = useSettingsStore();
-
-  const handleEnterpriseSelect = (providerId: string) => {
-    if (selectedEnterprise === providerId) return;
-    setLocalReasoningProvider(providerId);
-
-    const providerData = REASONING_PROVIDERS[providerId];
-    if (providerData?.models?.length) {
-      setReasoningModel(providerData.models[0].value);
-    } else if (providerId === "azure" && store.azureDeploymentName) {
-      setReasoningModel(store.azureDeploymentName);
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="border border-border rounded-lg overflow-hidden">
-        <ProviderTabs
-          providers={ENTERPRISE_PROVIDER_TABS}
-          selectedId={selectedEnterprise}
-          onSelect={handleEnterpriseSelect}
-          colorScheme="purple"
-        />
-
-        {selectedEnterprise && (
-          <div className="p-3">
-            <EnterpriseProviderConfig
-              provider={selectedEnterprise as "bedrock" | "azure" | "vertex"}
-              reasoningModel={reasoningModel}
-              setReasoningModel={setReasoningModel}
-              bedrockAuthMode={store.bedrockAuthMode}
-              setBedrockAuthMode={store.setBedrockAuthMode}
-              bedrockRegion={store.bedrockRegion}
-              setBedrockRegion={store.setBedrockRegion}
-              bedrockProfile={store.bedrockProfile}
-              setBedrockProfile={store.setBedrockProfile}
-              bedrockAccessKeyId={store.bedrockAccessKeyId}
-              setBedrockAccessKeyId={store.setBedrockAccessKeyId}
-              bedrockSecretAccessKey={store.bedrockSecretAccessKey}
-              setBedrockSecretAccessKey={store.setBedrockSecretAccessKey}
-              bedrockSessionToken={store.bedrockSessionToken}
-              setBedrockSessionToken={store.setBedrockSessionToken}
-              azureEndpoint={store.azureEndpoint}
-              setAzureEndpoint={store.setAzureEndpoint}
-              azureApiKey={store.azureApiKey}
-              setAzureApiKey={store.setAzureApiKey}
-              azureDeploymentName={store.azureDeploymentName}
-              setAzureDeploymentName={store.setAzureDeploymentName}
-              azureApiVersion={store.azureApiVersion}
-              setAzureApiVersion={store.setAzureApiVersion}
-              vertexAuthMode={store.vertexAuthMode}
-              setVertexAuthMode={store.setVertexAuthMode}
-              vertexProject={store.vertexProject}
-              setVertexProject={store.setVertexProject}
-              vertexLocation={store.vertexLocation}
-              setVertexLocation={store.setVertexLocation}
-              vertexApiKey={store.vertexApiKey}
-              setVertexApiKey={store.setVertexApiKey}
-            />
-          </div>
-        )}
-      </div>
     </div>
   );
 }
