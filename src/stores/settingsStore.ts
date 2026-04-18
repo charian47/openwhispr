@@ -329,9 +329,11 @@ function createBooleanSetter(key: string) {
 }
 
 const LOCAL_PROVIDERS = new Set(["qwen", "llama", "mistral", "openai-oss", "gemma"]);
+const ENTERPRISE_PROVIDERS = new Set(["bedrock", "azure", "vertex"]);
 
 function inferenceModeForProvider(provider: string): Exclude<InferenceMode, "openwhispr"> {
   if (provider === "custom") return "self-hosted";
+  if (ENTERPRISE_PROVIDERS.has(provider)) return "enterprise";
   if (LOCAL_PROVIDERS.has(provider)) return "local";
   return "providers";
 }
