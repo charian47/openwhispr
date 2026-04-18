@@ -66,9 +66,7 @@ export default function TestConnectionButton({ provider, getConfig }: TestConnec
       {status === "error" && errorInfo && (
         <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2.5 space-y-1.5">
           <p className="text-xs text-destructive font-medium">{errorInfo.message}</p>
-          {errorInfo.action && (
-            <p className="text-xs text-muted-foreground">{errorInfo.action}</p>
-          )}
+          {errorInfo.action && <p className="text-xs text-muted-foreground">{errorInfo.action}</p>}
           {errorInfo.copyCommand && (
             <div className="flex items-center gap-1.5">
               <code className="text-xs bg-muted px-1.5 py-0.5 rounded flex-1 font-mono">

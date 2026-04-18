@@ -2446,7 +2446,7 @@ class IPCHandlers {
         await generateText({
           model,
           prompt: "Say hello in one word.",
-          maxTokens: 10,
+          maxOutputTokens: 10,
         });
 
         return { success: true };
@@ -2457,6 +2457,7 @@ class IPCHandlers {
           error: mapped.message,
           action: mapped.action,
           copyCommand: mapped.copyCommand,
+          retryable: mapped.retryable,
         };
       }
     });
@@ -2508,7 +2509,7 @@ class IPCHandlers {
         } catch (err) {
           debugLogger.error("Enterprise reasoning error:", err);
           const mapped = mapEnterpriseError(provider, err, config || {});
-          return { success: false, error: mapped.message };
+          return { success: false, error: mapped.message, retryable: mapped.retryable };
         }
       }
     );

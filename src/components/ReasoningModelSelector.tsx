@@ -999,7 +999,6 @@ export default function ReasoningModelSelector({
           <GpuStatusBadge />
         </>
       )}
-
     </div>
   );
 }

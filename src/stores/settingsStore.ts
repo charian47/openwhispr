@@ -328,7 +328,6 @@ function createBooleanSetter(key: string) {
   };
 }
 
-
 let envPersistTimer: ReturnType<typeof setTimeout> | null = null;
 function debouncedPersistToEnv() {
   if (!isBrowser) return;

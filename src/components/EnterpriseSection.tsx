@@ -24,10 +24,10 @@ export default function EnterpriseSection({
   setReasoningModel,
   setLocalReasoningProvider,
 }: EnterpriseSectionProps) {
+  const azureDeploymentName = useSettingsStore((s) => s.azureDeploymentName);
   const selectedEnterprise = ENTERPRISE_PROVIDER_TABS.some((p) => p.id === currentProvider)
     ? currentProvider
     : "";
-  const store = useSettingsStore();
 
   const handleEnterpriseSelect = (providerId: string) => {
     if (selectedEnterprise === providerId) return;
@@ -36,8 +36,8 @@ export default function EnterpriseSection({
     const providerData = REASONING_PROVIDERS[providerId];
     if (providerData?.models?.length) {
       setReasoningModel(providerData.models[0].value);
-    } else if (providerId === "azure" && store.azureDeploymentName) {
-      setReasoningModel(store.azureDeploymentName);
+    } else if (providerId === "azure" && azureDeploymentName) {
+      setReasoningModel(azureDeploymentName);
     }
   };
 
@@ -57,34 +57,6 @@ export default function EnterpriseSection({
               provider={selectedEnterprise as "bedrock" | "azure" | "vertex"}
               reasoningModel={reasoningModel}
               setReasoningModel={setReasoningModel}
-              bedrockAuthMode={store.bedrockAuthMode}
-              setBedrockAuthMode={store.setBedrockAuthMode}
-              bedrockRegion={store.bedrockRegion}
-              setBedrockRegion={store.setBedrockRegion}
-              bedrockProfile={store.bedrockProfile}
-              setBedrockProfile={store.setBedrockProfile}
-              bedrockAccessKeyId={store.bedrockAccessKeyId}
-              setBedrockAccessKeyId={store.setBedrockAccessKeyId}
-              bedrockSecretAccessKey={store.bedrockSecretAccessKey}
-              setBedrockSecretAccessKey={store.setBedrockSecretAccessKey}
-              bedrockSessionToken={store.bedrockSessionToken}
-              setBedrockSessionToken={store.setBedrockSessionToken}
-              azureEndpoint={store.azureEndpoint}
-              setAzureEndpoint={store.setAzureEndpoint}
-              azureApiKey={store.azureApiKey}
-              setAzureApiKey={store.setAzureApiKey}
-              azureDeploymentName={store.azureDeploymentName}
-              setAzureDeploymentName={store.setAzureDeploymentName}
-              azureApiVersion={store.azureApiVersion}
-              setAzureApiVersion={store.setAzureApiVersion}
-              vertexAuthMode={store.vertexAuthMode}
-              setVertexAuthMode={store.setVertexAuthMode}
-              vertexProject={store.vertexProject}
-              setVertexProject={store.setVertexProject}
-              vertexLocation={store.vertexLocation}
-              setVertexLocation={store.setVertexLocation}
-              vertexApiKey={store.vertexApiKey}
-              setVertexApiKey={store.setVertexApiKey}
             />
           </div>
         )}

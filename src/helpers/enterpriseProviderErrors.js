@@ -139,9 +139,40 @@ function isEnterpriseProvider(value) {
   return typeof value === "string" && ENTERPRISE_PROVIDERS.includes(value);
 }
 
+const BLOCKED_HOSTS = new Set([
+  "localhost",
+  "169.254.169.254",
+  "metadata.google.internal",
+  "metadata",
+]);
+
+const BLOCKED_SUFFIXES = [".internal", ".localhost", ".local"];
+
+function isPrivateIPv4(hostname) {
+  const match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!match) return false;
+  const [, a, b] = match.map(Number);
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168)
+  );
+}
+
+function isPrivateIPv6(hostname) {
+  if (hostname === "::1") return true;
+  if (/^(fe80|fc[0-9a-f]{2}|fd[0-9a-f]{2}):/i.test(hostname)) return true;
+  const mapped = hostname.match(/^::ffff:(.+)$/i);
+  return mapped ? isPrivateIPv4(mapped[1]) : false;
+}
+
 /**
  * SSRF guard for enterprise HTTP endpoints (currently only Azure).
  * Throws if the URL is non-HTTPS or resolves to a private/metadata host.
+ * Note: DNS rebinding is not mitigated — hostnames resolve per-request.
  */
 function validateEnterpriseEndpoint(endpoint) {
   if (!endpoint) return;
@@ -151,12 +182,10 @@ function validateEnterpriseEndpoint(endpoint) {
   }
   const hostname = url.hostname.toLowerCase();
   if (
-    hostname === "localhost" ||
-    hostname === "169.254.169.254" ||
-    hostname === "metadata.google.internal" ||
-    hostname.startsWith("10.") ||
-    hostname.startsWith("192.168.") ||
-    hostname.startsWith("127.")
+    BLOCKED_HOSTS.has(hostname) ||
+    BLOCKED_SUFFIXES.some((suffix) => hostname.endsWith(suffix)) ||
+    isPrivateIPv4(hostname) ||
+    isPrivateIPv6(hostname)
   ) {
     throw new Error("Private/metadata endpoints are not allowed.");
   }

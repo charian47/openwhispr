@@ -703,7 +703,7 @@ declare global {
         modelId: string,
         agentName: string | null,
         config: any
-      ) => Promise<{ success: boolean; text?: string; error?: string }>;
+      ) => Promise<{ success: boolean; text?: string; error?: string; retryable?: boolean }>;
 
       // llama.cpp management
       llamaCppCheck: () => Promise<{ isInstalled: boolean; version?: string }>;

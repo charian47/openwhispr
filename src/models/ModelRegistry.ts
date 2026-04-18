@@ -213,16 +213,9 @@ export interface ReasoningProvider {
 export type ReasoningProviders = Record<string, ReasoningProvider>;
 
 export type EnterpriseProvider = "bedrock" | "azure" | "vertex";
-export const ENTERPRISE_PROVIDERS: readonly EnterpriseProvider[] = [
-  "bedrock",
-  "azure",
-  "vertex",
-];
+export const ENTERPRISE_PROVIDERS: readonly EnterpriseProvider[] = ["bedrock", "azure", "vertex"];
 export function isEnterpriseProvider(value: unknown): value is EnterpriseProvider {
-  return (
-    typeof value === "string" &&
-    (ENTERPRISE_PROVIDERS as readonly string[]).includes(value)
-  );
+  return typeof value === "string" && (ENTERPRISE_PROVIDERS as readonly string[]).includes(value);
 }
 
 function buildReasoningProviders(): ReasoningProviders {
@@ -287,8 +280,6 @@ export function getReasoningModelLabel(modelId: string): string {
   return model?.fullLabel || modelId;
 }
 
-const ENTERPRISE_PROVIDER_IDS = ["bedrock", "azure", "vertex"];
-
 export function getModelProvider(modelId: string): string {
   if (isCloudReasoningMode()) {
     return "openwhispr";
@@ -300,8 +291,7 @@ export function getModelProvider(modelId: string): string {
     return "custom";
   }
 
-  // Enterprise providers are authoritative — don't fall through to heuristic matching
-  if (ENTERPRISE_PROVIDER_IDS.includes(storedProvider)) {
+  if (isEnterpriseProvider(storedProvider)) {
     return storedProvider;
   }
 
