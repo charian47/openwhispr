@@ -297,8 +297,10 @@
     "mode": {
       "cloud": "云端",
       "local": "本地",
+      "enterprise": "企业",
       "localDescription": "在你的设备上运行，完全隐私，离线可用。",
-      "cloudDescription": "通过 API 使用高级模型，快速且强大，需要联网。"
+      "cloudDescription": "通过 API 使用高级模型，快速且强大，需要联网。",
+      "enterpriseDescription": "使用你组织的云服务商凭据。"
     },
     "custom": {
       "endpointWithProtocol": "请输入包含协议的完整 URL（例如 https://server/v1）。",
@@ -1575,10 +1577,10 @@
         "groq_kimi_k2_0905": "Moonshot AI 1T MoE，256K 上下文"
       },
       "enterprise": {
-        "bedrock_claude_sonnet_4": "Anthropic Claude Sonnet 4 via Bedrock",
-        "bedrock_claude_3_5_haiku": "Fast and efficient via Bedrock",
-        "bedrock_nova_pro": "Amazon's reasoning model",
-        "bedrock_llama_4_scout": "Meta's Llama 4 Scout via Bedrock",
+        "bedrock_claude_haiku_4_5": "快速且低成本。适合文本清理。",
+        "bedrock_claude_sonnet_4_6": "均衡性能。推荐用作智能助手模式的默认模型。",
+        "bedrock_claude_opus_4_7": "最高智能。适用于复杂的智能助手模式任务。",
+        "bedrock_nova_lite": "最便宜的选择。AWS 原生，适合高流量场景。",
         "vertex_gemini_2_5_flash": "Fast multimodal model via Vertex",
         "vertex_gemini_2_5_pro": "Advanced reasoning via Vertex"
       },

@@ -297,8 +297,10 @@
     "mode": {
       "cloud": "Облако",
       "local": "Локально",
+      "enterprise": "Корпоративный",
       "localDescription": "Работает на вашем устройстве. Полная приватность, работает офлайн.",
-      "cloudDescription": "Продвинутые модели через API. Быстро и мощно, требуется интернет."
+      "cloudDescription": "Продвинутые модели через API. Быстро и мощно, требуется интернет.",
+      "enterpriseDescription": "Используйте учётные данные облачного провайдера вашей организации."
     },
     "custom": {
       "endpointWithProtocol": "Введите полный базовый URL, включая протокол (например, https://server/v1).",
@@ -1580,10 +1582,10 @@
         "groq_kimi_k2_0905": "Moonshot AI 1T MoE, контекст 256K"
       },
       "enterprise": {
-        "bedrock_claude_sonnet_4": "Anthropic Claude Sonnet 4 via Bedrock",
-        "bedrock_claude_3_5_haiku": "Fast and efficient via Bedrock",
-        "bedrock_nova_pro": "Amazon's reasoning model",
-        "bedrock_llama_4_scout": "Meta's Llama 4 Scout via Bedrock",
+        "bedrock_claude_haiku_4_5": "Быстрая и дешёвая. Отлично подходит для очистки текста.",
+        "bedrock_claude_sonnet_4_6": "Сбалансированная. Лучший выбор для режима агента.",
+        "bedrock_claude_opus_4_7": "Максимальный интеллект. Для сложных задач в режиме агента.",
+        "bedrock_nova_lite": "Самая дешёвая. Нативная для AWS, идеальна для больших объёмов.",
         "vertex_gemini_2_5_flash": "Fast multimodal model via Vertex",
         "vertex_gemini_2_5_pro": "Advanced reasoning via Vertex"
       },

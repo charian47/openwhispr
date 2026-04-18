@@ -297,8 +297,10 @@
     "mode": {
       "cloud": "クラウド",
       "local": "ローカル",
+      "enterprise": "エンタープライズ",
       "localDescription": "デバイス上で動作。完全なプライバシー保護、オフライン対応。",
-      "cloudDescription": "API 経由の高度なモデル。高速・高機能、インターネット接続が必要。"
+      "cloudDescription": "API 経由の高度なモデル。高速・高機能、インターネット接続が必要。",
+      "enterpriseDescription": "組織のクラウド認証情報を使用します。"
     },
     "custom": {
       "endpointWithProtocol": "プロトコルを含む完全なベース URL を入力してください（例: https://server/v1）。",
@@ -1580,10 +1582,10 @@
         "groq_kimi_k2_0905": "Moonshot AI 1T MoE、256K コンテキスト"
       },
       "enterprise": {
-        "bedrock_claude_sonnet_4": "Anthropic Claude Sonnet 4 via Bedrock",
-        "bedrock_claude_3_5_haiku": "Fast and efficient via Bedrock",
-        "bedrock_nova_pro": "Amazon's reasoning model",
-        "bedrock_llama_4_scout": "Meta's Llama 4 Scout via Bedrock",
+        "bedrock_claude_haiku_4_5": "高速で低コスト。テキスト整形に最適です。",
+        "bedrock_claude_sonnet_4_6": "バランス型。エージェントモードの既定モデルに最適です。",
+        "bedrock_claude_opus_4_7": "最高性能。複雑なエージェントモードのタスクに最適です。",
+        "bedrock_nova_lite": "最も安価。AWS ネイティブで大量処理に最適です。",
         "vertex_gemini_2_5_flash": "Fast multimodal model via Vertex",
         "vertex_gemini_2_5_pro": "Advanced reasoning via Vertex"
       },
