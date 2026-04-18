@@ -1733,6 +1733,7 @@
       "selectFolder": "Выбрать папку",
       "transcriptionFailed": "Ошибка транскрибирования",
       "errorOccurred": "Произошла ошибка",
+      "noSpeechDetected": "В этой аудиозаписи речь не обнаружена.",
       "noProviderTitle": "Провайдер транскрипции не настроен",
       "noProviderDescription": "Добавьте API-ключ или скачайте локальную модель, чтобы начать транскрипцию.",
       "noProviderAction": "Открыть настройки транскрипции",

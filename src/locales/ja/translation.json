@@ -1716,6 +1716,7 @@
       "selectFolder": "フォルダを選択",
       "transcriptionFailed": "文字起こしに失敗しました",
       "errorOccurred": "エラーが発生しました",
+      "noSpeechDetected": "この音声から発話を検出できませんでした。",
       "noProviderTitle": "文字起こしプロバイダーが設定されていません",
       "noProviderDescription": "API キーを追加するか、ローカルモデルをダウンロードして文字起こしを開始してください。",
       "noProviderAction": "文字起こし設定を開く",

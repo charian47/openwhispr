@@ -1728,6 +1728,7 @@
       "selectFolder": "选择文件夹",
       "transcriptionFailed": "转录失败",
       "errorOccurred": "发生错误",
+      "noSpeechDetected": "未在此音频中检测到语音。",
       "noProviderTitle": "尚未设置转录服务商",
       "noProviderDescription": "添加 API Key 或下载本地模型以开始转录。",
       "noProviderAction": "打开转录设置",

@@ -5337,6 +5337,11 @@ class IPCHandlers {
                   ...data.data,
                 });
               }
+              if (data.statusCode === 422 && data.data?.code === "NO_SPEECH_DETECTED") {
+                throw Object.assign(new Error(data.data.error || "No speech detected"), {
+                  code: "NO_SPEECH_DETECTED",
+                });
+              }
               if (data.statusCode !== 200) {
                 throw new Error(data.data?.error || `API error: ${data.statusCode}`);
               }
@@ -5353,6 +5358,7 @@ class IPCHandlers {
 
             const indices = Array.from({ length: totalChunks }, (_, i) => i);
             const executing = new Set();
+            const failureCodes = new Set();
 
             for (const index of indices) {
               const p = transcribeChunk(index).then(
@@ -5360,7 +5366,11 @@ class IPCHandlers {
                 (err) => {
                   executing.delete(p);
                   if (err.code === "AUTH_EXPIRED" || err.code === "LIMIT_REACHED") throw err;
-                  debugLogger.warn(`Chunk ${index} failed`, { error: err.message });
+                  if (err.code) failureCodes.add(err.code);
+                  debugLogger.warn(`Chunk ${index} failed`, {
+                    error: err.message,
+                    code: err.code,
+                  });
                 }
               );
               executing.add(p);
@@ -5372,6 +5382,13 @@ class IPCHandlers {
 
             const succeeded = results.filter((r) => r !== null);
             if (succeeded.length === 0) {
+              if (failureCodes.size === 1 && failureCodes.has("NO_SPEECH_DETECTED")) {
+                return {
+                  success: false,
+                  error: "No speech detected in audio",
+                  code: "NO_SPEECH_DETECTED",
+                };
+              }
               throw new Error("All chunks failed to transcribe");
             }
 
@@ -5431,6 +5448,13 @@ class IPCHandlers {
             ...data.data,
           };
         }
+        if (data.statusCode === 422 && data.data?.code === "NO_SPEECH_DETECTED") {
+          return {
+            success: false,
+            error: data.data.error || "No speech detected in audio",
+            code: "NO_SPEECH_DETECTED",
+          };
+        }
         if (data.statusCode !== 200) {
           throw new Error(data.data?.error || `API error: ${data.statusCode}`);
         }
@@ -5438,7 +5462,11 @@ class IPCHandlers {
         return { success: true, text: data.data.text };
       } catch (error) {
         debugLogger.error("Cloud audio file transcription error", { error: error.message });
-        if (error.code === "AUTH_EXPIRED" || error.code === "LIMIT_REACHED") {
+        if (
+          error.code === "AUTH_EXPIRED" ||
+          error.code === "LIMIT_REACHED" ||
+          error.code === "NO_SPEECH_DETECTED"
+        ) {
           return { success: false, error: error.message, code: error.code, ...error };
         }
         return { success: false, error: error.message };
