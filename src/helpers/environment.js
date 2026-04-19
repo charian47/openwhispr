@@ -141,6 +141,18 @@ class EnvironmentManager {
   }
 
   // Enterprise providers — AWS Bedrock
+  getBedrockRegion() {
+    return this._getKey("BEDROCK_REGION");
+  }
+  saveBedrockRegion(value) {
+    return this._saveKey("BEDROCK_REGION", value);
+  }
+  getBedrockProfile() {
+    return this._getKey("BEDROCK_PROFILE");
+  }
+  saveBedrockProfile(value) {
+    return this._saveKey("BEDROCK_PROFILE", value);
+  }
   getBedrockAccessKeyId() {
     return this._getKey("BEDROCK_ACCESS_KEY_ID");
   }
@@ -161,14 +173,44 @@ class EnvironmentManager {
   }
 
   // Enterprise providers — Azure OpenAI
+  getAzureEndpoint() {
+    return this._getKey("AZURE_OPENAI_ENDPOINT");
+  }
+  saveAzureEndpoint(value) {
+    return this._saveKey("AZURE_OPENAI_ENDPOINT", value);
+  }
   getAzureApiKey() {
     return this._getKey("AZURE_OPENAI_API_KEY");
   }
   saveAzureApiKey(key) {
     return this._saveKey("AZURE_OPENAI_API_KEY", key);
   }
+  getAzureDeployment() {
+    return this._getKey("AZURE_OPENAI_DEPLOYMENT");
+  }
+  saveAzureDeployment(value) {
+    return this._saveKey("AZURE_OPENAI_DEPLOYMENT", value);
+  }
+  getAzureApiVersion() {
+    return this._getKey("AZURE_OPENAI_API_VERSION");
+  }
+  saveAzureApiVersion(value) {
+    return this._saveKey("AZURE_OPENAI_API_VERSION", value);
+  }
 
   // Enterprise providers — GCP Vertex AI
+  getVertexProject() {
+    return this._getKey("VERTEX_PROJECT");
+  }
+  saveVertexProject(value) {
+    return this._saveKey("VERTEX_PROJECT", value);
+  }
+  getVertexLocation() {
+    return this._getKey("VERTEX_LOCATION");
+  }
+  saveVertexLocation(value) {
+    return this._saveKey("VERTEX_LOCATION", value);
+  }
   getVertexApiKey() {
     return this._getKey("VERTEX_API_KEY");
   }

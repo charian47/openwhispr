@@ -841,14 +841,28 @@ declare global {
       saveCustomReasoningKey?: (key: string) => Promise<void>;
 
       // Enterprise provider key persistence
+      getBedrockRegion?: () => Promise<string | null>;
+      saveBedrockRegion?: (value: string) => Promise<void>;
+      getBedrockProfile?: () => Promise<string | null>;
+      saveBedrockProfile?: (value: string) => Promise<void>;
       getBedrockAccessKeyId?: () => Promise<string | null>;
       saveBedrockAccessKeyId?: (key: string) => Promise<void>;
       getBedrockSecretAccessKey?: () => Promise<string | null>;
       saveBedrockSecretAccessKey?: (key: string) => Promise<void>;
       getBedrockSessionToken?: () => Promise<string | null>;
       saveBedrockSessionToken?: (key: string) => Promise<void>;
+      getAzureEndpoint?: () => Promise<string | null>;
+      saveAzureEndpoint?: (value: string) => Promise<void>;
       getAzureApiKey?: () => Promise<string | null>;
       saveAzureApiKey?: (key: string) => Promise<void>;
+      getAzureDeployment?: () => Promise<string | null>;
+      saveAzureDeployment?: (value: string) => Promise<void>;
+      getAzureApiVersion?: () => Promise<string | null>;
+      saveAzureApiVersion?: (value: string) => Promise<void>;
+      getVertexProject?: () => Promise<string | null>;
+      saveVertexProject?: (value: string) => Promise<void>;
+      getVertexLocation?: () => Promise<string | null>;
+      saveVertexLocation?: (value: string) => Promise<void>;
       getVertexApiKey?: () => Promise<string | null>;
       saveVertexApiKey?: (key: string) => Promise<void>;
       testEnterpriseConnection?: (

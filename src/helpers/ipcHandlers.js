@@ -2392,6 +2392,18 @@ class IPCHandlers {
     });
 
     // Enterprise provider key handlers
+    ipcMain.handle("get-bedrock-region", async () => {
+      return this.environmentManager.getBedrockRegion();
+    });
+    ipcMain.handle("save-bedrock-region", async (event, value) => {
+      return this.environmentManager.saveBedrockRegion(value);
+    });
+    ipcMain.handle("get-bedrock-profile", async () => {
+      return this.environmentManager.getBedrockProfile();
+    });
+    ipcMain.handle("save-bedrock-profile", async (event, value) => {
+      return this.environmentManager.saveBedrockProfile(value);
+    });
     ipcMain.handle("get-bedrock-access-key-id", async () => {
       return this.environmentManager.getBedrockAccessKeyId();
     });
@@ -2410,11 +2422,41 @@ class IPCHandlers {
     ipcMain.handle("save-bedrock-session-token", async (event, key) => {
       return this.environmentManager.saveBedrockSessionToken(key);
     });
+    ipcMain.handle("get-azure-endpoint", async () => {
+      return this.environmentManager.getAzureEndpoint();
+    });
+    ipcMain.handle("save-azure-endpoint", async (event, value) => {
+      return this.environmentManager.saveAzureEndpoint(value);
+    });
     ipcMain.handle("get-azure-api-key", async () => {
       return this.environmentManager.getAzureApiKey();
     });
     ipcMain.handle("save-azure-api-key", async (event, key) => {
       return this.environmentManager.saveAzureApiKey(key);
+    });
+    ipcMain.handle("get-azure-deployment", async () => {
+      return this.environmentManager.getAzureDeployment();
+    });
+    ipcMain.handle("save-azure-deployment", async (event, value) => {
+      return this.environmentManager.saveAzureDeployment(value);
+    });
+    ipcMain.handle("get-azure-api-version", async () => {
+      return this.environmentManager.getAzureApiVersion();
+    });
+    ipcMain.handle("save-azure-api-version", async (event, value) => {
+      return this.environmentManager.saveAzureApiVersion(value);
+    });
+    ipcMain.handle("get-vertex-project", async () => {
+      return this.environmentManager.getVertexProject();
+    });
+    ipcMain.handle("save-vertex-project", async (event, value) => {
+      return this.environmentManager.saveVertexProject(value);
+    });
+    ipcMain.handle("get-vertex-location", async () => {
+      return this.environmentManager.getVertexLocation();
+    });
+    ipcMain.handle("save-vertex-location", async (event, value) => {
+      return this.environmentManager.saveVertexLocation(value);
     });
     ipcMain.handle("get-vertex-api-key", async () => {
       return this.environmentManager.getVertexApiKey();

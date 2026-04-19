@@ -639,11 +639,13 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setBedrockRegion: (value: string) => {
     if (isBrowser) localStorage.setItem("bedrockRegion", value);
     set({ bedrockRegion: value });
+    window.electronAPI?.saveBedrockRegion?.(value);
     debouncedPersistToEnv();
   },
   setBedrockProfile: (value: string) => {
     if (isBrowser) localStorage.setItem("bedrockProfile", value);
     set({ bedrockProfile: value });
+    window.electronAPI?.saveBedrockProfile?.(value);
     debouncedPersistToEnv();
   },
   setBedrockAccessKeyId: (key: string) => {
@@ -667,6 +669,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setAzureEndpoint: (value: string) => {
     if (isBrowser) localStorage.setItem("azureEndpoint", value);
     set({ azureEndpoint: value });
+    window.electronAPI?.saveAzureEndpoint?.(value);
     debouncedPersistToEnv();
   },
   setAzureApiKey: (key: string) => {
@@ -678,11 +681,13 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setAzureDeploymentName: (value: string) => {
     if (isBrowser) localStorage.setItem("azureDeploymentName", value);
     set({ azureDeploymentName: value });
+    window.electronAPI?.saveAzureDeployment?.(value);
     debouncedPersistToEnv();
   },
   setAzureApiVersion: (value: string) => {
     if (isBrowser) localStorage.setItem("azureApiVersion", value);
     set({ azureApiVersion: value });
+    window.electronAPI?.saveAzureApiVersion?.(value);
     debouncedPersistToEnv();
   },
   setVertexAuthMode: (value: string) => {
@@ -692,11 +697,13 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setVertexProject: (value: string) => {
     if (isBrowser) localStorage.setItem("vertexProject", value);
     set({ vertexProject: value });
+    window.electronAPI?.saveVertexProject?.(value);
     debouncedPersistToEnv();
   },
   setVertexLocation: (value: string) => {
     if (isBrowser) localStorage.setItem("vertexLocation", value);
     set({ vertexLocation: value });
+    window.electronAPI?.saveVertexLocation?.(value);
     debouncedPersistToEnv();
   },
   setVertexApiKey: (key: string) => {
