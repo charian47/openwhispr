@@ -931,7 +931,9 @@ class DatabaseManager {
         .prepare("SELECT id FROM folders WHERE name = ? AND id != ?")
         .get(trimmed, id);
       if (existing) return { success: false, error: "A folder with that name already exists" };
-      this.db.prepare("UPDATE folders SET name = ? WHERE id = ?").run(trimmed, id);
+      this.db
+        .prepare("UPDATE folders SET name = ?, sync_status = 'pending' WHERE id = ?")
+        .run(trimmed, id);
       const updated = this.db.prepare("SELECT * FROM folders WHERE id = ?").get(id);
       return { success: true, folder: updated };
     } catch (error) {

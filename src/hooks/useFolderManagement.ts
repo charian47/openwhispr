@@ -164,6 +164,7 @@ export function useFolderManagement(): UseFolderManagementReturn {
     if (result.success && result.folder) {
       await loadFolders();
       setActiveFolderId(result.folder.id);
+      syncService.debouncedPush("folder", result.folder.id);
     } else if (result.error) {
       toast({
         title: t("notes.folders.couldNotCreate"),
@@ -186,6 +187,7 @@ export function useFolderManagement(): UseFolderManagementReturn {
     const result = await window.electronAPI.renameFolder(renamingFolderId, trimmed);
     if (result.success) {
       await loadFolders();
+      syncService.debouncedPush("folder", renamingFolderId);
     } else if (result.error) {
       toast({
         title: t("notes.folders.couldNotRename"),
