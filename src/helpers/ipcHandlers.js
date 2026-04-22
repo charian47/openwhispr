@@ -32,6 +32,18 @@ const {
   MAX_SPEAKER_COUNT,
 } = require("../constants/speakerDetection.json");
 
+const STREAMING_CLIENT_BY_PROVIDER = {
+  "openai-realtime": OpenAIRealtimeStreaming,
+  "assemblyai-realtime": AssemblyAiStreaming,
+  "deepgram-realtime": DeepgramStreaming,
+};
+const ALLOWED_MEETING_PROVIDERS = new Set([
+  "local",
+  "openai-realtime",
+  "assemblyai-realtime",
+  "deepgram-realtime",
+]);
+
 function parseAttendees(raw) {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw;
@@ -380,20 +392,35 @@ class IPCHandlers {
     return map;
   }
 
-  _resolveOneOnOneOtherParticipant(participantsJson) {
-    if (!participantsJson) return null;
+  _parseNonSelfParticipants(participantsJson) {
+    if (!participantsJson) return [];
     let participants;
     try {
       participants = JSON.parse(participantsJson);
     } catch (_) {
-      return null;
+      return [];
     }
-    if (!Array.isArray(participants) || participants.length === 0) return null;
+    if (!Array.isArray(participants) || participants.length === 0) return [];
     const googleEmails = new Set(
       this.databaseManager.getGoogleAccounts().map((a) => a.email.toLowerCase())
     );
-    const isSelf = (p) => p.self === true || googleEmails.has((p.email || "").toLowerCase());
-    const others = participants.filter((p) => !isSelf(p));
+    return participants.filter(
+      (p) => p && p.self !== true && !googleEmails.has((p.email || "").toLowerCase())
+    );
+  }
+
+  _getNoteNonSelfParticipants(noteId) {
+    if (!noteId) return [];
+    try {
+      const note = this.databaseManager.getNote(noteId);
+      return this._parseNonSelfParticipants(note?.participants);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  _resolveOneOnOneOtherParticipant(participantsJson) {
+    const others = this._parseNonSelfParticipants(participantsJson);
     if (others.length !== 1) return null;
     const displayName = others[0].displayName || others[0].email;
     if (!displayName) return null;
@@ -3727,6 +3754,15 @@ class IPCHandlers {
       schedulePendingMicFinalFlush();
 
       for (const pending of ready) {
+        if (pending.micSuppression?.hasBleedEvidence) {
+          debugLogger.debug("Dropping flagged-bleed mic segment after holdback", {
+            text: pending.text.slice(0, 80),
+            holdbackMs: pending.holdbackMs,
+            averageCorrelation: pending.micSuppression?.averageCorrelation?.toFixed(3),
+            averageResidual: pending.micSuppression?.averageResidual?.toFixed(3),
+          });
+          continue;
+        }
         debugLogger.debug("Releasing buffered mic segment after duplicate holdback", {
           text: pending.text.slice(0, 80),
           holdbackMs: pending.holdbackMs,
@@ -3932,34 +3968,78 @@ class IPCHandlers {
     };
 
     const fetchRealtimeToken = async (event, options, { streams } = {}) => {
+      const postServerToken = async (path, body = {}) => {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+        const response = await fetch(`${apiUrl}${path}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Cookie: cookieHeader },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || `Token request failed: ${response.status}`);
+        }
+        return response.json();
+      };
+
+      const dual = (factory) => (streams === 2 ? Promise.all([factory(), factory()]) : factory());
+
+      if (options.provider === "assemblyai-realtime") {
+        if (options.mode === "byok") {
+          const apiKey = this.environmentManager.getAssemblyAIKey();
+          if (!apiKey) {
+            throw new Error("No AssemblyAI API key configured. Add your key in Settings.");
+          }
+          return dual(async () => {
+            const response = await fetch(
+              "https://streaming.assemblyai.com/v3/token?expires_in_seconds=60",
+              { headers: { Authorization: apiKey } }
+            );
+            if (!response.ok) {
+              const err = await response.json().catch(() => ({}));
+              throw new Error(err.error || `AssemblyAI token request failed: ${response.status}`);
+            }
+            const data = await response.json();
+            if (!data.token) throw new Error("No AssemblyAI token received");
+            return data.token;
+          });
+        }
+        return dual(async () => {
+          const data = await postServerToken("/api/streaming-token");
+          if (!data.token) throw new Error("No AssemblyAI token received");
+          return data.token;
+        });
+      }
+
+      if (options.provider === "deepgram-realtime") {
+        if (options.mode === "byok") {
+          const apiKey = this.environmentManager.getDeepgramKey();
+          if (!apiKey) {
+            throw new Error("No Deepgram API key configured. Add your key in Settings.");
+          }
+          return streams === 2 ? [apiKey, apiKey] : apiKey;
+        }
+        return dual(async () => {
+          const data = await postServerToken("/api/deepgram-streaming-token");
+          if (!data.token) throw new Error("No Deepgram token received");
+          return data.token;
+        });
+      }
+
       if (options.mode === "byok") {
         const apiKey = this.environmentManager.getOpenAIKey();
         if (!apiKey) throw new Error("No OpenAI API key configured. Add your key in Settings.");
         return streams === 2 ? [apiKey, apiKey] : apiKey;
       }
 
-      const apiUrl = getApiUrl();
-      if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
-
-      const cookieHeader = await getSessionCookies(event);
-      if (!cookieHeader) throw new Error("No session cookies available");
-
-      const tokenResponse = await fetch(`${apiUrl}/api/openai-realtime-token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Cookie: cookieHeader },
-        body: JSON.stringify({
-          model: options.model,
-          language: options.language,
-          streams: streams || 1,
-        }),
+      const data = await postServerToken("/api/openai-realtime-token", {
+        model: options.model,
+        language: options.language,
+        streams: streams || 1,
       });
-
-      if (!tokenResponse.ok) {
-        const err = await tokenResponse.json().catch(() => ({}));
-        throw new Error(err.error || `Token request failed: ${tokenResponse.status}`);
-      }
-
-      const data = await tokenResponse.json();
       if (streams === 2) {
         if (!data.clientSecrets || data.clientSecrets.length < 2) {
           throw new Error("Expected two client secrets for dual-stream");
@@ -4040,13 +4120,17 @@ class IPCHandlers {
         ];
       }
 
+      const StreamingClass =
+        STREAMING_CLIENT_BY_PROVIDER[options.provider] ?? OpenAIRealtimeStreaming;
       for (const { ref, source } of pairs) {
-        this[ref] = new OpenAIRealtimeStreaming();
+        this[ref] = new StreamingClass();
         attachMeetingStreamingHandlers(this[ref], win, source);
       }
 
       await Promise.all(
-        pairs.map(({ ref, secret }) => this[ref].connect({ apiKey: secret, ...connectOpts }))
+        pairs.map(({ ref, secret }) =>
+          this[ref].connect({ apiKey: secret, token: secret, ...connectOpts })
+        )
       );
 
       return win;
@@ -4054,6 +4138,11 @@ class IPCHandlers {
 
     const MEETING_MIC_REFERENCE_ALIGNMENT_MS = 320;
     const MEETING_STARTUP_WARMUP_MS = 1500;
+    const MEETING_MIC_BLEED_RMS_CEILING = 0.018;
+    const MEETING_MIC_BLEED_PEAK_CEILING = 0.07;
+    const MEETING_MIC_BLEED_LOOKBACK_MS = 500;
+    const MEETING_MIC_STATS_LOG_LIMIT = 200;
+    let meetingMicStatsLogCount = 0;
     let meetingStartedAt = null;
     let meetingSendCounts = { mic: 0, system: 0 };
     const meetingEchoLeakDetector = new MeetingEchoLeakDetector();
@@ -4067,6 +4156,21 @@ class IPCHandlers {
     let meetingLiveSpeakerState = null;
     let meetingLiveSpeakerStartedAt = null;
     let meetingReclusterTimer = null;
+    let meetingSpeakerRemapper = (id) => id;
+
+    const createSpeakerRemapper = (maxSpeakers) => {
+      const cap = Math.max(1, Math.floor(maxSpeakers) || 1);
+      const map = new Map();
+      return (internalId) => {
+        if (!internalId) return internalId;
+        const existing = map.get(internalId);
+        if (existing !== undefined) return existing;
+        const index = map.size < cap ? map.size : cap - 1;
+        const label = `speaker_${index}`;
+        map.set(internalId, label);
+        return label;
+      };
+    };
 
     let meetingLocalMode = false;
     let meetingLocalBuffers = { mic: [], system: [] };
@@ -4084,7 +4188,18 @@ class IPCHandlers {
     let meetingOneOnOneProfileBound = false;
     let meetingNoteId = null;
 
-    const getLiveSpeakerProfiles = () => this.databaseManager.getSpeakerProfiles(true);
+    const getLiveSpeakerProfiles = () => {
+      const attendees = this._getNoteNonSelfParticipants(meetingNoteId);
+      const attendeeEmails = new Set();
+      for (const p of attendees) {
+        const email = (p.email || "").toLowerCase().trim();
+        if (email) attendeeEmails.add(email);
+      }
+      if (attendeeEmails.size === 0) return [];
+      return this.databaseManager
+        .getSpeakerProfiles(true)
+        .filter((p) => p.email && attendeeEmails.has(p.email.toLowerCase()));
+    };
     const shouldSuppressMicTranscriptSegment = (startedAt, endedAt = Date.now()) =>
       meetingEchoLeakDetector.shouldSuppressMicSegment(startedAt, endedAt);
 
@@ -4103,7 +4218,8 @@ class IPCHandlers {
 
     const resolveSessionMaxSpeakers = () => {
       const count = this.activeMeetingSpeakerConfig?.expectedCount;
-      return count ? Math.min(count, MAX_SPEAKER_COUNT) : DEFAULT_EXPECTED_SPEAKER_COUNT;
+      const total = count ? Math.min(count, MAX_SPEAKER_COUNT) : DEFAULT_EXPECTED_SPEAKER_COUNT;
+      return Math.max(1, total - 1);
     };
 
     const bindOneOnOneAttendeeToSpeaker = (speakerId) => {
@@ -4160,8 +4276,29 @@ class IPCHandlers {
           if (abs > peak) peak = abs;
         }
         const rms = Math.sqrt(sumSq / samples.length);
+        const systemSpeaking = meetingEchoLeakDetector.isSystemSpeaking(
+          Date.now() - MEETING_MIC_BLEED_LOOKBACK_MS
+        );
         if (rms < 0.0015 && peak < 0.05) {
           outbound = Buffer.alloc(buffer.length);
+        } else if (
+          rms < MEETING_MIC_BLEED_RMS_CEILING &&
+          peak < MEETING_MIC_BLEED_PEAK_CEILING &&
+          systemSpeaking
+        ) {
+          outbound = Buffer.alloc(buffer.length);
+        }
+        if (
+          meetingMicStatsLogCount < MEETING_MIC_STATS_LOG_LIMIT &&
+          (systemSpeaking || rms > 0.02)
+        ) {
+          meetingMicStatsLogCount += 1;
+          debugLogger.debug("Meeting mic audio stats", {
+            rms: rms.toFixed(4),
+            peak: peak.toFixed(4),
+            systemSpeaking,
+            zeroed: outbound !== buffer,
+          });
         }
       }
 
@@ -4295,13 +4432,15 @@ class IPCHandlers {
 
       meetingLiveSpeakerState = null;
       meetingLiveSpeakerStartedAt = Date.now();
+      meetingSpeakerRemapper = createSpeakerRemapper(resolveSessionMaxSpeakers());
       const started = await liveSpeakerIdentifier.start(
         (identification) => {
           if (!win || win.isDestroyed()) {
             return;
           }
 
-          bindOneOnOneAttendeeToSpeaker(identification.speakerId);
+          const publicSpeakerId = meetingSpeakerRemapper(identification.speakerId);
+          bindOneOnOneAttendeeToSpeaker(publicSpeakerId);
 
           const displayName = meetingOneOnOneAttendee
             ? meetingOneOnOneAttendee.displayName
@@ -4317,6 +4456,7 @@ class IPCHandlers {
           );
           const enrichedIdentification = {
             ...identification,
+            speakerId: publicSpeakerId,
             displayName,
             startTime,
             endTime,
@@ -4333,7 +4473,7 @@ class IPCHandlers {
               (!seg.speaker || seg.speakerIsPlaceholder)
             ) {
               applyConfirmedSpeaker(seg, {
-                speaker: identification.speakerId,
+                speaker: publicSpeakerId,
                 speakerName: displayName || seg.speakerName,
                 speakerIsPlaceholder: false,
               });
@@ -4355,7 +4495,14 @@ class IPCHandlers {
           const merges = await liveSpeakerIdentifier.recluster();
           if (!merges.length) return;
 
-          for (const { keep, remove, displayName } of merges) {
+          const publicMerges = merges.map(({ keep, remove, displayName, similarity }) => ({
+            keep: meetingSpeakerRemapper(keep),
+            remove: meetingSpeakerRemapper(remove),
+            displayName,
+            similarity,
+          }));
+          for (const { keep, remove, displayName } of publicMerges) {
+            if (keep === remove) continue;
             for (const seg of meetingDiarizationSegments) {
               if (seg.speaker === remove) {
                 seg.speaker = keep;
@@ -4364,7 +4511,7 @@ class IPCHandlers {
             }
           }
 
-          win.webContents.send("meeting-speakers-merged", merges);
+          win.webContents.send("meeting-speakers-merged", publicMerges);
         }, 30_000);
       } else {
         meetingLiveSpeakerStartedAt = null;
@@ -4394,6 +4541,20 @@ class IPCHandlers {
       const rms = Math.sqrt(sumSq / samples.length);
       if (rms < 0.0015 && peak < 0.05) {
         debugLogger.debug("Skipping silent meeting chunk", {
+          source,
+          rms: rms.toFixed(4),
+          peak: peak.toFixed(4),
+        });
+        return;
+      }
+
+      if (
+        source === "mic" &&
+        rms < MEETING_MIC_BLEED_RMS_CEILING &&
+        peak < MEETING_MIC_BLEED_PEAK_CEILING &&
+        meetingEchoLeakDetector.isSystemSpeaking(Date.now() - 5000)
+      ) {
+        debugLogger.debug("Skipping system-dominant mic chunk", {
           source,
           rms: rms.toFixed(4),
           peak: peak.toFixed(4),
@@ -4779,12 +4940,12 @@ class IPCHandlers {
         return { success: false, error: "Operation in progress" };
       }
 
-      if (options.provider === "local") {
-        return { success: true };
+      if (!ALLOWED_MEETING_PROVIDERS.has(options.provider)) {
+        return { success: false, error: `Unsupported provider: ${options.provider}` };
       }
 
-      if (options.provider !== "openai-realtime") {
-        return { success: false, error: `Unsupported provider: ${options.provider}` };
+      if (options.provider === "local") {
+        return { success: true };
       }
 
       const { mode: systemAudioMode } = await getMeetingSystemAudioPlan();
@@ -4917,7 +5078,7 @@ class IPCHandlers {
           };
         }
 
-        if (options.provider !== "openai-realtime") {
+        if (!ALLOWED_MEETING_PROVIDERS.has(options.provider)) {
           return { success: false, error: `Unsupported provider: ${options.provider}` };
         }
 
@@ -5758,6 +5919,33 @@ class IPCHandlers {
         return { success: true, ...data };
       } catch (error) {
         debugLogger.error("STT config fetch error:", error);
+        return null;
+      }
+    });
+
+    ipcMain.handle("get-note-recording-config", async (event) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        const response = await fetch(`${apiUrl}/api/note-recording-config`, {
+          headers: { Cookie: cookieHeader },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return { success: true, ...data };
+      } catch (error) {
+        debugLogger.error("Note recording config fetch error:", error);
         return null;
       }
     });
@@ -7285,8 +7473,9 @@ class IPCHandlers {
 
   _resolveSpeakerExpectation({ sessionConfig, noteId, observedSpeakerIds }) {
     if (sessionConfig?.expectedCount) {
+      const total = Math.min(sessionConfig.expectedCount, MAX_SPEAKER_COUNT);
       return {
-        numSpeakers: Math.min(sessionConfig.expectedCount, MAX_SPEAKER_COUNT),
+        numSpeakers: Math.max(1, total - 1),
         cap: null,
       };
     }

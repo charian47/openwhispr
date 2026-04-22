@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from "../config/constants";
 import i18n, { normalizeUiLanguage } from "../i18n";
 import { hasStoredByokKey } from "../utils/byokDetection";
 import { ensureAgentNameInDictionary } from "../utils/agentName";
+import { useStreamingProvidersStore } from "./streamingProvidersStore";
 import logger from "../utils/logger";
 import type { LocalTranscriptionProvider, InferenceMode, SelfHostedType } from "../types/electron";
 import type { GoogleCalendarAccount } from "../types/calendar";
@@ -1133,21 +1134,25 @@ export interface ResolvedMeetingTranscription {
 
 export const selectResolvedMeetingTranscription = (
   state: SettingsState
-): ResolvedMeetingTranscription => ({
-  useLocalWhisper: state.meetingUseLocalWhisper,
-  whisperModel: state.meetingWhisperModel || state.whisperModel,
-  localTranscriptionProvider: state.meetingLocalTranscriptionProvider,
-  parakeetModel: state.meetingParakeetModel || state.parakeetModel,
-  cloudTranscriptionProvider:
-    state.meetingCloudTranscriptionProvider || state.cloudTranscriptionProvider,
-  cloudTranscriptionModel: state.meetingCloudTranscriptionModel || state.cloudTranscriptionModel,
-  cloudTranscriptionBaseUrl:
-    state.meetingCloudTranscriptionBaseUrl || state.cloudTranscriptionBaseUrl || "",
-  cloudTranscriptionMode: state.meetingCloudTranscriptionMode || state.cloudTranscriptionMode,
-  transcriptionMode: state.meetingTranscriptionMode,
-  remoteTranscriptionType: state.meetingRemoteTranscriptionType,
-  remoteTranscriptionUrl: state.meetingRemoteTranscriptionUrl || state.remoteTranscriptionUrl,
-});
+): ResolvedMeetingTranscription => {
+  const catalog = useStreamingProvidersStore.getState().providers;
+  const cloudTranscriptionProvider = catalog?.[0]?.id ?? "";
+
+  return {
+    useLocalWhisper: state.meetingUseLocalWhisper,
+    whisperModel: state.meetingWhisperModel || state.whisperModel,
+    localTranscriptionProvider: state.meetingLocalTranscriptionProvider,
+    parakeetModel: state.meetingParakeetModel || state.parakeetModel,
+    cloudTranscriptionProvider,
+    cloudTranscriptionModel: state.meetingCloudTranscriptionModel || state.cloudTranscriptionModel,
+    cloudTranscriptionBaseUrl:
+      state.meetingCloudTranscriptionBaseUrl || state.cloudTranscriptionBaseUrl || "",
+    cloudTranscriptionMode: state.meetingCloudTranscriptionMode || state.cloudTranscriptionMode,
+    transcriptionMode: state.meetingTranscriptionMode,
+    remoteTranscriptionType: state.meetingRemoteTranscriptionType,
+    remoteTranscriptionUrl: state.meetingRemoteTranscriptionUrl || state.remoteTranscriptionUrl,
+  };
+};
 
 export interface ResolvedMeetingReasoning {
   reasoningProvider: string;
