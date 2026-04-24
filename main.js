@@ -136,8 +136,8 @@ if (!gotSingleInstanceLock) {
 
 const isLiveWindow = (window) => window && !window.isDestroyed();
 
-// Ensure macOS menus use the proper casing for the app name
-if (process.platform === "darwin" && app.getName() !== "OpenWhispr") {
+// Ensure menus use the proper casing for the app name
+if (app.getName() !== "OpenWhispr") {
   app.setName("OpenWhispr");
 }
 
@@ -536,9 +536,7 @@ async function startApp() {
     environmentManager.savePanelStartPosition(position);
   });
 
-  if (process.platform === "darwin") {
-    app.setActivationPolicy("regular");
-  }
+  app.setActivationPolicy("regular");
 
   // In development, wait for Vite dev server to be ready
   if (process.env.NODE_ENV === "development") {
@@ -683,11 +681,6 @@ async function startApp() {
     });
   }
 
-  if (process.platform === "win32") {
-    const nircmdStatus = clipboardManager.getNircmdStatus();
-    debugLogger.debug("Windows paste tool status", nircmdStatus);
-  }
-
   trayManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   trayManager.setWindowManager(windowManager);
   trayManager.setCreateControlPanelCallback(() => windowManager.createControlPanelWindow());
@@ -696,7 +689,7 @@ async function startApp() {
   updateManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   updateManager.checkForUpdatesOnStartup();
 
-  if (process.platform === "darwin") {
+  {
     const { isGlobeLikeHotkey } = require("./src/helpers/hotkeyManager");
     let globeKeyDownTime = 0;
     let globeKeyIsRecording = false;
