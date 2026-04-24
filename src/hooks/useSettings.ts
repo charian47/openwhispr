@@ -22,7 +22,6 @@ export interface TranscriptionSettings {
   remoteTranscriptionType: SelfHostedType;
   remoteTranscriptionUrl: string;
   customDictionary: string[];
-  assemblyAiStreaming: boolean;
   showTranscriptionPreview: boolean;
 }
 
@@ -195,8 +194,6 @@ function useSettingsInternal() {
     remoteReasoningType: store.remoteReasoningType,
     remoteReasoningUrl: store.remoteReasoningUrl,
     customDictionary: store.customDictionary,
-    assemblyAiStreaming: store.assemblyAiStreaming,
-    setAssemblyAiStreaming: store.setAssemblyAiStreaming,
     useReasoningModel: store.useReasoningModel,
     reasoningModel: store.reasoningModel,
     reasoningProvider: store.reasoningProvider,

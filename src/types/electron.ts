@@ -1081,40 +1081,6 @@ declare global {
         callback: (data: { wordsUsed: number; limit: number }) => void
       ) => () => void;
 
-      // AssemblyAI Streaming
-      assemblyAiStreamingWarmup?: (options?: {
-        sampleRate?: number;
-        language?: string;
-      }) => Promise<{
-        success: boolean;
-        alreadyWarm?: boolean;
-        error?: string;
-        code?: string;
-      }>;
-      assemblyAiStreamingStart?: (options?: { sampleRate?: number; language?: string }) => Promise<{
-        success: boolean;
-        usedWarmConnection?: boolean;
-        error?: string;
-        code?: string;
-      }>;
-      assemblyAiStreamingSend?: (audioBuffer: ArrayBuffer) => void;
-      assemblyAiStreamingForceEndpoint?: () => void;
-      assemblyAiStreamingStop?: () => Promise<{
-        success: boolean;
-        text?: string;
-        error?: string;
-      }>;
-      assemblyAiStreamingStatus?: () => Promise<{
-        isConnected: boolean;
-        sessionId: string | null;
-      }>;
-      onAssemblyAiPartialTranscript?: (callback: (text: string) => void) => () => void;
-      onAssemblyAiFinalTranscript?: (callback: (text: string) => void) => () => void;
-      onAssemblyAiError?: (callback: (error: string) => void) => () => void;
-      onAssemblyAiSessionEnd?: (
-        callback: (data: { audioDuration?: number; text?: string }) => void
-      ) => () => void;
-
       // Referral stats
       getReferralStats?: () => Promise<{
         referralCode: string;
@@ -1249,41 +1215,6 @@ declare global {
         query: string,
         limit?: number
       ) => Promise<ConversationPreview[]>;
-
-      // Deepgram Streaming
-      deepgramStreamingWarmup?: (options?: { sampleRate?: number; language?: string }) => Promise<{
-        success: boolean;
-        alreadyWarm?: boolean;
-        error?: string;
-        code?: string;
-      }>;
-      deepgramStreamingStart?: (options?: {
-        sampleRate?: number;
-        language?: string;
-        forceNew?: boolean;
-      }) => Promise<{
-        success: boolean;
-        usedWarmConnection?: boolean;
-        error?: string;
-        code?: string;
-      }>;
-      deepgramStreamingSend?: (audioBuffer: ArrayBuffer) => void;
-      deepgramStreamingFinalize?: () => void;
-      deepgramStreamingStop?: () => Promise<{
-        success: boolean;
-        text?: string;
-        error?: string;
-      }>;
-      deepgramStreamingStatus?: () => Promise<{
-        isConnected: boolean;
-        sessionId: string | null;
-      }>;
-      onDeepgramPartialTranscript?: (callback: (text: string) => void) => () => void;
-      onDeepgramFinalTranscript?: (callback: (text: string) => void) => () => void;
-      onDeepgramError?: (callback: (error: string) => void) => () => void;
-      onDeepgramSessionEnd?: (
-        callback: (data: { audioDuration?: number; text?: string }) => void
-      ) => () => void;
 
       // Agent overlay
       resizeAgentWindow?: (width: number, height: number) => Promise<void>;
@@ -1513,22 +1444,6 @@ declare global {
         noteId: number,
         embeddings: Record<string, number[]>
       ) => Promise<{ success: boolean }>;
-
-      // Dictation realtime streaming
-      dictationRealtimeWarmup?: (options: {
-        model?: string;
-        mode?: "byok" | "openwhispr";
-      }) => Promise<{ success: boolean; error?: string }>;
-      dictationRealtimeStart?: (options: {
-        model?: string;
-        mode?: "byok" | "openwhispr";
-      }) => Promise<{ success: boolean; error?: string }>;
-      dictationRealtimeSend?: (buffer: ArrayBuffer) => void;
-      dictationRealtimeStop?: () => Promise<{ success: boolean; text: string }>;
-      onDictationRealtimePartial?: (callback: (text: string) => void) => () => void;
-      onDictationRealtimeFinal?: (callback: (text: string) => void) => () => void;
-      onDictationRealtimeError?: (callback: (error: string) => void) => () => void;
-      onDictationRealtimeSessionEnd?: (callback: (data: { text: string }) => void) => () => void;
 
       // Google Calendar event listeners
       onGcalMeetingStarting?: (callback: (data: any) => void) => () => void;
