@@ -1,5 +1,4 @@
 import modelDataRaw from "./modelRegistryData.json";
-import { getSettings } from "../stores/settingsStore";
 
 export interface ModelDefinition {
   id: string;
@@ -46,10 +45,6 @@ export interface CloudProviderData {
   id: string;
   name: string;
   models: CloudModelDefinition[];
-}
-
-export interface EnterpriseProviderData extends CloudProviderData {
-  allowCustomModelId: boolean;
 }
 
 export interface TranscriptionModelDefinition {
@@ -105,7 +100,6 @@ interface ModelRegistryData {
   parakeetModels: ParakeetModelsMap;
   whisperModels: WhisperModelsMap;
   transcriptionProviders: TranscriptionProviderData[];
-  enterpriseProviders: EnterpriseProviderData[];
   localProviders: LocalProviderData[];
 }
 
@@ -164,10 +158,6 @@ class ModelRegistry {
     return models;
   }
 
-  getEnterpriseProviders(): EnterpriseProviderData[] {
-    return modelData.enterpriseProviders;
-  }
-
   getTranscriptionProviders(): TranscriptionProviderData[] {
     return modelData.transcriptionProviders;
   }
@@ -208,26 +198,8 @@ export interface ReasoningProvider {
 
 export type ReasoningProviders = Record<string, ReasoningProvider>;
 
-export type EnterpriseProvider = "bedrock" | "azure" | "vertex";
-export const ENTERPRISE_PROVIDERS: readonly EnterpriseProvider[] = ["bedrock", "azure", "vertex"];
-export function isEnterpriseProvider(value: unknown): value is EnterpriseProvider {
-  return typeof value === "string" && (ENTERPRISE_PROVIDERS as readonly string[]).includes(value);
-}
-
 function buildReasoningProviders(): ReasoningProviders {
   const providers: ReasoningProviders = {};
-
-  for (const ep of modelRegistry.getEnterpriseProviders()) {
-    providers[ep.id] = {
-      name: ep.name,
-      models: ep.models.map((m) => ({
-        value: m.id,
-        label: m.name,
-        description: m.description,
-        descriptionKey: m.descriptionKey,
-      })),
-    };
-  }
 
   providers.local = {
     name: "Local AI",
@@ -265,12 +237,6 @@ export function getReasoningModelLabel(modelId: string): string {
 }
 
 export function getModelProvider(modelId: string): string {
-  const storedProvider = getSettings().reasoningProvider;
-
-  if (isEnterpriseProvider(storedProvider)) {
-    return storedProvider;
-  }
-
   const model = getAllReasoningModels().find((m) => m.value === modelId);
 
   if (!model) {
@@ -323,11 +289,7 @@ export function getWhisperModelInfo(modelId: string): WhisperModelInfo | undefin
 
 export const WHISPER_MODEL_INFO = modelData.whisperModels;
 
-export function getCloudModel(modelId: string): CloudModelDefinition | undefined {
-  for (const provider of modelData.enterpriseProviders) {
-    const model = provider.models.find((m) => m.id === modelId);
-    if (model) return model;
-  }
+export function getCloudModel(_modelId: string): CloudModelDefinition | undefined {
   return undefined;
 }
 

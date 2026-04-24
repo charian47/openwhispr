@@ -1,17 +1,11 @@
 import {
   getModelProvider,
-  getCloudModel,
   getOpenAiApiConfig,
-  isEnterpriseProvider,
-  type EnterpriseProvider,
 } from "../models/ModelRegistry";
 import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
-import { withRetry, createApiRetryStrategy } from "../utils/retry";
-import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
+import { TOKEN_LIMITS } from "../config/constants";
 import logger from "../utils/logger";
-import { isSecureEndpoint } from "../utils/urlUtils";
-import { getSettings } from "../stores/settingsStore";
 import { streamText, stepCountIs } from "ai";
 import { getAIModel } from "./ai/providers";
 
@@ -29,12 +23,9 @@ export type AgentStreamChunk =
 
 class ReasoningService extends BaseReasoningService {
   private apiKeyCache: SecureCache<string>;
-  private openAiEndpointPreference = new Map<string, "responses" | "chat">();
-  private static readonly OPENAI_ENDPOINT_PREF_STORAGE_KEY = "openAiEndpointPreference";
   private static readonly MAX_TOOL_STEPS = 20;
   private cacheCleanupStop: (() => void) | undefined;
   private streamAbortController: AbortController | null = null;
-  private probedBases = new Set<string>();
 
   constructor() {
     super();
@@ -44,429 +35,6 @@ class ReasoningService extends BaseReasoningService {
     if (typeof window !== "undefined") {
       window.addEventListener("beforeunload", () => this.destroy());
     }
-  }
-
-  private isLanReasoningMode(): boolean {
-    const settings = getSettings();
-    return (
-      settings.reasoningMode === "self-hosted" &&
-      settings.remoteReasoningType === "lan" &&
-      !!settings.remoteReasoningUrl
-    );
-  }
-
-  private getConfiguredOpenAIBase(): string {
-    if (typeof window === "undefined") {
-      return API_ENDPOINTS.OPENAI_BASE;
-    }
-
-    try {
-      const settings = getSettings();
-      const provider = settings.reasoningProvider || "";
-      const isCustomProvider = provider === "custom";
-
-      if (!isCustomProvider) {
-        logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
-          hasCustomUrl: false,
-          provider,
-          reason: "Provider is not 'custom', using default OpenAI endpoint",
-          defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
-        });
-        return API_ENDPOINTS.OPENAI_BASE;
-      }
-
-      const stored = settings.cloudReasoningBaseUrl || "";
-      const trimmed = stored.trim();
-
-      if (!trimmed) {
-        logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
-          hasCustomUrl: false,
-          provider,
-          usingDefault: true,
-          defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
-        });
-        return API_ENDPOINTS.OPENAI_BASE;
-      }
-
-      const normalized = normalizeBaseUrl(trimmed) || API_ENDPOINTS.OPENAI_BASE;
-
-      logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
-        hasCustomUrl: true,
-        provider,
-        rawUrl: trimmed,
-        normalizedUrl: normalized,
-        defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
-      });
-
-      const knownNonOpenAIUrls = [
-        "api.groq.com",
-        "api.anthropic.com",
-        "generativelanguage.googleapis.com",
-      ];
-
-      const isKnownNonOpenAI = knownNonOpenAIUrls.some((url) => normalized.includes(url));
-      if (isKnownNonOpenAI) {
-        logger.logReasoning("OPENAI_BASE_REJECTED", {
-          reason: "Custom URL is a known non-OpenAI provider, using default OpenAI endpoint",
-          attempted: normalized,
-        });
-        return API_ENDPOINTS.OPENAI_BASE;
-      }
-
-      if (!isSecureEndpoint(normalized)) {
-        logger.logReasoning("OPENAI_BASE_REJECTED", {
-          reason: "HTTPS required (HTTP allowed for local network only)",
-          attempted: normalized,
-        });
-        return API_ENDPOINTS.OPENAI_BASE;
-      }
-
-      logger.logReasoning("CUSTOM_REASONING_ENDPOINT_RESOLVED", {
-        customEndpoint: normalized,
-        isCustom: true,
-        provider,
-      });
-
-      return normalized;
-    } catch (error) {
-      logger.logReasoning("CUSTOM_REASONING_ENDPOINT_ERROR", {
-        error: (error as Error).message,
-        fallbackTo: API_ENDPOINTS.OPENAI_BASE,
-      });
-      return API_ENDPOINTS.OPENAI_BASE;
-    }
-  }
-
-  private getOpenAIEndpointCandidates(
-    base: string
-  ): Array<{ url: string; type: "responses" | "chat" }> {
-    const lower = base.toLowerCase();
-
-    if (lower.endsWith("/responses") || lower.endsWith("/chat/completions")) {
-      const type = lower.endsWith("/responses") ? "responses" : "chat";
-      return [{ url: base, type }];
-    }
-
-    const preference = this.getStoredOpenAiPreference(base);
-    if (preference === "chat") {
-      return [{ url: buildApiUrl(base, "/chat/completions"), type: "chat" }];
-    }
-
-    const candidates: Array<{ url: string; type: "responses" | "chat" }> = [
-      { url: buildApiUrl(base, "/responses"), type: "responses" },
-      { url: buildApiUrl(base, "/chat/completions"), type: "chat" },
-    ];
-
-    return candidates;
-  }
-
-  private getStoredOpenAiPreference(base: string): "responses" | "chat" | undefined {
-    if (this.openAiEndpointPreference.has(base)) {
-      return this.openAiEndpointPreference.get(base);
-    }
-
-    if (typeof window === "undefined" || !window.localStorage) {
-      return undefined;
-    }
-
-    try {
-      const raw = window.localStorage.getItem(ReasoningService.OPENAI_ENDPOINT_PREF_STORAGE_KEY);
-      if (!raw) {
-        return undefined;
-      }
-      const parsed = JSON.parse(raw);
-      if (typeof parsed !== "object" || parsed === null) {
-        return undefined;
-      }
-      const value = parsed[base];
-      if (value === "responses" || value === "chat") {
-        this.openAiEndpointPreference.set(base, value);
-        return value;
-      }
-    } catch {
-      return undefined;
-    }
-
-    return undefined;
-  }
-
-  private rememberOpenAiPreference(base: string, preference: "responses" | "chat"): void {
-    this.openAiEndpointPreference.set(base, preference);
-
-    if (typeof window === "undefined" || !window.localStorage) {
-      return;
-    }
-
-    try {
-      const raw = window.localStorage.getItem(ReasoningService.OPENAI_ENDPOINT_PREF_STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-      const data = typeof parsed === "object" && parsed !== null ? parsed : {};
-      data[base] = preference;
-      window.localStorage.setItem(
-        ReasoningService.OPENAI_ENDPOINT_PREF_STORAGE_KEY,
-        JSON.stringify(data)
-      );
-    } catch {}
-  }
-
-  /** Probe /v1/models to detect llama.cpp and prefer /chat/completions. */
-  private async detectReasoningServerType(base: string): Promise<void> {
-    if (this.probedBases.has(base) || this.getStoredOpenAiPreference(base) !== undefined) {
-      return;
-    }
-
-    const lower = base.toLowerCase();
-    if (lower.endsWith("/responses") || lower.endsWith("/chat/completions")) {
-      return;
-    }
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
-      const res = await fetch(buildApiUrl(base, "/models"), {
-        method: "GET",
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!res.ok) {
-        this.probedBases.add(base);
-        return;
-      }
-
-      const body = await res.json();
-      const first = body?.data?.[0];
-
-      if (first?.owned_by === "llamacpp") {
-        this.rememberOpenAiPreference(base, "chat");
-        logger.logReasoning("LLAMACPP_DETECTED_VIA_MODELS", {
-          base,
-          modelId: first?.id,
-          ownedBy: first.owned_by,
-        });
-      }
-
-      this.probedBases.add(base);
-    } catch {
-      this.probedBases.add(base);
-    }
-  }
-
-  private async getApiKey(
-    provider: "openai" | "anthropic" | "gemini" | "groq" | "custom"
-  ): Promise<string> {
-    if (provider === "custom") {
-      let customKey = "";
-      try {
-        customKey = (await window.electronAPI?.getCustomReasoningKey?.()) || "";
-      } catch (err) {
-        logger.logReasoning("CUSTOM_KEY_IPC_FALLBACK", { error: (err as Error)?.message });
-      }
-      if (!customKey || !customKey.trim()) {
-        customKey = getSettings().customReasoningApiKey || "";
-      }
-      const trimmedKey = customKey.trim();
-
-      logger.logReasoning("CUSTOM_KEY_RETRIEVAL", {
-        provider,
-        hasKey: !!trimmedKey,
-        keyLength: trimmedKey.length,
-      });
-
-      return trimmedKey;
-    }
-
-    let apiKey = this.apiKeyCache.get(provider);
-
-    logger.logReasoning(`${provider.toUpperCase()}_KEY_RETRIEVAL`, {
-      provider,
-      fromCache: !!apiKey,
-      cacheSize: this.apiKeyCache.size || 0,
-    });
-
-    if (!apiKey) {
-      try {
-        const keyGetters = {
-          openai: () => window.electronAPI.getOpenAIKey(),
-          anthropic: () => window.electronAPI.getAnthropicKey(),
-          gemini: () => window.electronAPI.getGeminiKey(),
-          groq: () => window.electronAPI.getGroqKey(),
-        };
-        apiKey = (await keyGetters[provider]()) ?? undefined;
-
-        logger.logReasoning(`${provider.toUpperCase()}_KEY_FETCHED`, {
-          provider,
-          hasKey: !!apiKey,
-          keyLength: apiKey?.length || 0,
-        });
-
-        if (apiKey) {
-          this.apiKeyCache.set(provider, apiKey);
-        }
-      } catch (error) {
-        logger.logReasoning(`${provider.toUpperCase()}_KEY_FETCH_ERROR`, {
-          provider,
-          error: (error as Error).message,
-          stack: (error as Error).stack,
-        });
-      }
-    }
-
-    if (!apiKey) {
-      const errorMsg = `${provider.charAt(0).toUpperCase() + provider.slice(1)} API key not configured`;
-      logger.logReasoning(`${provider.toUpperCase()}_KEY_MISSING`, {
-        provider,
-        error: errorMsg,
-      });
-      throw new Error(errorMsg);
-    }
-
-    return apiKey;
-  }
-
-  private async callChatCompletionsApi(
-    endpoint: string,
-    apiKey: string,
-    model: string,
-    text: string,
-    agentName: string | null,
-    config: ReasoningConfig,
-    providerName: string
-  ): Promise<string> {
-    const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
-    const userPrompt = text;
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ];
-
-    const requestBody: any = {
-      model,
-      messages,
-      temperature: config.temperature ?? 0.3,
-      max_tokens:
-        config.maxTokens ||
-        Math.max(
-          4096,
-          this.calculateMaxTokens(
-            text.length,
-            TOKEN_LIMITS.MIN_TOKENS,
-            TOKEN_LIMITS.MAX_TOKENS,
-            TOKEN_LIMITS.TOKEN_MULTIPLIER
-          )
-        ),
-    };
-
-    // Disable thinking for Groq Qwen models
-    const modelDef = getCloudModel(model);
-    if (modelDef?.disableThinking && providerName.toLowerCase() === "groq") {
-      requestBody.reasoning_effort = "none";
-    }
-
-    logger.logReasoning(`${providerName.toUpperCase()}_REQUEST`, {
-      endpoint,
-      model,
-      hasApiKey: !!apiKey,
-      requestBody: JSON.stringify(requestBody).substring(0, 200),
-    });
-
-    const response = await withRetry(async () => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      try {
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-        if (apiKey) {
-          headers["Authorization"] = `Bearer ${apiKey}`;
-        }
-
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(requestBody),
-          signal: controller.signal,
-        });
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          let errorData: any = { error: res.statusText };
-
-          try {
-            errorData = JSON.parse(errorText);
-          } catch {
-            errorData = { error: errorText || res.statusText };
-          }
-
-          logger.logReasoning(`${providerName.toUpperCase()}_API_ERROR_DETAIL`, {
-            status: res.status,
-            statusText: res.statusText,
-            error: errorData,
-            errorMessage: errorData.error?.message || errorData.message || errorData.error,
-            fullResponse: errorText.substring(0, 500),
-          });
-
-          const errorMessage =
-            errorData.error?.message ||
-            errorData.message ||
-            errorData.error ||
-            `${providerName} API error: ${res.status}`;
-          throw new Error(errorMessage);
-        }
-
-        const jsonResponse = await res.json();
-
-        logger.logReasoning(`${providerName.toUpperCase()}_RAW_RESPONSE`, {
-          hasResponse: !!jsonResponse,
-          responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
-          hasChoices: !!jsonResponse?.choices,
-          choicesLength: jsonResponse?.choices?.length || 0,
-          fullResponse: JSON.stringify(jsonResponse).substring(0, 500),
-        });
-
-        return jsonResponse;
-      } catch (error) {
-        if ((error as Error).name === "AbortError") {
-          throw new Error("Request timed out after 30s");
-        }
-        throw error;
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    }, createApiRetryStrategy());
-
-    if (!response.choices || !response.choices[0]) {
-      logger.logReasoning(`${providerName.toUpperCase()}_RESPONSE_ERROR`, {
-        model,
-        response: JSON.stringify(response).substring(0, 500),
-        hasChoices: !!response.choices,
-        choicesCount: response.choices?.length || 0,
-      });
-      throw new Error(`Invalid response structure from ${providerName} API`);
-    }
-
-    const choice = response.choices[0];
-    const responseText = choice.message?.content?.trim() || "";
-
-    if (!responseText) {
-      logger.logReasoning(`${providerName.toUpperCase()}_EMPTY_RESPONSE`, {
-        model,
-        finishReason: choice.finish_reason,
-        hasMessage: !!choice.message,
-        response: JSON.stringify(choice).substring(0, 500),
-      });
-      throw new Error(`${providerName} returned empty response`);
-    }
-
-    logger.logReasoning(`${providerName.toUpperCase()}_RESPONSE`, {
-      model,
-      responseLength: responseText.length,
-      tokensUsed: response.usage?.total_tokens || 0,
-      success: true,
-    });
-
-    return responseText;
   }
 
   async processText(
@@ -495,35 +63,17 @@ class ReasoningService extends BaseReasoningService {
       let result: string;
       const startTime = Date.now();
 
-      const isLanReasoning = !!config.lanUrl || this.isLanReasoningMode();
-
       logger.logReasoning("ROUTING_TO_PROVIDER", {
         provider,
         model,
-        isLanReasoning,
       });
 
-      if (isLanReasoning) {
-        result = await this.processWithLan(text, agentName, config);
-      } else {
-        switch (provider) {
-          case "local":
-            result = await this.processWithLocal(text, trimmedModel, agentName, config);
-            break;
-          case "bedrock":
-          case "azure":
-          case "vertex":
-            result = await this.processWithEnterprise(
-              provider as EnterpriseProvider,
-              text,
-              trimmedModel,
-              agentName,
-              config
-            );
-            break;
-          default:
-            throw new Error(`Unsupported reasoning provider: ${provider}. Only local llama.cpp is supported.`);
-        }
+      switch (provider) {
+        case "local":
+          result = await this.processWithLocal(text, trimmedModel, agentName, config);
+          break;
+        default:
+          throw new Error(`Unsupported reasoning provider: ${provider}. Only local llama.cpp is supported.`);
       }
 
       const processingTime = Date.now() - startTime;
@@ -546,79 +96,6 @@ class ReasoningService extends BaseReasoningService {
       });
 
       throw error;
-    }
-  }
-
-  private async processWithEnterprise(
-    provider: EnterpriseProvider,
-    text: string,
-    model: string,
-    agentName: string | null = null,
-    config: ReasoningConfig = {}
-  ): Promise<string> {
-    if (this.isProcessing) {
-      throw new Error("Already processing a request");
-    }
-
-    if (typeof window === "undefined" || !window.electronAPI) {
-      throw new Error("Enterprise reasoning is not available in this environment");
-    }
-
-    logger.logReasoning("ENTERPRISE_START", { provider, model, agentName });
-
-    this.isProcessing = true;
-    try {
-      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
-      const s = getSettings();
-
-      const apiKey =
-        provider === "azure" ? s.azureApiKey : provider === "vertex" ? s.vertexApiKey : "";
-
-      const { supportsTemperature } = getOpenAiApiConfig(model);
-
-      const startTime = Date.now();
-      const result = await window.electronAPI.processEnterpriseReasoning(text, model, agentName, {
-        ...config,
-        systemPrompt,
-        provider,
-        apiKey,
-        supportsTemperature,
-        bedrockRegion: s.bedrockRegion,
-        bedrockProfile: s.bedrockProfile,
-        bedrockAccessKeyId: s.bedrockAccessKeyId,
-        bedrockSecretAccessKey: s.bedrockSecretAccessKey,
-        bedrockSessionToken: s.bedrockSessionToken,
-        azureEndpoint: s.azureEndpoint,
-        azureApiVersion: s.azureApiVersion,
-        vertexProject: s.vertexProject,
-        vertexLocation: s.vertexLocation,
-      });
-
-      const processingTimeMs = Date.now() - startTime;
-
-      if (!result.success) {
-        logger.logReasoning("ENTERPRISE_ERROR", {
-          provider,
-          model,
-          processingTimeMs,
-          error: result.error,
-        });
-        const enhanced = new Error(result.error || `${provider} reasoning failed`) as Error & {
-          retryable?: boolean;
-        };
-        enhanced.retryable = result.retryable ?? false;
-        throw enhanced;
-      }
-
-      logger.logReasoning("ENTERPRISE_SUCCESS", {
-        provider,
-        model,
-        processingTimeMs,
-        resultLength: result.text?.length || 0,
-      });
-      return result.text || "";
-    } finally {
-      this.isProcessing = false;
     }
   }
 
@@ -682,47 +159,6 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
-  private async processWithLan(
-    text: string,
-    agentName: string | null = null,
-    config: ReasoningConfig = {}
-  ): Promise<string> {
-    const settings = getSettings();
-    const lanUrl = (config.lanUrl || settings.remoteReasoningUrl).trim();
-
-    logger.logReasoning("LAN_START", { url: lanUrl, agentName });
-
-    if (this.isProcessing) {
-      throw new Error("Already processing a request");
-    }
-
-    this.isProcessing = true;
-
-    try {
-      const baseUrl = normalizeBaseUrl(lanUrl) || lanUrl;
-      const endpoint = buildApiUrl(baseUrl, "/v1/chat/completions");
-
-      return await this.callChatCompletionsApi(
-        endpoint,
-        "",
-        "default",
-        text,
-        agentName,
-        config,
-        "LAN"
-      );
-    } catch (error) {
-      logger.logReasoning("LAN_ERROR", {
-        url: lanUrl,
-        error: (error as Error).message,
-        errorType: (error as Error).name,
-      });
-      throw error;
-    } finally {
-      this.isProcessing = false;
-    }
-  }
-
   private getCustomPrompt(): string | undefined {
     try {
       const raw = localStorage.getItem("customUnifiedPrompt");
@@ -740,28 +176,16 @@ class ReasoningService extends BaseReasoningService {
     provider: string,
     config: ReasoningConfig & { systemPrompt: string }
   ): AsyncGenerator<string, void, unknown> {
-    const settings = getSettings();
-    const lanOverride = config.lanUrl?.trim();
-    const isLanReasoning = !!lanOverride || this.isLanReasoningMode();
-    const isLocalProvider = provider === "local" || !isLanReasoning;
-
-    let endpoint: string;
-    const apiKey = "";
-
-    if (isLanReasoning) {
-      const rawUrl = lanOverride || settings.remoteReasoningUrl.trim();
-      const baseUrl = normalizeBaseUrl(rawUrl) || rawUrl;
-      endpoint = buildApiUrl(baseUrl, "/v1/chat/completions");
-    } else {
-      const serverResult = await window.electronAPI.llamaServerStart(model);
-      if (!serverResult.success || !serverResult.port) {
-        throw new Error(serverResult.error || "Failed to start local model server");
-      }
-      endpoint = `http://127.0.0.1:${serverResult.port}/v1/chat/completions`;
+    const serverResult = await window.electronAPI.llamaServerStart(model);
+    if (!serverResult.success || !serverResult.port) {
+      throw new Error(serverResult.error || "Failed to start local model server");
     }
+    const endpoint = `http://127.0.0.1:${serverResult.port}/v1/chat/completions`;
+    const isLocalProvider = true;
 
+    const apiKey = "";
     const apiConfig = getOpenAiApiConfig(model);
-    const useOldTokenParam = true; // local/LAN always use max_tokens
+    const useOldTokenParam = true; // local always uses max_tokens
 
     const requestBody: Record<string, unknown> = {
       model,
@@ -786,7 +210,6 @@ class ReasoningService extends BaseReasoningService {
       model,
       provider,
       isLocal: isLocalProvider,
-      isLan: !!isLanReasoning,
       messageCount: messages.length,
     });
 
@@ -863,7 +286,7 @@ class ReasoningService extends BaseReasoningService {
             if (!content) continue;
 
             // Strip Qwen3 <think> blocks from streamed output
-            if (isLocalProvider || isLanReasoning) {
+            if (isLocalProvider) {
               if (insideThinkBlock) {
                 const endIdx = content.indexOf("</think>");
                 if (endIdx !== -1) {
@@ -908,17 +331,6 @@ class ReasoningService extends BaseReasoningService {
     config: ReasoningConfig & { systemPrompt: string },
     tools?: Record<string, import("ai").Tool>
   ): AsyncGenerator<AgentStreamChunk, void, unknown> {
-    if (isEnterpriseProvider(provider)) {
-      throw new Error(
-        "Agent Mode is not yet supported with enterprise providers (Bedrock/Azure/Vertex). " +
-          "Switch to Cloud or Local for Agent Mode, or use this provider for text cleanup only."
-      );
-    }
-
-    const settings = getSettings();
-    const lanOverride = config.lanUrl?.trim();
-    const isLanReasoning = !!lanOverride || this.isLanReasoningMode();
-
     if (!tools) {
       const contentGen = this.processTextStreaming(messages, model, provider, config);
       for await (const text of contentGen) {
@@ -928,21 +340,11 @@ class ReasoningService extends BaseReasoningService {
       return;
     }
 
-    let baseURL: string | undefined;
-
-    if (isLanReasoning) {
-      const rawUrl = lanOverride || settings.remoteReasoningUrl.trim();
-      baseURL = normalizeBaseUrl(rawUrl) || rawUrl;
-      if (!baseURL.endsWith("/v1")) {
-        baseURL = buildApiUrl(baseURL, "/v1");
-      }
-    } else {
-      const serverResult = await window.electronAPI.llamaServerStart(model);
-      if (!serverResult.success || !serverResult.port) {
-        throw new Error(serverResult.error || "Failed to start local model server");
-      }
-      baseURL = `http://127.0.0.1:${serverResult.port}/v1`;
+    const serverResult = await window.electronAPI.llamaServerStart(model);
+    if (!serverResult.success || !serverResult.port) {
+      throw new Error(serverResult.error || "Failed to start local model server");
     }
+    const baseURL = `http://127.0.0.1:${serverResult.port}/v1`;
 
     const aiModel = getAIModel("local", model, "no-key", baseURL);
 
@@ -1166,11 +568,6 @@ class ReasoningService extends BaseReasoningService {
 
   async isAvailable(): Promise<boolean> {
     try {
-      if (this.isLanReasoningMode()) {
-        logger.logReasoning("API_KEY_CHECK", { lanReasoning: true });
-        return true;
-      }
-
       const localAvailable = await window.electronAPI?.checkLocalReasoningAvailable?.();
 
       logger.logReasoning("API_KEY_CHECK", {
