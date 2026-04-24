@@ -103,7 +103,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [skipAuth, setSkipAuth] = useState(false);
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
-  const [isUsingNativeShortcut, setIsUsingNativeShortcut] = useState(false);
   const readableHotkey = formatHotkeyLabel(hotkey);
   const { alertDialog, confirmDialog, showAlertDialog, hideAlertDialog, hideConfirmDialog } =
     useDialogs();
@@ -161,22 +160,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   // Only show progress for signed-up users after account creation step
   const showProgress = currentStep > 0;
 
-  useEffect(() => {
-    const checkHotkeyMode = async () => {
-      try {
-        const info = await window.electronAPI?.getHotkeyModeInfo();
-        if (info?.isUsingNativeShortcut) {
-          setIsUsingNativeShortcut(true);
-          if (!info.supportsPushToTalk) {
-            setActivationMode("tap");
-          }
-        }
-      } catch (error) {
-        logger.error("Failed to check hotkey mode", { error }, "onboarding");
-      }
-    };
-    checkHotkeyMode();
-  }, [setActivationMode]);
 
   // Update wizard UI when backend falls back to a different hotkey.
   // Only update local state — don't persist to localStorage so the app
@@ -599,25 +582,23 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         </div>
 
         {/* Mode section - inline with hotkey */}
-        {(!isUsingNativeShortcut || getCachedPlatform() === "linux") && (
-          <div className="p-4 flex items-center justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {t("onboarding.activation.mode")}
-              </span>
-              <p className="text-xs text-muted-foreground/70 mt-0.5">
-                {activationMode === "tap"
-                  ? t("onboarding.activation.tapDescription")
-                  : t("onboarding.activation.holdDescription")}
-              </p>
-            </div>
-            <ActivationModeSelector
-              value={activationMode}
-              onChange={setActivationMode}
-              variant="compact"
-            />
+        <div className="p-4 flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t("onboarding.activation.mode")}
+            </span>
+            <p className="text-xs text-muted-foreground/70 mt-0.5">
+              {activationMode === "tap"
+                ? t("onboarding.activation.tapDescription")
+                : t("onboarding.activation.holdDescription")}
+            </p>
           </div>
-        )}
+          <ActivationModeSelector
+            value={activationMode}
+            onChange={setActivationMode}
+            variant="compact"
+          />
+        </div>
       </div>
 
       {/* Test area - minimal chrome */}
@@ -627,7 +608,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {t("onboarding.activation.test")}
           </span>
           <span className="text-xs text-muted-foreground/60">
-            {activationMode === "tap" || (isUsingNativeShortcut && getCachedPlatform() !== "linux")
+            {activationMode === "tap"
               ? t("onboarding.activation.hotkeyToStartStop", { hotkey: readableHotkey })
               : t("onboarding.activation.holdHotkey", { hotkey: readableHotkey })}
           </span>

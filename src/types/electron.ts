@@ -792,20 +792,6 @@ declare global {
         supportsPushToTalk: boolean;
       }>;
 
-      // Wayland paste diagnostics
-      getYdotoolStatus?: () => Promise<{
-        isLinux: boolean;
-        isWayland: boolean;
-        hasYdotool: boolean;
-        hasYdotoold: boolean;
-        daemonRunning: boolean;
-        hasService: boolean;
-        hasUinput: boolean;
-        hasUdevRule: boolean;
-        hasGroup: boolean;
-        allGood: boolean;
-      }>;
-
       // Globe key listener for hotkey capture (macOS only)
       onGlobeKeyPressed?: (callback: () => void) => () => void;
       onGlobeKeyReleased?: (callback: () => void) => () => void;
@@ -819,7 +805,6 @@ declare global {
       ) => () => void;
       onSettingUpdated?: (callback: (data: { key: string; value: unknown }) => void) => () => void;
       onDictationKeyActive?: (callback: (key: string) => void) => () => void;
-      onLinuxPttPermissionDenied?: (callback: () => void) => () => void;
 
       // Settings shortcut (Cmd+, / Ctrl+,)
       onShowSettings?: (callback: () => void) => () => void;

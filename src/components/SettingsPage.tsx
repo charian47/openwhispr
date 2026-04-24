@@ -1079,20 +1079,12 @@ export default function SettingsPage({
     [dictationKey, meetingKey, t]
   );
 
-  const [isUsingNativeShortcut, setIsUsingNativeShortcut] = useState(false);
   const [effectiveDefaultHotkey, setEffectiveDefaultHotkey] = useState<string | null>(null);
-  const [linuxPttAvailable, setLinuxPttAvailable] = useState(true);
-
-  const platform = getCachedPlatform();
 
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
   const [autoStartLoading, setAutoStartLoading] = useState(true);
 
   useEffect(() => {
-    if (platform === "linux") {
-      setAutoStartLoading(false);
-      return;
-    }
     const loadAutoStart = async () => {
       if (window.electronAPI?.getAutoStartEnabled) {
         try {
@@ -1185,18 +1177,7 @@ export default function SettingsPage({
   }, [checkWhisperInstallation, getAppVersion]);
 
   useEffect(() => {
-    const checkHotkeyMode = async () => {
-      try {
-        const info = await window.electronAPI?.getHotkeyModeInfo();
-        if (info?.isUsingNativeShortcut) {
-          setIsUsingNativeShortcut(true);
-          if (!info.supportsPushToTalk) {
-            setActivationMode("tap");
-          }
-        }
-      } catch (error) {
-        logger.error("Failed to check hotkey mode", error, "settings");
-      }
+    const fetchDefaultHotkey = async () => {
       try {
         const key = await window.electronAPI?.getEffectiveDefaultHotkey?.();
         if (key) setEffectiveDefaultHotkey(key);
@@ -1204,22 +1185,8 @@ export default function SettingsPage({
         logger.error("Failed to get effective default hotkey", error, "settings");
       }
     };
-    checkHotkeyMode();
-  }, [setActivationMode]);
-
-  useEffect(() => {
-    const cleanup = window.electronAPI?.onLinuxPttPermissionDenied?.(() => {
-      setLinuxPttAvailable(false);
-      toast({
-        title: t("settingsPage.general.hotkey.linuxPttPermissionTitle"),
-        description: t("settingsPage.general.hotkey.linuxPttPermissionDescription"),
-        variant: "destructive",
-        duration: 15000,
-      });
-      setActivationMode("tap");
-    });
-    return () => cleanup?.();
-  }, [toast, t, setActivationMode]);
+    fetchDefaultHotkey();
+  }, []);
 
   useEffect(() => {
     if (updateError) {
@@ -3114,17 +3081,12 @@ EOF`,
                     )}
                 </SettingsPanelRow>
 
-                {(!isUsingNativeShortcut || getCachedPlatform() === "linux") && (
-                  <SettingsPanelRow>
-                    <p className="text-xs font-medium text-muted-foreground/80 mb-2">
-                      {t("settingsPage.general.hotkey.activationMode")}
-                    </p>
-                    <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
-                    {getCachedPlatform() === "linux" && activationMode === "push" && (
-                      <LinuxPttSetupInfo isAvailable={linuxPttAvailable} />
-                    )}
-                  </SettingsPanelRow>
-                )}
+                <SettingsPanelRow>
+                  <p className="text-xs font-medium text-muted-foreground/80 mb-2">
+                    {t("settingsPage.general.hotkey.activationMode")}
+                  </p>
+                  <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+                </SettingsPanelRow>
               </SettingsPanel>
             </div>
 
