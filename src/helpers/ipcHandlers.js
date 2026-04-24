@@ -6,8 +6,7 @@ const http = require("http");
 const https = require("https");
 const crypto = require("crypto");
 const debugLogger = require("./debugLogger");
-const GnomeShortcutManager = require("./gnomeShortcut");
-const HyprlandShortcutManager = require("./hyprlandShortcut");
+
 const AssemblyAiStreaming = require("./assemblyAiStreaming");
 const { i18nMain, changeLanguage } = require("./i18nMain");
 const DeepgramStreaming = require("./deepgramStreaming");
@@ -285,15 +284,11 @@ class IPCHandlers {
     this.diarizationManager = managers.diarizationManager;
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
-    this.windowsKeyManager = managers.windowsKeyManager;
-    this.linuxKeyManager = managers.linuxKeyManager;
     this.textEditMonitor = managers.textEditMonitor;
     this.getTrayManager = managers.getTrayManager;
-    this.whisperCudaManager = managers.whisperCudaManager;
     this.googleCalendarManager = managers.googleCalendarManager;
     this.meetingDetectionEngine = managers.meetingDetectionEngine;
     this.audioTapManager = managers.audioTapManager;
-    this.linuxPortalAudioManager = managers.linuxPortalAudioManager;
     this.meetingAecManager = managers.meetingAecManager;
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
@@ -663,12 +658,8 @@ class IPCHandlers {
     });
 
     ipcMain.handle("hide-window", () => {
-      if (process.platform === "darwin") {
-        this.windowManager.hideDictationPanel();
-        if (app.dock) app.dock.show();
-      } else {
-        this.windowManager.hideDictationPanel();
-      }
+      this.windowManager.hideDictationPanel();
+      if (app.dock) app.dock.show();
     });
 
     ipcMain.handle("show-dictation-panel", () => {
@@ -2068,7 +2059,6 @@ class IPCHandlers {
 
       if (enabled) {
         // Entering capture mode — unregister ALL slots so none intercept keypresses.
-        // Dictation is always active; meeting and agent may or may not be set.
         const allSlots = hotkeyManager.slots;
         for (const [slot, info] of allSlots) {
           if (!info?.hotkey) continue;
@@ -2083,46 +2073,9 @@ class IPCHandlers {
             } catch {}
           }
         }
-
-        // On Windows, stop the Windows key listener
-        if (process.platform === "win32" && this.windowsKeyManager) {
-          debugLogger.log("[IPC] Stopping Windows key listener for hotkey capture mode");
-          this.windowsKeyManager.stop();
-        }
-
-        // On Linux, stop the Linux key listener
-        if (process.platform === "linux" && this.linuxKeyManager) {
-          debugLogger.log("[IPC] Stopping Linux key listener for hotkey capture mode");
-          this.linuxKeyManager.stop();
-        }
-
-        // On GNOME, unregister all native keybindings during capture
-        if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager) {
-          for (const slot of [...hotkeyManager.gnomeManager.registeredSlots]) {
-            debugLogger.log(
-              `[IPC] Unregistering GNOME keybinding (slot "${slot}") for capture mode`
-            );
-            await hotkeyManager.gnomeManager.unregisterKeybinding(slot).catch((err) => {
-              debugLogger.warn(`[IPC] Failed to unregister GNOME slot "${slot}":`, err.message);
-            });
-          }
-        }
-
-        // On Hyprland Wayland, unregister the keybinding during capture
-        if (hotkeyManager.isUsingHyprland() && hotkeyManager.hyprlandManager) {
-          debugLogger.log("[IPC] Unregistering Hyprland keybinding for hotkey capture mode");
-          await hotkeyManager.hyprlandManager.unregisterKeybinding().catch((err) => {
-            debugLogger.warn("[IPC] Failed to unregister Hyprland keybinding:", err.message);
-          });
-        }
       } else {
         // Exiting capture mode - re-register globalShortcut if not already registered
-        // Skip for KDE/GNOME/Hyprland — updateHotkey handles re-registration via native path
-        const usesNativePath =
-          hotkeyManager.isUsingKDE() ||
-          hotkeyManager.isUsingGnome() ||
-          hotkeyManager.isUsingHyprland();
-        if (effectiveHotkey && !usesNativeListener(effectiveHotkey) && !usesNativePath) {
+        if (effectiveHotkey && !usesNativeListener(effectiveHotkey)) {
           const { globalShortcut } = require("electron");
           const accelerator = effectiveHotkey.startsWith("Fn+")
             ? effectiveHotkey.slice(3)
@@ -2138,85 +2091,6 @@ class IPCHandlers {
                 `[IPC] Failed to re-register globalShortcut "${accelerator}" after capture mode`
               );
             }
-          }
-        }
-
-        if (process.platform === "win32" && this.windowsKeyManager) {
-          const activationMode = this.windowManager.getActivationMode();
-          debugLogger.log(
-            `[IPC] Exiting hotkey capture mode, activationMode="${activationMode}", hotkey="${effectiveHotkey}"`
-          );
-          const needsListener =
-            effectiveHotkey &&
-            !isGlobeLikeHotkey(effectiveHotkey) &&
-            (activationMode === "push" ||
-              isModifierOnlyHotkey(effectiveHotkey) ||
-              isRightSideModifier(effectiveHotkey));
-          if (needsListener) {
-            debugLogger.log(`[IPC] Restarting Windows key listener for hotkey: ${effectiveHotkey}`);
-            this.windowsKeyManager.start(effectiveHotkey);
-          } else {
-            this.windowsKeyManager.stop();
-          }
-        }
-
-        if (process.platform === "linux" && this.linuxKeyManager) {
-          const activationMode = this.windowManager.getActivationMode();
-          const needsListener =
-            effectiveHotkey &&
-            !isGlobeLikeHotkey(effectiveHotkey) &&
-            (activationMode === "push" ||
-              isModifierOnlyHotkey(effectiveHotkey) ||
-              isRightSideModifier(effectiveHotkey));
-          if (needsListener) {
-            debugLogger.log(`[IPC] Restarting Linux key listener for hotkey: ${effectiveHotkey}`);
-            this.linuxKeyManager.start(effectiveHotkey);
-          } else {
-            this.linuxKeyManager.stop();
-          }
-        }
-
-        // On GNOME, re-register the keybinding with the effective hotkey
-        if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager && effectiveHotkey) {
-          const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(effectiveHotkey);
-          debugLogger.log(
-            `[IPC] Re-registering GNOME keybinding "${gnomeHotkey}" after capture mode`
-          );
-          const success = await hotkeyManager.gnomeManager.registerKeybinding(gnomeHotkey);
-          if (success) {
-            hotkeyManager.currentHotkey = effectiveHotkey;
-          }
-        }
-
-        // On Hyprland Wayland, re-register the keybinding with the effective hotkey
-        if (hotkeyManager.isUsingHyprland() && hotkeyManager.hyprlandManager && effectiveHotkey) {
-          debugLogger.log(
-            `[IPC] Re-registering Hyprland keybinding "${effectiveHotkey}" after capture mode`
-          );
-          const success = await hotkeyManager.hyprlandManager.registerKeybinding(effectiveHotkey);
-          if (success) {
-            hotkeyManager.currentHotkey = effectiveHotkey;
-          }
-        }
-
-        // On KDE (X11 or Wayland), re-register the keybinding with the effective hotkey
-        if (hotkeyManager.isUsingKDE() && hotkeyManager.kdeManager && effectiveHotkey) {
-          debugLogger.log(
-            `[IPC] Re-registering KDE keybinding "${effectiveHotkey}" after capture mode`
-          );
-          const callback = this.windowManager.createHotkeyCallback();
-          const result = await hotkeyManager.kdeManager.registerKeybinding(
-            effectiveHotkey,
-            "dictation",
-            callback
-          );
-          if (result === true) {
-            hotkeyManager.currentHotkey = effectiveHotkey;
-          } else {
-            debugLogger.warn(
-              `[IPC] Failed to re-register KDE keybinding "${effectiveHotkey}" after capture mode`,
-              { result }
-            );
           }
         }
 
@@ -2237,18 +2111,12 @@ class IPCHandlers {
     });
 
     ipcMain.handle("get-hotkey-mode-info", async () => {
-      const isUsingNativeShortcut = this.windowManager.isUsingNativeShortcutHotkeys();
-      const supportsPushToTalk =
-        process.platform === "linux"
-          ? this.linuxKeyManager?.isAvailable?.() === true
-          : !isUsingNativeShortcut;
-
       return {
-        isUsingGnome: this.windowManager.isUsingGnomeHotkeys(),
-        isUsingHyprland: this.windowManager.isUsingHyprlandHotkeys(),
-        isUsingKDE: this.windowManager.isUsingKDEHotkeys(),
-        isUsingNativeShortcut,
-        supportsPushToTalk,
+        isUsingGnome: false,
+        isUsingHyprland: false,
+        isUsingKDE: false,
+        isUsingNativeShortcut: false,
+        supportsPushToTalk: true,
       };
     });
 
@@ -3038,10 +2906,6 @@ class IPCHandlers {
         systemAudio:
           "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
       },
-      win32: {
-        microphone: "ms-settings:privacy-microphone",
-        sound: "ms-settings:sound",
-      },
     };
 
     const openSystemSettings = async (settingType) => {
@@ -3094,17 +2958,11 @@ class IPCHandlers {
     });
 
     ipcMain.handle("request-microphone-access", async () => {
-      if (process.platform !== "darwin") {
-        return { granted: true, status: "granted" };
-      }
       const granted = await systemPreferences.askForMediaAccess("microphone");
       return { granted };
     });
 
     ipcMain.handle("check-microphone-access", () => {
-      if (process.platform !== "darwin") {
-        return { granted: true, status: "granted" };
-      }
       const status = systemPreferences.getMediaAccessStatus("microphone");
       return { granted: status === "granted", status };
     });
@@ -3124,60 +2982,8 @@ class IPCHandlers {
       ...partial,
     });
 
-    const getLinuxSystemAudioAccess = async () => {
-      const capability = await this.linuxPortalAudioManager?.getCapability().catch((error) => ({
-        available: false,
-        supportsPersistentGrant: false,
-        supportsPersistentPortalGrant: false,
-        supportsNativeCapture: false,
-        portalVersion: null,
-        error: error.message,
-      }));
-      const supportsPersistentGrant = !!capability?.supportsPersistentGrant;
-      const supportsPersistentPortalGrant = !!capability?.supportsPersistentPortalGrant;
-      const supportsNativeCapture = !!capability?.supportsNativeCapture;
-      const restoreTokenAvailable =
-        supportsPersistentGrant && !!this.linuxPortalAudioManager?.hasStoredRestoreToken();
-      const helperError =
-        typeof capability?.error === "string" &&
-        !capability.error.includes("helper binary not found")
-          ? capability.error
-          : undefined;
-
-      return buildSystemAudioAccess({
-        granted: restoreTokenAvailable,
-        status: supportsPersistentGrant
-          ? restoreTokenAvailable
-            ? "granted"
-            : "not-determined"
-          : "unknown",
-        mode: "portal",
-        supportsPersistentGrant,
-        supportsPersistentPortalGrant,
-        supportsNativeCapture,
-        supportsOnboardingGrant: supportsPersistentGrant,
-        requiresRuntimeSharePrompt: !supportsPersistentGrant || !restoreTokenAvailable,
-        strategy: supportsPersistentGrant ? "portal-helper" : "browser-portal",
-        restoreTokenAvailable,
-        portalVersion: capability?.portalVersion ?? null,
-        error: helperError,
-      });
-    };
 
     const getSystemAudioAccess = async () => {
-      if (process.platform === "win32") {
-        return buildSystemAudioAccess({
-          granted: true,
-          status: "granted",
-          mode: "loopback",
-          strategy: "loopback",
-        });
-      }
-
-      if (process.platform === "linux") {
-        return getLinuxSystemAudioAccess();
-      }
-
       if (!this.audioTapManager?.isSupported()) {
         return buildSystemAudioAccess();
       }
@@ -3194,34 +3000,6 @@ class IPCHandlers {
     ipcMain.handle("check-system-audio-access", () => getSystemAudioAccess());
 
     ipcMain.handle("request-system-audio-access", async () => {
-      if (process.platform === "win32") {
-        return buildSystemAudioAccess({
-          granted: true,
-          status: "granted",
-          mode: "loopback",
-          strategy: "loopback",
-        });
-      }
-
-      if (process.platform === "linux") {
-        const currentAccess = await getLinuxSystemAudioAccess();
-        if (!currentAccess.supportsOnboardingGrant) {
-          return currentAccess;
-        }
-
-        try {
-          await this.linuxPortalAudioManager?.requestAccess();
-        } catch (error) {
-          debugLogger.warn(
-            "Linux system audio persistent grant failed",
-            { error: error.message },
-            "meeting"
-          );
-        }
-
-        return getLinuxSystemAudioAccess();
-      }
-
       if (!this.audioTapManager?.isSupported()) {
         return buildSystemAudioAccess();
       }
@@ -4052,8 +3830,6 @@ class IPCHandlers {
 
     const getMeetingSystemAudioCapabilityMode = () => {
       if (this.audioTapManager?.isSupported()) return "native";
-      if (process.platform === "win32") return "loopback";
-      if (process.platform === "linux") return "portal";
       return "unsupported";
     };
 
@@ -4069,15 +3845,7 @@ class IPCHandlers {
         return { mode, strategy: "native" };
       }
 
-      if (mode === "loopback") {
-        return { mode, strategy: "loopback" };
-      }
-
-      const linuxAccess = await getLinuxSystemAudioAccess();
-      return {
-        mode,
-        strategy: linuxAccess.strategy === "portal-helper" ? "portal-helper" : "browser-portal",
-      };
+      return { mode, strategy: "unsupported" };
     };
 
     const hasNativeMeetingSystemAudio = () => getMeetingSystemAudioMode() === "native";
@@ -4862,9 +4630,6 @@ class IPCHandlers {
       if (this.audioTapManager) {
         await this.audioTapManager.stop().catch(() => {});
       }
-      if (this.linuxPortalAudioManager) {
-        await this.linuxPortalAudioManager.stop().catch(() => {});
-      }
       await stopMeetingAec();
       await stopLiveSpeakerIdentification().catch(() => {});
       resetMeetingLocalState();
@@ -5175,53 +4940,18 @@ class IPCHandlers {
       });
     };
 
-    const startLinuxMeetingSystemAudio = async (event) => {
-      const win = BrowserWindow.fromWebContents(event.sender);
-      await this.linuxPortalAudioManager.start({
-        onChunk: (chunk) => {
-          sendMeetingAudio(chunk, "system");
-        },
-        onError: (error) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send("meeting-transcription-error", error.message);
-          }
-        },
-        onWarning: (warning) => {
-          debugLogger.warn(
-            "Linux portal system audio warning",
-            { code: warning.code, message: warning.message },
-            "meeting"
-          );
-        },
-      });
-    };
-
     const startMeetingSystemAudio = async (
       event,
       systemAudioMode,
       systemAudioStrategy,
-      context
+      _context
     ) => {
       if (systemAudioMode === "native") {
         await startNativeMeetingSystemAudio(event);
         return systemAudioStrategy;
       }
 
-      if (systemAudioStrategy !== "portal-helper") {
-        return systemAudioStrategy;
-      }
-
-      try {
-        await startLinuxMeetingSystemAudio(event);
-        return systemAudioStrategy;
-      } catch (error) {
-        debugLogger.warn(
-          `Linux portal helper failed ${context}, falling back to browser portal`,
-          { error: error.message },
-          "meeting"
-        );
-        return "browser-portal";
-      }
+      return systemAudioStrategy;
     };
 
     ipcMain.on("meeting-transcription-send", (_event, audioBuffer, source) => {
@@ -5233,9 +4963,6 @@ class IPCHandlers {
       try {
         if (this.audioTapManager) {
           await this.audioTapManager.stop();
-        }
-        if (this.linuxPortalAudioManager) {
-          await this.linuxPortalAudioManager.stop().catch(() => {});
         }
 
         flushPendingMeetingMicChunks(true);
@@ -6188,25 +5915,6 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("get-ydotool-status", () => {
-      const { getYdotoolStatus } = require("./ensureYdotool");
-      const { execFileSync } = require("child_process");
-      const status = getYdotoolStatus();
-      const isKde = (process.env.XDG_CURRENT_DESKTOP || "").toLowerCase().includes("kde");
-      let hasXclip = false;
-      let hasXsel = false;
-      if (isKde) {
-        try {
-          execFileSync("which", ["xclip"], { timeout: 1000 });
-          hasXclip = true;
-        } catch {}
-        try {
-          execFileSync("which", ["xsel"], { timeout: 1000 });
-          hasXsel = true;
-        } catch {}
-      }
-      return { ...status, isKde, hasXclip, hasXsel };
-    });
 
     ipcMain.handle("get-debug-state", async () => {
       try {
