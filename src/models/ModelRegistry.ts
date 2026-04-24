@@ -1,5 +1,5 @@
 import modelDataRaw from "./modelRegistryData.json";
-import { isCloudReasoningMode, getSettings } from "../stores/settingsStore";
+import { getSettings } from "../stores/settingsStore";
 
 export interface ModelDefinition {
   id: string;
@@ -105,7 +105,6 @@ interface ModelRegistryData {
   parakeetModels: ParakeetModelsMap;
   whisperModels: WhisperModelsMap;
   transcriptionProviders: TranscriptionProviderData[];
-  cloudProviders: CloudProviderData[];
   enterpriseProviders: EnterpriseProviderData[];
   localProviders: LocalProviderData[];
 }
@@ -165,10 +164,6 @@ class ModelRegistry {
     return models;
   }
 
-  getCloudProviders(): CloudProviderData[] {
-    return modelData.cloudProviders;
-  }
-
   getEnterpriseProviders(): EnterpriseProviderData[] {
     return modelData.enterpriseProviders;
   }
@@ -222,18 +217,6 @@ export function isEnterpriseProvider(value: unknown): value is EnterpriseProvide
 function buildReasoningProviders(): ReasoningProviders {
   const providers: ReasoningProviders = {};
 
-  for (const cloudProvider of modelRegistry.getCloudProviders()) {
-    providers[cloudProvider.id] = {
-      name: cloudProvider.name,
-      models: cloudProvider.models.map((m) => ({
-        value: m.id,
-        label: m.name,
-        description: m.description,
-        descriptionKey: m.descriptionKey,
-      })),
-    };
-  }
-
   for (const ep of modelRegistry.getEnterpriseProviders()) {
     providers[ep.id] = {
       name: ep.name,
@@ -282,15 +265,7 @@ export function getReasoningModelLabel(modelId: string): string {
 }
 
 export function getModelProvider(modelId: string): string {
-  if (isCloudReasoningMode()) {
-    return "openwhispr";
-  }
-
   const storedProvider = getSettings().reasoningProvider;
-
-  if (storedProvider === "custom") {
-    return "custom";
-  }
 
   if (isEnterpriseProvider(storedProvider)) {
     return storedProvider;
@@ -299,30 +274,16 @@ export function getModelProvider(modelId: string): string {
   const model = getAllReasoningModels().find((m) => m.value === modelId);
 
   if (!model) {
-    if (modelId.includes("claude")) return "anthropic";
-    if (modelId.includes("gemini") && !modelId.includes("gemma")) return "gemini";
-    if ((modelId.includes("gpt-4") || modelId.includes("gpt-5")) && !modelId.includes("gpt-oss"))
-      return "openai";
-    if (
-      modelId.includes("qwen/") ||
-      modelId.includes("openai/") ||
-      modelId.includes("llama-3.1-8b-instant") ||
-      modelId.includes("llama-3.3-") ||
-      modelId.includes("meta-llama/llama-4-") ||
-      modelId.includes("groq/compound") ||
-      modelId.includes("moonshotai/kimi-k2-")
-    )
-      return "groq";
     if (
       modelId.includes("qwen") ||
       modelId.includes("llama") ||
       modelId.includes("mistral") ||
-      modelId.includes("gpt-oss-20b-mxfp4")
+      modelId.includes("gpt-oss")
     )
       return "local";
   }
 
-  return model?.provider || "openai";
+  return model?.provider || "local";
 }
 
 export function getTranscriptionProviders(): TranscriptionProviderData[] {
@@ -363,10 +324,6 @@ export function getWhisperModelInfo(modelId: string): WhisperModelInfo | undefin
 export const WHISPER_MODEL_INFO = modelData.whisperModels;
 
 export function getCloudModel(modelId: string): CloudModelDefinition | undefined {
-  for (const provider of modelData.cloudProviders) {
-    const model = provider.models.find((m) => m.id === modelId);
-    if (model) return model;
-  }
   for (const provider of modelData.enterpriseProviders) {
     const model = provider.models.find((m) => m.id === modelId);
     if (model) return model;
