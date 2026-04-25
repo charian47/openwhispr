@@ -452,10 +452,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     (callback) => (_event, data) => callback(data)
   ),
 
-  // Referral stats
-  getReferralStats: () => ipcRenderer.invoke("get-referral-stats"),
-  sendReferralInvite: (email) => ipcRenderer.invoke("send-referral-invite", email),
-  getReferralInvites: () => ipcRenderer.invoke("get-referral-invites"),
+  // DELETED_AT_GROUP_G — getReferralStats, sendReferralInvite, getReferralInvites removed with referral subsystem
 
   // Meeting transcription (streaming, dual-channel)
   meetingTranscriptionPrepare: (options) =>

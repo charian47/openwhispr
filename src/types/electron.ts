@@ -336,14 +336,7 @@ export interface ConversationPreview {
   last_message_role?: "user" | "assistant" | "system" | null;
 }
 
-export interface ReferralItem {
-  id: string;
-  email: string;
-  name: string | null;
-  status: "pending" | "completed" | "rewarded";
-  created_at: string;
-  first_payment_at: string | null;
-}
+// DELETED_AT_GROUP_G — ReferralItem interface removed with referral subsystem
 
 declare global {
   interface Window {
@@ -1081,45 +1074,7 @@ declare global {
         callback: (data: { wordsUsed: number; limit: number }) => void
       ) => () => void;
 
-      // Referral stats
-      getReferralStats?: () => Promise<{
-        referralCode: string;
-        referralLink: string;
-        totalReferrals: number;
-        completedReferrals: number;
-        pendingReferrals: number;
-        totalMonthsEarned: number;
-        referrals: Array<{
-          id: string;
-          email: string;
-          name: string;
-          status: "pending" | "completed" | "rewarded";
-          created_at: string;
-          first_payment_at: string | null;
-          words_used: number;
-        }>;
-      }>;
-
-      sendReferralInvite?: (email: string) => Promise<{
-        success: boolean;
-        invite: {
-          id: string;
-          recipientEmail: string;
-          status: "sent" | "failed" | "opened" | "converted";
-          sentAt: string;
-        };
-      }>;
-
-      getReferralInvites?: () => Promise<{
-        invites: Array<{
-          id: string;
-          recipientEmail: string;
-          status: "sent" | "failed" | "opened" | "converted";
-          sentAt: string;
-          openedAt?: string;
-          convertedAt?: string;
-        }>;
-      }>;
+      // DELETED_AT_GROUP_G — getReferralStats, sendReferralInvite, getReferralInvites removed with referral subsystem
 
       // Agent Mode
       updateAgentHotkey?: (hotkey: string) => Promise<{ success: boolean; message: string }>;

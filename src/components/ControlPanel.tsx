@@ -37,7 +37,7 @@ import { syncService } from "../services/SyncService.js";
 const platform = getCachedPlatform();
 
 const SettingsModal = React.lazy(() => import("./SettingsModal"));
-const ReferralModal = React.lazy(() => import("./ReferralModal"));
+// DELETED_AT_GROUP_G — ReferralModal removed with referral subsystem
 const PersonalNotesView = React.lazy(() => import("./notes/PersonalNotesView"));
 const DictionaryView = React.lazy(() => import("./DictionaryView"));
 const UploadAudioView = React.lazy(() => import("./notes/UploadAudioView"));
@@ -58,7 +58,7 @@ export default function ControlPanel() {
   const [aiCTADismissed, setAiCTADismissed] = useState(
     () => localStorage.getItem("aiCTADismissed") === "true"
   );
-  const [showReferrals, setShowReferrals] = useState(false);
+  // DELETED_AT_GROUP_G — showReferrals removed with referral subsystem
   const [showSearch, setShowSearch] = useState(false);
   const [showCloudMigrationBanner, setShowCloudMigrationBanner] = useState(false);
   const [activeView, setActiveView] = useState<ControlPanelView>("home");
@@ -614,11 +614,7 @@ export default function ControlPanel() {
         </Suspense>
       )}
 
-      {showReferrals && (
-        <Suspense fallback={null}>
-          <ReferralModal open={showReferrals} onOpenChange={setShowReferrals} />
-        </Suspense>
-      )}
+      {/* DELETED_AT_GROUP_G — ReferralModal removed with referral subsystem */}
 
       {showSearch && (
         <Suspense fallback={null}>
@@ -651,7 +647,6 @@ export default function ControlPanel() {
               setSettingsSection(undefined);
               setShowSettings(true);
             }}
-            onOpenReferrals={() => setShowReferrals(true)}
             onUpgrade={() => {
               setSettingsSection("plansBilling");
               setShowSettings(true);

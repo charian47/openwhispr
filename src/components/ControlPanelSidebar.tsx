@@ -6,13 +6,13 @@ import {
   BookOpen,
   Upload,
   Blocks,
-  Gift,
   Settings,
   HelpCircle,
   UserCircle,
   X,
   Search,
 } from "lucide-react";
+// DELETED_AT_GROUP_G — Gift icon removed with referral subsystem
 import logoIcon from "../assets/icon.png";
 import { useTranslation } from "react-i18next";
 import { cn } from "./lib/utils";
@@ -34,7 +34,7 @@ interface ControlPanelSidebarProps {
   onViewChange: (view: ControlPanelView) => void;
   onOpenSettings: () => void;
   onOpenSearch?: () => void;
-  onOpenReferrals?: () => void;
+  // DELETED_AT_GROUP_G — onOpenReferrals removed with referral subsystem
   onUpgrade?: () => void;
   isOverLimit?: boolean;
   userName?: string | null;
@@ -52,7 +52,7 @@ export default function ControlPanelSidebar({
   onViewChange,
   onOpenSettings,
   onOpenSearch,
-  onOpenReferrals,
+  // DELETED_AT_GROUP_G — onOpenReferrals removed with referral subsystem
   onUpgrade,
   isOverLimit,
   userName,
@@ -223,21 +223,7 @@ export default function ControlPanelSidebar({
           </div>
         )}
 
-        {isSignedIn && onOpenReferrals && (
-          <button
-            onClick={onOpenReferrals}
-            aria-label={t("sidebar.referral")}
-            className="group flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md text-left outline-none hover:bg-foreground/4 dark:hover:bg-white/4 focus-visible:ring-1 focus-visible:ring-primary/30 transition-colors duration-150"
-          >
-            <Gift
-              size={15}
-              className="shrink-0 text-foreground/60 group-hover:text-foreground/75 dark:text-foreground/50 dark:group-hover:text-foreground/65 transition-colors duration-150"
-            />
-            <span className="text-xs text-foreground/80 group-hover:text-foreground dark:text-foreground/70 dark:group-hover:text-foreground/85 transition-colors duration-150">
-              {t("sidebar.referral")}
-            </span>
-          </button>
-        )}
+        {/* DELETED_AT_GROUP_G — referral button removed with referral subsystem */}
 
         <button
           onClick={onOpenSettings}
