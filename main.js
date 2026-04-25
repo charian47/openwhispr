@@ -182,6 +182,38 @@ const WhisperKitSidecarManager = require("./src/helpers/whisperKitSidecarManager
 let whisperKitManager = null;
 const { injectText } = require("./src/helpers/streamingInjector");
 const { isSecureInputActive } = require("./src/helpers/secureInput");
+const { routeInjection, getFrontmostBundleId, pasteChunk } = require("./src/helpers/pasteFallback");
+
+// Electron apps that silently drop CGEventKeyboardSetUnicodeString payloads.
+// For these, we fall back to clipboard + Cmd+V paste.
+const DEFAULT_PASTE_MODE_APPS = [
+  "com.tinyspeck.slackmacgap",        // Slack
+  "com.hnc.Discord",                   // Discord
+  "com.microsoft.VSCode",              // VS Code
+  "com.todesktop.230313mzl4w4u92",     // Cursor (desktop bundle ID)
+];
+
+/**
+ * Returns the user's configured paste-mode app list from localStorage,
+ * falling back to DEFAULT_PASTE_MODE_APPS.
+ * @returns {Promise<string[]>}
+ */
+async function getPasteModeApps() {
+  if (!windowManager?.mainWindow || windowManager.mainWindow.isDestroyed()) {
+    return DEFAULT_PASTE_MODE_APPS;
+  }
+  try {
+    const json = await windowManager.mainWindow.webContents.executeJavaScript(
+      `localStorage.getItem("pasteModeApps")`
+    );
+    if (json === null || json === undefined) return DEFAULT_PASTE_MODE_APPS;
+    const parsed = JSON.parse(json);
+    if (Array.isArray(parsed)) return parsed;
+    return DEFAULT_PASTE_MODE_APPS;
+  } catch {
+    return DEFAULT_PASTE_MODE_APPS;
+  }
+}
 const RightOptionTapManager = require("./src/helpers/rightOptionTapManager");
 const rightOptionTap = new RightOptionTapManager();
 
@@ -630,10 +662,18 @@ async function startApp() {
           });
         }
       } else {
-        const result = await injectText(text + " ");
-        if (!result.success) {
-          if (debugLogger) debugLogger.warn(`[injector] failed: ${result.error}`);
+        const toInject = text + " ";
+        const pasteApps = await getPasteModeApps();
+        const bundleId = await getFrontmostBundleId();
+        const route = routeInjection(bundleId, pasteApps);
+        if (debugLogger) debugLogger.log(`[injector] route=${route} bundleId=${bundleId || "?"}`);
+        let result;
+        try {
+          result = route === "paste" ? await pasteChunk(toInject) : await injectText(toInject);
+        } catch (err) {
+          result = { success: false, error: err.message };
         }
+        if (!result.success && debugLogger) debugLogger.warn(`[injector] failed (route=${route}): ${result.error}`);
       }
     }
 
