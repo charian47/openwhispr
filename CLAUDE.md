@@ -1,10 +1,12 @@
+> This fork has been trimmed to a macOS-only, local-only dictation app (personal use). Windows/Linux, cloud providers, auth/referral, enterprise, onboarding, and MCP integration removed on 2026-04-24. Streaming engine to be added in Plan 2.
+
 # OpenWhispr Technical Reference for AI Assistants
 
 This document provides comprehensive technical details about the OpenWhispr project architecture for AI assistants working on the codebase.
 
 ## Project Overview
 
-OpenWhispr is an Electron-based desktop dictation application that uses whisper.cpp for speech-to-text transcription. It supports both local (privacy-focused) and cloud (OpenAI API) processing modes.
+OpenWhispr is an Electron-based desktop dictation application that uses whisper.cpp and NVIDIA Parakeet for local speech-to-text transcription. This fork is macOS-only and local-only — no cloud providers, no auth, no onboarding.
 
 ## Architecture Overview
 
@@ -13,7 +15,7 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **Desktop Framework**: Electron 41 with context isolation
 - **Database**: better-sqlite3 for local transcription history
 - **UI Components**: shadcn/ui with Radix primitives
-- **Speech Processing**: whisper.cpp + NVIDIA Parakeet (via sherpa-onnx) + OpenAI API
+- **Speech Processing**: whisper.cpp + NVIDIA Parakeet (via sherpa-onnx)
 - **Audio Processing**: FFmpeg (bundled via ffmpeg-static)
 - **Node.js**: 24 (pinned in `.nvmrc` — CI uses Node 24, do NOT regenerate `package-lock.json` with a different major version)
 
@@ -42,58 +44,34 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 
 ### Native Resources (resources/)
 
-- **windows-key-listener.c**: C source for Windows low-level keyboard hook (Push-to-Talk)
-- **windows-mic-listener.c**: C source for WASAPI mic session monitor (event-driven mic detection)
 - **macos-mic-listener.swift**: Swift source for CoreAudio mic property listener (event-driven mic detection)
 - **globe-listener.swift**: Swift source for macOS Globe/Fn key detection
-- **bin/**: Directory for compiled native binaries (whisper-cpp, nircmd, key/mic listeners)
+- **bin/**: Directory for compiled native binaries (whisper-cpp, mic/globe listeners)
 
 ### Helper Modules (src/helpers/)
 
 - **audioManager.js**: Handles audio device management
-- **clipboard.js**: Cross-platform clipboard operations
+- **clipboard.js**: Clipboard operations
   - macOS: AppleScript-based paste with accessibility permission check
-  - Windows: PowerShell SendKeys with nircmd.exe fallback
-  - Linux: Native XTest binary + compositor-aware fallbacks (xdotool, wtype, ydotool)
 - **database.js**: SQLite operations for transcription history
 - **debugLogger.js**: Debug logging system with file output
 - **devServerManager.js**: Vite dev server integration
 - **dragManager.js**: Window dragging functionality
-- **environment.js**: Environment variable and OpenAI API management
+- **environment.js**: Environment variable management
 - **hotkeyManager.js**: Global hotkey registration and management
-  - Handles platform-specific defaults (GLOBE on macOS, backtick on Windows/Linux)
+  - Handles macOS defaults (GLOBE key)
   - Auto-fallback to F8/F9 if default hotkey is unavailable
   - Notifies renderer via IPC when hotkey registration fails
-  - Integrates with GnomeShortcutManager for GNOME Wayland support
-  - Integrates with HyprlandShortcutManager for Hyprland Wayland support
-- **gnomeShortcut.js**: GNOME Wayland global shortcut integration
-  - Uses D-Bus service to receive hotkey toggle commands
-  - Registers shortcuts via gsettings (visible in GNOME Settings → Keyboard → Shortcuts)
-  - Converts Electron hotkey format to GNOME keysym format
-  - Only active on Linux + Wayland + GNOME desktop
-- **hyprlandShortcut.js**: Hyprland Wayland global shortcut integration
-  - Uses D-Bus service to receive hotkey toggle commands (same `com.openwhispr.App` service)
-  - Registers shortcuts via `hyprctl keyword bind` (runtime keybinding)
-  - Converts Electron hotkey format to Hyprland bind format (`MODS, key`)
-  - Only active on Linux + Wayland + Hyprland (detected via `HYPRLAND_INSTANCE_SIGNATURE`)
 - **ipcHandlers.js**: Centralized IPC handler registration
-- **windowsKeyManager.js**: Windows Push-to-Talk support with native key listener
-  - Spawns native `windows-key-listener.exe` binary for low-level keyboard hooks
-  - Supports compound hotkeys (e.g., `Ctrl+Shift+F11`, `CommandOrControl+Space`)
-  - Emits `key-down` and `key-up` events for push-to-talk functionality
-  - Graceful fallback if binary unavailable
 - **meetingDetectionEngine.js**: Orchestrates meeting detection from all sources
   - Gates notifications during recording (tap-to-talk and push-to-talk)
   - Post-recording cooldown (2.5s) before showing queued notifications
   - Priority-based coalescing (process > audio) — one notification, not three
 - **meetingProcessDetector.js**: Detects running meeting apps
   - macOS: Event-driven via `systemPreferences.subscribeWorkspaceNotification` (zero CPU)
-  - Windows/Linux: Shared `processListCache` polling (30s interval)
 - **audioActivityDetector.js**: Detects microphone usage for unscheduled meetings
   - macOS: Event-driven via `macos-mic-listener` binary (CoreAudio property listeners)
-  - Windows: Event-driven via `windows-mic-listener.exe` (WASAPI sessions, self-PID exclusion)
-  - Linux: Event-driven via `pactl subscribe` (PulseAudio source-output events)
-  - All platforms: Graceful fallback to polling if native approach fails
+  - Graceful fallback to polling if native binary unavailable
 - **processListCache.js**: Shared singleton process list cache (5s TTL, `ps-list` npm)
 - **googleCalendarManager.js**: Google Calendar sync with exponential backoff
   - 10s socket timeout on API requests
@@ -114,7 +92,6 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 
 - **App.jsx**: Main dictation interface with recording states
 - **ControlPanel.tsx**: Settings, history, model management UI
-- **OnboardingFlow.tsx**: 8-step first-time setup wizard
 - **SettingsPage.tsx**: Comprehensive settings interface
 - **WhisperModelPicker.tsx**: Model selection and download UI
 - **ui/**: Reusable UI components (buttons, cards, inputs, etc.)
@@ -137,9 +114,8 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 
 - **ReasoningService.ts**: AI processing for agent-addressed commands
   - Detects when user addresses their named agent
-  - Routes to appropriate AI provider (OpenAI/Anthropic/Gemini)
+  - Routes to local llama.cpp only (cloud providers removed)
   - Removes agent name from final output
-  - Supports GPT-5, Claude 4.6 (Opus/Sonnet/Haiku), and Gemini 3.1 Pro / 3 Flash models
 
 ### whisper.cpp Integration
 
@@ -179,7 +155,7 @@ Always-on offline semantic search that finds notes by meaning, not just keywords
 2. Note create/update/delete → SQLite write → background vector upsert/delete via `_asyncVectorUpsert()`/`_asyncVectorDelete()`
 3. Agent searches → `db-semantic-search-notes` IPC → parallel FTS5 + vector search → RRF merge → ranked results
 
-**Search fallback chain** (in `searchNotesTool.ts`): cloud search → local semantic → FTS5 keyword
+**Search fallback chain** (in `searchNotesTool.ts`): local semantic → FTS5 keyword
 
 **Storage**:
 - Qdrant data: `~/.cache/openwhispr/qdrant-data/`
@@ -194,15 +170,11 @@ Always-on offline semantic search that finds notes by meaning, not just keywords
 
 - **download-whisper-cpp.js**: Downloads whisper.cpp binaries from GitHub releases
 - **download-llama-server.js**: Downloads llama.cpp server for local LLM inference
-- **download-nircmd.js**: Downloads nircmd.exe for Windows clipboard operations
-- **download-windows-key-listener.js**: Downloads prebuilt Windows key listener binary
-- **download-windows-mic-listener.js**: Downloads prebuilt Windows mic listener binary
 - **download-sherpa-onnx.js**: Downloads sherpa-onnx binaries for Parakeet support
 - **download-qdrant.js**: Downloads Qdrant vector DB binary for local semantic search
 - **download-minilm.js**: Downloads all-MiniLM-L6-v2 ONNX model + tokenizer for local embeddings
 - **build-globe-listener.js**: Compiles macOS Globe key listener from Swift source
 - **build-macos-mic-listener.js**: Compiles macOS mic listener from Swift source
-- **build-windows-key-listener.js**: Compiles Windows key listener (for local development)
 - **run-electron.js**: Development script to launch Electron with proper environment
 - **lib/download-utils.js**: Shared utilities for downloading and extracting files
   - `fetchLatestRelease(repo, options)`: Fetches latest release from GitHub API
@@ -260,16 +232,12 @@ CREATE TABLE transcriptions (
 
 Settings stored in localStorage with these keys:
 - `whisperModel`: Selected Whisper model
-- `useLocalWhisper`: Boolean for local vs cloud
-- `openaiApiKey`: API key (plaintext)
-- `anthropicApiKey`: API key (plaintext)
-- `geminiApiKey`: API key (plaintext)
+- `useLocalWhisper`: Boolean for local transcription mode
 - `language`: Selected language code
 - `agentName`: User's custom agent name
-- `reasoningModel`: Selected AI model for processing
-- `reasoningProvider`: AI provider (openai/anthropic/gemini/local)
+- `reasoningModel`: Selected local AI model for processing
+- `reasoningProvider`: AI provider (`local` only)
 - `hotkey`: Custom hotkey configuration
-- `hasCompletedOnboarding`: Onboarding completion flag
 - `customDictionary`: JSON array of words/phrases for improved transcription accuracy
 
 Environment variables persisted to `.env` (via `saveAllKeysToEnvFile()`):
@@ -278,39 +246,21 @@ Environment variables persisted to `.env` (via `saveAllKeysToEnvFile()`):
 
 ### 6. Language Support
 
-58 languages supported (see src/utils/languages.ts):
-- Each language has a two-letter code and label
-- "auto" for automatic detection
-- Passed to whisper.cpp via -l parameter
+Whisper supports 58 languages via the `-l` parameter (see src/utils/languages.ts). The UI is localized in en and es only. "auto" detection is also supported.
 
 ### 7. Agent Naming System
 
-- User names their agent during onboarding (step 6/8)
 - Name stored in localStorage and database
 - ReasoningService detects "Hey [AgentName]" patterns
 - AI processes command and removes agent reference from output
-- Supports multiple AI providers (all models defined in `src/models/modelRegistryData.json`):
-  - **OpenAI** (Responses API):
-    - GPT-5.2 (`gpt-5.2`) - Latest flagship reasoning model
-    - GPT-5 Mini (`gpt-5-mini`) - Fast and cost-efficient
-    - GPT-5 Nano (`gpt-5-nano`) - Ultra-fast, low latency
-    - GPT-4.1 Series (`gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`) - Strong baseline with 1M context
-  - **Anthropic** (Via IPC bridge to avoid CORS):
-    - Claude Sonnet 4.6 (`claude-sonnet-4-6`) - Balanced performance
-    - Claude Haiku 4.5 (`claude-haiku-4-5`) - Fast with near-frontier intelligence
-    - Claude Opus 4.6 (`claude-opus-4-6`) - Most capable Claude model
-  - **Google Gemini** (Direct API integration):
-    - Gemini 3.1 Pro (`gemini-3.1-pro-preview`) - Most capable Gemini model
-    - Gemini 3 Flash (`gemini-3-flash-preview`) - Ultra-fast, high-capability next-gen model
-    - Gemini 2.5 Flash Lite (`gemini-2.5-flash-lite`) - Lowest latency and cost
-  - **Local**: GGUF models via llama.cpp (Qwen, Llama, Mistral, GPT-OSS)
+- Supports local models only (GGUF via llama.cpp — Qwen, Llama, Mistral, GPT-OSS)
+- All models defined in `src/models/modelRegistryData.json`
 
 ### 8. Model Registry Architecture
 
-All AI model definitions are centralized in `src/models/modelRegistryData.json` as the single source of truth:
+All AI model definitions are centralized in `src/models/modelRegistryData.json` as the single source of truth. The registry now contains only local providers (cloud providers removed on 2026-04-24):
 ```json
 {
-  "cloudProviders": [...],   // OpenAI, Anthropic, Gemini API models
   "localProviders": [...]    // GGUF models with download URLs
 }
 ```
@@ -327,31 +277,9 @@ All AI model definitions are centralized in `src/models/modelRegistryData.json` 
 - `promptTemplate` defines the chat format (ChatML, Llama, Mistral)
 - Download URLs constructed as: `{baseUrl}/{hfRepo}/resolve/main/{fileName}`
 
-### 9. API Integrations and Updates
+### 9. Reasoning Engine
 
-**OpenAI Responses API (September 2025)**:
-- Migrated from Chat Completions to new Responses API
-- Endpoint: `https://api.openai.com/v1/responses`
-- Simplified request format with `input` array instead of `messages`
-- New response format with `output` array containing typed items
-- Automatic handling of GPT-5 and o-series model requirements
-- No temperature parameter for newer models (GPT-5, o-series)
-
-**Anthropic Integration**:
-- Routes through IPC handler to avoid CORS issues in renderer process
-- Uses main process for API calls with proper error handling
-- Model IDs use alias format (e.g., `claude-sonnet-4-6` not date-suffixed versions)
-
-**Gemini Integration**:
-- Direct API calls from renderer process
-- Increased token limits for Gemini 3.1 Pro (2000 minimum)
-- Proper handling of thinking process in responses
-- Error handling for MAX_TOKENS finish reason
-
-**API Key Persistence**:
-- All API keys now properly persist to `.env` file
-- Keys stored in environment variables and reloaded on app start
-- Centralized `saveAllKeysToEnvFile()` method ensures consistency
+All reasoning runs on local llama.cpp. Cloud APIs (OpenAI, Anthropic, Gemini) were removed on 2026-04-24. No API keys required or stored.
 
 ### 10. System Settings Integration
 
@@ -366,13 +294,10 @@ The app can open OS-level settings for microphone permissions, sound input selec
 | Platform | Microphone Privacy | Sound Input | Accessibility |
 |----------|-------------------|-------------|---------------|
 | macOS | `x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone` | `x-apple.systempreferences:com.apple.preference.sound?input` | `x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility` |
-| Windows | `ms-settings:privacy-microphone` | `ms-settings:sound` | N/A |
-| Linux | Manual (no URL scheme) | Manual (e.g., pavucontrol) | N/A |
 
 **UI Component** (`MicPermissionWarning.tsx`):
-- Shows platform-appropriate buttons and messages
-- Linux only shows "Open Sound Settings" (no separate privacy settings)
-- macOS/Windows show both sound and privacy buttons
+- Shows macOS-specific buttons and messages
+- Opens system preferences via `x-apple.systempreferences:` URL scheme
 
 ### 11. Debug Mode
 
@@ -383,31 +308,7 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - Audio level analysis
 - Complete reasoning pipeline debugging with stage-by-stage logging
 
-### 12. Windows Push-to-Talk
-
-Native Windows support for true push-to-talk functionality using low-level keyboard hooks:
-
-**Architecture**:
-- `resources/windows-key-listener.c`: Native C program using Windows `SetWindowsHookEx` for keyboard hooks
-- `src/helpers/windowsKeyManager.js`: Node.js wrapper that spawns and manages the native binary
-- Binary outputs `KEY_DOWN` and `KEY_UP` to stdout when target key is pressed/released
-
-**Compound Hotkey Support**:
-- Parses hotkey strings like `CommandOrControl+Shift+F11`
-- Maps modifiers: `CommandOrControl`/`Ctrl` → VK_CONTROL, `Alt`/`Option` → VK_MENU, `Shift` → VK_SHIFT
-- Verifies all required modifiers are held before emitting key events
-
-**Binary Distribution**:
-- Prebuilt binary downloaded from GitHub releases (`windows-key-listener-v*` tags)
-- Download script: `scripts/download-windows-key-listener.js`
-- CI workflow: `.github/workflows/build-windows-key-listener.yml`
-- Fallback to tap mode if binary unavailable
-
-**IPC Events**:
-- `windows-key-listener:key-down`: Fired when hotkey pressed (start recording)
-- `windows-key-listener:key-up`: Fired when hotkey released (stop recording)
-
-### 13. Custom Dictionary
+### 12. Custom Dictionary
 
 Improve transcription accuracy for specific words, names, or technical terms:
 
@@ -415,7 +316,7 @@ Improve transcription accuracy for specific words, names, or technical terms:
 - User adds words/phrases through Settings → Custom Dictionary
 - Words stored as JSON array in localStorage (`customDictionary` key)
 - On transcription, words are joined and passed as `prompt` parameter to Whisper
-- Works with both local whisper.cpp and cloud OpenAI Whisper API
+- Works with local whisper.cpp
 
 **Implementation**:
 - `src/hooks/useSettings.ts`: Manages `customDictionary` state
@@ -428,62 +329,7 @@ Improve transcription accuracy for specific words, names, or technical terms:
 - Words in the prompt are more likely to be recognized correctly
 - Useful for: uncommon names, technical jargon, brand names, domain-specific terms
 
-### 14. GNOME Wayland Global Hotkeys
-
-On GNOME Wayland, Electron's `globalShortcut` API doesn't work due to Wayland's security model. OpenWhispr uses native GNOME shortcuts:
-
-**Architecture**:
-1. `main.js` enables `GlobalShortcutsPortal` feature flag for Wayland
-2. `hotkeyManager.js` detects GNOME + Wayland and initializes `GnomeShortcutManager`
-3. `gnomeShortcut.js` creates D-Bus service at `com.openwhispr.App`
-4. Shortcuts registered via `gsettings` as custom GNOME keybindings
-5. GNOME triggers `dbus-send` command which calls the D-Bus `Toggle()` method
-
-**Key Constants**:
-- D-Bus service: `com.openwhispr.App`
-- D-Bus path: `/com/openwhispr/App`
-- gsettings path: `/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/openwhispr/`
-
-**IPC Integration**:
-- `get-hotkey-mode-info`: Returns `{ isUsingGnome, isUsingHyprland, isUsingNativeShortcut }` to renderer
-- UI hides activation mode selector when `isUsingNativeShortcut` is true
-- Forces tap-to-talk mode (push-to-talk not supported)
-
-**Hotkey Format Conversion**:
-- Electron format: `Alt+R`, `CommandOrControl+Shift+Space`
-- GNOME format: `<Alt>r`, `<Control><Shift>space`
-- Backtick (`) → `grave` in GNOME keysym format
-
-### 15. Hyprland Wayland Global Hotkeys
-
-On Hyprland (wlroots Wayland compositor), Electron's `globalShortcut` API and the `GlobalShortcutsPortal` feature don't work reliably. OpenWhispr uses native Hyprland keybindings:
-
-**Architecture**:
-1. `main.js` enables `GlobalShortcutsPortal` feature flag for Wayland (fallback)
-2. `hotkeyManager.js` detects Hyprland + Wayland and initializes `HyprlandShortcutManager`
-3. `hyprlandShortcut.js` creates D-Bus service at `com.openwhispr.App` (same as GNOME)
-4. Shortcuts registered via `hyprctl keyword bind` (runtime keybinding)
-5. Hyprland triggers `dbus-send` command which calls the D-Bus `Toggle()` method
-
-**Detection**:
-- Primary: `HYPRLAND_INSTANCE_SIGNATURE` environment variable (set by Hyprland)
-- Fallback: `XDG_CURRENT_DESKTOP` contains "hyprland"
-
-**Hotkey Format Conversion**:
-- Electron format: `Alt+R`, `CommandOrControl+Shift+Space`
-- Hyprland format: `ALT, R`, `CTRL SHIFT, space`
-- Modifier-only combos (e.g., `Control+Super`) → `CTRL, Super_L`
-
-**Bind/Unbind Commands**:
-- Register: `hyprctl keyword bind "ALT, R, exec, dbus-send --session ..."`
-- Unregister: `hyprctl keyword unbind "ALT, R"`
-- Bindings are ephemeral (don't survive Hyprland restart) but re-registered on app startup
-
-**Limitations**:
-- Push-to-talk not supported (Hyprland `bind` fires a single exec, not key-down/key-up)
-- Requires `hyprctl` on PATH (ships with Hyprland)
-
-### 16. Meeting Detection (Event-Driven)
+### 13. Meeting Detection (Event-Driven)
 
 Detects meetings via three independent sources, orchestrated by `MeetingDetectionEngine`:
 
@@ -494,13 +340,10 @@ Detects meetings via three independent sources, orchestrated by `MeetingDetectio
 
 **Process Detection** (known meeting apps — Zoom, Teams, Webex, FaceTime):
 - macOS: `systemPreferences.subscribeWorkspaceNotification` — zero CPU, instant detection
-- Windows/Linux: `processListCache` shared polling (30s interval, `ps-list` npm)
 
 **Microphone Detection** (unscheduled/browser meetings like Google Meet):
 - macOS: `macos-mic-listener` binary — CoreAudio `kAudioDevicePropertyDeviceIsRunningSomewhere` property listeners with hot-plug support
-- Windows: `windows-mic-listener.exe` — WASAPI `IAudioSessionManager2` session monitoring, `--exclude-pid` for self-mic exclusion
-- Linux: `pactl subscribe` — PulseAudio source-output events
-- All platforms: Graceful fallback to polling if native binary/command unavailable
+- Graceful fallback to polling if native binary unavailable
 
 **UX Rules**:
 - During recording (tap-to-talk or push-to-talk): ALL notifications suppressed
@@ -511,8 +354,6 @@ Detects meetings via three independent sources, orchestrated by `MeetingDetectio
 
 **Binary Distribution**:
 - macOS: Compiled from Swift source via `scripts/build-macos-mic-listener.js` during `compile:native`
-- Windows: Prebuilt binary downloaded via `scripts/download-windows-mic-listener.js` during `prebuild:win`
-- CI workflow: `.github/workflows/build-windows-mic-listener.yml` auto-builds on push to main
 
 **Calendar Sync Resilience**:
 - 10s socket timeout on all Google Calendar API requests
@@ -527,7 +368,7 @@ All user-facing strings **must** use the i18n system. Never hardcode UI text in 
 
 **Setup**: react-i18next (v15) with i18next (v25). Translation files in `src/locales/{lang}/translation.json`.
 
-**Supported languages**: en, es, fr, de, pt, it, ru, zh-CN, zh-TW
+**Supported languages**: en, es
 
 **How to use**:
 ```tsx
@@ -539,7 +380,7 @@ const { t } = useTranslation();
 ```
 
 **Rules**:
-1. Every new UI string must have a translation key in `en/translation.json` and all other language files
+1. Every new UI string must have a translation key in both `en/translation.json` and `es/translation.json`
 2. Use `useTranslation()` hook in components and hooks
 3. Keep `{{variable}}` interpolation syntax for dynamic values
 4. Do NOT translate: brand names (OpenWhispr, Pro), technical terms (Markdown, Signal ID), format names (MP3, WAV), AI system prompts
@@ -551,23 +392,18 @@ const { t } = useTranslation();
 2. **New Setting**: Update useSettings.ts and SettingsPage.tsx
 3. **New UI Component**: Follow shadcn/ui patterns in src/components/ui
 4. **New Manager**: Create in src/helpers/, initialize in main.js
-5. **New UI Strings**: Add translation keys to all 10 language files (see i18n section above)
+5. **New UI Strings**: Add translation keys to both language files — `en/translation.json` and `es/translation.json` (see i18n section above)
 6. **New Sidecar Binary**: Add download script in `scripts/`, add to `prebuild*` scripts in package.json, add manager in `src/helpers/`, initialize in `main.js`, shutdown in `will-quit` handler
 
 ### Testing Checklist
 
-- [ ] Test both local and cloud processing modes
-- [ ] Verify hotkey works globally
-- [ ] Check clipboard pasting on all platforms
+- [ ] Verify hotkey works globally (macOS Globe key or custom hotkey)
+- [ ] Check clipboard pasting (macOS: AppleScript paste, accessibility permission required)
 - [ ] Test with different audio input devices
 - [ ] Verify whisper.cpp binary detection
 - [ ] Test all Whisper models
-- [ ] Check agent naming functionality
+- [ ] Check agent naming functionality (local model only)
 - [ ] Test custom dictionary with uncommon words
-- [ ] Verify Windows Push-to-Talk with compound hotkeys
-- [ ] Test GNOME Wayland hotkeys (if on GNOME + Wayland)
-- [ ] Test Hyprland Wayland hotkeys (if on Hyprland + Wayland)
-- [ ] Verify activation mode selector is hidden on GNOME Wayland and Hyprland Wayland
 - [ ] Verify meeting detection works with event-driven mode (check debug logs for "event-driven")
 - [ ] Test meeting notification suppression during recording
 - [ ] Test post-recording cooldown (notifications shouldn't flash immediately)
@@ -590,35 +426,21 @@ const { t } = useTranslation();
 
 3. **Clipboard Not Working**:
    - macOS: Check accessibility permissions (required for AppleScript paste)
-   - Linux: Native `linux-fast-paste` binary (XTest) is tried first, works for X11 and XWayland apps
-     - X11: xdotool fallback if native binary unavailable
-     - GNOME/KDE Wayland: xdotool (XWayland apps) → ydotool (requires ydotoold daemon)
-     - wlroots Wayland (Sway, Hyprland): wtype → xdotool → ydotool
-   - Windows: PowerShell SendKeys (built-in) or nircmd.exe (bundled)
 
 4. **Build Issues**:
    - Use `npm run pack` for unsigned builds (CSC_IDENTITY_AUTO_DISCOVERY=false)
    - Signing requires Apple Developer account
    - ASAR unpacking needed for FFmpeg
-   - Run `npm run download:whisper-cpp` before packaging (current platform)
-   - Use `npm run download:whisper-cpp:all` for multi-platform packaging
+   - Run `npm run download:whisper-cpp` before packaging
    - afterSign.js automatically skips signing when CSC_IDENTITY_AUTO_DISCOVERY=false
    - **Lockfile**: Always use Node 24 when running `npm install` (matches CI). If your local Node version differs, use `nvm exec 24 npm install`. Running `npm install` with a different major version will produce an incompatible `package-lock.json` that breaks `npm ci` in CI.
 
-5. **Windows Push-to-Talk Binary**:
-   - Prebuilt binary downloaded automatically on Windows during build
-   - If download fails, push-to-talk falls back to tap mode
-   - To compile locally: install Visual Studio Build Tools or MinGW-w64
-   - CI workflow (`.github/workflows/build-windows-key-listener.yml`) auto-builds on push to main
-
-6. **Meeting Detection Not Working**:
+5. **Meeting Detection Not Working**:
    - Check debug logs for "event-driven" vs "polling" mode
-   - macOS: Verify `macos-mic-listener` binary exists in `resources/bin/` (compiled during `npm run compile:native`)
-   - Windows: Verify `windows-mic-listener.exe` exists in `resources/bin/` (downloaded during `prebuild:win`)
-   - Linux: Verify `pactl` is installed (`pulseaudio-utils` or `pipewire-pulse` package)
+   - Verify `macos-mic-listener` binary exists in `resources/bin/` (compiled during `npm run compile:native`)
    - If event-driven binary is missing, detection falls back to polling automatically
 
-7. **Local Semantic Search Not Working**:
+6. **Local Semantic Search Not Working**:
    - Qdrant binary should be in `resources/bin/qdrant-{platform}-{arch}` (auto-downloaded during `predev`/`prebuild`)
    - Embedding model should be in `~/.cache/openwhispr/embedding-models/all-MiniLM-L6-v2/model.onnx` (auto-downloaded on first app launch)
    - Run `npm run download:qdrant` and `npm run download:embedding-model` manually if missing
@@ -637,40 +459,6 @@ const { t } = useTranslation();
 - whisper.cpp bundled for both arm64 and x64
 - System settings accessible via `x-apple.systempreferences:` URL scheme
 
-**Windows**:
-- No special accessibility permissions needed
-- Microphone privacy settings at `ms-settings:privacy-microphone`
-- Sound settings at `ms-settings:sound`
-- NSIS installer for distribution
-- whisper.cpp bundled for x64
-- **Push-to-Talk**: Native key listener binary (`windows-key-listener.exe`) enables true push-to-talk
-  - Uses Windows Low-Level Keyboard Hook (`WH_KEYBOARD_LL`)
-  - Supports compound hotkeys (e.g., `Ctrl+Shift+F11`)
-  - Prebuilt binary auto-downloaded from GitHub releases
-  - Falls back to tap mode if unavailable
-
-**Linux**:
-- Multiple package manager support
-- Standard XDG directories
-- AppImage for distribution
-- whisper.cpp bundled for x64
-- No standardized URL scheme for system settings (user must open manually)
-- Privacy settings button hidden in UI (not applicable on Linux)
-- Recommend `pavucontrol` for audio device management
-- **Clipboard paste tools** (at least one required for auto-paste):
-  - **X11**: `xdotool` (recommended)
-  - **Wayland** (non-GNOME): `wtype` (requires virtual keyboard protocol) or `xdotool` (works via XWayland, recommended for Electron apps)
-  - **GNOME Wayland**: `xdotool` for XWayland apps only (native Wayland apps require manual paste)
-  - Terminal detection: Auto-detects terminal emulators and uses Ctrl+Shift+V
-  - Fallback: Text copied to clipboard with manual paste instructions
-- **GNOME Wayland global hotkeys**:
-  - Uses native GNOME shortcuts via D-Bus and gsettings (no special permissions needed)
-  - Hotkeys visible in GNOME Settings → Keyboard → Shortcuts → Custom
-  - Default hotkey: `Alt+R` (backtick not supported)
-  - Push-to-talk unavailable (GNOME shortcuts only fire single toggle event)
-  - Falls back to X11/globalShortcut if GNOME integration fails
-  - `dbus-next` npm package used for D-Bus communication
-
 ## Code Style and Conventions
 
 - Use TypeScript for new React components
@@ -688,12 +476,10 @@ const { t } = useTranslation();
 - Memory usage with large models
 - Process timeout protection (5 minutes)
 - Meeting detection uses event-driven OS APIs (near-zero CPU) with polling fallback
-- Process list cache shared between detectors to avoid duplicate `tasklist`/`pgrep` calls
-- Google Calendar sync uses exponential backoff to avoid hammering API on network failures
 
 ## Security Considerations
 
-- API keys stored in plaintext in userData `.env` and localStorage (not yet encrypted — see #532)
+- No cloud API keys (cloud providers removed)
 - Context isolation enabled
 - No remote code execution
 - Sanitized file paths
@@ -701,9 +487,6 @@ const { t } = useTranslation();
 
 ## Future Enhancements to Consider
 
-- Streaming transcription support
+- Streaming transcription (Plan 2)
 - Custom wake word detection
-- ~~Multi-language UI~~ (implemented — 9 languages via react-i18next)
-- Cloud model selection
-- Batch transcription
 - Export formats beyond clipboard
