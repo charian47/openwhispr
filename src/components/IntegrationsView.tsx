@@ -8,14 +8,10 @@ import { ConfirmDialog } from "./ui/dialog";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useSystemAudioPermission } from "../hooks/useSystemAudioPermission";
 import { canManageSystemAudioInApp } from "../utils/systemAudioAccess";
-import McpIntegrationCard from "./McpIntegrationCard";
 import googleCalendarIcon from "../assets/icons/google-calendar.svg";
 
 
-interface IntegrationsViewProps {
-  isPaid: boolean;
-  onUpgrade: () => void;
-}
+interface IntegrationsViewProps {}
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -25,7 +21,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function IntegrationsView({ isPaid, onUpgrade }: IntegrationsViewProps) {
+export default function IntegrationsView({}: IntegrationsViewProps) {
   const { t } = useTranslation();
   const { gcalAccounts, setGcalAccounts } = useSettingsStore();
   const [isConnecting, setIsConnecting] = useState(false);
@@ -190,11 +186,6 @@ export default function IntegrationsView({ isPaid, onUpgrade }: IntegrationsView
             </SettingsPanelRow>
           )}
         </SettingsPanel>
-      </div>
-
-      <div>
-        <SectionLabel>{t("integrations.sections.mcp")}</SectionLabel>
-        <McpIntegrationCard isPaid={isPaid} onUpgrade={onUpgrade} />
       </div>
 
       {!hasAccounts && (
