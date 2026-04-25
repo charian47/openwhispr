@@ -13,7 +13,7 @@ var modelLoadComplete: Bool = false
 
 let audioBuffer = AudioRingBuffer()
 var segmentId: Int = 0
-let vad = VoiceActivityDetector()
+let vad = EnergyHangoverVAD()
 var lastPartialAt: Date = .distantPast
 var lastVadState: String? = nil
 

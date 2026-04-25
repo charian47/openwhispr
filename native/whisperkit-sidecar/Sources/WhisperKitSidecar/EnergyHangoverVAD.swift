@@ -8,7 +8,9 @@ import Foundation
 /// - `feed(_ samples:) -> Bool`: Returns true exactly once per speech-to-silence
 ///   transition, when the hangover window has elapsed. Callers should then commit
 ///   the buffered audio as a finished segment.
-final class VoiceActivityDetector {
+/// Renamed from `VoiceActivityDetector` to avoid colliding with
+/// WhisperKit's own `VoiceActivityDetector` open class.
+final class EnergyHangoverVAD {
     // MARK: - Configuration
 
     var energyThreshold: Float = 0.005
