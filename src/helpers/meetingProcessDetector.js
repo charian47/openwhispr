@@ -19,47 +19,18 @@ const BUNDLE_APP_NAMES = {
   facetime: "FaceTime",
 };
 
-const MEETING_APPS = {
-  win32: [
-    { processKey: "zoom", appName: "Zoom", imageName: "cpthost.exe" },
-    { processKey: "teams", appName: "Microsoft Teams", imageName: "ms-teams_modulehost.exe" },
-    { processKey: "webex", appName: "Webex", imageName: "webexmeetingsapp.exe" },
-  ],
-  linux: [
-    { processKey: "zoom", appName: "Zoom", imageName: "zoom" },
-    { processKey: "teams", appName: "Microsoft Teams", imageName: "teams" },
-  ],
-};
-
 class MeetingProcessDetector extends EventEmitter {
   constructor() {
     super();
     this.pollInterval = null;
     this.detectedProcesses = new Map();
     this.dismissedProcesses = new Set();
-    this._polling = false;
     this._subscriptionIds = [];
   }
 
   start() {
     if (this.pollInterval || this._subscriptionIds.length > 0) return;
-
-    if (process.platform === "darwin") {
-      this._startDarwin();
-    } else {
-      const apps = MEETING_APPS[process.platform] || [];
-      debugLogger.info(
-        "Process detector started",
-        {
-          platform: process.platform,
-          appsMonitored: apps.map((a) => a.appName),
-          intervalMs: POLL_INTERVAL_MS,
-        },
-        "meeting"
-      );
-      this._poll();
-      this.pollInterval = setInterval(() => this._poll(), POLL_INTERVAL_MS);
-    }
+    this._startDarwin();
   }
 
   _startDarwin() {
@@ -145,12 +116,17 @@ class MeetingProcessDetector extends EventEmitter {
   }
 
   _startPollingFallback() {
-    const apps = MEETING_APPS.linux || [];
+    const darwinNames = [
+      { processKey: "zoom", appName: "Zoom", match: "zoom.us" },
+      { processKey: "teams", appName: "Microsoft Teams", match: "microsoft teams" },
+      { processKey: "webex", appName: "Webex", match: "webex" },
+      { processKey: "facetime", appName: "FaceTime", match: "facetime" },
+    ];
     debugLogger.info(
       "Process detector started (polling fallback)",
       {
-        platform: process.platform,
-        appsMonitored: apps.map((a) => a.appName),
+        platform: "darwin",
+        appsMonitored: darwinNames.map((a) => a.appName),
         intervalMs: POLL_INTERVAL_MS,
       },
       "meeting"
@@ -196,29 +172,24 @@ class MeetingProcessDetector extends EventEmitter {
   }
 
   _getAppName(processKey) {
-    if (process.platform === "darwin") {
-      return BUNDLE_APP_NAMES[processKey] || processKey;
-    }
-    const apps = MEETING_APPS[process.platform] || [];
-    const entry = apps.find((a) => a.processKey === processKey);
-    return entry ? entry.appName : processKey;
+    return BUNDLE_APP_NAMES[processKey] || processKey;
   }
 
   async _poll() {
-    if (this._polling) return;
-    this._polling = true;
     try {
-      const apps = MEETING_APPS[process.platform] || MEETING_APPS.linux || [];
       const processList = await processListCache.getProcessList();
-
-      for (const { processKey, appName, imageName } of apps) {
-        const isRunning = processList.includes(imageName);
+      const darwinNames = [
+        { processKey: "zoom", appName: "Zoom", match: "zoom.us" },
+        { processKey: "teams", appName: "Microsoft Teams", match: "microsoft teams" },
+        { processKey: "webex", appName: "Webex", match: "webex" },
+        { processKey: "facetime", appName: "FaceTime", match: "facetime" },
+      ];
+      for (const { processKey, appName, match } of darwinNames) {
+        const isRunning = processList.some((p) => p.includes(match));
         this._updateDetection(processKey, appName, isRunning);
       }
     } catch (err) {
       debugLogger.warn("Poll error", { error: err.message }, "meeting");
-    } finally {
-      this._polling = false;
     }
   }
 

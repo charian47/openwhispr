@@ -12,10 +12,8 @@ import {
 } from "../ui/SettingsSection";
 import type { InferenceModeOption } from "../ui/SettingsSection";
 import ReasoningModelSelector from "../ReasoningModelSelector";
-import EnterpriseSection from "../EnterpriseSection";
-import SelfHostedPanel from "../SelfHostedPanel";
 import type { InferenceMode } from "../../types/electron";
-import { modelRegistry, isEnterpriseProvider } from "../../models/ModelRegistry";
+import { modelRegistry } from "../../models/ModelRegistry";
 
 function isProviderValidForMode(provider: string, mode: InferenceMode): boolean {
   switch (mode) {
@@ -24,7 +22,7 @@ function isProviderValidForMode(provider: string, mode: InferenceMode): boolean 
     case "local":
       return modelRegistry.getAllProviders().some((p) => p.id === provider);
     case "enterprise":
-      return isEnterpriseProvider(provider);
+      return false;
     default:
       return true;
   }
@@ -167,23 +165,6 @@ export default function AgentModeSettings() {
 
           {agentInferenceMode === "providers" && renderModelSelector("cloud")}
           {agentInferenceMode === "local" && renderModelSelector("local")}
-
-          {agentInferenceMode === "self-hosted" && (
-            <SelfHostedPanel
-              service="reasoning"
-              url={remoteAgentUrl}
-              onUrlChange={setRemoteAgentUrl}
-            />
-          )}
-
-          {agentInferenceMode === "enterprise" && (
-            <EnterpriseSection
-              currentProvider={agentProvider}
-              reasoningModel={agentModel}
-              setReasoningModel={setAgentModel}
-              setLocalReasoningProvider={setAgentProvider}
-            />
-          )}
 
           <div>
             <SectionHeader

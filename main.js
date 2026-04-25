@@ -1,20 +1,3 @@
-// KDE/GNOME Wayland: self-relaunch with --ozone-platform=x11 to force XWayland.
-// Chromium picks the display backend before JS runs, so appendSwitch is too late.
-if (
-  process.platform === "linux" &&
-  process.env.XDG_SESSION_TYPE === "wayland" &&
-  !process.argv.includes("--ozone-platform=x11")
-) {
-  const desktop = (process.env.XDG_CURRENT_DESKTOP || "").toLowerCase();
-  if (desktop.includes("kde") || /gnome|ubuntu|unity/.test(desktop)) {
-    const { spawn } = require("child_process");
-    spawn(process.execPath, [...process.argv.slice(1), "--ozone-platform=x11"], {
-      stdio: "inherit",
-      detached: true,
-    }).unref();
-    process.exit(0);
-  }
-}
 
 const {
   app,
@@ -103,34 +86,7 @@ require("dotenv").config({
   override: false,
 });
 
-// Fix transparent window flickering on Linux: --enable-transparent-visuals requires
-// the compositor to set up an ARGB visual before any windows are created.
-// --disable-gpu-compositing prevents GPU compositing conflicts with the compositor.
-if (process.platform === "linux") {
-  app.commandLine.appendSwitch("gtk-version", "3");
-  app.commandLine.appendSwitch("enable-transparent-visuals");
-  app.commandLine.appendSwitch("disable-gpu-compositing");
-}
 
-// Wayland: packaged builds use the wrapper script (scripts/afterPack.js) to
-// force --ozone-platform=x11 before Electron starts. appendSwitch below is a
-// best-effort fallback for unpackaged dev mode (may not take effect on E39+).
-if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
-  app.commandLine.appendSwitch("enable-features", "WaylandWindowDecorations");
-}
-
-// Set desktop filename so Wayland compositors can match windows to the .desktop entry.
-// This allows XDG portals (e.g. PipeWire) to persist permissions across sessions.
-if (process.platform === "linux") {
-  app.setDesktopName("open-whispr.desktop");
-}
-
-// Group all windows under single taskbar entry on Windows
-if (process.platform === "win32") {
-  const windowsAppId =
-    APP_CHANNEL === "production" ? BASE_WINDOWS_APP_ID : `${BASE_WINDOWS_APP_ID}.${APP_CHANNEL}`;
-  app.setAppUserModelId(windowsAppId);
-}
 
 function getOAuthProtocol() {
   const fromEnv = (process.env.VITE_OPENWHISPR_PROTOCOL || process.env.OPENWHISPR_PROTOCOL || "")
@@ -152,39 +108,9 @@ function shouldRegisterProtocolWithAppArg() {
   return Boolean(process.defaultApp) || isElectronBinaryExec();
 }
 
-function getDefaultHtmlHandler() {
-  try {
-    const { execFileSync } = require("child_process");
-    return execFileSync("xdg-mime", ["query", "default", "text/html"], {
-      encoding: "utf8",
-      timeout: 3000,
-    }).trim() || null;
-  } catch {
-    return null;
-  }
-}
-
-function restoreHtmlHandlerIfChanged(original) {
-  try {
-    const { execFileSync } = require("child_process");
-    const current = execFileSync("xdg-mime", ["query", "default", "text/html"], {
-      encoding: "utf8",
-      timeout: 3000,
-    }).trim();
-    if (current && current !== original) {
-      execFileSync("xdg-mime", ["default", original, "text/html"], { timeout: 3000 });
-    }
-  } catch {
-    // xdg-mime unavailable or failed
-  }
-}
-
 // Register custom protocol for OAuth callbacks.
-// In development, always include the app path argument so macOS/Windows/Linux
-// can launch the project app instead of opening bare Electron.
 function registerOpenWhisprProtocol() {
   const protocol = OAUTH_PROTOCOL;
-  const htmlHandler = process.platform === "linux" ? getDefaultHtmlHandler() : null;
 
   let result;
   if (shouldRegisterProtocolWithAppArg()) {
@@ -192,10 +118,6 @@ function registerOpenWhisprProtocol() {
     result = app.setAsDefaultProtocolClient(protocol, process.execPath, [appArg]);
   } else {
     result = app.setAsDefaultProtocolClient(protocol);
-  }
-
-  if (htmlHandler) {
-    restoreHtmlHandlerIfChanged(htmlHandler);
   }
 
   return result;
@@ -214,8 +136,8 @@ if (!gotSingleInstanceLock) {
 
 const isLiveWindow = (window) => window && !window.isDestroyed();
 
-// Ensure macOS menus use the proper casing for the app name
-if (process.platform === "darwin" && app.getName() !== "OpenWhispr") {
+// Ensure menus use the proper casing for the app name
+if (app.getName() !== "OpenWhispr") {
   app.setName("OpenWhispr");
 }
 
@@ -247,19 +169,15 @@ const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
 const DevServerManager = require("./src/helpers/devServerManager");
-const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
-const LinuxKeyManager = require("./src/helpers/linuxKeyManager");
 const TextEditMonitor = require("./src/helpers/textEditMonitor");
-const WhisperCudaManager = require("./src/helpers/whisperCudaManager");
+
 const GoogleCalendarManager = require("./src/helpers/googleCalendarManager");
 const MeetingProcessDetector = require("./src/helpers/meetingProcessDetector");
 const AudioActivityDetector = require("./src/helpers/audioActivityDetector");
 const AudioTapManager = require("./src/helpers/audioTapManager");
-const LinuxPortalAudioManager = require("./src/helpers/linuxPortalAudioManager");
 const MeetingAecManager = require("./src/helpers/meetingAecManager");
 const MeetingDetectionEngine = require("./src/helpers/meetingDetectionEngine");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
-const { ensureYdotool } = require("./src/helpers/ensureYdotool");
 
 // Manager instances - initialized after app.whenReady()
 let debugLogger = null;
@@ -274,14 +192,11 @@ let diarizationManager = null;
 let trayManager = null;
 let updateManager = null;
 let globeKeyManager = null;
-let windowsKeyManager = null;
-let linuxKeyManager = null;
 let textEditMonitor = null;
 let whisperCudaManager = null;
 let googleCalendarManager = null;
 let meetingDetectionEngine = null;
 let audioTapManager = null;
-let linuxPortalAudioManager = null;
 let meetingAecManager = null;
 let qdrantManager = null;
 let ipcHandlers = null;
@@ -306,7 +221,7 @@ const AUTH_BRIDGE_PATH = "/oauth/callback";
 
 // Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
 function setupProductionPath() {
-  if (process.platform === "darwin" && process.env.NODE_ENV !== "development") {
+  if (process.env.NODE_ENV !== "development") {
     const commonPaths = [
       "/usr/local/bin",
       "/opt/homebrew/bin",
@@ -343,9 +258,6 @@ function initializeCoreManagers() {
   databaseManager = new DatabaseManager();
   clipboardManager = new ClipboardManager();
   whisperManager = new WhisperManager();
-  if (process.platform !== "darwin") {
-    whisperCudaManager = new WhisperCudaManager();
-  }
   parakeetManager = new ParakeetManager();
   diarizationManager = new DiarizationManager();
   googleCalendarManager = new GoogleCalendarManager(databaseManager, windowManager);
@@ -359,11 +271,8 @@ function initializeCoreManagers() {
   windowManager.meetingDetectionEngine = meetingDetectionEngine;
   updateManager = new UpdateManager();
   updateManager.setWindowManager(windowManager);
-  windowsKeyManager = new WindowsKeyManager();
-  linuxKeyManager = new LinuxKeyManager();
   textEditMonitor = new TextEditMonitor();
   audioTapManager = new AudioTapManager();
-  linuxPortalAudioManager = new LinuxPortalAudioManager();
   meetingAecManager = new MeetingAecManager();
   windowManager.textEditMonitor = textEditMonitor;
 
@@ -377,14 +286,10 @@ function initializeCoreManagers() {
     diarizationManager,
     windowManager,
     updateManager,
-    windowsKeyManager,
-    linuxKeyManager,
     textEditMonitor,
-    whisperCudaManager,
     googleCalendarManager,
     meetingDetectionEngine,
     audioTapManager,
-    linuxPortalAudioManager,
     meetingAecManager,
     getTrayManager: () => trayManager,
   });
@@ -392,18 +297,11 @@ function initializeCoreManagers() {
 
 // Phase 2: Non-critical setup after windows are visible
 function initializeDeferredManagers() {
-  ensureYdotool().catch((err) => {
-    require("./src/helpers/debugLogger").warn(
-      "ydotool setup error",
-      { error: err?.message },
-      "clipboard"
-    );
-  });
   clipboardManager.preWarmAccessibility();
   trayManager = new TrayManager();
   globeKeyManager = new GlobeKeyManager();
 
-  if (process.platform === "darwin") {
+  {
     globeKeyManager.on("error", (error) => {
       if (globeKeyAlertShown) {
         return;
@@ -638,9 +536,7 @@ async function startApp() {
     environmentManager.savePanelStartPosition(position);
   });
 
-  if (process.platform === "darwin") {
-    app.setActivationPolicy("regular");
-  }
+  app.setActivationPolicy("regular");
 
   // In development, wait for Vite dev server to be ready
   if (process.env.NODE_ENV === "development") {
@@ -785,11 +681,6 @@ async function startApp() {
     });
   }
 
-  if (process.platform === "win32") {
-    const nircmdStatus = clipboardManager.getNircmdStatus();
-    debugLogger.debug("Windows paste tool status", nircmdStatus);
-  }
-
   trayManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   trayManager.setWindowManager(windowManager);
   trayManager.setCreateControlPanelCallback(() => windowManager.createControlPanelWindow());
@@ -798,7 +689,7 @@ async function startApp() {
   updateManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   updateManager.checkForUpdatesOnStartup();
 
-  if (process.platform === "darwin") {
+  {
     const { isGlobeLikeHotkey } = require("./src/helpers/hotkeyManager");
     let globeKeyDownTime = 0;
     let globeKeyIsRecording = false;
@@ -996,199 +887,8 @@ async function startApp() {
     });
   }
 
-  if (process.platform === "win32") {
-    debugLogger.debug("[Push-to-Talk] Windows Push-to-Talk setup starting");
-
-    const {
-      isGlobeLikeHotkey: isGlobeLike,
-      isModifierOnlyHotkey,
-    } = require("./src/helpers/hotkeyManager");
-    const isValidHotkey = (hotkey) => hotkey && !isGlobeLike(hotkey);
-
-    const isRightSideMod = (hotkey) =>
-      /^Right(Control|Ctrl|Alt|Option|Shift|Super|Win|Meta|Command|Cmd)$/i.test(hotkey);
-
-    const needsNativeListener = (hotkey, mode) => {
-      if (!isValidHotkey(hotkey)) return false;
-      if (mode === "push") return true;
-      return isRightSideMod(hotkey) || isModifierOnlyHotkey(hotkey);
-    };
-
-    windowsKeyManager.on("key-down", (_key) => {
-      if (!isLiveWindow(windowManager.mainWindow)) return;
-
-      const activationMode = windowManager.getActivationMode();
-      if (activationMode === "push") {
-        windowManager.startWindowsPushToTalk();
-      } else if (activationMode === "tap") {
-        windowManager.sendToggleDictation();
-      }
-    });
-
-    windowsKeyManager.on("key-up", () => {
-      if (windowManager.winPushState?.active) {
-        windowManager.handleWindowsPushKeyUp();
-      } else if (isLiveWindow(windowManager.mainWindow)) {
-        const activationMode = windowManager.getActivationMode();
-        if (activationMode === "push") {
-          windowManager.handleWindowsPushKeyUp();
-        }
-      }
-    });
-
-    windowsKeyManager.on("error", (error) => {
-      debugLogger.warn("[Push-to-Talk] Windows key listener error", { error: error.message });
-      if (isLiveWindow(windowManager.mainWindow)) {
-        windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
-          reason: "error",
-          message: error.message,
-        });
-      }
-    });
-
-    windowsKeyManager.on("unavailable", () => {
-      debugLogger.debug(
-        "[Push-to-Talk] Windows key listener not available - falling back to toggle mode"
-      );
-      if (isLiveWindow(windowManager.mainWindow)) {
-        windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
-          reason: "binary_not_found",
-          message: i18nMain.t("windows.pttUnavailable"),
-        });
-      }
-    });
-
-    windowsKeyManager.on("ready", () => {
-      debugLogger.debug("[Push-to-Talk] WindowsKeyManager is ready and listening");
-    });
-
-    const startWindowsKeyListener = () => {
-      if (!isLiveWindow(windowManager.mainWindow)) return;
-      const activationMode = windowManager.getActivationMode();
-      const currentHotkey = hotkeyManager.getCurrentHotkey();
-
-      if (needsNativeListener(currentHotkey, activationMode)) {
-        windowsKeyManager.start(currentHotkey);
-      }
-    };
-
-    const STARTUP_DELAY_MS = 3000;
-    setTimeout(startWindowsKeyListener, STARTUP_DELAY_MS);
-
-    ipcMain.on("activation-mode-changed", (_event, mode) => {
-      windowManager.resetWindowsPushState();
-      const currentHotkey = hotkeyManager.getCurrentHotkey();
-      if (needsNativeListener(currentHotkey, mode)) {
-        windowsKeyManager.start(currentHotkey);
-      } else {
-        windowsKeyManager.stop();
-      }
-    });
-
-    ipcMain.on("hotkey-changed", (_event, hotkey) => {
-      if (!isLiveWindow(windowManager.mainWindow)) return;
-      windowManager.resetWindowsPushState();
-      const activationMode = windowManager.getActivationMode();
-      windowsKeyManager.stop();
-      if (needsNativeListener(hotkey, activationMode)) {
-        windowsKeyManager.start(hotkey);
-      }
-    });
-  }
-
-  if (process.platform === "linux") {
-    debugLogger.debug("[Push-to-Talk] Linux Push-to-Talk setup starting");
-
-    const {
-      isGlobeLikeHotkey: isGlobeLike,
-      isModifierOnlyHotkey,
-    } = require("./src/helpers/hotkeyManager");
-    const isValidHotkey = (hotkey) => hotkey && !isGlobeLike(hotkey);
-
-    const isRightSideMod = (hotkey) =>
-      /^Right(Control|Ctrl|Alt|Option|Shift|Super|Win|Meta|Command|Cmd)$/i.test(hotkey);
-
-    const needsNativeListener = (hotkey, mode) => {
-      if (!isValidHotkey(hotkey)) return false;
-      if (mode === "push") return true;
-      return isRightSideMod(hotkey) || isModifierOnlyHotkey(hotkey);
-    };
-
-    linuxKeyManager.on("key-down", (_key) => {
-      if (!isLiveWindow(windowManager.mainWindow)) return;
-
-      const activationMode = windowManager.getActivationMode();
-      if (activationMode === "push") {
-        windowManager.startWindowsPushToTalk();
-      } else if (activationMode === "tap") {
-        windowManager.sendToggleDictation();
-      }
-    });
-
-    linuxKeyManager.on("key-up", () => {
-      if (!isLiveWindow(windowManager.mainWindow)) return;
-
-      const activationMode = windowManager.getActivationMode();
-      if (activationMode === "push") {
-        windowManager.handleWindowsPushKeyUp();
-      }
-    });
-
-    linuxKeyManager.on("permission-denied", () => {
-      debugLogger.warn("[Push-to-Talk] Linux key listener has no permission to access input devices");
-      if (isLiveWindow(windowManager.mainWindow)) {
-        windowManager.mainWindow.webContents.send("linux-ptt-permission-denied");
-      }
-    });
-
-    linuxKeyManager.on("error", (error) => {
-      debugLogger.warn("[Push-to-Talk] Linux key listener error", { error: error.message });
-    });
-
-    linuxKeyManager.on("unavailable", () => {
-      debugLogger.debug(
-        "[Push-to-Talk] Linux key listener not available - falling back to toggle mode"
-      );
-    });
-
-    linuxKeyManager.on("ready", () => {
-      debugLogger.debug("[Push-to-Talk] LinuxKeyManager is ready and listening");
-    });
-
-    const startLinuxKeyListener = () => {
-      if (!isLiveWindow(windowManager.mainWindow)) return;
-      const activationMode = windowManager.getActivationMode();
-      const currentHotkey = hotkeyManager.getCurrentHotkey();
-
-      if (needsNativeListener(currentHotkey, activationMode)) {
-        linuxKeyManager.start(currentHotkey);
-      }
-    };
-
-    const STARTUP_DELAY_MS = 3000;
-    setTimeout(startLinuxKeyListener, STARTUP_DELAY_MS);
-
-    ipcMain.on("activation-mode-changed", (_event, mode) => {
-      windowManager.resetWindowsPushState();
-      const currentHotkey = hotkeyManager.getCurrentHotkey();
-      if (needsNativeListener(currentHotkey, mode)) {
-        linuxKeyManager.start(currentHotkey);
-      } else {
-        linuxKeyManager.stop();
-      }
-    });
-
-    ipcMain.on("hotkey-changed", (_event, hotkey) => {
-      if (!isLiveWindow(windowManager.mainWindow)) return;
-      windowManager.resetWindowsPushState();
-      const activationMode = windowManager.getActivationMode();
-      linuxKeyManager.stop();
-      if (needsNativeListener(hotkey, activationMode)) {
-        linuxKeyManager.start(hotkey);
-      }
-    });
-  }
 }
+
 
 // Listen for usage limit reached from dictation overlay, forward to control panel
 ipcMain.on("limit-reached", (_event, data) => {
@@ -1238,21 +938,6 @@ if (gotSingleInstanceLock) {
   app
     .whenReady()
     .then(() => {
-      // On Linux, --enable-transparent-visuals requires a short delay before creating
-      // windows to allow the compositor to set up the ARGB visual correctly.
-      // Without this delay, transparent windows flicker on both X11 and Wayland.
-      const delay = process.platform === "linux" ? 300 : 0;
-      return new Promise((resolve) => setTimeout(resolve, delay));
-    })
-    .then(() => {
-      if (process.platform === "win32") {
-        session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
-          desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
-            callback({ video: sources[0], audio: "loopback" });
-          });
-        });
-      }
-
       startApp().catch((error) => {
         console.error("Failed to start app:", error);
         dialog.showErrorBox(
@@ -1264,12 +949,7 @@ if (gotSingleInstanceLock) {
     });
 
   app.on("window-all-closed", () => {
-    // Don't quit on macOS when all windows are closed
-    // The app should stay in the dock/menu bar
-    if (process.platform !== "darwin") {
-      app.quit();
-    }
-    // On macOS, keep the app running even without windows
+    // On macOS, keep the app running even without windows (stays in dock/menu bar)
   });
 
   app.on("browser-window-focus", (event, window) => {
@@ -1296,7 +976,7 @@ if (gotSingleInstanceLock) {
       // Show control panel when dock icon is clicked (most common user action)
       if (windowManager && isLiveWindow(windowManager.controlPanelWindow)) {
         // Ensure dock icon is visible when control panel opens
-        if (process.platform === "darwin" && app.dock) {
+        if (app.dock) {
           app.dock.show();
         }
         if (windowManager.controlPanelWindow.isMinimized()) {
@@ -1335,12 +1015,6 @@ if (gotSingleInstanceLock) {
     if (globeKeyManager) {
       globeKeyManager.stop();
     }
-    if (windowsKeyManager) {
-      windowsKeyManager.stop();
-    }
-    if (linuxKeyManager) {
-      linuxKeyManager.stop();
-    }
     if (meetingDetectionEngine) {
       meetingDetectionEngine.stop();
     }
@@ -1349,9 +1023,6 @@ if (gotSingleInstanceLock) {
     }
     if (audioTapManager) {
       audioTapManager.stop().catch(() => {});
-    }
-    if (linuxPortalAudioManager) {
-      linuxPortalAudioManager.stop().catch(() => {});
     }
     if (meetingAecManager) {
       meetingAecManager.stop().catch(() => {});

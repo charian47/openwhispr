@@ -41,7 +41,6 @@ import MicrophoneSettings from "./ui/MicrophoneSettings";
 import PermissionCard from "./ui/PermissionCard";
 import PasteToolsInfo from "./ui/PasteToolsInfo";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
-import SelfHostedPanel from "./SelfHostedPanel";
 import {
   ConfirmDialog,
   AlertDialog,
@@ -64,13 +63,13 @@ import { useUpdater } from "../hooks/useUpdater";
 
 import PromptStudio from "./ui/PromptStudio";
 import ReasoningModelSelector from "./ReasoningModelSelector";
-import EnterpriseSection from "./EnterpriseSection";
 import { ProviderTabs } from "./ui/ProviderTabs";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { validateHotkeyForSlot } from "../utils/hotkeyValidation";
 import { getPlatform, getCachedPlatform } from "../utils/platform";
+const platform = getCachedPlatform();
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import LinuxPttSetupInfo from "./ui/LinuxPttSetupInfo";
@@ -381,14 +380,6 @@ function TranscriptionSection({
         </>
       )}
 
-      {transcriptionMode === "self-hosted" && (
-        <SelfHostedPanel
-          service="transcription"
-          url={remoteTranscriptionUrl}
-          onUrlChange={setRemoteTranscriptionUrl}
-        />
-      )}
-
       <GpuDeviceSelector purpose="transcription" />
     </div>
   );
@@ -569,22 +560,6 @@ function AiModelsSection({
           {reasoningMode === "providers" && renderReasoningSelector("cloud")}
           {reasoningMode === "local" && renderReasoningSelector("local")}
 
-          {reasoningMode === "self-hosted" && (
-            <SelfHostedPanel
-              service="reasoning"
-              url={remoteReasoningUrl}
-              onUrlChange={setRemoteReasoningUrl}
-            />
-          )}
-
-          {reasoningMode === "enterprise" && (
-            <EnterpriseSection
-              currentProvider={reasoningProvider}
-              reasoningModel={reasoningModel}
-              setReasoningModel={setReasoningModel}
-              setLocalReasoningProvider={setReasoningProvider}
-            />
-          )}
           <GpuDeviceSelector purpose="intelligence" />
         </>
       )}
@@ -953,16 +928,8 @@ export default function SettingsPage({
   } | null>(null);
   const [ydotoolGuideKey, setYdotoolGuideKey] = useState<string | null>(null);
 
-  const refreshYdotoolStatus = useCallback(async () => {
-    try {
-      const status = await window.electronAPI?.getYdotoolStatus?.();
-      if (status) setYdotoolStatus(status);
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    refreshYdotoolStatus();
-  }, [refreshYdotoolStatus]);
+  // ydotool is Linux-only — macOS-only fork has no such status to fetch.
+  const refreshYdotoolStatus = useCallback(async () => {}, []);
 
   const handleSaveAgentName = useCallback(() => {
     const trimmed = agentNameInput.trim();
@@ -1079,20 +1046,12 @@ export default function SettingsPage({
     [dictationKey, meetingKey, t]
   );
 
-  const [isUsingNativeShortcut, setIsUsingNativeShortcut] = useState(false);
   const [effectiveDefaultHotkey, setEffectiveDefaultHotkey] = useState<string | null>(null);
-  const [linuxPttAvailable, setLinuxPttAvailable] = useState(true);
-
-  const platform = getCachedPlatform();
 
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
   const [autoStartLoading, setAutoStartLoading] = useState(true);
 
   useEffect(() => {
-    if (platform === "linux") {
-      setAutoStartLoading(false);
-      return;
-    }
     const loadAutoStart = async () => {
       if (window.electronAPI?.getAutoStartEnabled) {
         try {
@@ -1185,18 +1144,7 @@ export default function SettingsPage({
   }, [checkWhisperInstallation, getAppVersion]);
 
   useEffect(() => {
-    const checkHotkeyMode = async () => {
-      try {
-        const info = await window.electronAPI?.getHotkeyModeInfo();
-        if (info?.isUsingNativeShortcut) {
-          setIsUsingNativeShortcut(true);
-          if (!info.supportsPushToTalk) {
-            setActivationMode("tap");
-          }
-        }
-      } catch (error) {
-        logger.error("Failed to check hotkey mode", error, "settings");
-      }
+    const fetchDefaultHotkey = async () => {
       try {
         const key = await window.electronAPI?.getEffectiveDefaultHotkey?.();
         if (key) setEffectiveDefaultHotkey(key);
@@ -1204,22 +1152,8 @@ export default function SettingsPage({
         logger.error("Failed to get effective default hotkey", error, "settings");
       }
     };
-    checkHotkeyMode();
-  }, [setActivationMode]);
-
-  useEffect(() => {
-    const cleanup = window.electronAPI?.onLinuxPttPermissionDenied?.(() => {
-      setLinuxPttAvailable(false);
-      toast({
-        title: t("settingsPage.general.hotkey.linuxPttPermissionTitle"),
-        description: t("settingsPage.general.hotkey.linuxPttPermissionDescription"),
-        variant: "destructive",
-        duration: 15000,
-      });
-      setActivationMode("tap");
-    });
-    return () => cleanup?.();
-  }, [toast, t, setActivationMode]);
+    fetchDefaultHotkey();
+  }, []);
 
   useEffect(() => {
     if (updateError) {
@@ -3114,17 +3048,12 @@ EOF`,
                     )}
                 </SettingsPanelRow>
 
-                {(!isUsingNativeShortcut || getCachedPlatform() === "linux") && (
-                  <SettingsPanelRow>
-                    <p className="text-xs font-medium text-muted-foreground/80 mb-2">
-                      {t("settingsPage.general.hotkey.activationMode")}
-                    </p>
-                    <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
-                    {getCachedPlatform() === "linux" && activationMode === "push" && (
-                      <LinuxPttSetupInfo isAvailable={linuxPttAvailable} />
-                    )}
-                  </SettingsPanelRow>
-                )}
+                <SettingsPanelRow>
+                  <p className="text-xs font-medium text-muted-foreground/80 mb-2">
+                    {t("settingsPage.general.hotkey.activationMode")}
+                  </p>
+                  <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+                </SettingsPanelRow>
               </SettingsPanel>
             </div>
 

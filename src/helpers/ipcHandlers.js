@@ -6,12 +6,8 @@ const http = require("http");
 const https = require("https");
 const crypto = require("crypto");
 const debugLogger = require("./debugLogger");
-const GnomeShortcutManager = require("./gnomeShortcut");
-const HyprlandShortcutManager = require("./hyprlandShortcut");
-const AssemblyAiStreaming = require("./assemblyAiStreaming");
+
 const { i18nMain, changeLanguage } = require("./i18nMain");
-const DeepgramStreaming = require("./deepgramStreaming");
-const OpenAIRealtimeStreaming = require("./openaiRealtimeStreaming");
 const AudioStorageManager = require("./audioStorage");
 const liveSpeakerIdentifier = require("./liveSpeakerIdentifier");
 const MeetingEchoLeakDetector = require("./meetingEchoLeakDetector");
@@ -32,16 +28,9 @@ const {
   MAX_SPEAKER_COUNT,
 } = require("../constants/speakerDetection.json");
 
-const STREAMING_CLIENT_BY_PROVIDER = {
-  "openai-realtime": OpenAIRealtimeStreaming,
-  "assemblyai-realtime": AssemblyAiStreaming,
-  "deepgram-realtime": DeepgramStreaming,
-};
 const ALLOWED_MEETING_PROVIDERS = new Set([
   "local",
   "openai-realtime",
-  "assemblyai-realtime",
-  "deepgram-realtime",
 ]);
 
 function parseAttendees(raw) {
@@ -285,19 +274,13 @@ class IPCHandlers {
     this.diarizationManager = managers.diarizationManager;
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
-    this.windowsKeyManager = managers.windowsKeyManager;
-    this.linuxKeyManager = managers.linuxKeyManager;
     this.textEditMonitor = managers.textEditMonitor;
     this.getTrayManager = managers.getTrayManager;
-    this.whisperCudaManager = managers.whisperCudaManager;
     this.googleCalendarManager = managers.googleCalendarManager;
     this.meetingDetectionEngine = managers.meetingDetectionEngine;
     this.audioTapManager = managers.audioTapManager;
-    this.linuxPortalAudioManager = managers.linuxPortalAudioManager;
     this.meetingAecManager = managers.meetingAecManager;
     this.sessionId = crypto.randomUUID();
-    this.assemblyAiStreaming = null;
-    this.deepgramStreaming = null;
     this._dictationStreaming = null;
     this._dictationConnectPromise = null;
     this._dictationIdleTimer = null;
@@ -663,12 +646,8 @@ class IPCHandlers {
     });
 
     ipcMain.handle("hide-window", () => {
-      if (process.platform === "darwin") {
-        this.windowManager.hideDictationPanel();
-        if (app.dock) app.dock.show();
-      } else {
-        this.windowManager.hideDictationPanel();
-      }
+      this.windowManager.hideDictationPanel();
+      if (app.dock) app.dock.show();
     });
 
     ipcMain.handle("show-dictation-panel", () => {
@@ -1425,16 +1404,11 @@ class IPCHandlers {
       // paste keystroke lands in the user's target app instead of the overlay.
       const mainWindow = this.windowManager?.mainWindow;
       if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused()) {
-        if (process.platform === "darwin") {
-          // hide() forces macOS to activate the previous app; showInactive()
-          // restores the overlay without stealing focus.
-          mainWindow.hide();
-          await new Promise((resolve) => setTimeout(resolve, 120));
-          mainWindow.showInactive();
-        } else {
-          mainWindow.blur();
-          await new Promise((resolve) => setTimeout(resolve, 80));
-        }
+        // hide() forces macOS to activate the previous app; showInactive()
+        // restores the overlay without stealing focus.
+        mainWindow.hide();
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        mainWindow.showInactive();
       }
       const result = await this.clipboardManager.pasteText(text, {
         ...options,
@@ -1467,7 +1441,6 @@ class IPCHandlers {
 
     // Passes `true` to isTrustedAccessibilityClient to trigger the macOS system prompt
     ipcMain.handle("prompt-accessibility-permission", async () => {
-      if (process.platform !== "darwin") return true;
       return systemPreferences.isTrustedAccessibilityClient(true);
     });
 
@@ -2068,7 +2041,6 @@ class IPCHandlers {
 
       if (enabled) {
         // Entering capture mode — unregister ALL slots so none intercept keypresses.
-        // Dictation is always active; meeting and agent may or may not be set.
         const allSlots = hotkeyManager.slots;
         for (const [slot, info] of allSlots) {
           if (!info?.hotkey) continue;
@@ -2083,46 +2055,9 @@ class IPCHandlers {
             } catch {}
           }
         }
-
-        // On Windows, stop the Windows key listener
-        if (process.platform === "win32" && this.windowsKeyManager) {
-          debugLogger.log("[IPC] Stopping Windows key listener for hotkey capture mode");
-          this.windowsKeyManager.stop();
-        }
-
-        // On Linux, stop the Linux key listener
-        if (process.platform === "linux" && this.linuxKeyManager) {
-          debugLogger.log("[IPC] Stopping Linux key listener for hotkey capture mode");
-          this.linuxKeyManager.stop();
-        }
-
-        // On GNOME, unregister all native keybindings during capture
-        if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager) {
-          for (const slot of [...hotkeyManager.gnomeManager.registeredSlots]) {
-            debugLogger.log(
-              `[IPC] Unregistering GNOME keybinding (slot "${slot}") for capture mode`
-            );
-            await hotkeyManager.gnomeManager.unregisterKeybinding(slot).catch((err) => {
-              debugLogger.warn(`[IPC] Failed to unregister GNOME slot "${slot}":`, err.message);
-            });
-          }
-        }
-
-        // On Hyprland Wayland, unregister the keybinding during capture
-        if (hotkeyManager.isUsingHyprland() && hotkeyManager.hyprlandManager) {
-          debugLogger.log("[IPC] Unregistering Hyprland keybinding for hotkey capture mode");
-          await hotkeyManager.hyprlandManager.unregisterKeybinding().catch((err) => {
-            debugLogger.warn("[IPC] Failed to unregister Hyprland keybinding:", err.message);
-          });
-        }
       } else {
         // Exiting capture mode - re-register globalShortcut if not already registered
-        // Skip for KDE/GNOME/Hyprland — updateHotkey handles re-registration via native path
-        const usesNativePath =
-          hotkeyManager.isUsingKDE() ||
-          hotkeyManager.isUsingGnome() ||
-          hotkeyManager.isUsingHyprland();
-        if (effectiveHotkey && !usesNativeListener(effectiveHotkey) && !usesNativePath) {
+        if (effectiveHotkey && !usesNativeListener(effectiveHotkey)) {
           const { globalShortcut } = require("electron");
           const accelerator = effectiveHotkey.startsWith("Fn+")
             ? effectiveHotkey.slice(3)
@@ -2138,85 +2073,6 @@ class IPCHandlers {
                 `[IPC] Failed to re-register globalShortcut "${accelerator}" after capture mode`
               );
             }
-          }
-        }
-
-        if (process.platform === "win32" && this.windowsKeyManager) {
-          const activationMode = this.windowManager.getActivationMode();
-          debugLogger.log(
-            `[IPC] Exiting hotkey capture mode, activationMode="${activationMode}", hotkey="${effectiveHotkey}"`
-          );
-          const needsListener =
-            effectiveHotkey &&
-            !isGlobeLikeHotkey(effectiveHotkey) &&
-            (activationMode === "push" ||
-              isModifierOnlyHotkey(effectiveHotkey) ||
-              isRightSideModifier(effectiveHotkey));
-          if (needsListener) {
-            debugLogger.log(`[IPC] Restarting Windows key listener for hotkey: ${effectiveHotkey}`);
-            this.windowsKeyManager.start(effectiveHotkey);
-          } else {
-            this.windowsKeyManager.stop();
-          }
-        }
-
-        if (process.platform === "linux" && this.linuxKeyManager) {
-          const activationMode = this.windowManager.getActivationMode();
-          const needsListener =
-            effectiveHotkey &&
-            !isGlobeLikeHotkey(effectiveHotkey) &&
-            (activationMode === "push" ||
-              isModifierOnlyHotkey(effectiveHotkey) ||
-              isRightSideModifier(effectiveHotkey));
-          if (needsListener) {
-            debugLogger.log(`[IPC] Restarting Linux key listener for hotkey: ${effectiveHotkey}`);
-            this.linuxKeyManager.start(effectiveHotkey);
-          } else {
-            this.linuxKeyManager.stop();
-          }
-        }
-
-        // On GNOME, re-register the keybinding with the effective hotkey
-        if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager && effectiveHotkey) {
-          const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(effectiveHotkey);
-          debugLogger.log(
-            `[IPC] Re-registering GNOME keybinding "${gnomeHotkey}" after capture mode`
-          );
-          const success = await hotkeyManager.gnomeManager.registerKeybinding(gnomeHotkey);
-          if (success) {
-            hotkeyManager.currentHotkey = effectiveHotkey;
-          }
-        }
-
-        // On Hyprland Wayland, re-register the keybinding with the effective hotkey
-        if (hotkeyManager.isUsingHyprland() && hotkeyManager.hyprlandManager && effectiveHotkey) {
-          debugLogger.log(
-            `[IPC] Re-registering Hyprland keybinding "${effectiveHotkey}" after capture mode`
-          );
-          const success = await hotkeyManager.hyprlandManager.registerKeybinding(effectiveHotkey);
-          if (success) {
-            hotkeyManager.currentHotkey = effectiveHotkey;
-          }
-        }
-
-        // On KDE (X11 or Wayland), re-register the keybinding with the effective hotkey
-        if (hotkeyManager.isUsingKDE() && hotkeyManager.kdeManager && effectiveHotkey) {
-          debugLogger.log(
-            `[IPC] Re-registering KDE keybinding "${effectiveHotkey}" after capture mode`
-          );
-          const callback = this.windowManager.createHotkeyCallback();
-          const result = await hotkeyManager.kdeManager.registerKeybinding(
-            effectiveHotkey,
-            "dictation",
-            callback
-          );
-          if (result === true) {
-            hotkeyManager.currentHotkey = effectiveHotkey;
-          } else {
-            debugLogger.warn(
-              `[IPC] Failed to re-register KDE keybinding "${effectiveHotkey}" after capture mode`,
-              { result }
-            );
           }
         }
 
@@ -2237,18 +2093,12 @@ class IPCHandlers {
     });
 
     ipcMain.handle("get-hotkey-mode-info", async () => {
-      const isUsingNativeShortcut = this.windowManager.isUsingNativeShortcutHotkeys();
-      const supportsPushToTalk =
-        process.platform === "linux"
-          ? this.linuxKeyManager?.isAvailable?.() === true
-          : !isUsingNativeShortcut;
-
       return {
-        isUsingGnome: this.windowManager.isUsingGnomeHotkeys(),
-        isUsingHyprland: this.windowManager.isUsingHyprlandHotkeys(),
-        isUsingKDE: this.windowManager.isUsingKDEHotkeys(),
-        isUsingNativeShortcut,
-        supportsPushToTalk,
+        isUsingGnome: false,
+        isUsingHyprland: false,
+        isUsingKDE: false,
+        isUsingNativeShortcut: false,
+        supportsPushToTalk: true,
       };
     });
 
@@ -2490,171 +2340,6 @@ class IPCHandlers {
     ipcMain.handle("save-custom-reasoning-key", async (event, key) => {
       return this.environmentManager.saveCustomReasoningKey(key);
     });
-
-    // Enterprise provider key handlers
-    ipcMain.handle("get-bedrock-region", async () => {
-      return this.environmentManager.getBedrockRegion();
-    });
-    ipcMain.handle("save-bedrock-region", async (event, value) => {
-      return this.environmentManager.saveBedrockRegion(value);
-    });
-    ipcMain.handle("get-bedrock-profile", async () => {
-      return this.environmentManager.getBedrockProfile();
-    });
-    ipcMain.handle("save-bedrock-profile", async (event, value) => {
-      return this.environmentManager.saveBedrockProfile(value);
-    });
-    ipcMain.handle("get-bedrock-access-key-id", async () => {
-      return this.environmentManager.getBedrockAccessKeyId();
-    });
-    ipcMain.handle("save-bedrock-access-key-id", async (event, key) => {
-      return this.environmentManager.saveBedrockAccessKeyId(key);
-    });
-    ipcMain.handle("get-bedrock-secret-access-key", async () => {
-      return this.environmentManager.getBedrockSecretAccessKey();
-    });
-    ipcMain.handle("save-bedrock-secret-access-key", async (event, key) => {
-      return this.environmentManager.saveBedrockSecretAccessKey(key);
-    });
-    ipcMain.handle("get-bedrock-session-token", async () => {
-      return this.environmentManager.getBedrockSessionToken();
-    });
-    ipcMain.handle("save-bedrock-session-token", async (event, key) => {
-      return this.environmentManager.saveBedrockSessionToken(key);
-    });
-    ipcMain.handle("get-azure-endpoint", async () => {
-      return this.environmentManager.getAzureEndpoint();
-    });
-    ipcMain.handle("save-azure-endpoint", async (event, value) => {
-      return this.environmentManager.saveAzureEndpoint(value);
-    });
-    ipcMain.handle("get-azure-api-key", async () => {
-      return this.environmentManager.getAzureApiKey();
-    });
-    ipcMain.handle("save-azure-api-key", async (event, key) => {
-      return this.environmentManager.saveAzureApiKey(key);
-    });
-    ipcMain.handle("get-azure-deployment", async () => {
-      return this.environmentManager.getAzureDeployment();
-    });
-    ipcMain.handle("save-azure-deployment", async (event, value) => {
-      return this.environmentManager.saveAzureDeployment(value);
-    });
-    ipcMain.handle("get-azure-api-version", async () => {
-      return this.environmentManager.getAzureApiVersion();
-    });
-    ipcMain.handle("save-azure-api-version", async (event, value) => {
-      return this.environmentManager.saveAzureApiVersion(value);
-    });
-    ipcMain.handle("get-vertex-project", async () => {
-      return this.environmentManager.getVertexProject();
-    });
-    ipcMain.handle("save-vertex-project", async (event, value) => {
-      return this.environmentManager.saveVertexProject(value);
-    });
-    ipcMain.handle("get-vertex-location", async () => {
-      return this.environmentManager.getVertexLocation();
-    });
-    ipcMain.handle("save-vertex-location", async (event, value) => {
-      return this.environmentManager.saveVertexLocation(value);
-    });
-    ipcMain.handle("get-vertex-api-key", async () => {
-      return this.environmentManager.getVertexApiKey();
-    });
-    ipcMain.handle("save-vertex-api-key", async (event, key) => {
-      return this.environmentManager.saveVertexApiKey(key);
-    });
-
-    // Enterprise provider test connection
-    ipcMain.handle("test-enterprise-connection", async (event, provider, config) => {
-      const {
-        mapEnterpriseError,
-        pickEnterpriseConfig,
-        validateEnterpriseEndpoint,
-      } = require("./enterpriseProviderErrors");
-      try {
-        validateEnterpriseEndpoint(config.azureEndpoint);
-
-        const { generateText } = require("ai");
-        const { getEnterpriseAIModel } = require("./enterpriseAiProviders");
-
-        const model = getEnterpriseAIModel(
-          provider,
-          config.model || "test",
-          config.apiKey || "",
-          pickEnterpriseConfig(config)
-        );
-
-        await generateText({
-          model,
-          prompt: "Say hello in one word.",
-          maxOutputTokens: 10,
-        });
-
-        return { success: true };
-      } catch (err) {
-        const mapped = mapEnterpriseError(provider, err, config);
-        return {
-          success: false,
-          error: mapped.message,
-          action: mapped.action,
-          copyCommand: mapped.copyCommand,
-          retryable: mapped.retryable,
-        };
-      }
-    });
-
-    ipcMain.handle(
-      "process-enterprise-reasoning",
-      async (event, text, modelId, _agentName, config) => {
-        const {
-          isEnterpriseProvider,
-          mapEnterpriseError,
-          pickEnterpriseConfig,
-          validateEnterpriseEndpoint,
-        } = require("./enterpriseProviderErrors");
-        const provider = config?.provider;
-        try {
-          if (!isEnterpriseProvider(provider)) {
-            throw new Error(`Unsupported enterprise provider: ${provider}`);
-          }
-          if (!modelId) {
-            throw new Error("No model specified for enterprise reasoning");
-          }
-
-          validateEnterpriseEndpoint(config?.azureEndpoint);
-
-          const { generateText } = require("ai");
-          const { getEnterpriseAIModel } = require("./enterpriseAiProviders");
-
-          const model = getEnterpriseAIModel(
-            provider,
-            modelId,
-            config.apiKey || "",
-            pickEnterpriseConfig(config)
-          );
-
-          const timeoutMs = config?.timeoutMs || 60000;
-          // Opus 4.7 / GPT-5 / o-series dropped `temperature`; renderer
-          // derives support from the model registry and we honor that here.
-          const useTemperature = config?.supportsTemperature !== false;
-          const { text: generated } = await generateText({
-            model,
-            system: config?.systemPrompt || "",
-            prompt: text,
-            maxOutputTokens: config?.maxTokens || 4096,
-            ...(useTemperature ? { temperature: config?.temperature ?? 0.3 } : {}),
-            abortSignal: AbortSignal.timeout(timeoutMs),
-          });
-
-          return { success: true, text: (generated || "").trim() };
-        } catch (err) {
-          debugLogger.error("Enterprise reasoning error:", err);
-          const mapped = mapEnterpriseError(provider, err, config || {});
-          return { success: false, error: mapped.message, retryable: mapped.retryable };
-        }
-      }
-    );
 
     ipcMain.handle("get-dictation-key", async () => {
       return this.environmentManager.getDictationKey();
@@ -3038,15 +2723,10 @@ class IPCHandlers {
         systemAudio:
           "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
       },
-      win32: {
-        microphone: "ms-settings:privacy-microphone",
-        sound: "ms-settings:sound",
-      },
     };
 
     const openSystemSettings = async (settingType) => {
-      const platform = process.platform;
-      const urls = SYSTEM_SETTINGS_URLS[platform];
+      const urls = SYSTEM_SETTINGS_URLS["darwin"];
       const url = urls?.[settingType];
 
       if (!url) {
@@ -3094,17 +2774,11 @@ class IPCHandlers {
     });
 
     ipcMain.handle("request-microphone-access", async () => {
-      if (process.platform !== "darwin") {
-        return { granted: true, status: "granted" };
-      }
       const granted = await systemPreferences.askForMediaAccess("microphone");
       return { granted };
     });
 
     ipcMain.handle("check-microphone-access", () => {
-      if (process.platform !== "darwin") {
-        return { granted: true, status: "granted" };
-      }
       const status = systemPreferences.getMediaAccessStatus("microphone");
       return { granted: status === "granted", status };
     });
@@ -3124,60 +2798,8 @@ class IPCHandlers {
       ...partial,
     });
 
-    const getLinuxSystemAudioAccess = async () => {
-      const capability = await this.linuxPortalAudioManager?.getCapability().catch((error) => ({
-        available: false,
-        supportsPersistentGrant: false,
-        supportsPersistentPortalGrant: false,
-        supportsNativeCapture: false,
-        portalVersion: null,
-        error: error.message,
-      }));
-      const supportsPersistentGrant = !!capability?.supportsPersistentGrant;
-      const supportsPersistentPortalGrant = !!capability?.supportsPersistentPortalGrant;
-      const supportsNativeCapture = !!capability?.supportsNativeCapture;
-      const restoreTokenAvailable =
-        supportsPersistentGrant && !!this.linuxPortalAudioManager?.hasStoredRestoreToken();
-      const helperError =
-        typeof capability?.error === "string" &&
-        !capability.error.includes("helper binary not found")
-          ? capability.error
-          : undefined;
-
-      return buildSystemAudioAccess({
-        granted: restoreTokenAvailable,
-        status: supportsPersistentGrant
-          ? restoreTokenAvailable
-            ? "granted"
-            : "not-determined"
-          : "unknown",
-        mode: "portal",
-        supportsPersistentGrant,
-        supportsPersistentPortalGrant,
-        supportsNativeCapture,
-        supportsOnboardingGrant: supportsPersistentGrant,
-        requiresRuntimeSharePrompt: !supportsPersistentGrant || !restoreTokenAvailable,
-        strategy: supportsPersistentGrant ? "portal-helper" : "browser-portal",
-        restoreTokenAvailable,
-        portalVersion: capability?.portalVersion ?? null,
-        error: helperError,
-      });
-    };
 
     const getSystemAudioAccess = async () => {
-      if (process.platform === "win32") {
-        return buildSystemAudioAccess({
-          granted: true,
-          status: "granted",
-          mode: "loopback",
-          strategy: "loopback",
-        });
-      }
-
-      if (process.platform === "linux") {
-        return getLinuxSystemAudioAccess();
-      }
-
       if (!this.audioTapManager?.isSupported()) {
         return buildSystemAudioAccess();
       }
@@ -3194,34 +2816,6 @@ class IPCHandlers {
     ipcMain.handle("check-system-audio-access", () => getSystemAudioAccess());
 
     ipcMain.handle("request-system-audio-access", async () => {
-      if (process.platform === "win32") {
-        return buildSystemAudioAccess({
-          granted: true,
-          status: "granted",
-          mode: "loopback",
-          strategy: "loopback",
-        });
-      }
-
-      if (process.platform === "linux") {
-        const currentAccess = await getLinuxSystemAudioAccess();
-        if (!currentAccess.supportsOnboardingGrant) {
-          return currentAccess;
-        }
-
-        try {
-          await this.linuxPortalAudioManager?.requestAccess();
-        } catch (error) {
-          debugLogger.warn(
-            "Linux system audio persistent grant failed",
-            { error: error.message },
-            "meeting"
-          );
-        }
-
-        return getLinuxSystemAudioAccess();
-      }
-
       if (!this.audioTapManager?.isSupported()) {
         return buildSystemAudioAccess();
       }
@@ -3985,50 +3579,6 @@ class IPCHandlers {
         return response.json();
       };
 
-      const dual = (factory) => (streams === 2 ? Promise.all([factory(), factory()]) : factory());
-
-      if (options.provider === "assemblyai-realtime") {
-        if (options.mode === "byok") {
-          const apiKey = this.environmentManager.getAssemblyAIKey();
-          if (!apiKey) {
-            throw new Error("No AssemblyAI API key configured. Add your key in Settings.");
-          }
-          return dual(async () => {
-            const response = await fetch(
-              "https://streaming.assemblyai.com/v3/token?expires_in_seconds=60",
-              { headers: { Authorization: apiKey } }
-            );
-            if (!response.ok) {
-              const err = await response.json().catch(() => ({}));
-              throw new Error(err.error || `AssemblyAI token request failed: ${response.status}`);
-            }
-            const data = await response.json();
-            if (!data.token) throw new Error("No AssemblyAI token received");
-            return data.token;
-          });
-        }
-        return dual(async () => {
-          const data = await postServerToken("/api/streaming-token");
-          if (!data.token) throw new Error("No AssemblyAI token received");
-          return data.token;
-        });
-      }
-
-      if (options.provider === "deepgram-realtime") {
-        if (options.mode === "byok") {
-          const apiKey = this.environmentManager.getDeepgramKey();
-          if (!apiKey) {
-            throw new Error("No Deepgram API key configured. Add your key in Settings.");
-          }
-          return streams === 2 ? [apiKey, apiKey] : apiKey;
-        }
-        return dual(async () => {
-          const data = await postServerToken("/api/deepgram-streaming-token");
-          if (!data.token) throw new Error("No Deepgram token received");
-          return data.token;
-        });
-      }
-
       if (options.mode === "byok") {
         const apiKey = this.environmentManager.getOpenAIKey();
         if (!apiKey) throw new Error("No OpenAI API key configured. Add your key in Settings.");
@@ -4052,8 +3602,6 @@ class IPCHandlers {
 
     const getMeetingSystemAudioCapabilityMode = () => {
       if (this.audioTapManager?.isSupported()) return "native";
-      if (process.platform === "win32") return "loopback";
-      if (process.platform === "linux") return "portal";
       return "unsupported";
     };
 
@@ -4069,15 +3617,7 @@ class IPCHandlers {
         return { mode, strategy: "native" };
       }
 
-      if (mode === "loopback") {
-        return { mode, strategy: "loopback" };
-      }
-
-      const linuxAccess = await getLinuxSystemAudioAccess();
-      return {
-        mode,
-        strategy: linuxAccess.strategy === "portal-helper" ? "portal-helper" : "browser-portal",
-      };
+      return { mode, strategy: "unsupported" };
     };
 
     const hasNativeMeetingSystemAudio = () => getMeetingSystemAudioMode() === "native";
@@ -4120,11 +3660,10 @@ class IPCHandlers {
         ];
       }
 
-      const StreamingClass =
-        STREAMING_CLIENT_BY_PROVIDER[options.provider] ?? OpenAIRealtimeStreaming;
       for (const { ref, source } of pairs) {
-        this[ref] = new StreamingClass();
-        attachMeetingStreamingHandlers(this[ref], win, source);
+        throw new Error(
+          `Cloud meeting transcription provider "${options.provider}" is not supported in local-only mode`
+        );
       }
 
       await Promise.all(
@@ -4862,9 +4401,6 @@ class IPCHandlers {
       if (this.audioTapManager) {
         await this.audioTapManager.stop().catch(() => {});
       }
-      if (this.linuxPortalAudioManager) {
-        await this.linuxPortalAudioManager.stop().catch(() => {});
-      }
       await stopMeetingAec();
       await stopLiveSpeakerIdentification().catch(() => {});
       resetMeetingLocalState();
@@ -4913,16 +4449,9 @@ class IPCHandlers {
       }
 
       const connectInner = async () => {
-        const isCloud = options.mode !== "byok";
-        const apiKey = await fetchRealtimeToken(event, { mode: options.mode });
-        const streaming = new OpenAIRealtimeStreaming();
-        setupDictationCallbacks(streaming, event);
-        await streaming.connect({
-          apiKey,
-          model: options.model || "gpt-4o-mini-transcribe",
-          preconfigured: isCloud,
-        });
-        this._dictationStreaming = streaming;
+        throw new Error(
+          "Cloud dictation realtime streaming is not supported in local-only mode"
+        );
       };
 
       this._dictationConnectPromise = connectInner();
@@ -5175,53 +4704,18 @@ class IPCHandlers {
       });
     };
 
-    const startLinuxMeetingSystemAudio = async (event) => {
-      const win = BrowserWindow.fromWebContents(event.sender);
-      await this.linuxPortalAudioManager.start({
-        onChunk: (chunk) => {
-          sendMeetingAudio(chunk, "system");
-        },
-        onError: (error) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send("meeting-transcription-error", error.message);
-          }
-        },
-        onWarning: (warning) => {
-          debugLogger.warn(
-            "Linux portal system audio warning",
-            { code: warning.code, message: warning.message },
-            "meeting"
-          );
-        },
-      });
-    };
-
     const startMeetingSystemAudio = async (
       event,
       systemAudioMode,
       systemAudioStrategy,
-      context
+      _context
     ) => {
       if (systemAudioMode === "native") {
         await startNativeMeetingSystemAudio(event);
         return systemAudioStrategy;
       }
 
-      if (systemAudioStrategy !== "portal-helper") {
-        return systemAudioStrategy;
-      }
-
-      try {
-        await startLinuxMeetingSystemAudio(event);
-        return systemAudioStrategy;
-      } catch (error) {
-        debugLogger.warn(
-          `Linux portal helper failed ${context}, falling back to browser portal`,
-          { error: error.message },
-          "meeting"
-        );
-        return "browser-portal";
-      }
+      return systemAudioStrategy;
     };
 
     ipcMain.on("meeting-transcription-send", (_event, audioBuffer, source) => {
@@ -5233,9 +4727,6 @@ class IPCHandlers {
       try {
         if (this.audioTapManager) {
           await this.audioTapManager.stop();
-        }
-        if (this.linuxPortalAudioManager) {
-          await this.linuxPortalAudioManager.stop().catch(() => {});
         }
 
         flushPendingMeetingMicChunks(true);
@@ -5893,61 +5384,15 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("get-stt-config", async (event) => {
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
-
-        const cookieHeader = await getSessionCookies(event);
-        if (!cookieHeader) throw new Error("No session cookies available");
-
-        const response = await fetch(`${apiUrl}/api/stt-config`, {
-          headers: { Cookie: cookieHeader },
-        });
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
-          }
-          if (response.status === 503) {
-            return { success: false, error: "Request timed out", code: "SERVER_ERROR" };
-          }
-          throw new Error(`API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return { success: true, ...data };
-      } catch (error) {
-        debugLogger.error("STT config fetch error:", error);
-        return null;
-      }
+    ipcMain.handle("get-stt-config", async () => {
+      // Cloud backend removed — local-only fork returns an empty config
+      // so the renderer treats local transcription as the only path.
+      return { success: true, providers: [], defaultProvider: null };
     });
 
-    ipcMain.handle("get-note-recording-config", async (event) => {
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
-
-        const cookieHeader = await getSessionCookies(event);
-        if (!cookieHeader) throw new Error("No session cookies available");
-
-        const response = await fetch(`${apiUrl}/api/note-recording-config`, {
-          headers: { Cookie: cookieHeader },
-        });
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
-          }
-          throw new Error(`API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return { success: true, ...data };
-      } catch (error) {
-        debugLogger.error("Note recording config fetch error:", error);
-        return null;
-      }
+    ipcMain.handle("get-note-recording-config", async () => {
+      // Cloud backend removed — local-only fork returns an empty config.
+      return { success: true, providers: [], defaultProvider: null };
     });
 
     ipcMain.handle("transcribe-audio-file-cloud", async (event, filePath) => {
@@ -6064,115 +5509,7 @@ class IPCHandlers {
       }
     );
 
-    ipcMain.handle("get-referral-stats", async (event) => {
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) {
-          throw new Error("OpenWhispr API URL not configured");
-        }
-
-        const cookieHeader = await getSessionCookies(event);
-        if (!cookieHeader) {
-          throw new Error("No session cookies available");
-        }
-
-        const response = await fetch(`${apiUrl}/api/referrals/stats`, {
-          headers: {
-            Cookie: cookieHeader,
-          },
-        });
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error("Unauthorized - please sign in");
-          }
-          if (response.status === 503) {
-            throw new Error("Service temporarily unavailable");
-          }
-          throw new Error(`Failed to fetch referral stats: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        debugLogger.error("Error fetching referral stats:", error);
-        throw error;
-      }
-    });
-
-    ipcMain.handle("send-referral-invite", async (event, email) => {
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) {
-          throw new Error("OpenWhispr API URL not configured");
-        }
-
-        const cookieHeader = await getSessionCookies(event);
-        if (!cookieHeader) {
-          throw new Error("No session cookies available");
-        }
-
-        const response = await fetch(`${apiUrl}/api/referrals/invite`, {
-          method: "POST",
-          headers: {
-            Cookie: cookieHeader,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email }),
-        });
-
-        if (!response.ok) {
-          let errorMessage = `Failed to send invite: ${response.status}`;
-          try {
-            const errorData = await response.json();
-            if (errorData.error) errorMessage = errorData.error;
-          } catch (_) {}
-          throw new Error(errorMessage);
-        }
-
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        debugLogger.error("Error sending referral invite:", error);
-        throw error;
-      }
-    });
-
-    ipcMain.handle("get-referral-invites", async (event) => {
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) {
-          throw new Error("OpenWhispr API URL not configured");
-        }
-
-        const cookieHeader = await getSessionCookies(event);
-        if (!cookieHeader) {
-          throw new Error("No session cookies available");
-        }
-
-        const response = await fetch(`${apiUrl}/api/referrals/invites`, {
-          headers: {
-            Cookie: cookieHeader,
-          },
-        });
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error("Unauthorized - please sign in");
-          }
-          if (response.status === 503) {
-            throw new Error("Service temporarily unavailable");
-          }
-          throw new Error(`Failed to fetch referral invites: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        debugLogger.error("Error fetching referral invites:", error);
-        throw error;
-      }
-    });
+    // DELETED_AT_GROUP_G — get-referral-stats, send-referral-invite, get-referral-invites removed with referral subsystem
 
     ipcMain.handle("open-whisper-models-folder", async () => {
       try {
@@ -6188,25 +5525,6 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("get-ydotool-status", () => {
-      const { getYdotoolStatus } = require("./ensureYdotool");
-      const { execFileSync } = require("child_process");
-      const status = getYdotoolStatus();
-      const isKde = (process.env.XDG_CURRENT_DESKTOP || "").toLowerCase().includes("kde");
-      let hasXclip = false;
-      let hasXsel = false;
-      if (isKde) {
-        try {
-          execFileSync("which", ["xclip"], { timeout: 1000 });
-          hasXclip = true;
-        } catch {}
-        try {
-          execFileSync("which", ["xsel"], { timeout: 1000 });
-          hasXsel = true;
-        } catch {}
-      }
-      return { ...status, isKde, hasXclip, hasXsel };
-    });
 
     ipcMain.handle("get-debug-state", async () => {
       try {
@@ -6311,486 +5629,6 @@ class IPCHandlers {
 
     ipcMain.handle("get-update-info", async () => {
       return this.updateManager.getUpdateInfo();
-    });
-
-    const fetchStreamingToken = async (event) => {
-      const apiUrl = getApiUrl();
-      if (!apiUrl) {
-        throw new Error("OpenWhispr API URL not configured");
-      }
-
-      const cookieHeader = await getSessionCookies(event);
-      if (!cookieHeader) {
-        throw new Error("No session cookies available");
-      }
-
-      const tokenResponse = await fetch(`${apiUrl}/api/streaming-token`, {
-        method: "POST",
-        headers: {
-          Cookie: cookieHeader,
-        },
-      });
-
-      if (!tokenResponse.ok) {
-        if (tokenResponse.status === 401) {
-          const err = new Error("Session expired");
-          err.code = "AUTH_EXPIRED";
-          throw err;
-        }
-        const errorData = await tokenResponse.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || `Failed to get streaming token: ${tokenResponse.status}`
-        );
-      }
-
-      const { token } = await tokenResponse.json();
-      if (!token) {
-        throw new Error("No token received from API");
-      }
-
-      return token;
-    };
-
-    ipcMain.handle("assemblyai-streaming-warmup", async (event, options = {}) => {
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) {
-          return { success: false, error: "API not configured", code: "NO_API" };
-        }
-
-        if (!this.assemblyAiStreaming) {
-          this.assemblyAiStreaming = new AssemblyAiStreaming();
-        }
-
-        if (this.assemblyAiStreaming.hasWarmConnection()) {
-          debugLogger.debug("AssemblyAI connection already warm", {}, "streaming");
-          return { success: true, alreadyWarm: true };
-        }
-
-        let token = this.assemblyAiStreaming.getCachedToken();
-        if (!token) {
-          debugLogger.debug("Fetching new streaming token for warmup", {}, "streaming");
-          token = await fetchStreamingToken(event);
-        }
-
-        await this.assemblyAiStreaming.warmup({ ...options, token });
-        debugLogger.debug("AssemblyAI connection warmed up", {}, "streaming");
-
-        return { success: true };
-      } catch (error) {
-        debugLogger.error("AssemblyAI warmup error", { error: error.message });
-        if (error.code === "AUTH_EXPIRED") {
-          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
-        }
-        return { success: false, error: error.message };
-      }
-    });
-
-    let streamingStartInProgress = false;
-
-    ipcMain.handle("assemblyai-streaming-start", async (event, options = {}) => {
-      if (streamingStartInProgress) {
-        debugLogger.debug("Streaming start already in progress, ignoring", {}, "streaming");
-        return { success: false, error: "Operation in progress" };
-      }
-
-      streamingStartInProgress = true;
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) {
-          return { success: false, error: "API not configured", code: "NO_API" };
-        }
-
-        const win = BrowserWindow.fromWebContents(event.sender);
-
-        if (!this.assemblyAiStreaming) {
-          this.assemblyAiStreaming = new AssemblyAiStreaming();
-        }
-
-        // Clean up any stale active connection (shouldn't happen normally)
-        if (this.assemblyAiStreaming.isConnected) {
-          debugLogger.debug(
-            "AssemblyAI cleaning up stale connection before start",
-            {},
-            "streaming"
-          );
-          await this.assemblyAiStreaming.disconnect(false);
-        }
-
-        const hasWarm = this.assemblyAiStreaming.hasWarmConnection();
-        debugLogger.debug(
-          "AssemblyAI streaming start",
-          { hasWarmConnection: hasWarm },
-          "streaming"
-        );
-
-        let token = this.assemblyAiStreaming.getCachedToken();
-        if (!token) {
-          debugLogger.debug("Fetching streaming token from API", {}, "streaming");
-          token = await fetchStreamingToken(event);
-          this.assemblyAiStreaming.cacheToken(token);
-        } else {
-          debugLogger.debug("Using cached streaming token", {}, "streaming");
-        }
-
-        // Set up callbacks to forward events to renderer
-        this.assemblyAiStreaming.onPartialTranscript = (text) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send("assemblyai-partial-transcript", text);
-          }
-        };
-
-        this.assemblyAiStreaming.onFinalTranscript = (text) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send("assemblyai-final-transcript", text);
-          }
-        };
-
-        this.assemblyAiStreaming.onError = (error) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send("assemblyai-error", error.message);
-          }
-        };
-
-        this.assemblyAiStreaming.onSessionEnd = (data) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send("assemblyai-session-end", data);
-          }
-        };
-
-        await this.assemblyAiStreaming.connect({ ...options, token });
-        debugLogger.debug("AssemblyAI streaming started", {}, "streaming");
-
-        return {
-          success: true,
-          usedWarmConnection: this.assemblyAiStreaming.hasWarmConnection() === false,
-        };
-      } catch (error) {
-        debugLogger.error("AssemblyAI streaming start error", { error: error.message });
-        if (error.code === "AUTH_EXPIRED") {
-          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
-        }
-        return { success: false, error: error.message };
-      } finally {
-        streamingStartInProgress = false;
-      }
-    });
-
-    ipcMain.on("assemblyai-streaming-send", (event, audioBuffer) => {
-      try {
-        if (!this.assemblyAiStreaming) return;
-        const buffer = Buffer.from(audioBuffer);
-        this.assemblyAiStreaming.sendAudio(buffer);
-      } catch (error) {
-        debugLogger.error("AssemblyAI streaming send error", { error: error.message });
-      }
-    });
-
-    ipcMain.on("assemblyai-streaming-force-endpoint", () => {
-      this.assemblyAiStreaming?.forceEndpoint();
-    });
-
-    ipcMain.handle("assemblyai-streaming-stop", async () => {
-      try {
-        let result = { text: "" };
-        if (this.assemblyAiStreaming) {
-          result = await this.assemblyAiStreaming.disconnect(true);
-          this.assemblyAiStreaming.cleanupAll();
-          this.assemblyAiStreaming = null;
-        }
-
-        return { success: true, text: result?.text || "" };
-      } catch (error) {
-        debugLogger.error("AssemblyAI streaming stop error", { error: error.message });
-        return { success: false, error: error.message };
-      }
-    });
-
-    ipcMain.handle("assemblyai-streaming-status", async () => {
-      if (!this.assemblyAiStreaming) {
-        return { isConnected: false, sessionId: null };
-      }
-      return this.assemblyAiStreaming.getStatus();
-    });
-
-    let deepgramTokenWindowId = null;
-
-    const fetchDeepgramStreamingTokenFromWindow = async (windowId) => {
-      const apiUrl = getApiUrl();
-      if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
-
-      const win = BrowserWindow.fromId(windowId);
-      if (!win || win.isDestroyed()) throw new Error("Window not available for token refresh");
-
-      const cookieHeader = await getSessionCookiesFromWindow(win);
-      if (!cookieHeader) throw new Error("No session cookies available");
-
-      const tokenResponse = await fetch(`${apiUrl}/api/deepgram-streaming-token`, {
-        method: "POST",
-        headers: { Cookie: cookieHeader },
-      });
-
-      if (!tokenResponse.ok) {
-        if (tokenResponse.status === 401) {
-          const err = new Error("Session expired");
-          err.code = "AUTH_EXPIRED";
-          throw err;
-        }
-        throw new Error(`Failed to get Deepgram streaming token: ${tokenResponse.status}`);
-      }
-
-      const { token } = await tokenResponse.json();
-      if (!token) throw new Error("No token received from API");
-      return token;
-    };
-
-    const fetchDeepgramStreamingToken = async (event) => {
-      const apiUrl = getApiUrl();
-      if (!apiUrl) {
-        throw new Error("OpenWhispr API URL not configured");
-      }
-
-      const cookieHeader = await getSessionCookies(event);
-      if (!cookieHeader) {
-        throw new Error("No session cookies available");
-      }
-
-      const tokenResponse = await fetch(`${apiUrl}/api/deepgram-streaming-token`, {
-        method: "POST",
-        headers: {
-          Cookie: cookieHeader,
-        },
-      });
-
-      if (!tokenResponse.ok) {
-        if (tokenResponse.status === 401) {
-          const err = new Error("Session expired");
-          err.code = "AUTH_EXPIRED";
-          throw err;
-        }
-        const errorData = await tokenResponse.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || `Failed to get Deepgram streaming token: ${tokenResponse.status}`
-        );
-      }
-
-      const { token } = await tokenResponse.json();
-      if (!token) {
-        throw new Error("No token received from API");
-      }
-
-      return token;
-    };
-
-    ipcMain.handle("deepgram-streaming-warmup", async (event, options = {}) => {
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) {
-          return { success: false, error: "API not configured", code: "NO_API" };
-        }
-
-        const win = BrowserWindow.fromWebContents(event.sender);
-        if (win && !win.isDestroyed()) {
-          deepgramTokenWindowId = win.id;
-        }
-
-        if (!this.deepgramStreaming) {
-          this.deepgramStreaming = new DeepgramStreaming();
-        }
-
-        this.deepgramStreaming.setTokenRefreshFn(async () => {
-          if (!deepgramTokenWindowId) throw new Error("No window reference");
-          return fetchDeepgramStreamingTokenFromWindow(deepgramTokenWindowId);
-        });
-
-        if (this.deepgramStreaming.hasWarmConnection()) {
-          debugLogger.debug("Deepgram connection already warm", {}, "streaming");
-          return { success: true, alreadyWarm: true };
-        }
-
-        let token = this.deepgramStreaming.getCachedToken();
-        if (!token) {
-          debugLogger.debug("Fetching new Deepgram streaming token for warmup", {}, "streaming");
-          token = await fetchDeepgramStreamingToken(event);
-        }
-
-        await this.deepgramStreaming.warmup({ ...options, token });
-        debugLogger.debug("Deepgram connection warmed up", {}, "streaming");
-
-        return { success: true };
-      } catch (error) {
-        debugLogger.error("Deepgram warmup error", { error: error.message });
-        if (error.code === "AUTH_EXPIRED") {
-          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
-        }
-        return { success: false, error: error.message };
-      }
-    });
-
-    let deepgramStreamingStartInProgress = false;
-    let sendDropCount = 0;
-
-    ipcMain.handle("deepgram-streaming-start", async (event, options = {}) => {
-      if (deepgramStreamingStartInProgress) {
-        debugLogger.debug(
-          "Deepgram streaming start already in progress, ignoring",
-          {},
-          "streaming"
-        );
-        return { success: false, error: "Operation in progress" };
-      }
-
-      deepgramStreamingStartInProgress = true;
-      try {
-        const apiUrl = getApiUrl();
-        if (!apiUrl) {
-          return { success: false, error: "API not configured", code: "NO_API" };
-        }
-
-        const win = BrowserWindow.fromWebContents(event.sender);
-        if (win && !win.isDestroyed()) {
-          deepgramTokenWindowId = win.id;
-        }
-
-        if (!this.deepgramStreaming) {
-          this.deepgramStreaming = new DeepgramStreaming();
-        }
-
-        this.deepgramStreaming.setTokenRefreshFn(async () => {
-          if (!deepgramTokenWindowId) throw new Error("No window reference");
-          return fetchDeepgramStreamingTokenFromWindow(deepgramTokenWindowId);
-        });
-
-        if (this.deepgramStreaming.isConnected) {
-          debugLogger.debug("Deepgram cleaning up stale connection before start", {}, "streaming");
-          await this.deepgramStreaming.disconnect(false);
-        }
-
-        const hasWarm = this.deepgramStreaming.hasWarmConnection();
-        debugLogger.debug("Deepgram streaming start", { hasWarmConnection: hasWarm }, "streaming");
-
-        let token = this.deepgramStreaming.getCachedToken();
-        if (!token) {
-          debugLogger.debug("Fetching Deepgram streaming token from API", {}, "streaming");
-          token = await fetchDeepgramStreamingToken(event);
-          this.deepgramStreaming.cacheToken(token);
-        } else {
-          debugLogger.debug("Using cached Deepgram streaming token", {}, "streaming");
-        }
-
-        this.deepgramStreaming.onPartialTranscript = (text) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send("deepgram-partial-transcript", text);
-          }
-        };
-
-        this.deepgramStreaming.onFinalTranscript = (text) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send("deepgram-final-transcript", text);
-          }
-        };
-
-        this.deepgramStreaming.onError = (error) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send("deepgram-error", error.message);
-          }
-        };
-
-        this.deepgramStreaming.onSessionEnd = (data) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send("deepgram-session-end", data);
-          }
-        };
-
-        sendDropCount = 0;
-        await this.deepgramStreaming.connect({ ...options, token });
-        debugLogger.debug(
-          "Deepgram streaming started",
-          {
-            isConnected: this.deepgramStreaming.isConnected,
-            hasWs: !!this.deepgramStreaming.ws,
-            wsReadyState: this.deepgramStreaming.ws?.readyState,
-            forceNew: !!options.forceNew,
-          },
-          "streaming"
-        );
-
-        return {
-          success: true,
-          usedWarmConnection: hasWarm && !options.forceNew,
-        };
-      } catch (error) {
-        debugLogger.error("Deepgram streaming start error", { error: error.message });
-        if (error.code === "AUTH_EXPIRED") {
-          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
-        }
-        return { success: false, error: error.message };
-      } finally {
-        deepgramStreamingStartInProgress = false;
-      }
-    });
-
-    ipcMain.on("deepgram-streaming-send", (event, audioBuffer) => {
-      try {
-        if (!this.deepgramStreaming) return;
-        const buffer = Buffer.from(audioBuffer);
-        const sent = this.deepgramStreaming.sendAudio(buffer);
-        if (!sent) {
-          sendDropCount++;
-          if (sendDropCount <= 3 || sendDropCount % 50 === 0) {
-            debugLogger.warn(
-              "Deepgram audio send dropped",
-              {
-                dropCount: sendDropCount,
-                hasWs: !!this.deepgramStreaming.ws,
-                isConnected: this.deepgramStreaming.isConnected,
-                wsReadyState: this.deepgramStreaming.ws?.readyState,
-              },
-              "streaming"
-            );
-          }
-        } else {
-          if (sendDropCount > 0) {
-            debugLogger.debug(
-              "Deepgram audio send resumed after drops",
-              {
-                previousDrops: sendDropCount,
-              },
-              "streaming"
-            );
-            sendDropCount = 0;
-          }
-        }
-      } catch (error) {
-        debugLogger.error("Deepgram streaming send error", { error: error.message });
-      }
-    });
-
-    ipcMain.on("deepgram-streaming-finalize", () => {
-      this.deepgramStreaming?.finalize();
-    });
-
-    ipcMain.handle("deepgram-streaming-stop", async () => {
-      try {
-        const model = this.deepgramStreaming?.currentModel || "nova-3";
-        const audioBytesSent = this.deepgramStreaming?.audioBytesSent || 0;
-        let result = { text: "" };
-        if (this.deepgramStreaming) {
-          result = await this.deepgramStreaming.disconnect(true);
-        }
-
-        return { success: true, text: result?.text || "", model, audioBytesSent };
-      } catch (error) {
-        debugLogger.error("Deepgram streaming stop error", { error: error.message });
-        return { success: false, error: error.message };
-      }
-    });
-
-    ipcMain.handle("deepgram-streaming-status", async () => {
-      if (!this.deepgramStreaming) {
-        return { isConnected: false, sessionId: null };
-      }
-      return this.deepgramStreaming.getStatus();
     });
 
     // Agent mode handlers

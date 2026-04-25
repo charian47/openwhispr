@@ -7,8 +7,6 @@ import type { InferenceModeOption } from "../ui/SettingsSection";
 import { Toggle } from "../ui/toggle";
 import TranscriptionModelPicker from "../TranscriptionModelPicker";
 import ReasoningModelSelector from "../ReasoningModelSelector";
-import EnterpriseSection from "../EnterpriseSection";
-import SelfHostedPanel from "../SelfHostedPanel";
 import type { InferenceMode } from "../../types/electron";
 
 export function MeetingSpeakerDetectionRow() {
@@ -162,18 +160,6 @@ export function MeetingTranscriptionPanel() {
 
       {meetingTranscriptionMode === "providers" && renderTranscriptionPicker("cloud")}
       {meetingTranscriptionMode === "local" && renderTranscriptionPicker("local")}
-      {meetingTranscriptionMode === "self-hosted" && (
-        <>
-          <SelfHostedPanel
-            service="transcription"
-            url={meetingRemoteTranscriptionUrl}
-            onUrlChange={setMeetingRemoteTranscriptionUrl}
-          />
-          <p className="text-xs text-muted-foreground/80 px-1">
-            {t("settingsPage.speechToText.selfHostedStreamingNote")}
-          </p>
-        </>
-      )}
       <MeetingSpeakerDetectionRow />
     </div>
   );
@@ -286,21 +272,6 @@ export function MeetingReasoningPanel() {
 
       {meetingReasoningMode === "providers" && renderReasoningSelector("cloud")}
       {meetingReasoningMode === "local" && renderReasoningSelector("local")}
-      {meetingReasoningMode === "self-hosted" && (
-        <SelfHostedPanel
-          service="reasoning"
-          url={meetingRemoteReasoningUrl}
-          onUrlChange={setMeetingRemoteReasoningUrl}
-        />
-      )}
-      {meetingReasoningMode === "enterprise" && (
-        <EnterpriseSection
-          currentProvider={meetingReasoningProvider}
-          reasoningModel={meetingReasoningModel}
-          setReasoningModel={setMeetingReasoningModel}
-          setLocalReasoningProvider={setMeetingReasoningProvider}
-        />
-      )}
     </div>
   );
 }

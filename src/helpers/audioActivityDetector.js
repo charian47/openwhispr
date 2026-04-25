@@ -7,7 +7,7 @@ const debugLogger = require("./debugLogger");
 
 const execAsync = promisify(exec);
 
-const CHECK_INTERVAL_MS = process.platform === "win32" ? 15 * 1000 : 3 * 1000;
+const CHECK_INTERVAL_MS = 3 * 1000;
 const SUSTAINED_THRESHOLD_CHECKS = 2;
 const SUSTAINED_EVENT_DRIVEN_MS = 2 * 1000;
 const COOLDOWN_MS = 5 * 60 * 1000;
@@ -25,7 +25,6 @@ class AudioActivityDetector extends EventEmitter {
     this._userRecording = false;
     this._checking = false;
     this._listenerProcess = null;
-    this._activeMicPids = new Set();
     this._activeSources = 0;
     this._sustainedTimer = null;
     this._running = false;
@@ -104,7 +103,6 @@ class AudioActivityDetector extends EventEmitter {
     this.consecutiveChecks = 0;
     this.audioActiveStart = null;
     this.hasPrompted = false;
-    this._activeMicPids.clear();
     this._activeSources = 0;
     this._clearResetTimer();
   }
@@ -148,16 +146,7 @@ class AudioActivityDetector extends EventEmitter {
   // ---------------------------------------------------------------------------
 
   async _tryEventDriven() {
-    switch (process.platform) {
-      case "darwin":
-        return this._tryEventDrivenDarwin();
-      case "win32":
-        return this._tryEventDrivenWin32();
-      case "linux":
-        return this._tryEventDrivenLinux();
-      default:
-        return false;
-    }
+    return this._tryEventDrivenDarwin();
   }
 
   _resolveBinary(binaryName) {
@@ -248,104 +237,6 @@ class AudioActivityDetector extends EventEmitter {
     } catch (err) {
       debugLogger.warn("Failed to spawn macos-mic-listener", { error: err.message }, "meeting");
       return false;
-    }
-  }
-
-  _tryEventDrivenWin32() {
-    const binaryPath = this._resolveBinary("windows-mic-listener.exe");
-    if (!binaryPath) {
-      debugLogger.warn("windows-mic-listener.exe not found, will use polling", {}, "meeting");
-      return false;
-    }
-
-    try {
-      // stdin must be "pipe" — the Windows binary monitors stdin for parent death
-      const child = spawn(binaryPath, ["--exclude-pid", String(process.pid)], {
-        stdio: ["pipe", "pipe", "pipe"],
-      });
-      this._listenerProcess = child;
-
-      let buffer = "";
-      child.stdout.on("data", (data) => {
-        buffer += data.toString();
-        let newlineIdx;
-        while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
-          const line = buffer.slice(0, newlineIdx).trim();
-          buffer = buffer.slice(newlineIdx + 1);
-          this._parseWin32ListenerLine(line);
-        }
-      });
-
-      child.stderr.on("data", (data) => {
-        debugLogger.debug(
-          "windows-mic-listener stderr",
-          { output: data.toString().trim() },
-          "meeting"
-        );
-      });
-
-      this._attachFallbackHandlers(child, "windows-mic-listener");
-      return true;
-    } catch (err) {
-      debugLogger.warn("Failed to spawn windows-mic-listener", { error: err.message }, "meeting");
-      return false;
-    }
-  }
-
-  _parseWin32ListenerLine(line) {
-    const startMatch = line.match(/^MIC_START\s+(\d+)$/);
-    if (startMatch) {
-      const pid = parseInt(startMatch[1], 10);
-      this._activeMicPids.add(pid);
-      this._onMicStateChanged(true);
-      return;
-    }
-
-    const stopMatch = line.match(/^MIC_STOP\s+(\d+)$/);
-    if (stopMatch) {
-      const pid = parseInt(stopMatch[1], 10);
-      this._activeMicPids.delete(pid);
-      if (this._activeMicPids.size === 0) {
-        this._onMicStateChanged(false);
-      }
-      return;
-    }
-  }
-
-  _tryEventDrivenLinux() {
-    try {
-      const child = spawn("pactl", ["subscribe"], { stdio: ["ignore", "pipe", "pipe"] });
-      this._listenerProcess = child;
-
-      let buffer = "";
-      child.stdout.on("data", (data) => {
-        buffer += data.toString();
-        let newlineIdx;
-        while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
-          const line = buffer.slice(0, newlineIdx).trim();
-          buffer = buffer.slice(newlineIdx + 1);
-          this._parsePactlSubscribeLine(line);
-        }
-      });
-
-      this._attachFallbackHandlers(child, "pactl subscribe");
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  _parsePactlSubscribeLine(line) {
-    if (!line.includes("source-output")) return;
-
-    if (/Event\s+'new'\s+on\s+source-output/i.test(line)) {
-      this._activeSources++;
-      this._onMicStateChanged(true);
-    } else if (/Event\s+'remove'\s+on\s+source-output/i.test(line)) {
-      this._activeSources = Math.max(0, this._activeSources - 1);
-      if (this._activeSources === 0) {
-        this._onMicStateChanged(false);
-      }
     }
   }
 
@@ -465,16 +356,7 @@ class AudioActivityDetector extends EventEmitter {
   }
 
   async _isMicActive() {
-    switch (process.platform) {
-      case "darwin":
-        return this._checkDarwin();
-      case "win32":
-        return this._checkWin32();
-      case "linux":
-        return this._checkLinux();
-      default:
-        return false;
-    }
+    return this._checkDarwin();
   }
 
   async _checkDarwin() {
@@ -484,39 +366,6 @@ class AudioActivityDetector extends EventEmitter {
         EXEC_OPTS
       );
       return stdout.trim().length > 0;
-    } catch {
-      return false;
-    }
-  }
-
-  async _checkWin32() {
-    try {
-      const processListCache = require("./processListCache");
-      const names = await processListCache.getProcessList();
-      return (
-        names.includes("cpthost.exe") ||
-        names.includes("ms-teams_modulehost.exe") ||
-        names.includes("webexmeetingsapp.exe")
-      );
-    } catch {
-      return false;
-    }
-  }
-
-  async _checkLinux() {
-    try {
-      const { stdout } = await execAsync("pactl list source-outputs short", EXEC_OPTS);
-      return stdout.trim().length > 0;
-    } catch {
-      // pactl unavailable, try PipeWire
-    }
-
-    try {
-      const { stdout } = await execAsync(
-        "pw-cli list-objects | grep -c 'Stream/Input/Audio'",
-        EXEC_OPTS
-      );
-      return parseInt(stdout.trim(), 10) > 0;
     } catch {
       return false;
     }

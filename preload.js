@@ -359,34 +359,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getCustomReasoningKey: () => ipcRenderer.invoke("get-custom-reasoning-key"),
   saveCustomReasoningKey: (key) => ipcRenderer.invoke("save-custom-reasoning-key", key),
 
-  // Enterprise provider key management
-  getBedrockRegion: () => ipcRenderer.invoke("get-bedrock-region"),
-  saveBedrockRegion: (value) => ipcRenderer.invoke("save-bedrock-region", value),
-  getBedrockProfile: () => ipcRenderer.invoke("get-bedrock-profile"),
-  saveBedrockProfile: (value) => ipcRenderer.invoke("save-bedrock-profile", value),
-  getBedrockAccessKeyId: () => ipcRenderer.invoke("get-bedrock-access-key-id"),
-  saveBedrockAccessKeyId: (key) => ipcRenderer.invoke("save-bedrock-access-key-id", key),
-  getBedrockSecretAccessKey: () => ipcRenderer.invoke("get-bedrock-secret-access-key"),
-  saveBedrockSecretAccessKey: (key) => ipcRenderer.invoke("save-bedrock-secret-access-key", key),
-  getBedrockSessionToken: () => ipcRenderer.invoke("get-bedrock-session-token"),
-  saveBedrockSessionToken: (key) => ipcRenderer.invoke("save-bedrock-session-token", key),
-  getAzureEndpoint: () => ipcRenderer.invoke("get-azure-endpoint"),
-  saveAzureEndpoint: (value) => ipcRenderer.invoke("save-azure-endpoint", value),
-  getAzureApiKey: () => ipcRenderer.invoke("get-azure-api-key"),
-  saveAzureApiKey: (key) => ipcRenderer.invoke("save-azure-api-key", key),
-  getAzureDeployment: () => ipcRenderer.invoke("get-azure-deployment"),
-  saveAzureDeployment: (value) => ipcRenderer.invoke("save-azure-deployment", value),
-  getAzureApiVersion: () => ipcRenderer.invoke("get-azure-api-version"),
-  saveAzureApiVersion: (value) => ipcRenderer.invoke("save-azure-api-version", value),
-  getVertexProject: () => ipcRenderer.invoke("get-vertex-project"),
-  saveVertexProject: (value) => ipcRenderer.invoke("save-vertex-project", value),
-  getVertexLocation: () => ipcRenderer.invoke("get-vertex-location"),
-  saveVertexLocation: (value) => ipcRenderer.invoke("save-vertex-location", value),
-  getVertexApiKey: () => ipcRenderer.invoke("get-vertex-api-key"),
-  saveVertexApiKey: (key) => ipcRenderer.invoke("save-vertex-api-key", key),
-  testEnterpriseConnection: (provider, config) =>
-    ipcRenderer.invoke("test-enterprise-connection", provider, config),
-
   // Dictation key persistence (file-based for reliable startup)
   getDictationKey: () => ipcRenderer.invoke("get-dictation-key"),
   getActiveDictationKey: () => ipcRenderer.invoke("get-active-dictation-key"),
@@ -408,11 +380,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Anthropic reasoning
   processAnthropicReasoning: (text, modelId, agentName, config) =>
     ipcRenderer.invoke("process-anthropic-reasoning", text, modelId, agentName, config),
-
-  // Enterprise reasoning (Bedrock, Azure, Vertex) — runs in main process so
-  // Node-only SDKs (AWS/Azure/Google credential providers) can resolve.
-  processEnterpriseReasoning: (text, modelId, agentName, config) =>
-    ipcRenderer.invoke("process-enterprise-reasoning", text, modelId, agentName, config),
 
   // llama.cpp
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
@@ -438,9 +405,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   getLogLevel: () => ipcRenderer.invoke("get-log-level"),
   log: (entry) => ipcRenderer.invoke("app-log", entry),
-
-  // ydotool status check
-  getYdotoolStatus: () => ipcRenderer.invoke("get-ydotool-status"),
 
   // Debug logging management
   getDebugState: () => ipcRenderer.invoke("get-debug-state"),
@@ -485,60 +449,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     (callback) => (_event, data) => callback(data)
   ),
 
-  // Referral stats
-  getReferralStats: () => ipcRenderer.invoke("get-referral-stats"),
-  sendReferralInvite: (email) => ipcRenderer.invoke("send-referral-invite", email),
-  getReferralInvites: () => ipcRenderer.invoke("get-referral-invites"),
-
-  // Assembly AI Streaming
-  assemblyAiStreamingWarmup: (options) =>
-    ipcRenderer.invoke("assemblyai-streaming-warmup", options),
-  assemblyAiStreamingStart: (options) => ipcRenderer.invoke("assemblyai-streaming-start", options),
-  assemblyAiStreamingSend: (audioBuffer) =>
-    ipcRenderer.send("assemblyai-streaming-send", audioBuffer),
-  assemblyAiStreamingForceEndpoint: () => ipcRenderer.send("assemblyai-streaming-force-endpoint"),
-  assemblyAiStreamingStop: () => ipcRenderer.invoke("assemblyai-streaming-stop"),
-  assemblyAiStreamingStatus: () => ipcRenderer.invoke("assemblyai-streaming-status"),
-  onAssemblyAiPartialTranscript: registerListener(
-    "assemblyai-partial-transcript",
-    (callback) => (_event, text) => callback(text)
-  ),
-  onAssemblyAiFinalTranscript: registerListener(
-    "assemblyai-final-transcript",
-    (callback) => (_event, text) => callback(text)
-  ),
-  onAssemblyAiError: registerListener(
-    "assemblyai-error",
-    (callback) => (_event, error) => callback(error)
-  ),
-  onAssemblyAiSessionEnd: registerListener(
-    "assemblyai-session-end",
-    (callback) => (_event, data) => callback(data)
-  ),
-
-  // Deepgram Streaming
-  deepgramStreamingWarmup: (options) => ipcRenderer.invoke("deepgram-streaming-warmup", options),
-  deepgramStreamingStart: (options) => ipcRenderer.invoke("deepgram-streaming-start", options),
-  deepgramStreamingSend: (audioBuffer) => ipcRenderer.send("deepgram-streaming-send", audioBuffer),
-  deepgramStreamingFinalize: () => ipcRenderer.send("deepgram-streaming-finalize"),
-  deepgramStreamingStop: () => ipcRenderer.invoke("deepgram-streaming-stop"),
-  deepgramStreamingStatus: () => ipcRenderer.invoke("deepgram-streaming-status"),
-  onDeepgramPartialTranscript: registerListener(
-    "deepgram-partial-transcript",
-    (callback) => (_event, text) => callback(text)
-  ),
-  onDeepgramFinalTranscript: registerListener(
-    "deepgram-final-transcript",
-    (callback) => (_event, text) => callback(text)
-  ),
-  onDeepgramError: registerListener(
-    "deepgram-error",
-    (callback) => (_event, error) => callback(error)
-  ),
-  onDeepgramSessionEnd: registerListener(
-    "deepgram-session-end",
-    (callback) => (_event, data) => callback(data)
-  ),
+  // DELETED_AT_GROUP_G — getReferralStats, sendReferralInvite, getReferralInvites removed with referral subsystem
 
   // Meeting transcription (streaming, dual-channel)
   meetingTranscriptionPrepare: (options) =>
@@ -563,28 +474,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   ),
   onMeetingTranscriptionError: registerListener(
     "meeting-transcription-error",
-    (callback) => (_event, data) => callback(data)
-  ),
-
-  // Dictation realtime streaming
-  dictationRealtimeWarmup: (options) => ipcRenderer.invoke("dictation-realtime-warmup", options),
-  dictationRealtimeStart: (options) => ipcRenderer.invoke("dictation-realtime-start", options),
-  dictationRealtimeSend: (buffer) => ipcRenderer.send("dictation-realtime-send", buffer),
-  dictationRealtimeStop: () => ipcRenderer.invoke("dictation-realtime-stop"),
-  onDictationRealtimePartial: registerListener(
-    "dictation-realtime-partial",
-    (callback) => (_event, data) => callback(data)
-  ),
-  onDictationRealtimeFinal: registerListener(
-    "dictation-realtime-final",
-    (callback) => (_event, data) => callback(data)
-  ),
-  onDictationRealtimeError: registerListener(
-    "dictation-realtime-error",
-    (callback) => (_event, data) => callback(data)
-  ),
-  onDictationRealtimeSessionEnd: registerListener(
-    "dictation-realtime-session-end",
     (callback) => (_event, data) => callback(data)
   ),
 
@@ -625,11 +514,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("dictation-key-active", listener);
     return () => ipcRenderer.removeListener("dictation-key-active", listener);
   },
-  onWindowsPushToTalkUnavailable: registerListener("windows-ptt-unavailable"),
-  onLinuxPttPermissionDenied: registerListener(
-    "linux-ptt-permission-denied",
-    (callback) => () => callback()
-  ),
 
   // Settings shortcut (Cmd+, / Ctrl+,)
   onShowSettings: registerListener("show-settings", (callback) => () => callback()),

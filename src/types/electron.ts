@@ -336,14 +336,7 @@ export interface ConversationPreview {
   last_message_role?: "user" | "assistant" | "system" | null;
 }
 
-export interface ReferralItem {
-  id: string;
-  email: string;
-  name: string | null;
-  status: "pending" | "completed" | "rewarded";
-  created_at: string;
-  first_payment_at: string | null;
-}
+// DELETED_AT_GROUP_G — ReferralItem interface removed with referral subsystem
 
 declare global {
   interface Window {
@@ -792,20 +785,6 @@ declare global {
         supportsPushToTalk: boolean;
       }>;
 
-      // Wayland paste diagnostics
-      getYdotoolStatus?: () => Promise<{
-        isLinux: boolean;
-        isWayland: boolean;
-        hasYdotool: boolean;
-        hasYdotoold: boolean;
-        daemonRunning: boolean;
-        hasService: boolean;
-        hasUinput: boolean;
-        hasUdevRule: boolean;
-        hasGroup: boolean;
-        allGood: boolean;
-      }>;
-
       // Globe key listener for hotkey capture (macOS only)
       onGlobeKeyPressed?: (callback: () => void) => () => void;
       onGlobeKeyReleased?: (callback: () => void) => () => void;
@@ -819,7 +798,6 @@ declare global {
       ) => () => void;
       onSettingUpdated?: (callback: (data: { key: string; value: unknown }) => void) => () => void;
       onDictationKeyActive?: (callback: (key: string) => void) => () => void;
-      onLinuxPttPermissionDenied?: (callback: () => void) => () => void;
 
       // Settings shortcut (Cmd+, / Ctrl+,)
       onShowSettings?: (callback: () => void) => () => void;
@@ -1096,79 +1074,7 @@ declare global {
         callback: (data: { wordsUsed: number; limit: number }) => void
       ) => () => void;
 
-      // AssemblyAI Streaming
-      assemblyAiStreamingWarmup?: (options?: {
-        sampleRate?: number;
-        language?: string;
-      }) => Promise<{
-        success: boolean;
-        alreadyWarm?: boolean;
-        error?: string;
-        code?: string;
-      }>;
-      assemblyAiStreamingStart?: (options?: { sampleRate?: number; language?: string }) => Promise<{
-        success: boolean;
-        usedWarmConnection?: boolean;
-        error?: string;
-        code?: string;
-      }>;
-      assemblyAiStreamingSend?: (audioBuffer: ArrayBuffer) => void;
-      assemblyAiStreamingForceEndpoint?: () => void;
-      assemblyAiStreamingStop?: () => Promise<{
-        success: boolean;
-        text?: string;
-        error?: string;
-      }>;
-      assemblyAiStreamingStatus?: () => Promise<{
-        isConnected: boolean;
-        sessionId: string | null;
-      }>;
-      onAssemblyAiPartialTranscript?: (callback: (text: string) => void) => () => void;
-      onAssemblyAiFinalTranscript?: (callback: (text: string) => void) => () => void;
-      onAssemblyAiError?: (callback: (error: string) => void) => () => void;
-      onAssemblyAiSessionEnd?: (
-        callback: (data: { audioDuration?: number; text?: string }) => void
-      ) => () => void;
-
-      // Referral stats
-      getReferralStats?: () => Promise<{
-        referralCode: string;
-        referralLink: string;
-        totalReferrals: number;
-        completedReferrals: number;
-        pendingReferrals: number;
-        totalMonthsEarned: number;
-        referrals: Array<{
-          id: string;
-          email: string;
-          name: string;
-          status: "pending" | "completed" | "rewarded";
-          created_at: string;
-          first_payment_at: string | null;
-          words_used: number;
-        }>;
-      }>;
-
-      sendReferralInvite?: (email: string) => Promise<{
-        success: boolean;
-        invite: {
-          id: string;
-          recipientEmail: string;
-          status: "sent" | "failed" | "opened" | "converted";
-          sentAt: string;
-        };
-      }>;
-
-      getReferralInvites?: () => Promise<{
-        invites: Array<{
-          id: string;
-          recipientEmail: string;
-          status: "sent" | "failed" | "opened" | "converted";
-          sentAt: string;
-          openedAt?: string;
-          convertedAt?: string;
-        }>;
-      }>;
+      // DELETED_AT_GROUP_G — getReferralStats, sendReferralInvite, getReferralInvites removed with referral subsystem
 
       // Agent Mode
       updateAgentHotkey?: (hotkey: string) => Promise<{ success: boolean; message: string }>;
@@ -1264,41 +1170,6 @@ declare global {
         query: string,
         limit?: number
       ) => Promise<ConversationPreview[]>;
-
-      // Deepgram Streaming
-      deepgramStreamingWarmup?: (options?: { sampleRate?: number; language?: string }) => Promise<{
-        success: boolean;
-        alreadyWarm?: boolean;
-        error?: string;
-        code?: string;
-      }>;
-      deepgramStreamingStart?: (options?: {
-        sampleRate?: number;
-        language?: string;
-        forceNew?: boolean;
-      }) => Promise<{
-        success: boolean;
-        usedWarmConnection?: boolean;
-        error?: string;
-        code?: string;
-      }>;
-      deepgramStreamingSend?: (audioBuffer: ArrayBuffer) => void;
-      deepgramStreamingFinalize?: () => void;
-      deepgramStreamingStop?: () => Promise<{
-        success: boolean;
-        text?: string;
-        error?: string;
-      }>;
-      deepgramStreamingStatus?: () => Promise<{
-        isConnected: boolean;
-        sessionId: string | null;
-      }>;
-      onDeepgramPartialTranscript?: (callback: (text: string) => void) => () => void;
-      onDeepgramFinalTranscript?: (callback: (text: string) => void) => () => void;
-      onDeepgramError?: (callback: (error: string) => void) => () => void;
-      onDeepgramSessionEnd?: (
-        callback: (data: { audioDuration?: number; text?: string }) => void
-      ) => () => void;
 
       // Agent overlay
       resizeAgentWindow?: (width: number, height: number) => Promise<void>;
@@ -1528,22 +1399,6 @@ declare global {
         noteId: number,
         embeddings: Record<string, number[]>
       ) => Promise<{ success: boolean }>;
-
-      // Dictation realtime streaming
-      dictationRealtimeWarmup?: (options: {
-        model?: string;
-        mode?: "byok" | "openwhispr";
-      }) => Promise<{ success: boolean; error?: string }>;
-      dictationRealtimeStart?: (options: {
-        model?: string;
-        mode?: "byok" | "openwhispr";
-      }) => Promise<{ success: boolean; error?: string }>;
-      dictationRealtimeSend?: (buffer: ArrayBuffer) => void;
-      dictationRealtimeStop?: () => Promise<{ success: boolean; text: string }>;
-      onDictationRealtimePartial?: (callback: (text: string) => void) => () => void;
-      onDictationRealtimeFinal?: (callback: (text: string) => void) => () => void;
-      onDictationRealtimeError?: (callback: (error: string) => void) => () => void;
-      onDictationRealtimeSessionEnd?: (callback: (data: { text: string }) => void) => () => void;
 
       // Google Calendar event listeners
       onGcalMeetingStarting?: (callback: (data: any) => void) => () => void;
