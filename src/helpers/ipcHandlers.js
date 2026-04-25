@@ -288,12 +288,10 @@ class IPCHandlers {
     this.getTrayManager = managers.getTrayManager;
     // Meeting/calendar subsystems were stripped from this fork; stub the
     // managers so any leftover IPC handlers below return inert defaults
-    // instead of crashing on `this.X.method()`.
+    // instead of crashing on `this.X.method()`. Methods enumerated below
+    // are exactly those still called from somewhere in this file.
     const NOOP_ASYNC = async () => {};
     const NOOP_RESULT = async () => ({ success: false, disabled: true });
-    const meetingStub = new Proxy({}, {
-      get: () => NOOP_RESULT,
-    });
     const calendarStub = {
       startOAuth: NOOP_RESULT,
       disconnect: () => {},
@@ -304,16 +302,34 @@ class IPCHandlers {
       getUpcomingEvents: async () => [],
       syncOnFocus: () => {},
       onWakeFromSleep: () => {},
+      revokeAllTokens: NOOP_ASYNC,
       stop: () => {},
     };
+    const meetingStub = {
+      setMeetingModeActive: () => {},
+      setUserRecording: () => {},
+      getPreferences: () => ({}),
+      setPreferences: () => {},
+      handleNotificationResponse: NOOP_ASYNC,
+      handleNotificationTimeout: () => {},
+      joinCalendarMeeting: NOOP_ASYNC,
+      startManualMeeting: () => {},
+    };
     const audioTapStub = {
+      isSupported: () => false,
       verifyAccess: NOOP_RESULT,
       requestAccess: NOOP_RESULT,
       getPermissionStatus: () => ({ granted: false, disabled: true }),
       start: NOOP_RESULT,
       stop: NOOP_ASYNC,
     };
-    const aecStub = { stop: NOOP_ASYNC };
+    const aecStub = {
+      isAvailable: () => false,
+      start: NOOP_RESULT,
+      stop: NOOP_ASYNC,
+      processMicBuffer: () => 0,
+      processSystemBuffer: () => false,
+    };
     this.googleCalendarManager = managers.googleCalendarManager || calendarStub;
     this.meetingDetectionEngine = managers.meetingDetectionEngine || meetingStub;
     this.audioTapManager = managers.audioTapManager || audioTapStub;
