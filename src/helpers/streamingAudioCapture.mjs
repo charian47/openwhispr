@@ -141,4 +141,4 @@ class StreamingAudioCapture {
   }
 }
 
-module.exports = { RESAMPLER_SOURCE, StreamingAudioCapture };
+export { RESAMPLER_SOURCE, StreamingAudioCapture };

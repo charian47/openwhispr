@@ -3,7 +3,13 @@
 // Runs in plain Node — no AudioWorklet globals needed.
 
 const assert = require("assert");
-const { RESAMPLER_SOURCE } = require("../src/helpers/streamingAudioCapture");
+const path = require("path");
+
+(async () => {
+  // The helper is an ESM (.mjs) module — load via dynamic import. Node 24
+  // supports this from a CommonJS test script.
+  const helperUrl = "file://" + path.join(__dirname, "..", "src", "helpers", "streamingAudioCapture.mjs");
+  const { RESAMPLER_SOURCE } = await import(helperUrl);
 
 // Load the class from the exact same source string the worklet uses.
 // This validates that the exported source is self-contained and correct.
@@ -184,5 +190,9 @@ test("amplitude clipping: > 1.0 → 32767, < -1.0 → -32768", () => {
 // ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
-console.log(`\n=== plan2-audio-resampler.test.js: ${failed === 0 ? "PASS" : "FAIL"} (${passed}/${passed + failed}) ===`);
-if (failed > 0) process.exit(1);
+  console.log(`\n=== plan2-audio-resampler.test.js: ${failed === 0 ? "PASS" : "FAIL"} (${passed}/${passed + failed}) ===`);
+  if (failed > 0) process.exit(1);
+})().catch((err) => {
+  console.error("[test] FAIL:", err.message);
+  process.exit(1);
+});
