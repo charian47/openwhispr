@@ -9,6 +9,7 @@ import { formatHotkeyLabel } from "./utils/hotkeys";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
 import { useSettingsStore } from "./stores/settingsStore";
+import { useStreamingDictation } from "./hooks/useStreamingDictation";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -196,6 +197,10 @@ export default function App() {
     useAudioRecording(toast, {
       onToggle: handleDictationToggle,
     });
+
+  // Dev-only streaming dictation (Phase 5 smoke-test hook).
+  // Removed in production via process.env.NODE_ENV guard in JSX below.
+  const streaming = useStreamingDictation();
 
   // Sync auto-hide from main process — setState directly to avoid IPC echo
   useEffect(() => {
@@ -455,6 +460,26 @@ export default function App() {
               )}
             </button>
           </Tooltip>
+          {/* Dev-only streaming smoke-test button — hidden in production builds */}
+          {process.env.NODE_ENV === "development" && (
+            <button
+              type="button"
+              style={{ position: "absolute", top: 6, right: 6, fontSize: 10, padding: "2px 6px", zIndex: 9999 }}
+              onClick={async () => {
+                if (streaming.isStreaming) {
+                  await streaming.stop();
+                } else {
+                  await streaming.start({
+                    modelPath:
+                      "/Users/excallibur/.cache/openwhispr/whisperkit-models/whisperkit-coreml/openai_whisper-tiny.en",
+                    language: "en",
+                  });
+                }
+              }}
+            >
+              {streaming.isStreaming ? "Stop Stream" : "Start Stream"}
+            </button>
+          )}
           {isCommandMenuOpen && (
             <div
               ref={commandMenuRef}
