@@ -180,6 +180,7 @@ const MeetingDetectionEngine = require("./src/helpers/meetingDetectionEngine");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
 const WhisperKitSidecarManager = require("./src/helpers/whisperKitSidecarManager");
 let whisperKitManager = null;
+const { injectText } = require("./src/helpers/streamingInjector");
 const RightOptionTapManager = require("./src/helpers/rightOptionTapManager");
 const rightOptionTap = new RightOptionTapManager();
 
@@ -614,7 +615,17 @@ async function startApp() {
 
   // WhisperKit streaming sidecar manager (idle until renderer calls whisperkit-start).
   whisperKitManager = new WhisperKitSidecarManager();
-  whisperKitManager.on("commit", (msg) => {
+  whisperKitManager.on("commit", async (msg) => {
+    if (debugLogger) debugLogger.log(`[whisperkit] commit segmentId=${msg.segmentId} text=${JSON.stringify(msg.text)}`);
+
+    const text = (msg.text || "").trim();
+    if (text) {
+      const result = await injectText(text + " ");
+      if (!result.success) {
+        if (debugLogger) debugLogger.warn(`[injector] failed: ${result.error}`);
+      }
+    }
+
     if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
       windowManager.mainWindow.webContents.send("streaming-commit", msg);
     }
@@ -625,6 +636,7 @@ async function startApp() {
     }
   });
   whisperKitManager.on("vad", (msg) => {
+    if (debugLogger) debugLogger.log(`[whisperkit] vad ${msg.state}`);
     if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
       windowManager.mainWindow.webContents.send("streaming-vad", msg);
     }
@@ -637,12 +649,6 @@ async function startApp() {
   });
   whisperKitManager.on("modelLoaded", (msg) => {
     if (debugLogger) debugLogger.log(`[whisperkit] model loaded: ${msg.path}`);
-  });
-  whisperKitManager.on("vad", (msg) => {
-    if (debugLogger) debugLogger.log(`[whisperkit] vad ${msg.state}`);
-  });
-  whisperKitManager.on("commit", (msg) => {
-    if (debugLogger) debugLogger.log(`[whisperkit] commit segmentId=${msg.segmentId} text=${JSON.stringify(msg.text)}`);
   });
 
   // Right-Option double-tap detector — toggles streaming start/stop.
