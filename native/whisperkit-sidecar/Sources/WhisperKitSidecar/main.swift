@@ -128,6 +128,10 @@ func handleLine(_ line: String) {
     if segmentEnded {
       segmentId += 1
       let snapshot = audioBuffer.snapshot(lastSeconds: 30)
+      // Clear the rolling buffer so the next segment starts fresh.
+      // The snapshot is already captured by value, so the in-flight
+      // transcription Task is unaffected.
+      audioBuffer.reset()
       let myId = segmentId
       Task { await transcribeAndCommit(snapshot, segmentId: myId) }
     }

@@ -1,150 +1,93 @@
-// Manual streaming roundtrip test for the WhisperKit sidecar.
-// - Reads /tmp/test.wav (mono 16kHz Int16LE, generated via `say` + ffmpeg)
-// - Spawns ./resources/bin/whisperkit-sidecar with the tiny.en model
-// - Streams 20ms audio frames as base64 `audio` JSON messages
-// - Appends 1 second of silence so the energy VAD sees a speech-to-silence
-//   transition and emits a `commit`
-// - Logs every JSON line the sidecar emits and asserts a `commit` arrived
-//   with non-empty text within a deadline.
+// Phase 3 smoke test: end-to-end streaming roundtrip.
+// Asserts:
+//   - Sidecar reaches `ready` quickly.
+//   - Model loads within 30 s.
+//   - Streaming PCM through `audio` messages produces VAD transitions and
+//     a `commit` whose text matches the expected phrase.
+//   - The full event sequence appears in the right order.
 
-const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
-const os = require("os");
+const { execFileSync } = require("child_process");
+const {
+  SidecarHarness,
+  readPcmFromWav,
+  chunkPcm,
+  silenceFrames,
+  checkPrereqs,
+} = require("./harness/sidecar-harness");
 
-const SIDECAR = path.join(__dirname, "..", "resources", "bin", "whisperkit-sidecar");
-const MODEL = path.join(
-  os.homedir(),
-  ".cache/openwhispr/whisperkit-models/whisperkit-coreml/openai_whisper-tiny.en"
-);
-const WAV = "/tmp/test.wav";
-const FRAME_SAMPLES = 320; // 20 ms @ 16 kHz
-const SILENCE_MS = 1000;
-const DEADLINE_MS = 60_000;
+const WAV = "/tmp/openwhispr-test-fox.wav";
+const EXPECTED_TEXT_REGEX = /the quick brown fox jumps over the lazy dog/i;
 
-function readPcmFromWav(filePath) {
-  // Minimal WAV parser: assumes RIFF/WAVE, 16-bit PCM, mono, 16kHz.
-  const buf = fs.readFileSync(filePath);
-  if (buf.toString("ascii", 0, 4) !== "RIFF" || buf.toString("ascii", 8, 12) !== "WAVE") {
-    throw new Error("not a RIFF/WAVE file");
+function ensureFixtureWav() {
+  if (fs.existsSync(WAV)) return;
+  console.log(`[setup] creating ${WAV}`);
+  const aiff = "/tmp/openwhispr-test-fox.aiff";
+  execFileSync("say", [
+    "the quick brown fox jumps over the lazy dog",
+    "-o",
+    aiff,
+  ]);
+  const FFMPEG = path.join(__dirname, "..", "node_modules", "ffmpeg-static", "ffmpeg");
+  if (!fs.existsSync(FFMPEG)) {
+    throw new Error(
+      `ffmpeg-static not installed at ${FFMPEG}. Run npm install.`
+    );
   }
-  // Walk chunks until "data".
-  let offset = 12;
-  while (offset < buf.length) {
-    const id = buf.toString("ascii", offset, offset + 4);
-    const size = buf.readUInt32LE(offset + 4);
-    if (id === "data") {
-      const pcm = buf.slice(offset + 8, offset + 8 + size);
-      return pcm; // Int16LE samples
-    }
-    offset += 8 + size;
-  }
-  throw new Error("no data chunk found");
-}
-
-function chunkPcm(pcm, frameSamples) {
-  const frameBytes = frameSamples * 2;
-  const out = [];
-  for (let off = 0; off + frameBytes <= pcm.length; off += frameBytes) {
-    out.push(pcm.slice(off, off + frameBytes));
-  }
-  return out;
-}
-
-function silenceChunks(ms, frameSamples) {
-  const totalFrames = Math.floor((ms / 1000) * (16000 / frameSamples));
-  const empty = Buffer.alloc(frameSamples * 2);
-  return Array.from({ length: totalFrames }, () => empty);
+  execFileSync(FFMPEG, ["-y", "-i", aiff, "-ac", "1", "-ar", "16000", WAV], {
+    stdio: "inherit",
+  });
 }
 
 (async () => {
-  console.log("[test] sanity:", { SIDECAR, MODEL, WAV });
-  for (const p of [SIDECAR, MODEL, WAV]) {
-    if (!fs.existsSync(p)) {
-      console.error("[test] missing:", p);
-      process.exit(1);
-    }
-  }
+  checkPrereqs();
+  ensureFixtureWav();
 
   const pcm = readPcmFromWav(WAV);
-  console.log(`[test] PCM bytes=${pcm.length} (samples=${pcm.length / 2}, secs=${(pcm.length / 2 / 16000).toFixed(2)})`);
+  const audioFrames = chunkPcm(pcm);
+  const tail = silenceFrames(1000); // 1 s silence to trigger VAD hangover
+  console.log(
+    `[test] audio: ${(pcm.length / 2 / 16000).toFixed(2)}s, frames: ${audioFrames.length} + ${tail.length} silence`
+  );
 
-  const audioFrames = chunkPcm(pcm, FRAME_SAMPLES);
-  const tail = silenceChunks(SILENCE_MS, FRAME_SAMPLES);
-  console.log(`[test] frames=${audioFrames.length} (audio) + ${tail.length} (silence)`);
+  const h = new SidecarHarness({ language: "en" }).start();
 
-  const child = spawn(SIDECAR, ["--model", MODEL, "--language", "en"], {
-    stdio: ["pipe", "pipe", "pipe"],
-  });
+  await h.waitForReady();
+  await h.waitForModelLoaded();
+  console.log("[test] model loaded");
 
-  let stderrBuf = "";
-  child.stderr.on("data", (d) => {
-    stderrBuf += d.toString();
-  });
+  const t0 = Date.now();
+  await h.streamFrames([...audioFrames, ...tail], 20);
+  const commit = await h.waitForType("commit", { timeoutMs: 60_000 });
+  const tCommit = Date.now() - t0;
+  console.log(`[test] commit received in ${tCommit} ms`);
 
-  let modelLoaded = false;
-  let committed = null;
-  const events = [];
-
-  let stdoutLine = "";
-  child.stdout.on("data", (d) => {
-    stdoutLine += d.toString();
-    let nl;
-    while ((nl = stdoutLine.indexOf("\n")) !== -1) {
-      const line = stdoutLine.slice(0, nl);
-      stdoutLine = stdoutLine.slice(nl + 1);
-      if (!line.trim()) continue;
-      let msg;
-      try {
-        msg = JSON.parse(line);
-      } catch {
-        events.push({ raw: line });
-        continue;
-      }
-      events.push(msg);
-      if (msg.type === "model_loaded") modelLoaded = true;
-      if (msg.type === "commit") committed = msg;
-    }
-  });
-
-  // Wait for model to load
-  const modelDeadline = Date.now() + 30_000;
-  while (!modelLoaded && Date.now() < modelDeadline) {
-    await new Promise((r) => setTimeout(r, 100));
+  // Strict assertions.
+  if (typeof commit.text !== "string") {
+    throw new Error(`commit.text not a string: ${JSON.stringify(commit)}`);
   }
-  if (!modelLoaded) {
-    console.error("[test] model never loaded within 30s. Events so far:", events);
-    console.error("[test] stderr tail:", stderrBuf.slice(-2000));
-    child.kill("SIGTERM");
-    process.exit(1);
+  if (!EXPECTED_TEXT_REGEX.test(commit.text)) {
+    throw new Error(
+      `commit text "${commit.text}" did not match ${EXPECTED_TEXT_REGEX}`
+    );
   }
-  console.log("[test] model loaded; streaming audio...");
-
-  for (const f of [...audioFrames, ...tail]) {
-    child.stdin.write(JSON.stringify({ type: "audio", pcm: f.toString("base64") }) + "\n");
-    // Pace at ~20 ms per frame so VAD sees realistic timing.
-    await new Promise((r) => setTimeout(r, 20));
+  if (commit.segmentId !== 1) {
+    throw new Error(`expected segmentId=1, got ${commit.segmentId}`);
   }
-  console.log("[test] all frames sent; waiting for commit...");
+  // Verify event ordering: ready -> model_loaded -> vad -> partial -> vad -> commit
+  h.assertEventsInOrder(["ready", "model_loaded", "vad", "partial", "vad", "commit"]);
 
-  const commitDeadline = Date.now() + DEADLINE_MS;
-  while (!committed && Date.now() < commitDeadline) {
-    await new Promise((r) => setTimeout(r, 100));
+  // Verify exactly ONE commit so far.
+  if (h.countEvents("commit") !== 1) {
+    throw new Error(
+      `expected exactly one commit, got ${h.countEvents("commit")}`
+    );
   }
 
-  child.stdin.write(JSON.stringify({ type: "end" }) + "\n");
-  child.stdin.end();
-
-  await new Promise((r) => child.on("exit", r));
-
-  console.log("[test] events:");
-  for (const e of events) console.log("  ", JSON.stringify(e));
-  if (committed) {
-    console.log("[test] PASS — committed text:", JSON.stringify(committed.text));
-    process.exit(0);
-  } else {
-    console.error("[test] FAIL — no commit received in deadline");
-    console.error("[test] stderr tail:", stderrBuf.slice(-2000));
-    process.exit(1);
-  }
-})();
+  await h.stop();
+  console.log(`[test] PASS — text=${JSON.stringify(commit.text)}`);
+})().catch((err) => {
+  console.error("[test] FAIL:", err.message);
+  process.exit(1);
+});
