@@ -14,6 +14,8 @@ var modelLoadComplete: Bool = false
 let audioBuffer = AudioRingBuffer()
 var segmentId: Int = 0
 let vad = VoiceActivityDetector()
+var lastPartialAt: Date = .distantPast
+var lastVadState: String? = nil
 
 func send(_ dict: [String: Any]) {
   guard let data = try? JSONSerialization.data(withJSONObject: dict),
@@ -109,7 +111,21 @@ func handleLine(_ line: String) {
       }
     }
     audioBuffer.append(floats)
-    if vad.feed(floats) {
+    let segmentEnded = vad.feed(floats)
+
+    let newVadState = vad.inSpeech ? "speech" : "silence"
+    if newVadState != lastVadState {
+      send(["type": "vad", "state": newVadState])
+      lastVadState = newVadState
+    }
+
+    let now = Date()
+    if vad.inSpeech && now.timeIntervalSince(lastPartialAt) > 0.3 {
+      send(["type": "partial", "segmentId": segmentId, "heartbeat": true])
+      lastPartialAt = now
+    }
+
+    if segmentEnded {
       segmentId += 1
       let snapshot = audioBuffer.snapshot(lastSeconds: 30)
       let myId = segmentId
