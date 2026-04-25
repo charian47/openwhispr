@@ -1,15 +1,14 @@
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import App from "./App.jsx";
 import MeetingNotificationOverlay from "./components/MeetingNotificationOverlay.tsx";
 import TranscriptionPreviewOverlay from "./components/TranscriptionPreviewOverlay.tsx";
 import UpdateNotificationOverlay from "./components/UpdateNotificationOverlay.tsx";
 import { useTheme } from "./hooks/useTheme";
-import { TCC_RESET_MODAL_SEEN_KEY } from "./utils/permissions";
 // DELETED_AT_GROUP_G — AuthenticationStep, useAuth, Card, CardContent, WindowControls removed with auth subsystem
+// DELETED_AT_GROUP_H — OnboardingFlow, showOnboarding state, TCC_RESET_MODAL_SEEN_KEY removed with onboarding wizard
 
 const ControlPanel = React.lazy(() => import("./components/ControlPanel.tsx"));
-const OnboardingFlow = React.lazy(() => import("./components/OnboardingFlow.tsx"));
 const AgentOverlay = React.lazy(() => import("./components/AgentOverlay.tsx"));
 
 export default function AppRouter() {
@@ -32,77 +31,15 @@ export default function AppRouter() {
 }
 
 function MainApp() {
-  // DELETED_AT_GROUP_G — auth gating (useAuth, needsReauth, AuthenticationStep) removed with auth subsystem
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
   const isAgentPanel = window.location.search.includes("agent=true");
   const isControlPanel =
     !isAgentPanel &&
     (window.location.pathname.includes("control") || window.location.search.includes("panel=true"));
-  const isDictationPanel = !isControlPanel && !isAgentPanel;
-
-  useEffect(() => {
-    if (isAgentPanel) {
-      import("./components/AgentOverlay.tsx").catch(() => {});
-    } else if (isControlPanel) {
-      import("./components/ControlPanel.tsx").catch(() => {});
-
-      if (!localStorage.getItem("onboardingCompleted")) {
-        import("./components/OnboardingFlow.tsx").catch(() => {});
-      }
-    }
-  }, [isAgentPanel, isControlPanel]);
-
-  useEffect(() => {
-    const onboardingCompleted = localStorage.getItem("onboardingCompleted") === "true";
-    const onboardingInProgress = localStorage.getItem("onboardingCurrentStep") !== null;
-
-    if (!onboardingCompleted && !onboardingInProgress) {
-      // Mark as completed so returning single-user installs skip onboarding
-      localStorage.setItem("onboardingCompleted", "true");
-      localStorage.setItem(TCC_RESET_MODAL_SEEN_KEY, "true");
-    }
-
-    const resolved = localStorage.getItem("onboardingCompleted") === "true";
-
-    if (isControlPanel && !resolved) {
-      setShowOnboarding(true);
-    }
-
-    if (isDictationPanel && !resolved) {
-      const rawStep = parseInt(localStorage.getItem("onboardingCurrentStep") || "0");
-      const currentStep = Math.max(0, Math.min(rawStep, 5));
-      if (currentStep < 4) {
-        window.electronAPI?.hideWindow?.();
-      }
-    }
-
-    setIsLoading(false);
-  }, [isControlPanel, isDictationPanel]);
-
-  const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
-    localStorage.setItem("onboardingCompleted", "true");
-    localStorage.setItem("tccResetModalSeen_1_6_11", "true");
-  };
 
   if (isAgentPanel) {
     return (
       <Suspense fallback={<LoadingFallback />}>
         <AgentOverlay />
-      </Suspense>
-    );
-  }
-
-  if (isLoading) {
-    return <LoadingFallback />;
-  }
-
-  if (isControlPanel && showOnboarding) {
-    return (
-      <Suspense fallback={<LoadingFallback />}>
-        <OnboardingFlow onComplete={handleOnboardingComplete} />
       </Suspense>
     );
   }
