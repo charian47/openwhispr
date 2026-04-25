@@ -13,11 +13,30 @@ var modelLoadComplete: Bool = false
 
 let audioBuffer = AudioRingBuffer()
 var segmentId: Int = 0
+let vad = VoiceActivityDetector()
 
 func send(_ dict: [String: Any]) {
   guard let data = try? JSONSerialization.data(withJSONObject: dict),
         let line = String(data: data, encoding: .utf8) else { return }
   FileHandle.standardOutput.write((line + "\n").data(using: .utf8)!)
+}
+
+func transcribeAndCommit(_ samples: [Float], segmentId: Int) async {
+  guard let wk = whisperKit else { return }
+  let options = DecodingOptions(
+    verbose: false,
+    task: .transcribe,
+    language: config.language == "auto" ? nil : config.language,
+    detectLanguage: config.language == "auto"
+  )
+  do {
+    let result = try await wk.transcribe(audioArray: samples, decodeOptions: options)
+    let text = result.first?.text ?? ""
+    guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+    send(["type": "commit", "segmentId": segmentId, "text": text])
+  } catch {
+    send(["type": "error", "code": "transcribe_failed", "message": "\(error)"])
+  }
 }
 
 func handleLine(_ line: String) {
@@ -90,6 +109,12 @@ func handleLine(_ line: String) {
       }
     }
     audioBuffer.append(floats)
+    if vad.feed(floats) {
+      segmentId += 1
+      let snapshot = audioBuffer.snapshot(lastSeconds: 30)
+      let myId = segmentId
+      Task { await transcribeAndCommit(snapshot, segmentId: myId) }
+    }
   case "end":
     send(["type": "end_ack"])
     exit(0)
