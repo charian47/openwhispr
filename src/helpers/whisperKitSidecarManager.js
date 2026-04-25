@@ -14,6 +14,8 @@ class WhisperKitSidecarManager extends EventEmitter {
     this.modelPath = null;
     this.language = "auto";
     this.restartsRemaining = 1;
+    // Set by stop() so the on-exit handler knows not to respawn.
+    this._intentionalStop = false;
   }
 
   async start(modelPath, language = "auto") {
@@ -23,6 +25,8 @@ class WhisperKitSidecarManager extends EventEmitter {
     }
     this.modelPath = modelPath;
     this.language = language;
+    this._intentionalStop = false;
+    this.restartsRemaining = 1;
     this._spawn();
     await this._awaitReady();
   }
@@ -45,6 +49,10 @@ class WhisperKitSidecarManager extends EventEmitter {
       this.ready = false;
       this.proc = null;
       this.emit("exit", { code, signal });
+      if (this._intentionalStop) {
+        // Caller asked for shutdown — do not restart.
+        return;
+      }
       if (this.restartsRemaining > 0) {
         this.restartsRemaining -= 1;
         debugLogger.log("[whisperkit] restarting once");
@@ -100,6 +108,7 @@ class WhisperKitSidecarManager extends EventEmitter {
 
   stop() {
     if (!this.proc) return;
+    this._intentionalStop = true;
     try { this.send({ type: "end" }); } catch {}
     setTimeout(() => { if (this.proc) this.proc.kill("SIGTERM"); }, 500);
     setTimeout(() => { if (this.proc) this.proc.kill("SIGKILL"); }, 2500);
