@@ -460,12 +460,32 @@ export default function App() {
               )}
             </button>
           </Tooltip>
-          {/* Dev-only streaming smoke-test button — hidden in production builds */}
+          {/* Dev-only streaming smoke-test button — hidden in production builds.
+              The overlay window is click-through by default; capture mouse
+              events while the cursor is over this button so the click registers. */}
           {process.env.NODE_ENV === "development" && (
             <button
               type="button"
-              style={{ position: "absolute", top: 6, right: 6, fontSize: 10, padding: "2px 6px", zIndex: 9999 }}
-              onClick={async () => {
+              onMouseEnter={() => setWindowInteractivity(true)}
+              onMouseLeave={() => {
+                if (!isHovered && !isCommandMenuOpen) setWindowInteractivity(false);
+              }}
+              style={{
+                position: "absolute",
+                top: 6,
+                right: 6,
+                fontSize: 10,
+                padding: "4px 8px",
+                zIndex: 9999,
+                background: streaming.isStreaming ? "#dc2626" : "#2563eb",
+                color: "white",
+                border: "none",
+                borderRadius: 4,
+                cursor: "pointer",
+                pointerEvents: "auto",
+              }}
+              onClick={async (e) => {
+                e.stopPropagation();
                 if (streaming.isStreaming) {
                   await streaming.stop();
                 } else {
@@ -477,7 +497,7 @@ export default function App() {
                 }
               }}
             >
-              {streaming.isStreaming ? "Stop Stream" : "Start Stream"}
+              {streaming.isStreaming ? "Stop" : "Start"}
             </button>
           )}
           {isCommandMenuOpen && (
