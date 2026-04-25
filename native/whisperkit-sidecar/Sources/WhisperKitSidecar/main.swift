@@ -1,4 +1,5 @@
 import Foundation
+import WhisperKit
 
 struct Config {
   var language: String = "auto"
@@ -6,6 +7,9 @@ struct Config {
 }
 
 var config = Config()
+var whisperKit: WhisperKit?
+/// Set to true once the model load task has finished (success or failure).
+var modelLoadComplete: Bool = false
 
 func send(_ dict: [String: Any]) {
   guard let data = try? JSONSerialization.data(withJSONObject: dict),
@@ -51,7 +55,40 @@ while i < CommandLine.arguments.count {
 
 send(["type": "ready", "stub": true])
 
-// Read stdin lines; blocking readLine returns nil on EOF.
-while let line = readLine(strippingNewline: true) {
-  handleLine(line)
+// Kick off async model load if a model path was provided.
+if let modelPath = config.modelPath {
+  Task {
+    do {
+      whisperKit = try await ModelLoader(modelPath: modelPath).load()
+      modelLoadComplete = true
+      send(["type": "model_loaded", "path": modelPath])
+    } catch {
+      modelLoadComplete = true
+      send(["type": "error", "code": "model_load_failed", "message": "\(error)"])
+    }
+  }
+} else {
+  modelLoadComplete = true
 }
+
+// Read stdin lines in a background thread so the main RunLoop can service
+// async Tasks (model loading, future transcription tasks).
+// Blocking readLine() on the main thread would starve Swift Concurrency.
+let stdinThread = Thread {
+  while let line = readLine(strippingNewline: true) {
+    handleLine(line)
+  }
+  // EOF on stdin — wait for model load to complete before exiting,
+  // then clean up and terminate.
+  let deadline = Date(timeIntervalSinceNow: 300) // up to 5 min for model load
+  while !modelLoadComplete && Date() < deadline {
+    Thread.sleep(forTimeInterval: 0.2)
+  }
+  // Give any pending send() calls a moment to flush.
+  Thread.sleep(forTimeInterval: 0.1)
+  exit(0)
+}
+stdinThread.start()
+
+// Run the main run loop forever; exit() calls terminate the process.
+RunLoop.main.run()
