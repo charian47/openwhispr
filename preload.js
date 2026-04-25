@@ -752,4 +752,35 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getUpdateNotificationData: () => ipcRenderer.invoke("get-update-notification-data"),
   updateNotificationReady: () => ipcRenderer.invoke("update-notification-ready"),
   updateNotificationRespond: (action) => ipcRenderer.invoke("update-notification-respond", action),
+
+  // WhisperKit streaming sidecar
+  whisperKitStart: (opts) => ipcRenderer.invoke("whisperkit-start", opts),
+  whisperKitStop: () => ipcRenderer.invoke("whisperkit-stop"),
+  whisperKitSetLanguage: (lang) => ipcRenderer.invoke("whisperkit-set-language", lang),
+  whisperKitSendAudio: (buffer) => ipcRenderer.send("whisperkit-audio", buffer),
+  onStreamingCommit: (cb) => {
+    const h = (_e, msg) => cb(msg);
+    ipcRenderer.on("streaming-commit", h);
+    return () => ipcRenderer.removeListener("streaming-commit", h);
+  },
+  onStreamingPartial: (cb) => {
+    const h = (_e, msg) => cb(msg);
+    ipcRenderer.on("streaming-partial", h);
+    return () => ipcRenderer.removeListener("streaming-partial", h);
+  },
+  onStreamingVad: (cb) => {
+    const h = (_e, msg) => cb(msg);
+    ipcRenderer.on("streaming-vad", h);
+    return () => ipcRenderer.removeListener("streaming-vad", h);
+  },
+  onStreamingHotkeyToggle: (cb) => {
+    const h = () => cb();
+    ipcRenderer.on("streaming-hotkey-toggle", h);
+    return () => ipcRenderer.removeListener("streaming-hotkey-toggle", h);
+  },
+  onStreamingPermissionMissing: (cb) => {
+    const h = () => cb();
+    ipcRenderer.on("streaming-permission-missing", h);
+    return () => ipcRenderer.removeListener("streaming-permission-missing", h);
+  },
 });

@@ -527,8 +527,13 @@ export default function ReasoningModelSelector({
   }, []);
 
   const openaiModelOptions = useMemo<CloudModelOption[]>(() => {
+    // Cloud providers were removed in Plan 1; the openai entry no longer
+    // exists in the registry. Return an empty list so any leftover cloud UI
+    // simply renders nothing rather than crashing.
+    const openaiProvider = REASONING_PROVIDERS.openai;
+    if (!openaiProvider?.models) return [];
     const iconUrl = getProviderIcon("openai");
-    return REASONING_PROVIDERS.openai.models.map((model) => ({
+    return openaiProvider.models.map((model) => ({
       ...model,
       description: model.descriptionKey
         ? t(model.descriptionKey, { defaultValue: model.description })

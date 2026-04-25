@@ -280,6 +280,7 @@ class IPCHandlers {
     this.meetingDetectionEngine = managers.meetingDetectionEngine;
     this.audioTapManager = managers.audioTapManager;
     this.meetingAecManager = managers.meetingAecManager;
+    this.getWhisperKitManager = managers.getWhisperKitManager || (() => null);
     this.sessionId = crypto.randomUUID();
     this._dictationStreaming = null;
     this._dictationConnectPromise = null;
@@ -6063,6 +6064,34 @@ class IPCHandlers {
       this.databaseManager.saveNoteSpeakerEmbeddings(noteId, buffers);
       this._tryAutoLabelOneOnOne(noteId);
       return { success: true };
+    });
+
+    // WhisperKit streaming sidecar IPC handlers
+    ipcMain.handle("whisperkit-start", async (_event, { modelPath, language }) => {
+      debugLogger.log(`[whisperkit-ipc] start request modelPath=${modelPath} language=${language}`);
+      try {
+        await this.getWhisperKitManager()?.start(modelPath, language);
+        debugLogger.log(`[whisperkit-ipc] start resolved successfully`);
+        return { success: true };
+      } catch (err) {
+        debugLogger.error(`[whisperkit-ipc] start failed: ${err.message}`);
+        return { success: false, error: err.message };
+      }
+    });
+    ipcMain.handle("whisperkit-stop", async () => {
+      debugLogger.log(`[whisperkit-ipc] stop requested`);
+      this.getWhisperKitManager()?.stop();
+      return { success: true };
+    });
+    ipcMain.handle("whisperkit-set-language", async (_event, language) => {
+      this.getWhisperKitManager()?.setLanguage(language);
+      return { success: true };
+    });
+    ipcMain.on("whisperkit-audio", (_event, buffer) => {
+      // buffer arrives over IPC as a Uint8Array. Convert to a Node Buffer
+      // because sendAudio() calls .toString("base64") which Node Buffers
+      // implement directly.
+      this.getWhisperKitManager()?.sendAudio(Buffer.from(buffer));
     });
   }
 

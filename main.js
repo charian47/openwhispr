@@ -178,6 +178,44 @@ const AudioTapManager = require("./src/helpers/audioTapManager");
 const MeetingAecManager = require("./src/helpers/meetingAecManager");
 const MeetingDetectionEngine = require("./src/helpers/meetingDetectionEngine");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
+const WhisperKitSidecarManager = require("./src/helpers/whisperKitSidecarManager");
+let whisperKitManager = null;
+const { injectText } = require("./src/helpers/streamingInjector");
+const { isSecureInputActive } = require("./src/helpers/secureInput");
+const { routeInjection, getFrontmostBundleId, pasteChunk } = require("./src/helpers/pasteFallback");
+
+// Electron apps that silently drop CGEventKeyboardSetUnicodeString payloads.
+// For these, we fall back to clipboard + Cmd+V paste.
+const DEFAULT_PASTE_MODE_APPS = [
+  "com.tinyspeck.slackmacgap",        // Slack
+  "com.hnc.Discord",                   // Discord
+  "com.microsoft.VSCode",              // VS Code
+  "com.todesktop.230313mzl4w4u92",     // Cursor (desktop bundle ID)
+];
+
+/**
+ * Returns the user's configured paste-mode app list from localStorage,
+ * falling back to DEFAULT_PASTE_MODE_APPS.
+ * @returns {Promise<string[]>}
+ */
+async function getPasteModeApps() {
+  if (!windowManager?.mainWindow || windowManager.mainWindow.isDestroyed()) {
+    return DEFAULT_PASTE_MODE_APPS;
+  }
+  try {
+    const json = await windowManager.mainWindow.webContents.executeJavaScript(
+      `localStorage.getItem("pasteModeApps")`
+    );
+    if (json === null || json === undefined) return DEFAULT_PASTE_MODE_APPS;
+    const parsed = JSON.parse(json);
+    if (Array.isArray(parsed)) return parsed;
+    return DEFAULT_PASTE_MODE_APPS;
+  } catch {
+    return DEFAULT_PASTE_MODE_APPS;
+  }
+}
+const RightOptionTapManager = require("./src/helpers/rightOptionTapManager");
+const rightOptionTap = new RightOptionTapManager();
 
 // Manager instances - initialized after app.whenReady()
 let debugLogger = null;
@@ -292,6 +330,7 @@ function initializeCoreManagers() {
     audioTapManager,
     meetingAecManager,
     getTrayManager: () => trayManager,
+    getWhisperKitManager: () => whisperKitManager,
   });
 }
 
@@ -328,8 +367,12 @@ function initializeDeferredManagers() {
     });
   }
 
-  googleCalendarManager.start();
-  meetingDetectionEngine.start();
+  // Meeting detection + Google Calendar sync are disabled in this fork.
+  // Sustained-audio activity (= dictation) was triggering "Meeting Detected"
+  // prompts during normal use. The classes remain linked for now (Plan 3
+  // will rip them out entirely) but are never started.
+  // googleCalendarManager.start();
+  // meetingDetectionEngine.start();
 }
 
 app.on("open-url", (event, url) => {
@@ -606,6 +649,80 @@ async function startApp() {
 
   // Phase 2: Initialize remaining managers after windows are visible
   initializeDeferredManagers();
+
+  // WhisperKit streaming sidecar manager (idle until renderer calls whisperkit-start).
+  whisperKitManager = new WhisperKitSidecarManager();
+  whisperKitManager.on("commit", async (msg) => {
+    if (debugLogger) debugLogger.log(`[whisperkit] commit segmentId=${msg.segmentId} text=${JSON.stringify(msg.text)}`);
+
+    const text = (msg.text || "").trim();
+    if (text) {
+      if (await isSecureInputActive()) {
+        if (debugLogger) debugLogger.warn("[injector] secure input is active — skipping injection");
+        if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+          windowManager.mainWindow.webContents.send("streaming-injection-error", {
+            code: "SECURE_INPUT",
+            message: "Secure input is active (probably a password field). Click outside it and try again.",
+          });
+        }
+      } else {
+        const toInject = text + " ";
+        const pasteApps = await getPasteModeApps();
+        const bundleId = await getFrontmostBundleId();
+        const route = routeInjection(bundleId, pasteApps);
+        if (debugLogger) debugLogger.log(`[injector] route=${route} bundleId=${bundleId || "?"}`);
+        let result;
+        try {
+          result = route === "paste" ? await pasteChunk(toInject) : await injectText(toInject);
+        } catch (err) {
+          result = { success: false, error: err.message };
+        }
+        if (!result.success && debugLogger) debugLogger.warn(`[injector] failed (route=${route}): ${result.error}`);
+      }
+    }
+
+    if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+      windowManager.mainWindow.webContents.send("streaming-commit", msg);
+    }
+  });
+  whisperKitManager.on("partial", (msg) => {
+    if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+      windowManager.mainWindow.webContents.send("streaming-partial", msg);
+    }
+  });
+  whisperKitManager.on("vad", (msg) => {
+    if (debugLogger) debugLogger.log(`[whisperkit] vad ${msg.state}`);
+    if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+      windowManager.mainWindow.webContents.send("streaming-vad", msg);
+    }
+  });
+  whisperKitManager.on("sidecarError", (msg) => {
+    if (debugLogger) debugLogger.error(`[whisperkit] sidecar error: ${msg.code} ${msg.message}`);
+  });
+  whisperKitManager.on("ready", () => {
+    if (debugLogger) debugLogger.log(`[whisperkit] ready (sidecar process accepted protocol)`);
+  });
+  whisperKitManager.on("modelLoaded", (msg) => {
+    if (debugLogger) debugLogger.log(`[whisperkit] model loaded: ${msg.path}`);
+  });
+
+  // Right-Option double-tap detector — toggles streaming start/stop.
+  rightOptionTap.on("ready", () => {
+    if (debugLogger) debugLogger.log("[right-option-tap] ready");
+  });
+  rightOptionTap.on("toggle", () => {
+    if (debugLogger) debugLogger.log("[right-option-tap] double-tap detected — toggling streaming");
+    if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+      windowManager.mainWindow.webContents.send("streaming-hotkey-toggle");
+    }
+  });
+  rightOptionTap.on("permissionMissing", () => {
+    if (debugLogger) debugLogger.warn("[right-option-tap] Accessibility permission missing");
+    if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+      windowManager.mainWindow.webContents.send("streaming-permission-missing");
+    }
+  });
+  rightOptionTap.start();
 
   app.on("browser-window-focus", () => {
     if (googleCalendarManager) googleCalendarManager.syncOnFocus();
@@ -997,6 +1114,8 @@ if (gotSingleInstanceLock) {
   });
 
   app.on("will-quit", () => {
+    rightOptionTap.stop();
+    if (whisperKitManager) whisperKitManager.stop();
     if (authBridgeServer) {
       authBridgeServer.close();
       authBridgeServer = null;

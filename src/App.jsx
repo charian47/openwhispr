@@ -9,6 +9,7 @@ import { formatHotkeyLabel } from "./utils/hotkeys";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
 import { useSettingsStore } from "./stores/settingsStore";
+import { useStreamingDictation } from "./hooks/useStreamingDictation";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -196,6 +197,10 @@ export default function App() {
     useAudioRecording(toast, {
       onToggle: handleDictationToggle,
     });
+
+  // Dev-only streaming dictation (Phase 5 smoke-test hook).
+  // Removed in production via process.env.NODE_ENV guard in JSX below.
+  const streaming = useStreamingDictation();
 
   // Sync auto-hide from main process — setState directly to avoid IPC echo
   useEffect(() => {
@@ -455,6 +460,46 @@ export default function App() {
               )}
             </button>
           </Tooltip>
+          {/* Dev-only streaming smoke-test button — hidden in production builds.
+              The overlay window is click-through by default; capture mouse
+              events while the cursor is over this button so the click registers. */}
+          {process.env.NODE_ENV === "development" && (
+            <button
+              type="button"
+              onMouseEnter={() => setWindowInteractivity(true)}
+              onMouseLeave={() => {
+                if (!isHovered && !isCommandMenuOpen) setWindowInteractivity(false);
+              }}
+              style={{
+                position: "absolute",
+                top: 6,
+                right: 6,
+                fontSize: 10,
+                padding: "4px 8px",
+                zIndex: 9999,
+                background: streaming.isStreaming ? "#dc2626" : "#2563eb",
+                color: "white",
+                border: "none",
+                borderRadius: 4,
+                cursor: "pointer",
+                pointerEvents: "auto",
+              }}
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (streaming.isStreaming) {
+                  await streaming.stop();
+                } else {
+                  await streaming.start({
+                    modelPath:
+                      "/Users/excallibur/.cache/openwhispr/whisperkit-models/whisperkit-coreml/openai_whisper-tiny.en",
+                    language: "en",
+                  });
+                }
+              }}
+            >
+              {streaming.isStreaming ? "Stop" : "Start"}
+            </button>
+          )}
           {isCommandMenuOpen && (
             <div
               ref={commandMenuRef}
