@@ -928,16 +928,8 @@ export default function SettingsPage({
   } | null>(null);
   const [ydotoolGuideKey, setYdotoolGuideKey] = useState<string | null>(null);
 
-  const refreshYdotoolStatus = useCallback(async () => {
-    try {
-      const status = await window.electronAPI?.getYdotoolStatus?.();
-      if (status) setYdotoolStatus(status);
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    refreshYdotoolStatus();
-  }, [refreshYdotoolStatus]);
+  // ydotool is Linux-only — macOS-only fork has no such status to fetch.
+  const refreshYdotoolStatus = useCallback(async () => {}, []);
 
   const handleSaveAgentName = useCallback(() => {
     const trimmed = agentNameInput.trim();
