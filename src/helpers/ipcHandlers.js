@@ -276,10 +276,38 @@ class IPCHandlers {
     this.updateManager = managers.updateManager;
     this.textEditMonitor = managers.textEditMonitor;
     this.getTrayManager = managers.getTrayManager;
-    this.googleCalendarManager = managers.googleCalendarManager;
-    this.meetingDetectionEngine = managers.meetingDetectionEngine;
-    this.audioTapManager = managers.audioTapManager;
-    this.meetingAecManager = managers.meetingAecManager;
+    // Meeting/calendar subsystems were stripped from this fork; stub the
+    // managers so any leftover IPC handlers below return inert defaults
+    // instead of crashing on `this.X.method()`.
+    const NOOP_ASYNC = async () => {};
+    const NOOP_RESULT = async () => ({ success: false, disabled: true });
+    const meetingStub = new Proxy({}, {
+      get: () => NOOP_RESULT,
+    });
+    const calendarStub = {
+      startOAuth: NOOP_RESULT,
+      disconnect: () => {},
+      getConnectionStatus: () => ({ connected: false }),
+      getCalendars: () => [],
+      setCalendarSelection: NOOP_ASYNC,
+      syncEvents: NOOP_ASYNC,
+      getUpcomingEvents: async () => [],
+      syncOnFocus: () => {},
+      onWakeFromSleep: () => {},
+      stop: () => {},
+    };
+    const audioTapStub = {
+      verifyAccess: NOOP_RESULT,
+      requestAccess: NOOP_RESULT,
+      getPermissionStatus: () => ({ granted: false, disabled: true }),
+      start: NOOP_RESULT,
+      stop: NOOP_ASYNC,
+    };
+    const aecStub = { stop: NOOP_ASYNC };
+    this.googleCalendarManager = managers.googleCalendarManager || calendarStub;
+    this.meetingDetectionEngine = managers.meetingDetectionEngine || meetingStub;
+    this.audioTapManager = managers.audioTapManager || audioTapStub;
+    this.meetingAecManager = managers.meetingAecManager || aecStub;
     this.getWhisperKitManager = managers.getWhisperKitManager || (() => null);
     this.sessionId = crypto.randomUUID();
     this._dictationStreaming = null;

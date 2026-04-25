@@ -8,7 +8,6 @@ import { formatHotkeyLabel } from "../utils/hotkeys";
 import { formatDateGroup } from "../utils/dateFormatting";
 import { cn } from "./lib/utils";
 import { useUpcomingEvents } from "../hooks/useUpcomingEvents";
-import UpcomingMeetings from "./UpcomingMeetings";
 import { useSettingsStore } from "../stores/settingsStore";
 
 interface HistoryViewProps {
@@ -308,13 +307,6 @@ export default function HistoryView({
             )}
           </div>
 
-          {isConnected && (
-            <div className="w-64 shrink-0 hidden sm:block">
-              <div className="sticky top-4">
-                <UpcomingMeetings events={events} isLoading={eventsLoading} />
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

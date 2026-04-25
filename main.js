@@ -171,12 +171,6 @@ const GlobeKeyManager = require("./src/helpers/globeKeyManager");
 const DevServerManager = require("./src/helpers/devServerManager");
 const TextEditMonitor = require("./src/helpers/textEditMonitor");
 
-const GoogleCalendarManager = require("./src/helpers/googleCalendarManager");
-const MeetingProcessDetector = require("./src/helpers/meetingProcessDetector");
-const AudioActivityDetector = require("./src/helpers/audioActivityDetector");
-const AudioTapManager = require("./src/helpers/audioTapManager");
-const MeetingAecManager = require("./src/helpers/meetingAecManager");
-const MeetingDetectionEngine = require("./src/helpers/meetingDetectionEngine");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
 const WhisperKitSidecarManager = require("./src/helpers/whisperKitSidecarManager");
 let whisperKitManager = null;
@@ -232,10 +226,6 @@ let updateManager = null;
 let globeKeyManager = null;
 let textEditMonitor = null;
 let whisperCudaManager = null;
-let googleCalendarManager = null;
-let meetingDetectionEngine = null;
-let audioTapManager = null;
-let meetingAecManager = null;
 let qdrantManager = null;
 let ipcHandlers = null;
 let globeKeyAlertShown = false;
@@ -298,20 +288,9 @@ function initializeCoreManagers() {
   whisperManager = new WhisperManager();
   parakeetManager = new ParakeetManager();
   diarizationManager = new DiarizationManager();
-  googleCalendarManager = new GoogleCalendarManager(databaseManager, windowManager);
-  meetingDetectionEngine = new MeetingDetectionEngine(
-    googleCalendarManager,
-    new MeetingProcessDetector(),
-    new AudioActivityDetector(),
-    windowManager,
-    databaseManager
-  );
-  windowManager.meetingDetectionEngine = meetingDetectionEngine;
   updateManager = new UpdateManager();
   updateManager.setWindowManager(windowManager);
   textEditMonitor = new TextEditMonitor();
-  audioTapManager = new AudioTapManager();
-  meetingAecManager = new MeetingAecManager();
   windowManager.textEditMonitor = textEditMonitor;
 
   // IPC handlers must be registered before window content loads
@@ -325,10 +304,6 @@ function initializeCoreManagers() {
     windowManager,
     updateManager,
     textEditMonitor,
-    googleCalendarManager,
-    meetingDetectionEngine,
-    audioTapManager,
-    meetingAecManager,
     getTrayManager: () => trayManager,
     getWhisperKitManager: () => whisperKitManager,
   });
@@ -367,12 +342,6 @@ function initializeDeferredManagers() {
     });
   }
 
-  // Meeting detection + Google Calendar sync are disabled in this fork.
-  // Sustained-audio activity (= dictation) was triggering "Meeting Detected"
-  // prompts during normal use. The classes remain linked for now (Plan 3
-  // will rip them out entirely) but are never started.
-  // googleCalendarManager.start();
-  // meetingDetectionEngine.start();
 }
 
 app.on("open-url", (event, url) => {
@@ -611,42 +580,6 @@ async function startApp() {
     }
   }
 
-  // Set up meeting mode hotkey
-  const meetingHotkeyCallback = () => {
-    if (hotkeyManager.isInListeningMode()) return;
-    debugLogger.info("Meeting hotkey triggered", {}, "meeting");
-    meetingDetectionEngine?.startManualMeeting();
-  };
-
-  const savedMeetingKey = environmentManager.getMeetingKey?.() || "";
-  if (savedMeetingKey) {
-    const result = await hotkeyManager.registerSlot(
-      "meeting",
-      savedMeetingKey,
-      meetingHotkeyCallback
-    );
-    debugLogger.info(
-      "Meeting hotkey startup registration",
-      { savedMeetingKey, ...result },
-      "meeting"
-    );
-  }
-
-  ipcMain.handle("register-meeting-hotkey", async (_event, hotkey) => {
-    if (hotkey) {
-      const result = await hotkeyManager.registerSlot("meeting", hotkey, meetingHotkeyCallback);
-      if (result.success) {
-        environmentManager.saveMeetingKey(hotkey);
-        return { success: true };
-      }
-      return { success: false, message: result.error };
-    } else {
-      hotkeyManager.unregisterSlot("meeting");
-      environmentManager.saveMeetingKey("");
-      return { success: true };
-    }
-  });
-
   // Phase 2: Initialize remaining managers after windows are visible
   initializeDeferredManagers();
 
@@ -723,17 +656,6 @@ async function startApp() {
     }
   });
   rightOptionTap.start();
-
-  app.on("browser-window-focus", () => {
-    if (googleCalendarManager) googleCalendarManager.syncOnFocus();
-  });
-
-  const { powerMonitor } = require("electron");
-  powerMonitor.on("resume", () => {
-    if (googleCalendarManager) {
-      googleCalendarManager.onWakeFromSleep();
-    }
-  });
 
   // Non-blocking server pre-warming
   const whisperSettings = {
@@ -1133,18 +1055,6 @@ if (gotSingleInstanceLock) {
     }
     if (globeKeyManager) {
       globeKeyManager.stop();
-    }
-    if (meetingDetectionEngine) {
-      meetingDetectionEngine.stop();
-    }
-    if (googleCalendarManager) {
-      googleCalendarManager.stop();
-    }
-    if (audioTapManager) {
-      audioTapManager.stop().catch(() => {});
-    }
-    if (meetingAecManager) {
-      meetingAecManager.stop().catch(() => {});
     }
     if (ipcHandlers) {
       ipcHandlers._cleanupTextEditMonitor();
