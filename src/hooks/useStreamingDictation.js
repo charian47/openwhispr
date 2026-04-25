@@ -17,13 +17,27 @@ export function useStreamingDictation() {
   const [vadState, setVadState] = useState("silence");
   const captureRef = useRef(null);
 
-  // Subscribe to VAD state transitions from the sidecar.
+  // Subscribe to VAD state transitions and hotkey toggle events.
   useEffect(() => {
     const disposeVad = window.electronAPI?.onStreamingVad?.((msg) => {
       if (msg && msg.state) setVadState(msg.state);
     });
-    return () => disposeVad?.();
-  }, []);
+    const disposeHotkey = window.electronAPI?.onStreamingHotkeyToggle?.(() => {
+      if (isStreaming) {
+        stop();
+      } else {
+        start({
+          modelPath:
+            "/Users/excallibur/.cache/openwhispr/whisperkit-models/whisperkit-coreml/openai_whisper-tiny.en",
+          language: "en",
+        });
+      }
+    });
+    return () => {
+      disposeVad?.();
+      disposeHotkey?.();
+    };
+  }, [isStreaming, start, stop]);
 
   const start = useCallback(
     async ({ modelPath, language }) => {

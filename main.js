@@ -180,6 +180,8 @@ const MeetingDetectionEngine = require("./src/helpers/meetingDetectionEngine");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
 const WhisperKitSidecarManager = require("./src/helpers/whisperKitSidecarManager");
 let whisperKitManager = null;
+const RightOptionTapManager = require("./src/helpers/rightOptionTapManager");
+const rightOptionTap = new RightOptionTapManager();
 
 // Manager instances - initialized after app.whenReady()
 let debugLogger = null;
@@ -643,6 +645,24 @@ async function startApp() {
     if (debugLogger) debugLogger.log(`[whisperkit] commit segmentId=${msg.segmentId} text=${JSON.stringify(msg.text)}`);
   });
 
+  // Right-Option double-tap detector — toggles streaming start/stop.
+  rightOptionTap.on("ready", () => {
+    if (debugLogger) debugLogger.log("[right-option-tap] ready");
+  });
+  rightOptionTap.on("toggle", () => {
+    if (debugLogger) debugLogger.log("[right-option-tap] double-tap detected — toggling streaming");
+    if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+      windowManager.mainWindow.webContents.send("streaming-hotkey-toggle");
+    }
+  });
+  rightOptionTap.on("permissionMissing", () => {
+    if (debugLogger) debugLogger.warn("[right-option-tap] Accessibility permission missing");
+    if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+      windowManager.mainWindow.webContents.send("streaming-permission-missing");
+    }
+  });
+  rightOptionTap.start();
+
   app.on("browser-window-focus", () => {
     if (googleCalendarManager) googleCalendarManager.syncOnFocus();
   });
@@ -1033,6 +1053,7 @@ if (gotSingleInstanceLock) {
   });
 
   app.on("will-quit", () => {
+    rightOptionTap.stop();
     if (whisperKitManager) whisperKitManager.stop();
     if (authBridgeServer) {
       authBridgeServer.close();

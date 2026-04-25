@@ -773,4 +773,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("streaming-vad", h);
     return () => ipcRenderer.removeListener("streaming-vad", h);
   },
+  onStreamingHotkeyToggle: (cb) => {
+    const h = () => cb();
+    ipcRenderer.on("streaming-hotkey-toggle", h);
+    return () => ipcRenderer.removeListener("streaming-hotkey-toggle", h);
+  },
+  onStreamingPermissionMissing: (cb) => {
+    const h = () => cb();
+    ipcRenderer.on("streaming-permission-missing", h);
+    return () => ipcRenderer.removeListener("streaming-permission-missing", h);
+  },
 });
