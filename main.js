@@ -367,8 +367,12 @@ function initializeDeferredManagers() {
     });
   }
 
-  googleCalendarManager.start();
-  meetingDetectionEngine.start();
+  // Meeting detection + Google Calendar sync are disabled in this fork.
+  // Sustained-audio activity (= dictation) was triggering "Meeting Detected"
+  // prompts during normal use. The classes remain linked for now (Plan 3
+  // will rip them out entirely) but are never started.
+  // googleCalendarManager.start();
+  // meetingDetectionEngine.start();
 }
 
 app.on("open-url", (event, url) => {
