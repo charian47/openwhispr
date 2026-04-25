@@ -30,6 +30,46 @@ func handleLine(_ line: String) {
     send(["type": "config_ack", "language": config.language])
   case "ping":
     send(["type": "pong"])
+  case "transcribe_file":
+    guard let audioPath = obj["path"] as? String else {
+      send(["type": "error", "code": "bad_message", "message": "transcribe_file requires 'path'"])
+      return
+    }
+    guard let wk = whisperKit else {
+      send(["type": "error", "code": "model_not_loaded", "message": "model not loaded yet"])
+      return
+    }
+    Task {
+      do {
+        // Build decoding options honouring the configured language.
+        let decodeOptions: DecodingOptions
+        if config.language == "auto" {
+          // Let WhisperKit detect the language automatically.
+          decodeOptions = DecodingOptions(
+            verbose: false,
+            task: .transcribe,
+            language: nil,
+            detectLanguage: true
+          )
+        } else {
+          decodeOptions = DecodingOptions(
+            verbose: false,
+            task: .transcribe,
+            language: config.language,
+            detectLanguage: false
+          )
+        }
+        let results: [TranscriptionResult] = try await wk.transcribe(
+          audioPath: audioPath,
+          decodeOptions: decodeOptions
+        )
+        // Concatenate text from all result segments.
+        let text = results.map { $0.text }.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        send(["type": "transcribe_file_done", "path": audioPath, "text": text])
+      } catch {
+        send(["type": "error", "code": "transcribe_failed", "message": "\(error)"])
+      }
+    }
   case "end":
     send(["type": "end_ack"])
     exit(0)
