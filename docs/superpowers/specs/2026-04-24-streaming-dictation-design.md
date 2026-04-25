@@ -29,7 +29,7 @@ All five decisions below were validated during brainstorming and the research ph
 | # | Decision | Chosen option |
 |---|---|---|
 | 1 | Activation model | **Toggle-to-stream** via a single hotkey. Tap to start, tap to stop. |
-| 2 | Hotkey | **Right-Option** (tap). Detected via `CGEventTap` on `flagsChanged`, filtered to "isolated tap" (no other keys during hold, gap < 500 ms). |
+| 2 | Hotkey | **Right-Option, double-tap** (Wispr-Flow-style). Detected via `CGEventTap` on `flagsChanged`. Two press-release cycles within 350 ms with no intervening non-modifier keys. Single press is never a trigger, eliminating collisions with Option+letter accent composition (Option+e for é). Two taps starts streaming; two taps again stops. |
 | 3 | Text-injection mechanism | **Keystroke synthesis** via `CGEventPost` + `CGEventKeyboardSetUnicodeString`. Clipboard-paste fallback for apps that silently ignore Unicode payloads (Slack, VS Code, Cursor, Discord, etc.). |
 | 4 | ASR engine | **WhisperKit turbo on Apple Neural Engine**, wrapped in a Swift sidecar process. Default model: `openai_whisper-large-v3-v20240930_turbo`. |
 | 5 | Streaming UX strategy | **Strategy A: Commit-only.** Text is injected only when a VAD-finalized segment is ready, not on partial hypotheses. No live rewrites. |
@@ -67,7 +67,7 @@ Focused app receives text
 
 | Component | Type | Responsibility | Replaces |
 |---|---|---|---|
-| `src/helpers/streamingHotkey.js` | Node, new | Right-Option tap detection via CGEventTap, debounce, emit toggle events. | Simplified subset of `hotkeyManager.js`. |
+| `native/right-option-tap/` + `src/helpers/streamingHotkey.js` | Swift binary + Node wrapper, new | Swift CGEventTap binary that detects double-tap right-Option; streams toggle events to Node over stdout. Node wrapper spawns the binary, supervises it, and forwards toggle events to the streaming engine. | Replaces `hotkeyManager.js` for streaming mode (existing manager remains for the Parakeet batch path, which Plan 3 retires). |
 | `src/helpers/audioStreamer.js` | Node, new | Open mic via native AVAudioEngine bridge, stream 20 ms PCM frames to the sidecar over Unix socket. | `useAudioRecording.js`, `audioManager.js`. |
 | `native/whisperkit-sidecar/` | Swift package, new | Swift binary. Loads WhisperKit with CoreML + ANE, maintains rolling 30 s audio buffer, runs streaming decode loop, emits partial/commit/vad JSON over Unix socket. | `whisper.js`, `parakeet.js`, `parakeetServer.js`, `parakeetWsServer.js`. |
 | `src/helpers/whisperkitManager.js` | Node, new | Sidecar lifecycle (spawn, health check, restart-once, shutdown), socket plumbing, language/config signaling. | `parakeet.js` management layer. |
@@ -297,7 +297,7 @@ Unchanged at the UI and data layer. They operate on transcription history, which
 | # | Risk | Severity | Mitigation |
 |---|---|---|---|
 | 1 | WhisperKit turbo's Spanish quality with an accent is unverified for this user. | Medium | Ship `large-v3` non-turbo as selectable fallback. A/B on real Spanish audio in week 1. |
-| 2 | Right-Option tap detection via `flagsChanged` must disambiguate tap from modifier-use (Option+e for `é`). | Medium | Only fire on release if (a) Option was most-recent modifier pressed, (b) no other keys during hold, (c) down→up gap < 500 ms. |
+| 2 | Right-Option double-tap detection via `flagsChanged`. Must never fire on single Option use (accent composition, keyboard shortcuts). | Medium | State machine requires exactly two press-release cycles within a 350 ms window, with no non-modifier keyDown in between. Single tap is always ignored. Pattern is proven in Wispr Flow / Superwhisper. |
 | 3 | 1.6 GB first-run model download. | Low | Background download with progress, hotkey gated until complete, rest of app usable. |
 | 4 | Electron apps (Slack, VS Code, Cursor, Discord) silently drop `CGEventKeyboardSetUnicodeString` payload. | **High** | Ship clipboard-paste fallback from day one, user-configurable per-app paste-mode override list. |
 | 5 | Secure Input (password fields, 1Password) blocks all CGEventPost system-wide. | Medium | Detect with `IsSecureEventInputEnabled()` on hotkey trigger; surface a specific error in the overlay. |
