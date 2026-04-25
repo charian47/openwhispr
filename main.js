@@ -181,6 +181,7 @@ const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
 const WhisperKitSidecarManager = require("./src/helpers/whisperKitSidecarManager");
 let whisperKitManager = null;
 const { injectText } = require("./src/helpers/streamingInjector");
+const { isSecureInputActive } = require("./src/helpers/secureInput");
 const RightOptionTapManager = require("./src/helpers/rightOptionTapManager");
 const rightOptionTap = new RightOptionTapManager();
 
@@ -620,9 +621,19 @@ async function startApp() {
 
     const text = (msg.text || "").trim();
     if (text) {
-      const result = await injectText(text + " ");
-      if (!result.success) {
-        if (debugLogger) debugLogger.warn(`[injector] failed: ${result.error}`);
+      if (await isSecureInputActive()) {
+        if (debugLogger) debugLogger.warn("[injector] secure input is active — skipping injection");
+        if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+          windowManager.mainWindow.webContents.send("streaming-injection-error", {
+            code: "SECURE_INPUT",
+            message: "Secure input is active (probably a password field). Click outside it and try again.",
+          });
+        }
+      } else {
+        const result = await injectText(text + " ");
+        if (!result.success) {
+          if (debugLogger) debugLogger.warn(`[injector] failed: ${result.error}`);
+        }
       }
     }
 
