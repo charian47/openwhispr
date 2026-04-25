@@ -10,7 +10,17 @@ const debugLogger = require("./debugLogger");
 const { i18nMain, changeLanguage } = require("./i18nMain");
 const AudioStorageManager = require("./audioStorage");
 const liveSpeakerIdentifier = require("./liveSpeakerIdentifier");
-const MeetingEchoLeakDetector = require("./meetingEchoLeakDetector");
+// Meeting echo-leak detector was deleted with the meeting subsystem. Inline
+// no-op stub keeps the leftover meeting-transcription IPC handlers callable
+// without crashing on missing methods. Plan 3-tail rips those handlers fully.
+class MeetingEchoLeakDetector {
+  isMicProbablyRenderBleed() { return false; }
+  shouldSuppressMicSegment() { return false; }
+  isSystemSpeaking() { return false; }
+  analyzeMicChunk() { return {}; }
+  recordSystemChunk() {}
+  reset() {}
+}
 const {
   transcriptsOverlap,
   transcriptsLooselyOverlap,
