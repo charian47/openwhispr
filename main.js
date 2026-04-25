@@ -630,6 +630,18 @@ async function startApp() {
   whisperKitManager.on("sidecarError", (msg) => {
     if (debugLogger) debugLogger.error(`[whisperkit] sidecar error: ${msg.code} ${msg.message}`);
   });
+  whisperKitManager.on("ready", () => {
+    if (debugLogger) debugLogger.log(`[whisperkit] ready (sidecar process accepted protocol)`);
+  });
+  whisperKitManager.on("modelLoaded", (msg) => {
+    if (debugLogger) debugLogger.log(`[whisperkit] model loaded: ${msg.path}`);
+  });
+  whisperKitManager.on("vad", (msg) => {
+    if (debugLogger) debugLogger.log(`[whisperkit] vad ${msg.state}`);
+  });
+  whisperKitManager.on("commit", (msg) => {
+    if (debugLogger) debugLogger.log(`[whisperkit] commit segmentId=${msg.segmentId} text=${JSON.stringify(msg.text)}`);
+  });
 
   app.on("browser-window-focus", () => {
     if (googleCalendarManager) googleCalendarManager.syncOnFocus();

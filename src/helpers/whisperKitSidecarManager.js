@@ -103,6 +103,16 @@ class WhisperKitSidecarManager extends EventEmitter {
 
   sendAudio(int16Buffer) {
     // int16Buffer is a Node Buffer of Int16LE samples at 16 kHz mono.
+    this._audioFrameCount = (this._audioFrameCount || 0) + 1;
+    if (this._audioFrameCount === 1) {
+      debugLogger.log(`[whisperkit] first audio frame received (${int16Buffer.length} bytes)`);
+    } else if (this._audioFrameCount % 50 === 0) {
+      debugLogger.log(`[whisperkit] audio frames received: ${this._audioFrameCount}`);
+    }
+    if (!this.proc || !this.proc.stdin.writable) {
+      debugLogger.warn(`[whisperkit] sendAudio dropped (proc=${!!this.proc}, writable=${this.proc?.stdin?.writable}) frame#${this._audioFrameCount}`);
+      return;
+    }
     this.send({ type: "audio", pcm: int16Buffer.toString("base64") });
   }
 

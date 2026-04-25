@@ -6068,14 +6068,18 @@ class IPCHandlers {
 
     // WhisperKit streaming sidecar IPC handlers
     ipcMain.handle("whisperkit-start", async (_event, { modelPath, language }) => {
+      debugLogger.log(`[whisperkit-ipc] start request modelPath=${modelPath} language=${language}`);
       try {
         await this.getWhisperKitManager()?.start(modelPath, language);
+        debugLogger.log(`[whisperkit-ipc] start resolved successfully`);
         return { success: true };
       } catch (err) {
+        debugLogger.error(`[whisperkit-ipc] start failed: ${err.message}`);
         return { success: false, error: err.message };
       }
     });
     ipcMain.handle("whisperkit-stop", async () => {
+      debugLogger.log(`[whisperkit-ipc] stop requested`);
       this.getWhisperKitManager()?.stop();
       return { success: true };
     });
