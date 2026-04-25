@@ -11,6 +11,9 @@ var whisperKit: WhisperKit?
 /// Set to true once the model load task has finished (success or failure).
 var modelLoadComplete: Bool = false
 
+let audioBuffer = AudioRingBuffer()
+var segmentId: Int = 0
+
 func send(_ dict: [String: Any]) {
   guard let data = try? JSONSerialization.data(withJSONObject: dict),
         let line = String(data: data, encoding: .utf8) else { return }
@@ -70,6 +73,23 @@ func handleLine(_ line: String) {
         send(["type": "error", "code": "transcribe_failed", "message": "\(error)"])
       }
     }
+  case "audio":
+    guard let b64 = obj["pcm"] as? String,
+          let data = Data(base64Encoded: b64) else {
+      send(["type": "error", "code": "bad_audio", "message": "expected base64 pcm"])
+      return
+    }
+    // Incoming: Int16LE mono 16 kHz. Convert to Float32 -1..1.
+    let int16Count = data.count / 2
+    var floats: [Float] = []
+    floats.reserveCapacity(int16Count)
+    data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+      let ptr = raw.bindMemory(to: Int16.self)
+      for i in 0..<int16Count {
+        floats.append(Float(ptr[i]) / 32768.0)
+      }
+    }
+    audioBuffer.append(floats)
   case "end":
     send(["type": "end_ack"])
     exit(0)
