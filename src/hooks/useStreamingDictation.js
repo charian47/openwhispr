@@ -8,7 +8,7 @@ import { StreamingAudioCapture } from "../helpers/streamingAudioCapture";
  *
  * Returns:
  *   isStreaming {boolean}     - true while a streaming session is active
- *   vadState   {string}      - "silence" | "speech" | "commit" — from streaming-vad IPC events
+ *   vadState   {string}      - "silence" | "speech" — from streaming-vad IPC events
  *   start      {function}    - async ({ modelPath, language }) → void
  *   stop       {function}    - async () → void
  */
@@ -16,28 +16,6 @@ export function useStreamingDictation() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [vadState, setVadState] = useState("silence");
   const captureRef = useRef(null);
-
-  // Subscribe to VAD state transitions and hotkey toggle events.
-  useEffect(() => {
-    const disposeVad = window.electronAPI?.onStreamingVad?.((msg) => {
-      if (msg && msg.state) setVadState(msg.state);
-    });
-    const disposeHotkey = window.electronAPI?.onStreamingHotkeyToggle?.(() => {
-      if (isStreaming) {
-        stop();
-      } else {
-        start({
-          modelPath:
-            "/Users/excallibur/.cache/openwhispr/whisperkit-models/whisperkit-coreml/openai_whisper-tiny.en",
-          language: "en",
-        });
-      }
-    });
-    return () => {
-      disposeVad?.();
-      disposeHotkey?.();
-    };
-  }, [isStreaming, start, stop]);
 
   const start = useCallback(
     async ({ modelPath, language }) => {
@@ -72,6 +50,30 @@ export function useStreamingDictation() {
     setIsStreaming(false);
     setVadState("silence");
   }, []);
+
+  // Subscribe to VAD state transitions and hotkey toggle events.
+  // Declared *after* start/stop because the deps array references them — JS
+  // would otherwise hit the TDZ for those names during render.
+  useEffect(() => {
+    const disposeVad = window.electronAPI?.onStreamingVad?.((msg) => {
+      if (msg && msg.state) setVadState(msg.state);
+    });
+    const disposeHotkey = window.electronAPI?.onStreamingHotkeyToggle?.(() => {
+      if (isStreaming) {
+        stop();
+      } else {
+        start({
+          modelPath:
+            "/Users/excallibur/.cache/openwhispr/whisperkit-models/whisperkit-coreml/openai_whisper-tiny.en",
+          language: "en",
+        });
+      }
+    });
+    return () => {
+      disposeVad?.();
+      disposeHotkey?.();
+    };
+  }, [isStreaming, start, stop]);
 
   return { isStreaming, vadState, start, stop };
 }
