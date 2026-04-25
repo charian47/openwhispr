@@ -5,7 +5,9 @@ import WhisperKit
 /// Uses `.cpuAndNeuralEngine` compute units for both encoder and decoder,
 /// which is optimal on Apple Silicon — the Neural Engine handles inference
 /// while the CPU handles the sequential parts.
-struct ModelLoader {
+/// Renamed from `ModelLoader` to avoid colliding with WhisperKit's
+/// own `ModelLoader` protocol exposed by the ArgmaxCore module.
+struct WhisperKitModelLoader {
   let modelPath: String
 
   /// Initialise the loader with a path to a directory that contains the model

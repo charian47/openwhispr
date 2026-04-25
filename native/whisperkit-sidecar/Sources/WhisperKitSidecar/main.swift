@@ -99,7 +99,7 @@ send(["type": "ready", "stub": true])
 if let modelPath = config.modelPath {
   Task {
     do {
-      whisperKit = try await ModelLoader(modelPath: modelPath).load()
+      whisperKit = try await WhisperKitModelLoader(modelPath: modelPath).load()
       modelLoadComplete = true
       send(["type": "model_loaded", "path": modelPath])
     } catch {
