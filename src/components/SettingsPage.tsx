@@ -69,6 +69,7 @@ import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { validateHotkeyForSlot } from "../utils/hotkeyValidation";
 import { getPlatform, getCachedPlatform } from "../utils/platform";
+const platform = getCachedPlatform();
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import LinuxPttSetupInfo from "./ui/LinuxPttSetupInfo";
