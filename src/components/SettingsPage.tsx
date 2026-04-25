@@ -41,7 +41,6 @@ import MicrophoneSettings from "./ui/MicrophoneSettings";
 import PermissionCard from "./ui/PermissionCard";
 import PasteToolsInfo from "./ui/PasteToolsInfo";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
-import SelfHostedPanel from "./SelfHostedPanel";
 import {
   ConfirmDialog,
   AlertDialog,
@@ -64,7 +63,6 @@ import { useUpdater } from "../hooks/useUpdater";
 
 import PromptStudio from "./ui/PromptStudio";
 import ReasoningModelSelector from "./ReasoningModelSelector";
-import EnterpriseSection from "./EnterpriseSection";
 import { ProviderTabs } from "./ui/ProviderTabs";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
@@ -381,14 +379,6 @@ function TranscriptionSection({
         </>
       )}
 
-      {transcriptionMode === "self-hosted" && (
-        <SelfHostedPanel
-          service="transcription"
-          url={remoteTranscriptionUrl}
-          onUrlChange={setRemoteTranscriptionUrl}
-        />
-      )}
-
       <GpuDeviceSelector purpose="transcription" />
     </div>
   );
@@ -569,22 +559,6 @@ function AiModelsSection({
           {reasoningMode === "providers" && renderReasoningSelector("cloud")}
           {reasoningMode === "local" && renderReasoningSelector("local")}
 
-          {reasoningMode === "self-hosted" && (
-            <SelfHostedPanel
-              service="reasoning"
-              url={remoteReasoningUrl}
-              onUrlChange={setRemoteReasoningUrl}
-            />
-          )}
-
-          {reasoningMode === "enterprise" && (
-            <EnterpriseSection
-              currentProvider={reasoningProvider}
-              reasoningModel={reasoningModel}
-              setReasoningModel={setReasoningModel}
-              setLocalReasoningProvider={setReasoningProvider}
-            />
-          )}
           <GpuDeviceSelector purpose="intelligence" />
         </>
       )}
