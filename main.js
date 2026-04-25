@@ -178,6 +178,8 @@ const AudioTapManager = require("./src/helpers/audioTapManager");
 const MeetingAecManager = require("./src/helpers/meetingAecManager");
 const MeetingDetectionEngine = require("./src/helpers/meetingDetectionEngine");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
+const WhisperKitSidecarManager = require("./src/helpers/whisperKitSidecarManager");
+let whisperKitManager = null;
 
 // Manager instances - initialized after app.whenReady()
 let debugLogger = null;
@@ -292,6 +294,7 @@ function initializeCoreManagers() {
     audioTapManager,
     meetingAecManager,
     getTrayManager: () => trayManager,
+    getWhisperKitManager: () => whisperKitManager,
   });
 }
 
@@ -606,6 +609,27 @@ async function startApp() {
 
   // Phase 2: Initialize remaining managers after windows are visible
   initializeDeferredManagers();
+
+  // WhisperKit streaming sidecar manager (idle until renderer calls whisperkit-start).
+  whisperKitManager = new WhisperKitSidecarManager();
+  whisperKitManager.on("commit", (msg) => {
+    if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+      windowManager.mainWindow.webContents.send("streaming-commit", msg);
+    }
+  });
+  whisperKitManager.on("partial", (msg) => {
+    if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+      windowManager.mainWindow.webContents.send("streaming-partial", msg);
+    }
+  });
+  whisperKitManager.on("vad", (msg) => {
+    if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+      windowManager.mainWindow.webContents.send("streaming-vad", msg);
+    }
+  });
+  whisperKitManager.on("sidecarError", (msg) => {
+    if (debugLogger) debugLogger.error(`[whisperkit] sidecar error: ${msg.code} ${msg.message}`);
+  });
 
   app.on("browser-window-focus", () => {
     if (googleCalendarManager) googleCalendarManager.syncOnFocus();
@@ -997,6 +1021,7 @@ if (gotSingleInstanceLock) {
   });
 
   app.on("will-quit", () => {
+    if (whisperKitManager) whisperKitManager.stop();
     if (authBridgeServer) {
       authBridgeServer.close();
       authBridgeServer = null;
