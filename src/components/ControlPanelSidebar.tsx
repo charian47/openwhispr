@@ -1,15 +1,5 @@
 import React from "react";
-import {
-  Home,
-  MessageSquare,
-  NotebookPen,
-  BookOpen,
-  Upload,
-  Blocks,
-  Settings,
-  HelpCircle,
-  Search,
-} from "lucide-react";
+import { Home, BookOpen, Upload, Settings, HelpCircle, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "./lib/utils";
 import SupportDropdown from "./ui/SupportDropdown";
@@ -17,13 +7,7 @@ import { getCachedPlatform } from "../utils/platform";
 
 const platform = getCachedPlatform();
 
-export type ControlPanelView =
-  | "home"
-  | "chat"
-  | "personal-notes"
-  | "dictionary"
-  | "upload"
-  | "integrations";
+export type ControlPanelView = "home" | "dictionary" | "upload";
 
 interface ControlPanelSidebarProps {
   activeView: ControlPanelView;
@@ -48,11 +32,8 @@ export default function ControlPanelSidebar({
     icon: React.ComponentType<{ size?: number; className?: string }>;
   }[] = [
     { id: "home", label: t("sidebar.home"), icon: Home },
-    { id: "chat", label: t("sidebar.chat"), icon: MessageSquare },
-    { id: "personal-notes", label: t("sidebar.notes"), icon: NotebookPen },
     { id: "upload", label: t("sidebar.upload"), icon: Upload },
     { id: "dictionary", label: t("sidebar.dictionary"), icon: BookOpen },
-    { id: "integrations", label: t("sidebar.integrations"), icon: Blocks },
   ];
 
   return (

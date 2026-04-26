@@ -73,8 +73,6 @@ import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import LinuxPttSetupInfo from "./ui/LinuxPttSetupInfo";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
-import AgentModeSettings from "./settings/AgentModeSettings";
-import { MeetingReasoningPanel, MeetingTranscriptionPanel } from "./settings/MeetingSettings";
 import LanguageSelector from "./ui/LanguageSelector";
 import { Skeleton } from "./ui/skeleton";
 import { Progress } from "./ui/progress";
@@ -86,8 +84,6 @@ import { SettingsRow, InferenceModeSelector } from "./ui/SettingsSection";
 import type { InferenceModeOption } from "./ui/SettingsSection";
 import { useSettingsLayout } from "./ui/useSettingsLayout";
 import { cn } from "./lib/utils";
-import { startMigration, useMigration } from "../stores/noteStore.js";
-import { syncService } from "../services/SyncService.js";
 import { formatBytes } from "../utils/formatBytes";
 import { useSettingsStore } from "../stores/settingsStore";
 import { canManageSystemAudioInApp } from "../utils/systemAudioAccess";
@@ -530,101 +526,28 @@ function AiModelsSection({
   );
 }
 
-type SpeechTab = "dictation" | "noteRecording";
-type LlmTab = "dictationCleanup" | "noteFormatting" | "chatIntelligence";
-
-const SPEECH_TABS: SpeechTab[] = ["dictation", "noteRecording"];
-const LLM_TABS: LlmTab[] = ["dictationCleanup", "noteFormatting", "chatIntelligence"];
-
-function useSubTab<T extends string>(storageKey: string, options: readonly T[], initial?: T) {
-  const [tab, setTab] = useLocalStorage<T>(storageKey, initial ?? options[0]);
-  useEffect(() => {
-    if (initial && initial !== tab) setTab(initial);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initial]);
-  const safeTab = options.includes(tab) ? tab : options[0];
-  return [safeTab, setTab] as const;
-}
-
-function SpeechToTextTabs({
-  initialTab,
-  renderDictation,
-  renderNoteRecording,
-}: {
-  initialTab?: SpeechTab;
-  renderDictation: () => React.ReactNode;
-  renderNoteRecording: () => React.ReactNode;
-}) {
+function SpeechToTextSection({ render }: { render: () => React.ReactNode }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useSubTab<SpeechTab>("settings.speechToTextTab", SPEECH_TABS, initialTab);
-
-  const subTabs = [
-    { id: "dictation", name: t("settingsPage.speechToText.tabs.dictation") },
-    { id: "noteRecording", name: t("settingsPage.speechToText.tabs.noteRecording") },
-  ];
-
   return (
     <div className="space-y-4">
       <SectionHeader
         title={t("settingsPage.speechToText.title")}
         description={t("settingsPage.speechToText.description")}
       />
-      <ProviderTabs
-        providers={subTabs}
-        selectedId={tab}
-        onSelect={(id) => setTab(id as SpeechTab)}
-        renderIcon={(id) =>
-          id === "dictation" ? (
-            <Mic className="w-3.5 h-3.5" />
-          ) : (
-            <FileAudio className="w-3.5 h-3.5" />
-          )
-        }
-      />
-      {tab === "dictation" ? renderDictation() : renderNoteRecording()}
+      {render()}
     </div>
   );
 }
 
-function LlmsTabs({
-  initialTab,
-  renderDictationCleanup,
-  renderNoteFormatting,
-  renderChatIntelligence,
-}: {
-  initialTab?: LlmTab;
-  renderDictationCleanup: () => React.ReactNode;
-  renderNoteFormatting: () => React.ReactNode;
-  renderChatIntelligence: () => React.ReactNode;
-}) {
+function LlmsSection({ render }: { render: () => React.ReactNode }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useSubTab<LlmTab>("settings.llmsTab", LLM_TABS, initialTab);
-
-  const subTabs = [
-    { id: "dictationCleanup", name: t("settingsPage.llms.tabs.dictationCleanup") },
-    { id: "noteFormatting", name: t("settingsPage.llms.tabs.noteFormatting") },
-    { id: "chatIntelligence", name: t("settingsPage.llms.tabs.chatIntelligence") },
-  ];
-
   return (
     <div className="space-y-4">
       <SectionHeader
         title={t("settingsPage.llms.title")}
         description={t("settingsPage.llms.description")}
       />
-      <ProviderTabs
-        providers={subTabs}
-        selectedId={tab}
-        onSelect={(id) => setTab(id as LlmTab)}
-        renderIcon={(id) => {
-          if (id === "dictationCleanup") return <Wand2 className="w-3.5 h-3.5" />;
-          if (id === "noteFormatting") return <BookOpen className="w-3.5 h-3.5" />;
-          return <MessageSquare className="w-3.5 h-3.5" />;
-        }}
-      />
-      {tab === "dictationCleanup" && renderDictationCleanup()}
-      {tab === "noteFormatting" && renderNoteFormatting()}
-      {tab === "chatIntelligence" && renderChatIntelligence()}
+      {render()}
     </div>
   );
 }
@@ -790,18 +713,12 @@ export default function SettingsPage({
     setStartMinimized,
     panelStartPosition,
     setPanelStartPosition,
-    cloudBackupEnabled,
-    setCloudBackupEnabled,
     audioRetentionDays,
     setAudioRetentionDays,
     dataRetentionEnabled,
     setDataRetentionEnabled,
     customDictionary,
     setCustomDictionary,
-    noteFilesEnabled,
-    setNoteFilesEnabled,
-    noteFilesPath,
-    setNoteFilesPath,
   } = useSettings();
 
   const agentKey = useSettingsStore((s) => s.agentKey);
@@ -836,8 +753,6 @@ export default function SettingsPage({
 
   const isUpdateAvailable =
     !updateStatus.isDevelopment && (updateStatus.updateAvailable || updateStatus.updateDownloaded);
-
-  const migration = useMigration();
 
   const { checkWhisperInstallation } = useWhisper();
   const permissionsHook = usePermissions(showAlertDialog);
@@ -1027,47 +942,6 @@ export default function SettingsPage({
       }
     }
   };
-
-  const [noteFilesDefaultPath, setNoteFilesDefaultPath] = useState("");
-  const [noteFilesRebuilding, setNoteFilesRebuilding] = useState(false);
-
-  useEffect(() => {
-    if (!noteFilesEnabled) return;
-    window.electronAPI?.noteFilesGetDefaultPath?.().then((p) => {
-      if (p) setNoteFilesDefaultPath(p);
-    });
-  }, [noteFilesEnabled]);
-
-  const handleNoteFilesToggle = useCallback(
-    async (enabled: boolean) => {
-      setNoteFilesEnabled(enabled);
-      await window.electronAPI?.noteFilesSetEnabled?.(enabled, noteFilesPath || undefined);
-    },
-    [setNoteFilesEnabled, noteFilesPath]
-  );
-
-  const handleNoteFilesChangePath = useCallback(async () => {
-    const result = await window.electronAPI?.noteFilesPickFolder?.();
-    if (result?.canceled || !result?.path) return;
-    setNoteFilesPath(result.path);
-    await window.electronAPI?.noteFilesSetPath?.(result.path);
-  }, [setNoteFilesPath]);
-
-  const handleNoteFilesRebuild = useCallback(async () => {
-    setNoteFilesRebuilding(true);
-    try {
-      const result = await window.electronAPI?.noteFilesRebuild?.();
-      if (result && !result.success) {
-        toast({
-          title: t("settings.noteFiles.rebuildError.title"),
-          description: result.error || t("settings.noteFiles.rebuildError.description"),
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setNoteFilesRebuilding(false);
-    }
-  }, [toast, t]);
 
   useEffect(() => {
     let mounted = true;
@@ -1329,60 +1203,6 @@ export default function SettingsPage({
                     />
                   </SettingsRow>
                 </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-
-            {/* Save Notes as Files */}
-            <div>
-              <SectionHeader title={t("settings.noteFiles.title")} />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <SettingsRow
-                    label={t("settings.noteFiles.title")}
-                    description={t("settings.noteFiles.description")}
-                  >
-                    <Toggle checked={noteFilesEnabled} onChange={handleNoteFilesToggle} />
-                  </SettingsRow>
-                </SettingsPanelRow>
-                {noteFilesEnabled && (
-                  <>
-                    <SettingsPanelRow>
-                      <SettingsRow
-                        label={t("settings.noteFiles.path")}
-                        description={noteFilesPath || noteFilesDefaultPath || "..."}
-                      >
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={handleNoteFilesChangePath}
-                        >
-                          {t("settings.noteFiles.changePath")}
-                        </Button>
-                      </SettingsRow>
-                    </SettingsPanelRow>
-                    <SettingsPanelRow>
-                      <SettingsRow
-                        label={t("settings.noteFiles.rebuild")}
-                        description={t("settings.noteFiles.rebuildDescription")}
-                      >
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs"
-                          disabled={noteFilesRebuilding}
-                          onClick={handleNoteFilesRebuild}
-                        >
-                          {noteFilesRebuilding ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            t("settings.noteFiles.rebuild")
-                          )}
-                        </Button>
-                      </SettingsRow>
-                    </SettingsPanelRow>
-                  </>
-                )}
               </SettingsPanel>
             </div>
 
@@ -2096,9 +1916,8 @@ EOF`,
 
       case "speechToText":
         return (
-          <SpeechToTextTabs
-            initialTab={initialSubTab as SpeechTab | undefined}
-            renderDictation={() => (
+          <SpeechToTextSection
+            render={() => (
               <TranscriptionSection
                 cloudTranscriptionMode={cloudTranscriptionMode}
                 setCloudTranscriptionMode={setCloudTranscriptionMode}
@@ -2134,17 +1953,43 @@ EOF`,
                 toast={toast}
               />
             )}
-            renderNoteRecording={() => <MeetingTranscriptionPanel />}
           />
         );
 
       case "llms":
         return (
-          <LlmsTabs
-            initialTab={initialSubTab as LlmTab | undefined}
-            renderChatIntelligence={() => (
+          <LlmsSection
+            render={() => (
               <div className="space-y-6">
-                <AgentModeSettings />
+                <AiModelsSection
+                  cloudReasoningMode={cloudReasoningMode}
+                  setCloudReasoningMode={setCloudReasoningMode}
+                  useReasoningModel={useReasoningModel}
+                  setUseReasoningModel={(value) => {
+                    updateReasoningSettings({ useReasoningModel: value });
+                  }}
+                  reasoningModel={reasoningModel}
+                  setReasoningModel={setReasoningModel}
+                  reasoningProvider={reasoningProvider}
+                  setReasoningProvider={setReasoningProvider}
+                  cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+                  setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+                  openaiApiKey={openaiApiKey}
+                  setOpenaiApiKey={setOpenaiApiKey}
+                  anthropicApiKey={anthropicApiKey}
+                  setAnthropicApiKey={setAnthropicApiKey}
+                  geminiApiKey={geminiApiKey}
+                  setGeminiApiKey={setGeminiApiKey}
+                  groqApiKey={groqApiKey}
+                  setGroqApiKey={setGroqApiKey}
+                  customReasoningApiKey={customReasoningApiKey}
+                  setCustomReasoningApiKey={setCustomReasoningApiKey}
+                  reasoningMode={reasoningMode}
+                  setReasoningMode={setReasoningMode}
+                  remoteReasoningUrl={remoteReasoningUrl}
+                  setRemoteReasoningUrl={setRemoteReasoningUrl}
+                  toast={toast}
+                />
 
                 <div className="border-t border-border/40 pt-6 space-y-5">
                   <SectionHeader
@@ -2181,100 +2026,7 @@ EOF`,
                       </SettingsPanelRow>
                     </SettingsPanel>
                   </div>
-
-                  <div>
-                    <SectionHeader title={t("settingsPage.agentConfig.howItWorksTitle")} />
-                    <SettingsPanel>
-                      <SettingsPanelRow>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          {t("settingsPage.agentConfig.howItWorksDescription", { agentName })}
-                        </p>
-                      </SettingsPanelRow>
-                    </SettingsPanel>
-                  </div>
-
-                  <div>
-                    <SectionHeader title={t("settingsPage.agentConfig.examplesTitle")} />
-                    <SettingsPanel>
-                      <SettingsPanelRow>
-                        <div className="space-y-2.5">
-                          {[
-                            {
-                              input: t("settingsPage.agentConfig.examples.formalEmail", {
-                                agentName,
-                              }),
-                              mode: t("settingsPage.agentConfig.instructionMode"),
-                            },
-                            {
-                              input: t("settingsPage.agentConfig.examples.professional", {
-                                agentName,
-                              }),
-                              mode: t("settingsPage.agentConfig.instructionMode"),
-                            },
-                            {
-                              input: t("settingsPage.agentConfig.examples.bulletPoints", {
-                                agentName,
-                              }),
-                              mode: t("settingsPage.agentConfig.instructionMode"),
-                            },
-                            {
-                              input: t("settingsPage.agentConfig.cleanupExample"),
-                              mode: t("settingsPage.agentConfig.cleanupMode"),
-                            },
-                          ].map((example, i) => (
-                            <div key={i} className="flex items-start gap-3">
-                              <span
-                                className={`shrink-0 mt-0.5 text-xs font-medium uppercase tracking-wider px-1.5 py-px rounded ${
-                                  example.mode === t("settingsPage.agentConfig.instructionMode")
-                                    ? "bg-primary/10 text-primary dark:bg-primary/15"
-                                    : "bg-muted text-muted-foreground"
-                                }`}
-                              >
-                                {example.mode}
-                              </span>
-                              <p className="text-xs text-muted-foreground leading-relaxed">
-                                "{example.input}"
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </SettingsPanelRow>
-                    </SettingsPanel>
-                  </div>
                 </div>
-              </div>
-            )}
-            renderDictationCleanup={() => (
-              <div className="space-y-6">
-                <AiModelsSection
-                  cloudReasoningMode={cloudReasoningMode}
-                  setCloudReasoningMode={setCloudReasoningMode}
-                  useReasoningModel={useReasoningModel}
-                  setUseReasoningModel={(value) => {
-                    updateReasoningSettings({ useReasoningModel: value });
-                  }}
-                  reasoningModel={reasoningModel}
-                  setReasoningModel={setReasoningModel}
-                  reasoningProvider={reasoningProvider}
-                  setReasoningProvider={setReasoningProvider}
-                  cloudReasoningBaseUrl={cloudReasoningBaseUrl}
-                  setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
-                  openaiApiKey={openaiApiKey}
-                  setOpenaiApiKey={setOpenaiApiKey}
-                  anthropicApiKey={anthropicApiKey}
-                  setAnthropicApiKey={setAnthropicApiKey}
-                  geminiApiKey={geminiApiKey}
-                  setGeminiApiKey={setGeminiApiKey}
-                  groqApiKey={groqApiKey}
-                  setGroqApiKey={setGroqApiKey}
-                  customReasoningApiKey={customReasoningApiKey}
-                  setCustomReasoningApiKey={setCustomReasoningApiKey}
-                  reasoningMode={reasoningMode}
-                  setReasoningMode={setReasoningMode}
-                  remoteReasoningUrl={remoteReasoningUrl}
-                  setRemoteReasoningUrl={setRemoteReasoningUrl}
-                  toast={toast}
-                />
 
                 <div className="border-t border-border/40 pt-6">
                   <SectionHeader
@@ -2285,7 +2037,6 @@ EOF`,
                 </div>
               </div>
             )}
-            renderNoteFormatting={() => <MeetingReasoningPanel />}
           />
         );
 

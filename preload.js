@@ -67,52 +67,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   undoLearnedCorrections: (words) => ipcRenderer.invoke("undo-learned-corrections", words),
 
-  // Note functions
-  saveNote: (title, content, noteType, sourceFile, audioDuration, folderId) =>
-    ipcRenderer.invoke(
-      "db-save-note",
-      title,
-      content,
-      noteType,
-      sourceFile,
-      audioDuration,
-      folderId
-    ),
-  getNote: (id) => ipcRenderer.invoke("db-get-note", id),
-  getNotes: (noteType, limit, folderId) =>
-    ipcRenderer.invoke("db-get-notes", noteType, limit, folderId),
-  updateNote: (id, updates) => ipcRenderer.invoke("db-update-note", id, updates),
-  deleteNote: (id) => ipcRenderer.invoke("db-delete-note", id),
-  exportNote: (noteId, format) => ipcRenderer.invoke("export-note", noteId, format),
-  exportTranscript: (noteId, format) => ipcRenderer.invoke("export-transcript", noteId, format),
-  searchNotes: (query, limit) => ipcRenderer.invoke("db-search-notes", query, limit),
-  semanticSearchNotes: (query, limit) =>
-    ipcRenderer.invoke("db-semantic-search-notes", query, limit),
-  semanticReindexAll: () => ipcRenderer.invoke("db-semantic-reindex-all"),
-  onSemanticReindexProgress: (callback) => {
-    const listener = (_event, data) => callback?.(data);
-    ipcRenderer.on("semantic-reindex-progress", listener);
-    return () => ipcRenderer.removeListener("semantic-reindex-progress", listener);
-  },
-  updateNoteCloudId: (id, cloudId) => ipcRenderer.invoke("db-update-note-cloud-id", id, cloudId),
-
-  // Folder functions
-  getFolders: () => ipcRenderer.invoke("db-get-folders"),
-  createFolder: (name) => ipcRenderer.invoke("db-create-folder", name),
-  deleteFolder: (id) => ipcRenderer.invoke("db-delete-folder", id),
-  renameFolder: (id, name) => ipcRenderer.invoke("db-rename-folder", id, name),
-  getFolderNoteCounts: () => ipcRenderer.invoke("db-get-folder-note-counts"),
-
-  // Note files (markdown mirror) functions
-  noteFilesSetEnabled: (enabled, customPath, options) =>
-    ipcRenderer.invoke("note-files-set-enabled", enabled, customPath, options),
-  noteFilesSetPath: (path) => ipcRenderer.invoke("note-files-set-path", path),
-  noteFilesRebuild: () => ipcRenderer.invoke("note-files-rebuild"),
-  noteFilesGetDefaultPath: () => ipcRenderer.invoke("note-files-get-default-path"),
-  noteFilesPickFolder: () => ipcRenderer.invoke("note-files-pick-folder"),
-  showNoteFile: (noteId) => ipcRenderer.invoke("show-note-file", noteId),
-  showFolderInExplorer: (folderName) => ipcRenderer.invoke("show-folder-in-explorer", folderName),
-
   // Action functions
   getActions: () => ipcRenderer.invoke("db-get-actions"),
   getAction: (id) => ipcRenderer.invoke("db-get-action", id),
@@ -273,8 +227,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getSpeakerProfiles: () => ipcRenderer.invoke("get-speaker-profiles"),
   attachSpeakerEmail: (profileId, email) =>
     ipcRenderer.invoke("attach-speaker-email", profileId, email),
-  saveNoteSpeakerEmbeddings: (noteId, embeddings) =>
-    ipcRenderer.invoke("save-note-speaker-embeddings", noteId, embeddings),
 
   // Window control functions
   windowMinimize: () => ipcRenderer.invoke("window-minimize"),
@@ -581,125 +533,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   acquireRecordingLock: (pipeline) => ipcRenderer.invoke("acquire-recording-lock", pipeline),
   releaseRecordingLock: (pipeline) => ipcRenderer.invoke("release-recording-lock", pipeline),
 
-  // Agent cloud streaming (event-based for real-time chunks)
-  startAgentStream: (messages, opts) =>
-    ipcRenderer.send("cloud-agent-stream-start", messages, opts),
-  onAgentStreamChunk: registerListener(
-    "cloud-agent-stream-chunk",
-    (callback) => (_event, chunk) => callback(chunk)
-  ),
-  onAgentStreamError: registerListener(
-    "cloud-agent-stream-error",
-    (callback) => (_event, error) => callback(error)
-  ),
-  onAgentStreamEnd: registerListener("cloud-agent-stream-end", (callback) => () => callback()),
-
-  // Agent cloud tools
-  agentWebSearch: (query, numResults) => ipcRenderer.invoke("agent-web-search", query, numResults),
-  agentOpenNote: (noteId) => ipcRenderer.invoke("agent-open-note", noteId),
-
-  // Agent conversation persistence
-  createAgentConversation: (title, noteId) =>
-    ipcRenderer.invoke("db-create-agent-conversation", title, noteId),
-  getAgentConversations: (limit) => ipcRenderer.invoke("db-get-agent-conversations", limit),
-  getAgentConversation: (id) => ipcRenderer.invoke("db-get-agent-conversation", id),
-  deleteAgentConversation: (id) => ipcRenderer.invoke("db-delete-agent-conversation", id),
-  updateAgentConversationTitle: (id, title) =>
-    ipcRenderer.invoke("db-update-agent-conversation-title", id, title),
-  addAgentMessage: (conversationId, role, content, metadata) =>
-    ipcRenderer.invoke("db-add-agent-message", conversationId, role, content, metadata),
-  getAgentMessages: (conversationId) => ipcRenderer.invoke("db-get-agent-messages", conversationId),
-  getAgentConversationsWithPreview: (limit, offset, includeArchived) =>
-    ipcRenderer.invoke("db-get-agent-conversations-with-preview", limit, offset, includeArchived),
-  searchAgentConversations: (query, limit) =>
-    ipcRenderer.invoke("db-search-agent-conversations", query, limit),
-  getConversationsForNote: (noteId, limit) =>
-    ipcRenderer.invoke("db-get-conversations-for-note", noteId, limit),
-  archiveAgentConversation: (id) => ipcRenderer.invoke("db-archive-agent-conversation", id),
-  unarchiveAgentConversation: (id) => ipcRenderer.invoke("db-unarchive-agent-conversation", id),
-  updateAgentConversationCloudId: (id, cloudId) =>
-    ipcRenderer.invoke("db-update-agent-conversation-cloud-id", id, cloudId),
-  semanticSearchConversations: (query, limit) =>
-    ipcRenderer.invoke("db-semantic-search-conversations", query, limit),
-
-  // Sync operations
-  getPendingNotes: () => ipcRenderer.invoke("db-get-pending-notes"),
-  getPendingNoteDeletes: () => ipcRenderer.invoke("db-get-pending-note-deletes"),
-  getNoteByClientId: (clientNoteId) => ipcRenderer.invoke("db-get-note-by-client-id", clientNoteId),
-  upsertNoteFromCloud: (cloudNote, localFolderId) =>
-    ipcRenderer.invoke("db-upsert-note-from-cloud", cloudNote, localFolderId),
-  markNoteSynced: (id, cloudId) => ipcRenderer.invoke("db-mark-note-synced", id, cloudId),
-  markNoteSyncError: (id) => ipcRenderer.invoke("db-mark-note-sync-error", id),
-  hardDeleteNote: (id) => ipcRenderer.invoke("db-hard-delete-note", id),
-
-  getPendingFolders: () => ipcRenderer.invoke("db-get-pending-folders"),
-  getFolderByClientId: (clientFolderId) =>
-    ipcRenderer.invoke("db-get-folder-by-client-id", clientFolderId),
-  upsertFolderFromCloud: (cloudFolder) =>
-    ipcRenderer.invoke("db-upsert-folder-from-cloud", cloudFolder),
-  markFolderSynced: (id, cloudId) => ipcRenderer.invoke("db-mark-folder-synced", id, cloudId),
-  getFolderIdMap: () => ipcRenderer.invoke("db-get-folder-id-map"),
-  getPendingFolderDeletes: () => ipcRenderer.invoke("db-get-pending-folder-deletes"),
-  hardDeleteFolder: (id) => ipcRenderer.invoke("db-hard-delete-folder", id),
-
-  getPendingConversations: () => ipcRenderer.invoke("db-get-pending-conversations"),
-  getPendingConversationDeletes: () => ipcRenderer.invoke("db-get-pending-conversation-deletes"),
-  getConversationByClientId: (clientId) =>
-    ipcRenderer.invoke("db-get-conversation-by-client-id", clientId),
-  upsertConversationFromCloud: (cloudConv, messages) =>
-    ipcRenderer.invoke("db-upsert-conversation-from-cloud", cloudConv, messages),
-  markConversationSynced: (id, cloudId) =>
-    ipcRenderer.invoke("db-mark-conversation-synced", id, cloudId),
-  hardDeleteConversation: (id) => ipcRenderer.invoke("db-hard-delete-conversation", id),
-
-  getPendingTranscriptions: () => ipcRenderer.invoke("db-get-pending-transcriptions"),
-  getTranscriptionByClientId: (clientId) =>
-    ipcRenderer.invoke("db-get-transcription-by-client-id", clientId),
-  upsertTranscriptionFromCloud: (cloudTranscription) =>
-    ipcRenderer.invoke("db-upsert-transcription-from-cloud", cloudTranscription),
-  markTranscriptionSynced: (id, cloudId) =>
-    ipcRenderer.invoke("db-mark-transcription-synced", id, cloudId),
-  getPendingTranscriptionDeletes: () => ipcRenderer.invoke("db-get-pending-transcription-deletes"),
-  hardDeleteTranscription: (id) => ipcRenderer.invoke("db-hard-delete-transcription", id),
-
-  // Google Calendar
-  gcalStartOAuth: () => ipcRenderer.invoke("gcal-start-oauth"),
-  gcalDisconnect: () => ipcRenderer.invoke("gcal-disconnect"),
-  gcalGetConnectionStatus: () => ipcRenderer.invoke("gcal-get-connection-status"),
-  gcalGetCalendars: () => ipcRenderer.invoke("gcal-get-calendars"),
-  gcalSetCalendarSelection: (calendarId, isSelected) =>
-    ipcRenderer.invoke("gcal-set-calendar-selection", calendarId, isSelected),
-  gcalSyncEvents: () => ipcRenderer.invoke("gcal-sync-events"),
-  gcalGetUpcomingEvents: (windowMinutes) =>
-    ipcRenderer.invoke("gcal-get-upcoming-events", windowMinutes),
-  gcalGetEvent: (eventId) => ipcRenderer.invoke("gcal-get-event", eventId),
-
-  // Contacts
-  searchContacts: (query) => ipcRenderer.invoke("search-contacts", query),
-  upsertContact: (contact) => ipcRenderer.invoke("upsert-contact", contact),
   getMD5Hash: (text) => ipcRenderer.invoke("get-md5-hash", text),
-
-  // Google Calendar event listeners
-  onGcalMeetingStarting: registerListener(
-    "gcal-meeting-starting",
-    (callback) => (_event, data) => callback(data)
-  ),
-  onGcalMeetingEnded: registerListener(
-    "gcal-meeting-ended",
-    (callback) => (_event, data) => callback(data)
-  ),
-  onGcalStartRecording: registerListener(
-    "gcal-start-recording",
-    (callback) => (_event, data) => callback(data)
-  ),
-  onGcalConnectionChanged: registerListener(
-    "gcal-connection-changed",
-    (callback) => (_event, data) => callback(data)
-  ),
-  onGcalEventsSynced: registerListener(
-    "gcal-events-synced",
-    (callback) => (_event, data) => callback(data)
-  ),
 
   // Meeting detection
   meetingDetectionGetPreferences: () => ipcRenderer.invoke("meeting-detection-get-preferences"),

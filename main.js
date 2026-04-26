@@ -226,7 +226,6 @@ let updateManager = null;
 let globeKeyManager = null;
 let textEditMonitor = null;
 let whisperCudaManager = null;
-let qdrantManager = null;
 let ipcHandlers = null;
 let globeKeyAlertShown = false;
 let authBridgeServer = null;
@@ -694,32 +693,6 @@ async function startApp() {
     });
   }
 
-  const QdrantManager = require("./src/helpers/qdrantManager");
-  qdrantManager = new QdrantManager();
-  if (qdrantManager.isAvailable()) {
-    qdrantManager
-      .start()
-      .then(() => {
-        if (qdrantManager.isReady()) {
-          const vectorIndex = require("./src/helpers/vectorIndex");
-          vectorIndex.init(qdrantManager.getPort());
-          vectorIndex.ensureCollection().catch((err) => {
-            debugLogger.debug("Qdrant collection setup error (non-fatal)", { error: err.message });
-          });
-        }
-      })
-      .catch((err) => {
-        debugLogger.debug("Qdrant startup error (non-fatal)", { error: err.message });
-      });
-  }
-
-  const localEmbeddings = require("./src/helpers/localEmbeddings");
-  if (!localEmbeddings.isAvailable()) {
-    localEmbeddings.downloadModel().catch((err) => {
-      debugLogger.debug("Embedding model download error (non-fatal)", { error: err.message });
-    });
-  }
-
   trayManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   trayManager.setWindowManager(windowManager);
   trayManager.setCreateControlPanelCallback(() => windowManager.createControlPanelWindow());
@@ -1079,8 +1052,5 @@ if (gotSingleInstanceLock) {
     // Stop llama-server if running
     const modelManager = require("./src/helpers/modelManagerBridge").default;
     modelManager.stopServer().catch(() => {});
-    if (qdrantManager) {
-      qdrantManager.stop().catch(() => {});
-    }
   });
 }

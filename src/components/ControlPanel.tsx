@@ -1,7 +1,7 @@
 import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
-import { Download, RefreshCw, Loader2, Zap, ChevronLeft } from "lucide-react";
+import { Download, RefreshCw, Loader2, Zap } from "lucide-react";
 import TccResetModal from "./TccResetModal";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
@@ -26,20 +26,14 @@ import {
   isTccResetModalSeen,
   TCC_RESET_MODAL_SEEN_KEY,
 } from "../utils/permissions";
-import { setActiveNoteId, setActiveFolderId, initializeNotes } from "../stores/noteStore";
 import { fetchProviders as fetchStreamingProviders } from "../stores/streamingProvidersStore";
 import HistoryView from "./HistoryView";
-import { syncService } from "../services/SyncService.js";
 
 const platform = getCachedPlatform();
 
 const SettingsModal = React.lazy(() => import("./SettingsModal"));
-// DELETED_AT_GROUP_G — ReferralModal removed with referral subsystem
-const PersonalNotesView = React.lazy(() => import("./notes/PersonalNotesView"));
 const DictionaryView = React.lazy(() => import("./DictionaryView"));
-const UploadAudioView = React.lazy(() => import("./notes/UploadAudioView"));
-const IntegrationsView = React.lazy(() => import("./IntegrationsView"));
-const ChatView = React.lazy(() => import("./chat/ChatView"));
+const UploadAudioView = React.lazy(() => import("./UploadAudioView"));
 const CommandSearch = React.lazy(() => import("./CommandSearch"));
 
 export default function ControlPanel() {
@@ -56,12 +50,6 @@ export default function ControlPanel() {
   const [showSearch, setShowSearch] = useState(false);
   const [showCloudMigrationBanner, setShowCloudMigrationBanner] = useState(false);
   const [activeView, setActiveView] = useState<ControlPanelView>("home");
-  const [isMeetingMode, setIsMeetingMode] = useState(false);
-  const [meetingRecordingRequest, setMeetingRecordingRequest] = useState<{
-    noteId: number;
-    folderId: number;
-    event: any;
-  } | null>(null);
   const [gpuAccelAvailable, setGpuAccelAvailable] = useState<{ cuda: boolean; vulkan: boolean }>({
     cuda: false,
     vulkan: false,
@@ -109,14 +97,6 @@ export default function ControlPanel() {
       }
     })();
   }, [showAlertDialog, t]);
-
-  useEffect(() => {
-    const { noteFilesEnabled, noteFilesPath } = useSettingsStore.getState();
-    if (!noteFilesEnabled) return;
-    window.electronAPI?.noteFilesSetEnabled?.(true, noteFilesPath || undefined, {
-      skipRebuild: true,
-    });
-  }, []);
 
   useEffect(() => {
     if (platform !== "darwin") return;
@@ -199,30 +179,6 @@ export default function ControlPanel() {
   }, [useLocalWhisper, localTranscriptionProvider, useReasoningModel, gpuBannerDismissed]);
 
   useEffect(() => {
-    const cleanup = window.electronAPI?.onNavigateToMeetingNote?.((data) => {
-      setActiveFolderId(data.folderId);
-      setActiveNoteId(data.noteId);
-      setActiveView("personal-notes");
-      setIsMeetingMode(true);
-      setMeetingRecordingRequest(data);
-      initializeNotes(null, 50, data.folderId);
-    });
-    return () => cleanup?.();
-  }, []);
-
-  useEffect(() => {
-    const cleanup = window.electronAPI?.onNavigateToNote?.((data) => {
-      if (data.folderId) {
-        setActiveFolderId(data.folderId);
-        initializeNotes(null, 50, data.folderId);
-      }
-      setActiveNoteId(data.noteId);
-      setActiveView("personal-notes");
-    });
-    return () => cleanup?.();
-  }, []);
-
-  useEffect(() => {
     const cleanup = window.electronAPI?.onShowSettings?.(() => {
       setShowSettings(true);
     });
@@ -250,21 +206,7 @@ export default function ControlPanel() {
   }, [toast, t]);
 
   useEffect(() => {
-    syncService.syncAll().catch(console.error);
-  }, []);
-
-  useEffect(() => {
     fetchStreamingProviders();
-  }, []);
-
-  const handleMeetingRecordingRequestHandled = useCallback(
-    () => setMeetingRecordingRequest(null),
-    []
-  );
-
-  const handleExitMeetingMode = useCallback(() => {
-    setIsMeetingMode(false);
-    window.electronAPI?.restoreFromMeetingMode?.();
   }, []);
 
   const copyToClipboard = useCallback(
@@ -298,7 +240,6 @@ export default function ControlPanel() {
             const result = await window.electronAPI.deleteTranscription(id);
             if (result.success) {
               removeFromStore(id);
-              syncService.syncAll().catch(console.error);
             } else {
               showAlertDialog({
                 title: t("controlPanel.history.couldNotDeleteTitle"),
@@ -327,7 +268,6 @@ export default function ControlPanel() {
           const result = await window.electronAPI.clearTranscriptions();
           if (result.success) {
             clearStore();
-            syncService.syncAll().catch(console.error);
             toast({
               title: t("controlPanel.history.clearAllSuccess"),
               variant: "success",
@@ -553,11 +493,6 @@ export default function ControlPanel() {
             open={showSearch}
             onOpenChange={setShowSearch}
             transcriptions={history}
-            onNoteSelect={(id, folderId) => {
-              if (folderId) setActiveFolderId(folderId);
-              setActiveNoteId(id);
-              setActiveView("personal-notes");
-            }}
             onTranscriptSelect={() => {
               setActiveView("home");
             }}
@@ -568,7 +503,7 @@ export default function ControlPanel() {
       <div className="flex flex-1 overflow-hidden">
         <div
           className="shrink-0 overflow-hidden transition-[width] duration-300 ease-out"
-          style={{ width: isMeetingMode ? 0 : undefined }}
+          style={undefined}
         >
           <ControlPanelSidebar
             activeView={activeView}
@@ -602,22 +537,6 @@ export default function ControlPanel() {
             className="flex items-center justify-between w-full h-10 shrink-0"
             style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
           >
-            {isMeetingMode && (
-              <div
-                className={platform === "darwin" ? "ml-[84px] mt-[16px]" : "ml-2"}
-                style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-              >
-                <Button
-                  variant="outline-flat"
-                  size="sm"
-                  onClick={handleExitMeetingMode}
-                  className="h-7 px-2.5 pl-1.5 gap-1"
-                >
-                  <ChevronLeft size={14} strokeWidth={1.8} />
-                  {t("controlPanel.backToNotes")}
-                </Button>
-              </div>
-            )}
             <div className="flex-1" />
             {platform !== "darwin" && (
               <div className="pr-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
@@ -692,25 +611,6 @@ export default function ControlPanel() {
                 }}
               />
             )}
-            {activeView === "chat" && (
-              <Suspense fallback={null}>
-                <ChatView />
-              </Suspense>
-            )}
-            {activeView === "personal-notes" && (
-              <Suspense fallback={null}>
-                <PersonalNotesView
-                  onOpenSettings={(section) => {
-                    setSettingsSection(section);
-                    setShowSettings(true);
-                  }}
-                  onOpenSearch={() => setShowSearch(true)}
-                  meetingRecordingRequest={meetingRecordingRequest}
-                  onMeetingRecordingRequestHandled={handleMeetingRecordingRequestHandled}
-                  isMeetingMode={isMeetingMode}
-                />
-              </Suspense>
-            )}
             {activeView === "dictionary" && (
               <Suspense fallback={null}>
                 <DictionaryView />
@@ -719,21 +619,12 @@ export default function ControlPanel() {
             {activeView === "upload" && (
               <Suspense fallback={null}>
                 <UploadAudioView
-                  onNoteCreated={(noteId, folderId) => {
-                    setActiveNoteId(noteId);
-                    if (folderId) setActiveFolderId(folderId);
-                    setActiveView("personal-notes");
-                  }}
+                  onTranscriptionCreated={() => setActiveView("home")}
                   onOpenSettings={(section) => {
                     setSettingsSection(section);
                     setShowSettings(true);
                   }}
                 />
-              </Suspense>
-            )}
-            {activeView === "integrations" && (
-              <Suspense fallback={null}>
-                <IntegrationsView />
               </Suspense>
             )}
           </div>

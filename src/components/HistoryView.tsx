@@ -1,13 +1,12 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
-import { Loader2, Sparkles, Cloud, X, Mic, Trash2 } from "lucide-react";
+import { Loader2, Sparkles, Cloud, X, Trash2 } from "lucide-react";
 import TranscriptionItem from "./ui/TranscriptionItem";
 import type { TranscriptionItem as TranscriptionItemType } from "../types/electron";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import { formatDateGroup } from "../utils/dateFormatting";
 import { cn } from "./lib/utils";
-import { useUpcomingEvents } from "../hooks/useUpcomingEvents";
 import { useSettingsStore } from "../stores/settingsStore";
 
 interface HistoryViewProps {
@@ -45,7 +44,6 @@ export default function HistoryView({
 }: HistoryViewProps) {
   const { t } = useTranslation();
   const dataRetentionEnabled = useSettingsStore((s) => s.dataRetentionEnabled);
-  const { events, isLoading: eventsLoading, isConnected } = useUpcomingEvents();
 
   const groupedHistory = useMemo(() => {
     if (history.length === 0) return [];
@@ -69,7 +67,7 @@ export default function HistoryView({
 
   return (
     <div className="px-4 pt-4 pb-6">
-      <div className={cn("mx-auto", isConnected ? "max-w-5xl" : "max-w-3xl")}>
+      <div className="mx-auto max-w-3xl">
         {showCloudMigrationBanner && (
           <div className="mb-3 relative rounded-lg border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3">
             <button
@@ -146,16 +144,8 @@ export default function HistoryView({
           </div>
         )}
 
-        <div className={cn(isConnected ? "flex gap-6" : "")}>
-          <div className={cn("min-w-0", isConnected ? "flex-1" : "w-full")}>
-            {isConnected && (
-              <div className="flex items-center gap-1.5 pb-2.5">
-                <Mic size={12} className="text-muted-foreground" />
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                  {t("upcoming.transcriptions")}
-                </span>
-              </div>
-            )}
+        <div>
+          <div className="min-w-0 w-full">
             {!dataRetentionEnabled && (
               <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/5 dark:bg-amber-500/10 px-3.5 py-2.5 flex items-center gap-2.5">
                 <span className="text-amber-600 dark:text-amber-400 shrink-0 text-sm">⊘</span>

@@ -8,7 +8,6 @@ import { useTheme } from "./hooks/useTheme";
 // DELETED_AT_GROUP_H — OnboardingFlow, showOnboarding state, TCC_RESET_MODAL_SEEN_KEY removed with onboarding wizard
 
 const ControlPanel = React.lazy(() => import("./components/ControlPanel.tsx"));
-const AgentOverlay = React.lazy(() => import("./components/AgentOverlay.tsx"));
 
 export default function AppRouter() {
   useTheme();
@@ -26,18 +25,8 @@ export default function AppRouter() {
 }
 
 function MainApp() {
-  const isAgentPanel = window.location.search.includes("agent=true");
   const isControlPanel =
-    !isAgentPanel &&
-    (window.location.pathname.includes("control") || window.location.search.includes("panel=true"));
-
-  if (isAgentPanel) {
-    return (
-      <Suspense fallback={<LoadingFallback />}>
-        <AgentOverlay />
-      </Suspense>
-    );
-  }
+    window.location.pathname.includes("control") || window.location.search.includes("panel=true");
 
   return isControlPanel ? (
     <Suspense fallback={<LoadingFallback />}>

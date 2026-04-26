@@ -58,7 +58,6 @@ export interface ApiKeySettings {
 }
 
 export interface PrivacySettings {
-  cloudBackupEnabled: boolean;
   audioRetentionDays: number;
   dataRetentionEnabled: boolean;
 }
@@ -265,12 +264,6 @@ function useSettingsInternal() {
     setAutoPasteEnabled: store.setAutoPasteEnabled,
     keepTranscriptionInClipboard: store.keepTranscriptionInClipboard,
     setKeepTranscriptionInClipboard: store.setKeepTranscriptionInClipboard,
-    noteFilesEnabled: store.noteFilesEnabled,
-    setNoteFilesEnabled: store.setNoteFilesEnabled,
-    noteFilesPath: store.noteFilesPath,
-    setNoteFilesPath: store.setNoteFilesPath,
-    cloudBackupEnabled: store.cloudBackupEnabled,
-    setCloudBackupEnabled: store.setCloudBackupEnabled,
     audioRetentionDays: store.audioRetentionDays,
     setAudioRetentionDays: store.setAudioRetentionDays,
     dataRetentionEnabled: store.dataRetentionEnabled,
