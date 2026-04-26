@@ -1390,6 +1390,26 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("append-bench-log", async (_event, record) => {
+      try {
+        const fs = require("fs");
+        const path = require("path");
+        const { app } = require("electron");
+        const file = path.join(app.getPath("userData"), "transcription-bench.ndjson");
+        const line = JSON.stringify({ ts: new Date().toISOString(), ...record }) + "\n";
+        fs.appendFileSync(file, line, "utf8");
+        return { success: true, path: file };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("get-bench-log-path", async () => {
+      const path = require("path");
+      const { app } = require("electron");
+      return path.join(app.getPath("userData"), "transcription-bench.ndjson");
+    });
+
     ipcMain.handle("paste-text", async (event, text, options) => {
       // If the floating dictation panel currently has focus, dismiss it so the
       // paste keystroke lands in the user's target app instead of the overlay.

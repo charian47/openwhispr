@@ -82,6 +82,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("transcribe-audio-file", filePath, options),
   getPathForFile: (file) => webUtils.getPathForFile(file),
 
+  // Benchmark logging — appends one JSON line per transcription to
+  // userData/transcription-bench.ndjson for offline programmatic analysis.
+  appendBenchLog: (record) => ipcRenderer.invoke("append-bench-log", record),
+  getBenchLogPath: () => ipcRenderer.invoke("get-bench-log-path"),
+
   onNoteAdded: (callback) => {
     const listener = (_event, note) => callback?.(note);
     ipcRenderer.on("note-added", listener);

@@ -37,6 +37,11 @@ export default function UploadAudioView({
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [timing, setTiming] = useState<{
+    elapsedMs: number;
+    modelLabel: string;
+    inferenceMs?: number | null;
+  } | null>(null);
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -190,6 +195,7 @@ export default function UploadAudioView({
     setResult(null);
     setError(null);
     setProgress(0);
+    setTiming(null);
   };
 
   const handleTranscribe = async () => {
@@ -197,6 +203,7 @@ export default function UploadAudioView({
     setState("transcribing");
     setError(null);
     setProgress(0);
+    setTiming(null);
 
     progressRef.current = setInterval(() => {
       setProgress((prev) => {
@@ -208,8 +215,15 @@ export default function UploadAudioView({
       });
     }, 500);
 
+    const t0 = performance.now();
     try {
-      let res: { success: boolean; text?: string; error?: string; code?: string };
+      let res: {
+        success: boolean;
+        text?: string;
+        error?: string;
+        code?: string;
+        timings?: { transcriptionProcessingDurationMs?: number };
+      };
 
       if (useLocalWhisper) {
         res = await window.electronAPI.transcribeAudioFile(file.path, {
@@ -225,11 +239,45 @@ export default function UploadAudioView({
         });
       }
 
+      const elapsedMs = Math.round(performance.now() - t0);
+
       if (progressRef.current) clearInterval(progressRef.current);
 
       if (res.success && res.text) {
         setProgress(100);
         setResult(res.text);
+        const inferenceMs = res.timings?.transcriptionProcessingDurationMs ?? null;
+        const modelLabel = getActiveModelLabel();
+        setTiming({ elapsedMs, modelLabel, inferenceMs });
+
+        // Append a structured record for offline analysis (jq, pandas, etc.)
+        try {
+          const provider = useLocalWhisper
+            ? localTranscriptionProvider === "nvidia"
+              ? "parakeet"
+              : "whisper"
+            : cloudTranscriptionProvider;
+          const model =
+            useLocalWhisper && localTranscriptionProvider === "nvidia"
+              ? parakeetModel
+              : useLocalWhisper
+                ? whisperModel
+                : cloudTranscriptionModel;
+          await window.electronAPI.appendBenchLog?.({
+            provider,
+            model,
+            modelLabel,
+            elapsedMs,
+            inferenceMs,
+            audioFile: file.name,
+            audioSizeBytes: file.sizeBytes,
+            textLength: res.text.length,
+            wordCount: res.text.trim().split(/\s+/).length,
+            transcript: res.text,
+          });
+        } catch {
+          // Non-blocking — log failure shouldn't affect the user flow
+        }
 
         const saved = await window.electronAPI.saveTranscription(res.text, res.text, {
           status: "completed",
@@ -329,7 +377,9 @@ export default function UploadAudioView({
           />
         )}
         {state === "transcribing" && <TranscribingView t={t} progress={progress} file={file} />}
-        {state === "complete" && result && <CompleteView t={t} result={result} reset={reset} />}
+        {state === "complete" && result && (
+          <CompleteView t={t} result={result} reset={reset} timing={timing} />
+        )}
         {state === "error" && error && (
           <ErrorView t={t} error={error} reset={reset} handleTranscribe={handleTranscribe} />
         )}
@@ -631,11 +681,16 @@ function CompleteView({
   t,
   result,
   reset,
+  timing,
 }: {
   t: (key: string) => string;
   result: string;
   reset: () => void;
+  timing: { elapsedMs: number; modelLabel: string; inferenceMs?: number | null } | null;
 }) {
+  const formatTime = (ms: number) =>
+    ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(2)}s`;
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center">
       <div
@@ -651,6 +706,33 @@ function CompleteView({
       <p className="q-ui mb-1" style={{ color: "var(--q-fg)", fontWeight: 500 }}>
         {t("notes.upload.transcriptionComplete")}
       </p>
+
+      {timing && (
+        <div
+          className="flex items-center gap-3 mb-3 px-3 py-1.5 rounded-md"
+          style={{
+            background: "var(--q-input)",
+            border: "1px solid var(--q-rule)",
+          }}
+        >
+          <span className="q-mono-sm" style={{ color: "var(--q-fg-2)" }}>
+            {formatTime(timing.elapsedMs)}
+          </span>
+          <span style={{ color: "var(--q-rule)" }}>·</span>
+          <span className="q-mono-sm" style={{ color: "var(--q-meta)" }}>
+            {timing.modelLabel}
+          </span>
+          {timing.inferenceMs != null && timing.inferenceMs !== timing.elapsedMs && (
+            <>
+              <span style={{ color: "var(--q-rule)" }}>·</span>
+              <span className="q-mono-sm" style={{ color: "var(--q-meta-faint)" }}>
+                inference {formatTime(timing.inferenceMs)}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
       <p
         className="q-body max-w-[420px] text-center mb-4 line-clamp-3"
         style={{ color: "var(--q-fg-3)" }}

@@ -739,7 +739,6 @@ export default function ControlPanel() {
             {activeView === "upload" && (
               <Suspense fallback={null}>
                 <UploadAudioView
-                  onTranscriptionCreated={() => setActiveView("home")}
                   onOpenSettings={(section) => {
                     setSettingsSection(section);
                     setShowSettings(true);
