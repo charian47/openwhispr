@@ -589,6 +589,7 @@ async function startApp() {
 
     const text = (msg.text || "").trim();
     if (text) {
+      whisperKitManager.sessionSegments.push(text);
       if (await isSecureInputActive()) {
         if (debugLogger) debugLogger.warn("[injector] secure input is active — skipping injection");
         if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {

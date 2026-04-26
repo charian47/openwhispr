@@ -16,6 +16,10 @@ class WhisperKitSidecarManager extends EventEmitter {
     this.restartsRemaining = 1;
     // Set by stop() so the on-exit handler knows not to respawn.
     this._intentionalStop = false;
+    // Committed text segments for the current dictation session.
+    // Pushed by main.js's `commit` handler, drained by `consumeSessionTranscript()`
+    // when the session stops so the full utterance can be persisted to the DB.
+    this.sessionSegments = [];
   }
 
   async start(modelPath, language = "auto") {
@@ -27,8 +31,15 @@ class WhisperKitSidecarManager extends EventEmitter {
     this.language = language;
     this._intentionalStop = false;
     this.restartsRemaining = 1;
+    this.sessionSegments = [];
     this._spawn();
     await this._awaitReady();
+  }
+
+  consumeSessionTranscript() {
+    const text = this.sessionSegments.map((s) => s.trim()).filter(Boolean).join(" ").trim();
+    this.sessionSegments = [];
+    return text;
   }
 
   _spawn() {

@@ -2021,7 +2021,7 @@
     "dictionary": "Diccionario",
     "referral": "Obtener un mes gratis",
     "settings": "Configuración",
-    "support": "Soporte",
+    "reportBug": "Reportar un error",
     "limitReached": "Límite semanal alcanzado",
     "limitReachedDescription": "Mejora a Pro para transcripciones ilimitadas.",
     "viewPlans": "Ver planes",
@@ -2074,12 +2074,6 @@
     "upgradeToPro": "Actualizar a Pro",
     "useYourOwnKey": "Usar tu propia clave API",
     "upgradeUnlimited": "Actualizar a Pro — transcripciones ilimitadas"
-  },
-  "support": {
-    "documentation": "Documentación",
-    "joinDiscord": "Unirse a Discord",
-    "contactSupport": "Contactar soporte",
-    "submitBug": "Reportar un error"
   },
   "tccReset": {
     "title": "Vuelve a conceder los permisos de OpenWhispr",

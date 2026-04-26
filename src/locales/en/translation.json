@@ -1743,7 +1743,7 @@
     "dictionary": "Dictionary",
     "referral": "Get a free month",
     "settings": "Settings",
-    "support": "Support",
+    "reportBug": "Report a bug",
     "limitReached": "Weekly limit reached",
     "limitReachedDescription": "Upgrade to Pro for unlimited transcriptions.",
     "viewPlans": "View Plans",
@@ -2122,12 +2122,6 @@
     "howItWorksDetail": "Words are fed as context hints to the speech model, helping it recognize uncommon terms. For difficult words, try adding context like \"The word is Synty\" alongside the word itself.",
     "autoManaged": "Auto-managed — synced from agent name",
     "inputHint": "Separate multiple words with commas. Add context phrases like \"The word is Synty\" for better recognition."
-  },
-  "support": {
-    "documentation": "Documentation",
-    "joinDiscord": "Join Discord",
-    "contactSupport": "Contact Support",
-    "submitBug": "Submit Bug"
   },
   "tccReset": {
     "title": "Re-grant OpenWhispr's permissions",

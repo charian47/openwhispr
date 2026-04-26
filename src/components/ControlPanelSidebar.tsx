@@ -1,9 +1,22 @@
 import React from "react";
-import { Home, BookOpen, Upload, Settings, HelpCircle, Search } from "lucide-react";
+import { Home, BookOpen, Upload, Settings, Bug, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "./lib/utils";
-import SupportDropdown from "./ui/SupportDropdown";
+import logger from "../utils/logger";
 import { getCachedPlatform } from "../utils/platform";
+
+const ISSUES_URL = "https://github.com/charian47/openwhispr/issues/new";
+
+async function openIssuesPage() {
+  try {
+    const result = await window.electronAPI?.openExternal(ISSUES_URL);
+    if (!result?.success) {
+      logger.error("Failed to open issues URL", { error: result?.error }, "support");
+    }
+  } catch (error) {
+    logger.error("Error opening issues URL", { error }, "support");
+  }
+}
 
 const platform = getCachedPlatform();
 
@@ -131,22 +144,19 @@ export default function ControlPanelSidebar({
           </span>
         </button>
 
-        <SupportDropdown
-          trigger={
-            <button
-              aria-label={t("sidebar.support")}
-              className="group flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md text-left outline-none hover:bg-foreground/4 dark:hover:bg-white/4 focus-visible:ring-1 focus-visible:ring-primary/30 transition-colors duration-150"
-            >
-              <HelpCircle
-                size={15}
-                className="shrink-0 text-foreground/60 group-hover:text-foreground/75 dark:text-foreground/50 dark:group-hover:text-foreground/65 transition-colors duration-150"
-              />
-              <span className="text-xs text-foreground/80 group-hover:text-foreground dark:text-foreground/70 dark:group-hover:text-foreground/85 transition-colors duration-150">
-                {t("sidebar.support")}
-              </span>
-            </button>
-          }
-        />
+        <button
+          aria-label={t("sidebar.reportBug")}
+          onClick={openIssuesPage}
+          className="group flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md text-left outline-none hover:bg-foreground/4 dark:hover:bg-white/4 focus-visible:ring-1 focus-visible:ring-primary/30 transition-colors duration-150"
+        >
+          <Bug
+            size={15}
+            className="shrink-0 text-foreground/60 group-hover:text-foreground/75 dark:text-foreground/50 dark:group-hover:text-foreground/65 transition-colors duration-150"
+          />
+          <span className="text-xs text-foreground/80 group-hover:text-foreground dark:text-foreground/70 dark:group-hover:text-foreground/85 transition-colors duration-150">
+            {t("sidebar.reportBug")}
+          </span>
+        </button>
       </div>
     </div>
   );

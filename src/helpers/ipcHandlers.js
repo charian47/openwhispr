@@ -5914,7 +5914,23 @@ class IPCHandlers {
     });
     ipcMain.handle("whisperkit-stop", async () => {
       debugLogger.log(`[whisperkit-ipc] stop requested`);
-      this.getWhisperKitManager()?.stop();
+      const manager = this.getWhisperKitManager();
+      const transcript = manager?.consumeSessionTranscript?.() || "";
+      manager?.stop();
+      if (transcript) {
+        try {
+          const result = this.databaseManager.saveTranscription(transcript, transcript, {
+            status: "completed",
+          });
+          if (result?.success && result?.transcription) {
+            setImmediate(() => {
+              this.broadcastToWindows("transcription-added", result.transcription);
+            });
+          }
+        } catch (err) {
+          debugLogger.error(`[whisperkit-ipc] failed to persist session transcript: ${err.message}`);
+        }
+      }
       return { success: true };
     });
     ipcMain.handle("whisperkit-set-language", async (_event, language) => {
