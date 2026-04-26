@@ -37,10 +37,8 @@ function useStartOnboarding() {
 
 export function MeetingTranscriptionPanel() {
   const { t } = useTranslation();
-  const startOnboarding = useStartOnboarding();
 
   const {
-    isSignedIn,
     meetingTranscriptionMode,
     setMeetingTranscriptionMode,
     setMeetingUseLocalWhisper,
@@ -71,14 +69,6 @@ export function MeetingTranscriptionPanel() {
 
   const transcriptionModes: InferenceModeOption[] = [
     {
-      id: "openwhispr",
-      label: t("settingsPage.transcription.modes.openwhispr"),
-      description: t("settingsPage.transcription.modes.openwhisprDesc"),
-      icon: <Cloud className="w-4 h-4" />,
-      disabled: !isSignedIn,
-      badge: !isSignedIn ? t("common.freeAccountRequired") : undefined,
-    },
-    {
       id: "providers",
       label: t("settingsPage.transcription.modes.providers"),
       description: t("settingsPage.transcription.modes.providersDesc"),
@@ -99,10 +89,6 @@ export function MeetingTranscriptionPanel() {
   ];
 
   const handleTranscriptionModeSelect = (mode: InferenceMode) => {
-    if (mode === "openwhispr" && !isSignedIn) {
-      startOnboarding();
-      return;
-    }
     if (mode === meetingTranscriptionMode) return;
     setMeetingTranscriptionMode(mode);
     setMeetingUseLocalWhisper(mode === "local");
@@ -167,10 +153,8 @@ export function MeetingTranscriptionPanel() {
 
 export function MeetingReasoningPanel() {
   const { t } = useTranslation();
-  const startOnboarding = useStartOnboarding();
 
   const {
-    isSignedIn,
     meetingReasoningMode,
     setMeetingReasoningMode,
     meetingReasoningProvider,
@@ -195,14 +179,6 @@ export function MeetingReasoningPanel() {
   } = useSettingsStore();
 
   const aiModes: InferenceModeOption[] = [
-    {
-      id: "openwhispr",
-      label: t("settingsPage.aiModels.modes.openwhispr"),
-      description: t("settingsPage.aiModels.modes.openwhisprDesc"),
-      icon: <Cloud className="w-4 h-4" />,
-      disabled: !isSignedIn,
-      badge: !isSignedIn ? t("common.freeAccountRequired") : undefined,
-    },
     {
       id: "providers",
       label: t("settingsPage.aiModels.modes.providers"),
@@ -230,10 +206,6 @@ export function MeetingReasoningPanel() {
   ];
 
   const handleReasoningModeSelect = (mode: InferenceMode) => {
-    if (mode === "openwhispr" && !isSignedIn) {
-      startOnboarding();
-      return;
-    }
     if (mode === meetingReasoningMode) return;
     setMeetingReasoningMode(mode);
     setMeetingCloudReasoningMode(mode === "openwhispr" ? "openwhispr" : "byok");

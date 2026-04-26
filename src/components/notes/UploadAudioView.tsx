@@ -26,10 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "../ui/input";
 import type { FolderItem } from "../../types/electron";
 import { findDefaultFolder, MEETINGS_FOLDER_NAME } from "./shared";
-import { useAuth } from "../../hooks/useAuth";
-import { useUsage } from "../../hooks/useUsage";
 import { useSettings } from "../../hooks/useSettings";
-import { withSessionRefresh } from "../../lib/neonAuth";
 import { getAllReasoningModels } from "../../models/ModelRegistry";
 import { useSettingsStore, selectIsCloudReasoningMode } from "../../stores/settingsStore";
 import { generateNoteTitle } from "../../utils/generateTitle";
@@ -89,9 +86,8 @@ export default function UploadAudioView({ onNoteCreated, onOpenSettings }: Uploa
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [providerReady, setProviderReady] = useState<boolean | null>(null);
 
-  const { isSignedIn } = useAuth();
-  const usage = useUsage();
-  const isProUser = usage?.isSubscribed || usage?.isTrial;
+  const isSignedIn = false;
+  const isProUser = false;
 
   const {
     useLocalWhisper,
@@ -127,11 +123,9 @@ export default function UploadAudioView({ onNoteCreated, onOpenSettings }: Uploa
   );
   const useReasoningModel = useSettingsStore((s) => s.useReasoningModel);
 
-  const isOpenWhisprCloud =
-    isSignedIn && cloudTranscriptionMode === "openwhispr" && !useLocalWhisper;
-  const usageLoaded = usage?.hasLoaded ?? false;
-  const showSetup = usageLoaded && !isProUser && !setupDismissed && state === "idle";
-  const showModelPicker = !isSignedIn || cloudTranscriptionMode === "byok" || useLocalWhisper;
+  const isOpenWhisprCloud = false;
+  const showSetup = !setupDismissed && state === "idle";
+  const showModelPicker = true;
   const shouldCenter = !showSetup && !advancedOpen;
 
   // Mode detection
@@ -353,17 +347,7 @@ export default function UploadAudioView({ onNoteCreated, onOpenSettings }: Uploa
     try {
       let res: { success: boolean; text?: string; error?: string; code?: string };
 
-      if (isOpenWhisprCloud) {
-        res = await withSessionRefresh(async () => {
-          const r = await window.electronAPI.transcribeAudioFileCloud!(file.path);
-          if (!r.success && r.code) {
-            throw Object.assign(new Error(r.error || "Cloud transcription failed"), {
-              code: r.code,
-            });
-          }
-          return r;
-        });
-      } else if (useLocalWhisper) {
+      if (useLocalWhisper) {
         res = await window.electronAPI.transcribeAudioFile(file.path, {
           provider: localTranscriptionProvider as "whisper" | "nvidia",
           model: localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel,
@@ -612,8 +596,8 @@ export default function UploadAudioView({ onNoteCreated, onOpenSettings }: Uploa
               isOpenWhisprCloud={isOpenWhisprCloud}
               byokTooLarge={byokTooLarge}
               requiresAccount={requiresAccount}
-              isProUser={!!isProUser}
-              onUpgrade={() => usage?.openCheckout()}
+              isProUser={isProUser}
+              onUpgrade={() => {}}
               onCreateAccount={handleCreateAccount}
               onSwitchToCloud={switchToCloud}
             />

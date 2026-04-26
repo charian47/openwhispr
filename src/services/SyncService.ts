@@ -18,11 +18,7 @@ class SyncService {
   private pushTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   canSync(): boolean {
-    return (
-      localStorage.getItem("isSignedIn") === "true" &&
-      localStorage.getItem("cloudBackupEnabled") === "true" &&
-      localStorage.getItem("isSubscribed") === "true"
-    );
+    return false;
   }
 
   async syncAll(): Promise<void> {

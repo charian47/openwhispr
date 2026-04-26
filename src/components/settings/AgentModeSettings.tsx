@@ -1,6 +1,5 @@
-import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Cloud, Key, Cpu, Network, Building2 } from "lucide-react";
+import { Key, Cpu, Network, Building2 } from "lucide-react";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { Toggle } from "../ui/toggle";
 import {
@@ -18,7 +17,7 @@ import { modelRegistry } from "../../models/ModelRegistry";
 function isProviderValidForMode(provider: string, mode: InferenceMode): boolean {
   switch (mode) {
     case "providers":
-      return modelRegistry.getCloudProviders().some((p) => p.id === provider);
+      return ["openai", "anthropic", "gemini", "groq", "custom"].includes(provider);
     case "local":
       return modelRegistry.getAllProviders().some((p) => p.id === provider);
     case "enterprise":
@@ -45,7 +44,6 @@ export default function AgentModeSettings() {
     setAgentInferenceMode,
     remoteAgentUrl,
     setRemoteAgentUrl,
-    isSignedIn,
     openaiApiKey,
     setOpenaiApiKey,
     anthropicApiKey,
@@ -60,22 +58,7 @@ export default function AgentModeSettings() {
     setCloudReasoningBaseUrl,
   } = useSettingsStore();
 
-  const startOnboarding = useCallback(() => {
-    localStorage.setItem("pendingCloudMigration", "true");
-    localStorage.setItem("onboardingCurrentStep", "0");
-    localStorage.removeItem("onboardingCompleted");
-    window.location.reload();
-  }, []);
-
   const agentModes: InferenceModeOption[] = [
-    {
-      id: "openwhispr",
-      label: t("agentMode.settings.modes.openwhispr"),
-      description: t("agentMode.settings.modes.openwhisprDesc"),
-      icon: <Cloud className="w-4 h-4" />,
-      disabled: !isSignedIn,
-      badge: !isSignedIn ? t("common.freeAccountRequired") : undefined,
-    },
     {
       id: "providers",
       label: t("agentMode.settings.modes.providers"),
@@ -103,10 +86,6 @@ export default function AgentModeSettings() {
   ];
 
   const handleAgentModeSelect = (mode: InferenceMode) => {
-    if (mode === "openwhispr" && !isSignedIn) {
-      startOnboarding();
-      return;
-    }
     if (mode === agentInferenceMode) return;
     setAgentInferenceMode(mode);
     setCloudAgentMode(mode === "openwhispr" ? "openwhispr" : "byok");

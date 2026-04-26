@@ -101,7 +101,6 @@ const BOOLEAN_SETTINGS = new Set([
   "useReasoningModel",
   "preferBuiltInMic",
   "cloudBackupEnabled",
-  "telemetryEnabled",
   "audioCuesEnabled",
   "pauseMediaOnDictation",
   "floatingIconAutoHide",
@@ -109,7 +108,6 @@ const BOOLEAN_SETTINGS = new Set([
   "meetingProcessDetection",
   "meetingAudioDetection",
   "speakerDiarizationEnabled",
-  "isSignedIn",
   "agentEnabled",
   "autoPasteEnabled",
   "keepTranscriptionInClipboard",
@@ -230,7 +228,6 @@ export interface SettingsState
     PrivacySettings,
     ThemeSettings,
     AgentModeSettings {
-  isSignedIn: boolean;
   audioCuesEnabled: boolean;
   pauseMediaOnDictation: boolean;
   floatingIconAutoHide: boolean;
@@ -369,7 +366,6 @@ export interface SettingsState
 
   setTheme: (value: "light" | "dark" | "auto") => void;
   setCloudBackupEnabled: (value: boolean) => void;
-  setTelemetryEnabled: (value: boolean) => void;
   setAudioRetentionDays: (days: number) => void;
   setDataRetentionEnabled: (value: boolean) => void;
   setAudioCuesEnabled: (value: boolean) => void;
@@ -386,7 +382,6 @@ export interface SettingsState
   setKeepTranscriptionInClipboard: (value: boolean) => void;
   setNoteFilesEnabled: (value: boolean) => void;
   setNoteFilesPath: (value: string) => void;
-  setIsSignedIn: (value: boolean) => void;
 
   setAgentModel: (value: string) => void;
   setAgentProvider: (value: string) => void;
@@ -520,7 +515,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     return "auto" as const;
   })(),
   cloudBackupEnabled: readBoolean("cloudBackupEnabled", false),
-  telemetryEnabled: readBoolean("telemetryEnabled", false),
   audioRetentionDays: (() => {
     if (!isBrowser) return 30;
     const stored = localStorage.getItem("audioRetentionDays");
@@ -560,7 +554,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   keepTranscriptionInClipboard: readBoolean("keepTranscriptionInClipboard", false),
   noteFilesEnabled: readBoolean("noteFilesEnabled", false),
   noteFilesPath: readString("noteFilesPath", ""),
-  isSignedIn: readBoolean("isSignedIn", false),
 
   transcriptionMode: (() => {
     const v = readString("transcriptionMode", "openwhispr");
@@ -906,7 +899,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
 
   setCloudBackupEnabled: createBooleanSetter("cloudBackupEnabled"),
-  setTelemetryEnabled: createBooleanSetter("telemetryEnabled"),
   setAudioRetentionDays: (days: number) => {
     if (isBrowser) localStorage.setItem("audioRetentionDays", String(days));
     set({ audioRetentionDays: days });
@@ -974,11 +966,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setKeepTranscriptionInClipboard: createBooleanSetter("keepTranscriptionInClipboard"),
   setNoteFilesEnabled: createBooleanSetter("noteFilesEnabled"),
   setNoteFilesPath: createStringSetter("noteFilesPath"),
-
-  setIsSignedIn: (value: boolean) => {
-    if (isBrowser) localStorage.setItem("isSignedIn", String(value));
-    set({ isSignedIn: value });
-  },
 
   setAgentModel: (value: string) => {
     if (isBrowser) localStorage.setItem("agentModel", value);
@@ -1103,14 +1090,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
 // --- Selectors (derived state, not stored) ---
 
-export const selectIsCloudReasoningMode = (state: SettingsState) =>
-  state.isSignedIn && state.cloudReasoningMode === "openwhispr";
+export const selectIsCloudReasoningMode = (_state: SettingsState) => false;
 
 export const selectEffectiveReasoningProvider = (state: SettingsState) =>
-  selectIsCloudReasoningMode(state) ? "openwhispr" : state.reasoningProvider;
+  state.reasoningProvider;
 
-export const selectIsCloudAgentMode = (state: SettingsState) =>
-  state.isSignedIn && state.cloudAgentMode === "openwhispr";
+export const selectIsCloudAgentMode = (_state: SettingsState) => false;
 
 export interface ResolvedMeetingTranscription {
   useLocalWhisper: boolean;

@@ -923,9 +923,6 @@ declare global {
       getAutoStartEnabled?: () => Promise<boolean>;
       setAutoStartEnabled?: (enabled: boolean) => Promise<{ success: boolean; error?: string }>;
 
-      // Auth
-      authClearSession?: () => Promise<void>;
-
       // OpenWhispr Cloud API
       cloudTranscribe?: (
         audioBuffer: ArrayBuffer,
@@ -981,61 +978,6 @@ declare global {
         error?: string;
         code?: string;
       }>;
-      cloudUsage?: () => Promise<{
-        success: boolean;
-        wordsUsed?: number;
-        wordsRemaining?: number;
-        limit?: number;
-        plan?: string;
-        status?: string;
-        isSubscribed?: boolean;
-        isTrial?: boolean;
-        trialDaysLeft?: number | null;
-        currentPeriodEnd?: string | null;
-        billingInterval?: "monthly" | "annual" | null;
-        resetAt?: string;
-        error?: string;
-        code?: string;
-      }>;
-      cloudCheckout?: (opts?: {
-        plan?: "monthly" | "annual";
-        tier?: "pro" | "business";
-      }) => Promise<{
-        success: boolean;
-        url?: string;
-        error?: string;
-        code?: string;
-      }>;
-      cloudBillingPortal?: () => Promise<{
-        success: boolean;
-        url?: string;
-        error?: string;
-        code?: string;
-      }>;
-      cloudSwitchPlan?: (opts: {
-        plan: "monthly" | "annual";
-        tier: "pro" | "business";
-      }) => Promise<{
-        success: boolean;
-        alreadyOnPlan?: boolean;
-        error?: string;
-      }>;
-      cloudPreviewSwitch?: (opts: {
-        plan: "monthly" | "annual";
-        tier: "pro" | "business";
-      }) => Promise<{
-        success: boolean;
-        immediateAmount?: number;
-        currency?: string;
-        currentPriceAmount?: number;
-        currentInterval?: string;
-        newPriceAmount?: number;
-        newInterval?: string;
-        nextBillingDate?: string;
-        alreadyOnPlan?: boolean;
-        error?: string;
-      }>;
-
       // Authenticated cloud API proxy
       cloudApiRequest?: (opts: { method?: string; path: string; body?: unknown }) => Promise<{
         success: boolean;
@@ -1067,12 +1009,6 @@ declare global {
         text?: string;
         error?: string;
       }>;
-
-      // Usage limit events
-      notifyLimitReached?: (data: { wordsUsed: number; limit: number }) => void;
-      onLimitReached?: (
-        callback: (data: { wordsUsed: number; limit: number }) => void
-      ) => () => void;
 
       // DELETED_AT_GROUP_G — getReferralStats, sendReferralInvite, getReferralInvites removed with referral subsystem
 

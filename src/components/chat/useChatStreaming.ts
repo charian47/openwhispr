@@ -95,7 +95,7 @@ export function useChatStreaming({
 
       const settings = getSettings();
       const agentMode = settings.agentInferenceMode || "openwhispr";
-      const isCloudAgent = agentMode === "openwhispr" && settings.isSignedIn;
+      const isCloudAgent = false;
       const isLanAgent = agentMode === "self-hosted" && !!settings.remoteAgentUrl;
       const isLocalProvider = !["openai", "groq", "custom", "anthropic", "gemini"].includes(
         settings.agentProvider
@@ -106,12 +106,12 @@ export function useChatStreaming({
 
       let registry: ToolRegistry | null = null;
       if (supportsTools) {
-        const cacheKey = `${settings.isSignedIn}-${settings.gcalConnected}-${settings.cloudBackupEnabled}`;
+        const cacheKey = `${settings.gcalConnected}-${settings.cloudBackupEnabled}`;
         if (toolRegistryRef.current?.key === cacheKey) {
           registry = toolRegistryRef.current.registry;
         } else {
           registry = createToolRegistry({
-            isSignedIn: settings.isSignedIn,
+            isSignedIn: false,
             gcalConnected: settings.gcalConnected,
             cloudBackupEnabled: settings.cloudBackupEnabled,
           });

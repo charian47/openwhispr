@@ -3,7 +3,6 @@ import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constant
 import logger from "../utils/logger";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 import { isSecureEndpoint } from "../utils/urlUtils";
-import { withSessionRefresh } from "../lib/neonAuth";
 import { getBaseLanguageCode, validateLanguageForModel } from "../utils/languageSupport";
 import {
   createLocalSpeechGateState,
@@ -448,13 +447,10 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       const parakeetModel = settings.parakeetModel || "parakeet-tdt-0.6b-v3";
 
       const cloudTranscriptionMode = settings.cloudTranscriptionMode;
-      const isSignedIn = settings.isSignedIn;
 
-      const isOpenWhisprCloudMode = !useLocalWhisper && cloudTranscriptionMode === "openwhispr";
-      const useCloud = isOpenWhisprCloudMode && isSignedIn;
       logger.debug(
         "Transcription routing",
-        { useLocalWhisper, useCloud, isSignedIn, cloudTranscriptionMode },
+        { useLocalWhisper, cloudTranscriptionMode },
         "transcription"
       );
 
@@ -468,16 +464,6 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           activeModel = whisperModel;
           result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
         }
-      } else if (isOpenWhisprCloudMode) {
-        if (!isSignedIn) {
-          const err = new Error(
-            "OpenWhispr Cloud requires sign-in. Please sign in again or switch to BYOK mode."
-          );
-          err.code = "AUTH_REQUIRED";
-          throw err;
-        }
-        activeModel = "openwhispr-cloud";
-        result = await this.processWithOpenWhisprCloud(audioBlob, metadata);
       } else {
         activeModel = this.getTranscriptionModel();
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
@@ -1178,17 +1164,14 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     const dictionaryPrompt = this.getCustomDictionaryPrompt();
     if (dictionaryPrompt) opts.prompt = dictionaryPrompt;
 
-    // Use withSessionRefresh to handle AUTH_EXPIRED automatically
     const transcriptionStart = performance.now();
-    const result = await withSessionRefresh(async () => {
-      const res = await window.electronAPI.cloudTranscribe(arrayBuffer, opts);
-      if (!res.success) {
-        const err = new Error(res.error || "Cloud transcription failed");
-        err.code = res.code;
-        throw err;
-      }
-      return res;
-    });
+    const transcribeRes = await window.electronAPI.cloudTranscribe(arrayBuffer, opts);
+    if (!transcribeRes.success) {
+      const err = new Error(transcribeRes.error || "Cloud transcription failed");
+      err.code = transcribeRes.code;
+      throw err;
+    }
+    const result = transcribeRes;
     timings.transcriptionProcessingDurationMs = Math.round(performance.now() - transcriptionStart);
 
     // Process with reasoning if enabled
@@ -1200,33 +1183,27 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       const cloudReasoningMode = settings.cloudReasoningMode || "openwhispr";
 
       if (cloudReasoningMode === "openwhispr") {
-        const reasonResult = await withSessionRefresh(async () => {
-          const res = await window.electronAPI.cloudReason(processedText, {
-            agentName,
-            customDictionary: settings.customDictionary,
-            customPrompt: this.getCustomPrompt(),
-            language: settings.preferredLanguage || "auto",
-            locale: settings.uiLanguage || "en",
-            sttProvider: result.sttProvider,
-            sttModel: result.sttModel,
-            sttProcessingMs: result.sttProcessingMs,
-            sttWordCount: result.sttWordCount,
-            sttLanguage: result.sttLanguage,
-            audioDurationMs: result.audioDurationMs,
-            audioSizeBytes,
-            audioFormat,
-          });
-          if (!res.success) {
-            const err = new Error(res.error || "Cloud reasoning failed");
-            err.code = res.code;
-            throw err;
-          }
-          return res;
+        const reasonResult = await window.electronAPI.cloudReason(processedText, {
+          agentName,
+          customDictionary: settings.customDictionary,
+          customPrompt: this.getCustomPrompt(),
+          language: settings.preferredLanguage || "auto",
+          locale: settings.uiLanguage || "en",
+          sttProvider: result.sttProvider,
+          sttModel: result.sttModel,
+          sttProcessingMs: result.sttProcessingMs,
+          sttWordCount: result.sttWordCount,
+          sttLanguage: result.sttLanguage,
+          audioDurationMs: result.audioDurationMs,
+          audioSizeBytes,
+          audioFormat,
         });
-
-        if (reasonResult.success) {
-          processedText = reasonResult.text;
+        if (!reasonResult.success) {
+          const err = new Error(reasonResult.error || "Cloud reasoning failed");
+          err.code = reasonResult.code;
+          throw err;
         }
+        processedText = reasonResult.text;
       } else {
         const effectiveModel = getEffectiveReasoningModel();
         if (effectiveModel) {
