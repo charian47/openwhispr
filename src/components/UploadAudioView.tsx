@@ -1,16 +1,6 @@
 import React, { useState, useRef, useEffect, Suspense } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Upload,
-  FileAudio,
-  X,
-  AlertCircle,
-  ChevronRight,
-  Settings,
-  Check,
-} from "lucide-react";
-import { Button } from "./ui/button";
-import { cn } from "./lib/utils";
+import { FileAudio, X, AlertCircle, ChevronRight, Check, UploadCloud } from "lucide-react";
 import { useSettings } from "../hooks/useSettings";
 
 const TranscriptionModelPicker = React.lazy(() => import("./TranscriptionModelPicker"));
@@ -79,7 +69,6 @@ export default function UploadAudioView({
   } = useSettings();
 
   const fileTooLarge = !!file && !useLocalWhisper && file.sizeBytes > BYOK_MAX_FILE_SIZE;
-  const shouldCenter = !advancedOpen;
 
   useEffect(() => {
     return () => {
@@ -305,191 +294,175 @@ export default function UploadAudioView({
   );
 
   return (
-    <div className="flex flex-col items-center h-full overflow-y-auto px-6">
-      <div
-        className={cn("w-full max-w-md shrink-0", shouldCenter ? "my-auto" : "pt-4 pb-8")}
-        style={{ animation: "float-up 0.4s ease-out" }}
-      >
-        <div className="max-w-[320px] mx-auto">
-          {state === "idle" && providerReady === false && (
-            <NoProviderView t={t} onOpenSettings={() => onOpenSettings?.("speechToText")} />
-          )}
+    <div className="px-8 py-8 max-w-[680px] mx-auto w-full h-full flex flex-col">
+      <header className="mb-5">
+        <h1 className="q-h1">{t("notes.upload.title")}</h1>
+        <p className="q-body mt-1.5" style={{ color: "var(--q-fg-3)" }}>
+          {t("notes.upload.using", { model: "" }).replace(/\s*$/, " ")}
+          <span className="q-mono" style={{ color: "var(--q-fg-2)" }}>
+            {getActiveModelLabel()}
+          </span>
+        </p>
+      </header>
 
-          {state === "idle" && providerReady !== false && (
-            <IdleView
-              t={t}
-              getActiveModelLabel={getActiveModelLabel}
-              handleDrop={handleDrop}
-              handleBrowse={handleBrowse}
-              isDragOver={isDragOver}
-              setIsDragOver={setIsDragOver}
-            />
-          )}
-
-          {state === "selected" && file && (
-            <SelectedView
-              t={t}
-              file={file}
-              getActiveModelLabel={getActiveModelLabel}
-              reset={reset}
-              handleTranscribe={handleTranscribe}
-              fileTooLarge={fileTooLarge}
-            />
-          )}
-
-          {state === "transcribing" && (
-            <TranscribingView t={t} progress={progress} file={file} />
-          )}
-
-          {state === "complete" && result && <CompleteView t={t} result={result} reset={reset} />}
-
-          {state === "error" && error && (
-            <ErrorView t={t} error={error} reset={reset} handleTranscribe={handleTranscribe} />
-          )}
-        </div>
-
-        {(state === "idle" || state === "selected") && (
-          <div className="mx-auto mt-5" style={{ maxWidth: advancedOpen ? "448px" : "320px" }}>
-            <button
-              onClick={() => setAdvancedOpen(!advancedOpen)}
-              className="flex items-center gap-1.5 text-xs text-foreground/25 hover:text-foreground/40 transition-colors mx-auto"
-            >
-              <ChevronRight
-                size={10}
-                className={cn("transition-transform duration-200", advancedOpen && "rotate-90")}
-              />
-              {t("notes.upload.transcriptionSettings")}
-            </button>
-
-            {advancedOpen && (
-              <div className="mt-3" style={{ animation: "float-up 0.2s ease-out" }}>
-                {modelPicker}
-              </div>
-            )}
-          </div>
+      <div className="flex-1 flex flex-col">
+        {state === "idle" && providerReady === false && (
+          <NoProviderView t={t} onOpenSettings={() => onOpenSettings?.("speechToText")} />
+        )}
+        {state === "idle" && providerReady !== false && (
+          <Dropzone
+            t={t}
+            handleDrop={handleDrop}
+            handleBrowse={handleBrowse}
+            isDragOver={isDragOver}
+            setIsDragOver={setIsDragOver}
+          />
+        )}
+        {state === "selected" && file && (
+          <SelectedView
+            t={t}
+            file={file}
+            getActiveModelLabel={getActiveModelLabel}
+            reset={reset}
+            handleTranscribe={handleTranscribe}
+            fileTooLarge={fileTooLarge}
+          />
+        )}
+        {state === "transcribing" && <TranscribingView t={t} progress={progress} file={file} />}
+        {state === "complete" && result && <CompleteView t={t} result={result} reset={reset} />}
+        {state === "error" && error && (
+          <ErrorView t={t} error={error} reset={reset} handleTranscribe={handleTranscribe} />
         )}
       </div>
+
+      {(state === "idle" || state === "selected") && (
+        <div className="mt-4">
+          <button
+            onClick={() => setAdvancedOpen(!advancedOpen)}
+            className="flex items-center gap-1.5 q-meta mx-auto"
+            style={{ color: "var(--q-meta)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--q-fg-2)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--q-meta)")}
+          >
+            <ChevronRight
+              size={11}
+              style={{
+                transition: "transform 200ms ease",
+                transform: advancedOpen ? "rotate(90deg)" : "rotate(0deg)",
+              }}
+            />
+            {t("notes.upload.transcriptionSettings")}
+          </button>
+          {advancedOpen && <div className="mt-4">{modelPicker}</div>}
+        </div>
+      )}
     </div>
   );
 }
 
-interface NoProviderViewProps {
-  t: (key: string) => string;
-  onOpenSettings: () => void;
-}
-
-function NoProviderView({ t, onOpenSettings }: NoProviderViewProps) {
-  return (
-    <div
-      className="flex flex-col items-center gap-4 py-2"
-      style={{ animation: "float-up 0.4s ease-out" }}
-    >
-      <div className="w-10 h-10 rounded-[10px] bg-linear-to-b from-foreground/5 to-foreground/2 dark:from-white/8 dark:to-white/3 border border-foreground/8 dark:border-white/8 flex items-center justify-center">
-        <Settings size={17} strokeWidth={1.5} className="text-foreground/25 dark:text-foreground/35" />
-      </div>
-      <div className="text-center">
-        <h2 className="text-xs font-semibold text-foreground mb-1">
-          {t("notes.upload.noProviderTitle")}
-        </h2>
-        <p className="text-xs text-foreground/30 leading-relaxed max-w-60">
-          {t("notes.upload.noProviderDescription")}
-        </p>
-      </div>
-      <Button variant="default" size="sm" className="h-7 text-xs px-4" onClick={onOpenSettings}>
-        {t("notes.upload.noProviderAction")}
-      </Button>
-    </div>
-  );
-}
-
-interface IdleViewProps {
-  t: (key: string, options?: Record<string, unknown>) => string;
-  getActiveModelLabel: () => string;
-  handleDrop: (e: React.DragEvent) => void;
-  handleBrowse: () => void;
-  isDragOver: boolean;
-  setIsDragOver: (v: boolean) => void;
-}
-
-function IdleView({
+function Dropzone({
   t,
-  getActiveModelLabel,
   handleDrop,
   handleBrowse,
   isDragOver,
   setIsDragOver,
-}: IdleViewProps) {
+}: {
+  t: (key: string, options?: Record<string, unknown>) => string;
+  handleDrop: (e: React.DragEvent) => void;
+  handleBrowse: () => void;
+  isDragOver: boolean;
+  setIsDragOver: (v: boolean) => void;
+}) {
   return (
-    <>
-      <div className="flex flex-col items-center mb-5">
-        <div className="w-10 h-10 rounded-[10px] bg-linear-to-b from-foreground/5 to-foreground/[0.02] dark:from-white/8 dark:to-white/3 border border-foreground/8 dark:border-white/8 flex items-center justify-center mb-4">
-          <Upload size={17} strokeWidth={1.5} className="text-foreground/25 dark:text-foreground/35" />
-        </div>
-        <h2 className="text-xs font-semibold text-foreground mb-1">{t("notes.upload.title")}</h2>
-        <p className="text-xs text-foreground/25">
-          {t("notes.upload.using", { model: getActiveModelLabel() })}
-        </p>
-      </div>
-
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={t("notes.upload.dropOrBrowse")}
+      onDrop={handleDrop}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+      }}
+      onClick={handleBrowse}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleBrowse();
+        }
+      }}
+      className="flex-1 flex flex-col items-center justify-center rounded-lg cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[var(--q-accent)]/40"
+      style={{
+        border: `1px ${isDragOver ? "solid" : "dashed"} ${
+          isDragOver ? "var(--q-accent)" : "var(--q-rule)"
+        }`,
+        background: isDragOver
+          ? "color-mix(in oklch, var(--q-accent) 6%, transparent)"
+          : "transparent",
+        minHeight: 320,
+        transition: "border-color 150ms ease, background 150ms ease",
+      }}
+    >
       <div
-        role="button"
-        tabIndex={0}
-        aria-label={t("notes.upload.dropOrBrowse")}
-        onDrop={handleDrop}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsDragOver(true);
-        }}
-        onDragLeave={(e) => {
-          e.preventDefault();
-          setIsDragOver(false);
-        }}
-        onClick={handleBrowse}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            handleBrowse();
-          }
-        }}
-        className={cn(
-          "relative rounded-lg p-8 text-center cursor-pointer transition-[background-color,border-color,transform] duration-300 group",
-          "bg-surface-1/40 dark:bg-white/[0.03] backdrop-blur-sm",
-          "border border-foreground/6 dark:border-white/6",
-          "hover:bg-surface-1/60 dark:hover:bg-white/[0.05] hover:border-foreground/12 dark:hover:border-white/10",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30",
-          isDragOver && "border-primary/30 bg-primary/[0.04] dark:bg-primary/[0.06] scale-[1.01]"
-        )}
+        className="w-10 h-10 rounded-full flex items-center justify-center mb-4"
+        style={{ border: "1px solid var(--q-rule)", color: "var(--q-fg-3)" }}
       >
-        {!isDragOver ? (
-          <div className="flex flex-col items-center gap-2 relative">
-            <div className="w-8 h-8 rounded-full bg-foreground/[0.03] dark:bg-white/[0.04] flex items-center justify-center mb-1">
-              <Upload size={14} className="text-foreground/20 dark:text-foreground/30 group-hover:text-foreground/40 transition-colors" />
-            </div>
-            <p className="text-xs text-foreground/35 group-hover:text-foreground/50 transition-colors">
-              {t("notes.upload.dropOrBrowse")}
-            </p>
-            <p className="text-xs text-foreground/15 tracking-wide">
-              {t("notes.upload.supportedFormats")}
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2 relative">
-            <Upload size={18} className="text-primary/60" />
-            <p className="text-xs text-primary/60 font-medium">{t("notes.upload.dropToUpload")}</p>
-          </div>
-        )}
+        <UploadCloud size={18} strokeWidth={1.4} />
       </div>
-    </>
+      <p className="q-body" style={{ color: "var(--q-fg-2)" }}>
+        {t("notes.upload.dropOrBrowse")}
+      </p>
+      <p className="q-meta-sm mt-2" style={{ color: "var(--q-meta-faint)" }}>
+        {t("notes.upload.supportedFormats")}
+      </p>
+    </div>
   );
 }
 
-interface SelectedViewProps {
+function NoProviderView({
+  t,
+  onOpenSettings,
+}: {
   t: (key: string) => string;
-  file: { name: string; path: string; size: string; sizeBytes: number };
-  getActiveModelLabel: () => string;
-  reset: () => void;
-  handleTranscribe: () => void;
-  fileTooLarge: boolean;
+  onOpenSettings: () => void;
+}) {
+  return (
+    <div
+      className="flex-1 flex flex-col items-center justify-center rounded-lg"
+      style={{
+        border: "1px dashed var(--q-rule)",
+        minHeight: 320,
+      }}
+    >
+      <div
+        className="w-10 h-10 rounded-full flex items-center justify-center mb-4"
+        style={{ border: "1px solid var(--q-rule)", color: "var(--q-fg-3)" }}
+      >
+        <AlertCircle size={18} strokeWidth={1.4} />
+      </div>
+      <p className="q-body mb-1" style={{ color: "var(--q-fg-2)" }}>
+        {t("notes.upload.noProviderTitle")}
+      </p>
+      <p className="q-meta-sm mb-4" style={{ color: "var(--q-meta-faint)", maxWidth: 320, textAlign: "center" }}>
+        {t("notes.upload.noProviderDescription")}
+      </p>
+      <button
+        onClick={onOpenSettings}
+        className="q-meta-sm px-3 h-7 rounded-md inline-flex items-center"
+        style={{
+          background: "color-mix(in oklch, var(--q-accent) 18%, transparent)",
+          color: "var(--q-accent-fg)",
+          border: "1px solid color-mix(in oklch, var(--q-accent) 30%, transparent)",
+          fontWeight: 500,
+        }}
+      >
+        {t("notes.upload.noProviderAction")}
+      </button>
+    </div>
+  );
 }
 
 function SelectedView({
@@ -499,165 +472,259 @@ function SelectedView({
   reset,
   handleTranscribe,
   fileTooLarge,
-}: SelectedViewProps) {
+}: {
+  t: (key: string) => string;
+  file: { name: string; path: string; size: string; sizeBytes: number };
+  getActiveModelLabel: () => string;
+  reset: () => void;
+  handleTranscribe: () => void;
+  fileTooLarge: boolean;
+}) {
   return (
-    <div style={{ animation: "float-up 0.3s ease-out" }}>
-      <div className="rounded-lg border border-foreground/8 dark:border-white/6 bg-surface-1/40 dark:bg-white/[0.03] backdrop-blur-sm p-4 mb-3">
+    <div className="flex-1 flex flex-col">
+      <div
+        className="rounded-md p-4 mb-4"
+        style={{ border: "1px solid var(--q-rule)", background: "var(--q-input)" }}
+      >
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-[8px] bg-primary/8 dark:bg-primary/12 border border-primary/10 dark:border-primary/15 flex items-center justify-center shrink-0">
-            <FileAudio size={15} className="text-primary/60" />
+          <div
+            className="w-9 h-9 rounded-md flex items-center justify-center shrink-0"
+            style={{
+              background: "color-mix(in oklch, var(--q-accent) 12%, transparent)",
+              border: "1px solid color-mix(in oklch, var(--q-accent) 25%, transparent)",
+              color: "var(--q-accent-fg)",
+            }}
+          >
+            <FileAudio size={15} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-foreground/70 truncate font-medium">{file.name}</p>
-            {file.size && <p className="text-xs text-foreground/25 mt-0.5">{file.size}</p>}
-            <p className="text-xs text-foreground/20 mt-0.5">{getActiveModelLabel()}</p>
+            <p className="q-ui truncate" style={{ color: "var(--q-fg)", fontWeight: 500 }}>
+              {file.name}
+            </p>
+            {file.size && <p className="q-meta-sm mt-0.5">{file.size}</p>}
+            <p className="q-mono-sm mt-0.5" style={{ color: "var(--q-meta-faint)" }}>
+              {getActiveModelLabel()}
+            </p>
           </div>
           <button
             onClick={reset}
-            className="text-foreground/15 hover:text-foreground/40 transition-colors p-1 rounded"
+            className="w-7 h-7 rounded-md flex items-center justify-center"
+            style={{ color: "var(--q-meta)" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--q-hover)";
+              e.currentTarget.style.color = "var(--q-fg)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--q-meta)";
+            }}
           >
-            <X size={12} />
+            <X size={13} />
           </button>
         </div>
       </div>
 
       {fileTooLarge && (
-        <div className="rounded-lg border border-primary/12 dark:border-primary/15 bg-primary/[0.03] px-3 py-2.5 mb-3">
-          <p className="text-xs text-foreground/50 leading-relaxed">
+        <div
+          className="rounded-md px-3 py-2.5 mb-4"
+          style={{
+            border: "1px solid color-mix(in oklch, oklch(0.75 0.15 70) 25%, transparent)",
+            background: "color-mix(in oklch, oklch(0.75 0.15 70) 6%, transparent)",
+          }}
+        >
+          <p className="q-meta" style={{ color: "var(--q-fg-2)" }}>
             {t("notes.upload.byokTooLarge")}
           </p>
-          <p className="text-xs text-foreground/35 leading-relaxed mt-1.5">
-            {t("notes.upload.byokTooLargeDetail")}
-          </p>
+          <p className="q-meta-sm mt-1.5">{t("notes.upload.byokTooLargeDetail")}</p>
         </div>
       )}
 
-      <div className="flex items-center gap-2 justify-center flex-wrap">
+      <div className="flex items-center gap-2 justify-center">
         {!fileTooLarge && (
-          <Button
-            variant="default"
-            size="sm"
+          <button
             onClick={handleTranscribe}
-            className="h-8 text-xs px-5"
+            className="q-ui px-4 h-8 rounded-md inline-flex items-center"
+            style={{
+              background: "color-mix(in oklch, var(--q-accent) 22%, transparent)",
+              color: "var(--q-accent-fg)",
+              border: "1px solid color-mix(in oklch, var(--q-accent) 35%, transparent)",
+              fontWeight: 500,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background =
+                "color-mix(in oklch, var(--q-accent) 30%, transparent)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background =
+                "color-mix(in oklch, var(--q-accent) 22%, transparent)";
+            }}
           >
             {t("notes.upload.transcribe")}
-          </Button>
+          </button>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={reset}
-          className="h-8 text-xs text-foreground/35"
+          className="q-meta px-3 h-8 rounded-md inline-flex items-center"
+          style={{ color: "var(--q-meta)" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--q-fg-2)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--q-meta)")}
         >
           {t("notes.upload.cancel")}
-        </Button>
+        </button>
       </div>
     </div>
   );
 }
 
-interface TranscribingViewProps {
+function TranscribingView({
+  t,
+  progress,
+  file,
+}: {
   t: (key: string, options?: Record<string, unknown>) => string;
   progress: number;
   file: { name: string; path: string; size: string; sizeBytes: number } | null;
-}
-
-function TranscribingView({ t, progress, file }: TranscribingViewProps) {
+}) {
   return (
-    <div className="flex flex-col items-center" style={{ animation: "float-up 0.3s ease-out" }}>
+    <div className="flex-1 flex flex-col items-center justify-center">
       <div className="flex items-end justify-center gap-[3px] h-10 mb-5">
         {[0, 1, 2, 3, 4, 5, 6].map((i) => (
           <div
             key={i}
-            className="w-[3px] rounded-full bg-primary/40 dark:bg-primary/50 origin-bottom"
+            className="w-[3px] rounded-full origin-bottom"
             style={{
               height: "100%",
-              animation: `waveform-bar ${0.8 + i * 0.12}s ease-in-out infinite`,
+              background: "var(--q-accent)",
+              opacity: 0.5,
+              animation: `q-bar ${0.8 + i * 0.12}s ease-in-out infinite`,
               animationDelay: `${i * 0.08}s`,
             }}
           />
         ))}
       </div>
 
-      <div className="w-full max-w-[200px] h-[3px] rounded-full bg-foreground/5 dark:bg-white/5 overflow-hidden mb-3">
+      <div
+        className="w-full max-w-[200px] h-[3px] rounded-full overflow-hidden mb-3"
+        style={{ background: "var(--q-rule-faint)" }}
+      >
         <div
-          className="h-full rounded-full bg-primary/50 transition-[width] duration-500 ease-out"
-          style={{ width: `${Math.min(progress, 100)}%` }}
+          className="h-full rounded-full transition-[width] duration-500 ease-out"
+          style={{
+            width: `${Math.min(progress, 100)}%`,
+            background: "var(--q-accent)",
+            opacity: 0.7,
+          }}
         />
       </div>
 
-      <p className="text-xs text-foreground/50 font-medium">
+      <p className="q-meta" style={{ color: "var(--q-fg-2)", fontWeight: 500 }}>
         {t("notes.upload.transcribingLocal")}
       </p>
       {file ? (
-        <p className="text-xs text-foreground/20 mt-1 truncate max-w-50">{file.name}</p>
+        <p className="q-meta-sm mt-1 truncate max-w-[240px]">{file.name}</p>
       ) : null}
     </div>
   );
 }
 
-interface CompleteViewProps {
+function CompleteView({
+  t,
+  result,
+  reset,
+}: {
   t: (key: string) => string;
   result: string;
   reset: () => void;
-}
-
-function CompleteView({ t, result, reset }: CompleteViewProps) {
+}) {
   return (
-    <div className="flex flex-col items-center" style={{ animation: "float-up 0.3s ease-out" }}>
-      <div className="w-12 h-12 rounded-full bg-success/10 border border-success/20 flex items-center justify-center mb-4">
-        <Check size={20} className="text-success/70" />
+    <div className="flex-1 flex flex-col items-center justify-center">
+      <div
+        className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
+        style={{
+          background: "color-mix(in oklch, var(--q-accent) 12%, transparent)",
+          border: "1px solid color-mix(in oklch, var(--q-accent) 25%, transparent)",
+          color: "var(--q-accent-fg)",
+        }}
+      >
+        <Check size={20} />
       </div>
-
-      <p className="text-xs text-foreground/60 font-medium mb-1">
+      <p className="q-ui mb-1" style={{ color: "var(--q-fg)", fontWeight: 500 }}>
         {t("notes.upload.transcriptionComplete")}
       </p>
-      <p className="text-xs text-foreground/25 max-w-[240px] text-center line-clamp-3 mb-4">
+      <p
+        className="q-body max-w-[420px] text-center mb-4 line-clamp-3"
+        style={{ color: "var(--q-fg-3)" }}
+      >
         {result.slice(0, 200)}
       </p>
-
-      <Button
-        variant="ghost"
-        size="sm"
+      <button
         onClick={reset}
-        className="h-8 text-xs text-foreground/35"
+        className="q-meta px-3 h-8 rounded-md inline-flex items-center"
+        style={{ color: "var(--q-meta)" }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--q-fg-2)")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--q-meta)")}
       >
         {t("notes.upload.uploadAnother")}
-      </Button>
+      </button>
     </div>
   );
 }
 
-interface ErrorViewProps {
+function ErrorView({
+  t,
+  error,
+  reset,
+  handleTranscribe,
+}: {
   t: (key: string) => string;
   error: string;
   reset: () => void;
   handleTranscribe: () => void;
-}
-
-function ErrorView({ t, error, reset, handleTranscribe }: ErrorViewProps) {
+}) {
   return (
-    <div style={{ animation: "float-up 0.3s ease-out" }}>
-      <div className="rounded-lg border border-destructive/15 dark:border-destructive/20 bg-destructive/[0.03] dark:bg-destructive/[0.05] backdrop-blur-sm p-4 mb-4">
+    <div className="flex-1 flex flex-col">
+      <div
+        className="rounded-md p-3.5 mb-4"
+        style={{
+          border: "1px solid color-mix(in oklch, oklch(0.7 0.18 25) 25%, transparent)",
+          background: "color-mix(in oklch, oklch(0.7 0.18 25) 6%, transparent)",
+        }}
+      >
         <div className="flex items-start gap-2.5">
-          <AlertCircle size={14} className="text-destructive/50 shrink-0 mt-0.5" />
-          <p className="flex-1 text-xs text-destructive/70 leading-relaxed">{error}</p>
+          <AlertCircle size={14} className="shrink-0 mt-0.5" style={{ color: "oklch(0.78 0.14 25)" }} />
+          <p className="q-meta flex-1" style={{ color: "oklch(0.85 0.1 25)" }}>
+            {error}
+          </p>
           <button
             onClick={reset}
-            className="text-foreground/15 hover:text-foreground/30 transition-colors shrink-0 p-0.5 rounded"
+            className="w-5 h-5 rounded-sm flex items-center justify-center shrink-0"
+            style={{ color: "var(--q-meta)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--q-fg)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--q-meta)")}
           >
             <X size={11} />
           </button>
         </div>
       </div>
-
       <div className="flex items-center gap-2 justify-center">
-        <Button variant="ghost" size="sm" onClick={handleTranscribe} className="h-7 text-xs text-foreground/40">
+        <button
+          onClick={handleTranscribe}
+          className="q-meta px-3 h-7 rounded-md inline-flex items-center"
+          style={{ color: "var(--q-fg-2)" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--q-fg)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--q-fg-2)")}
+        >
           {t("notes.upload.retry")}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={reset} className="h-7 text-xs text-foreground/25">
+        </button>
+        <button
+          onClick={reset}
+          className="q-meta px-3 h-7 rounded-md inline-flex items-center"
+          style={{ color: "var(--q-meta)" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--q-fg-2)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--q-meta)")}
+        >
           {t("notes.upload.startOver")}
-        </Button>
+        </button>
       </div>
     </div>
   );

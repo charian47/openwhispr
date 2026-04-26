@@ -913,3 +913,144 @@ body:has(.agent-overlay-window) #root {
 .dark .rich-text-editor-content p.is-editor-empty:first-child::before {
   color: oklch(0.7 0 0 / 0.2);
 }
+
+/* ==========================================================================
+   Quill — design system overlay (flat charcoal + typographic confidence)
+   Reference: docs/Quill.html
+   Surfaces: single charcoal field, no elevation. Hierarchy comes from
+   typography and a 64px-ish timestamp gutter, not card chrome.
+   ========================================================================== */
+:root {
+  --q-stage: oklch(0.16 0.005 260);
+  --q-bg: oklch(0.21 0.005 260);
+  --q-input: oklch(0.18 0.005 260);
+  --q-chip: oklch(0.24 0.005 260);
+
+  --q-fg: oklch(0.94 0 0);
+  --q-fg-2: oklch(0.82 0 0);
+  --q-fg-3: oklch(0.62 0 0);
+  --q-meta: oklch(0.55 0 0);
+  --q-meta-faint: oklch(0.42 0 0);
+
+  --q-rule: oklch(0.3 0.005 260);
+  --q-rule-faint: oklch(0.26 0.005 260);
+
+  --q-hover: oklch(0.25 0.005 260);
+  --q-sel: oklch(0.26 0.008 260);
+  --q-accent: oklch(0.68 0.14 250);
+  --q-accent-fg: oklch(0.85 0.1 250);
+
+  --q-font-ui: "Inter Tight", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --q-font-body: "Newsreader", "iA Writer Quattro V", Georgia, "Times New Roman", serif;
+  --q-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.q-h1 {
+  font-family: var(--q-font-ui);
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--q-fg);
+}
+.q-section-label {
+  font-family: var(--q-font-ui);
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--q-meta);
+  font-variant-caps: all-small-caps;
+}
+.q-body {
+  font-family: var(--q-font-body);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--q-fg-2);
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+.q-ui {
+  font-family: var(--q-font-ui);
+  font-size: 13px;
+  line-height: 1.2;
+}
+.q-meta {
+  font-family: var(--q-font-ui);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--q-meta);
+}
+.q-meta-sm {
+  font-family: var(--q-font-ui);
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--q-meta);
+  letter-spacing: 0.005em;
+}
+.q-time {
+  font-family: var(--q-font-mono);
+  font-size: 10.5px;
+  line-height: 1;
+  color: var(--q-meta);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.q-mono {
+  font-family: var(--q-font-mono);
+  font-size: 12px;
+  color: var(--q-meta);
+  font-variant-numeric: tabular-nums;
+}
+.q-mono-sm {
+  font-family: var(--q-font-mono);
+  font-size: 11px;
+  color: var(--q-meta);
+  font-variant-numeric: tabular-nums;
+}
+.q-link {
+  color: var(--q-accent-fg);
+  border-bottom: 1px solid color-mix(in oklch, var(--q-accent) 40%, transparent);
+  cursor: pointer;
+  transition: border-color 120ms ease;
+  background: transparent;
+}
+.q-link:hover {
+  border-bottom-color: var(--q-accent);
+}
+.q-kbd {
+  font-family: var(--q-font-mono);
+  font-size: 10px;
+  color: var(--q-meta-faint);
+  border: 1px solid var(--q-rule);
+  border-radius: 3px;
+  padding: 1px 4px;
+  line-height: 1;
+  background: transparent;
+}
+.q-body::selection {
+  background: color-mix(in oklch, var(--q-accent) 30%, transparent);
+  color: var(--q-fg);
+}
+
+@keyframes q-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.7;
+  }
+}
+@keyframes q-bar {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}

@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Search, Mic } from "lucide-react";
-import { cn } from "./lib/utils";
+import { Search } from "lucide-react";
 import type { TranscriptionItem } from "../types/electron.js";
 import { normalizeDbDate } from "../utils/dateFormatting";
 
@@ -93,18 +92,22 @@ export default function CommandSearch({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Overlay
+          className="fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)" }}
+        />
         <DialogPrimitive.Content
-          className={cn(
-            "fixed left-[50%] top-[18%] z-50 w-full max-w-xl translate-x-[-50%]",
-            "rounded-xl border border-border/60 bg-card shadow-2xl overflow-hidden",
-            "dark:bg-surface-2 dark:border-border dark:shadow-modal",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-            "data-[state=open]:slide-in-from-top-[44%] data-[state=closed]:slide-out-to-top-[44%]",
-            "data-[state=open]:slide-in-from-left-1/2 data-[state=closed]:slide-out-to-left-1/2"
-          )}
+          className="fixed left-1/2 top-[120px] z-50 w-[560px] -translate-x-1/2 overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          style={{
+            borderRadius: 14,
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 100%), rgba(22,22,26,0.55)",
+            backdropFilter: "blur(40px) saturate(180%)",
+            WebkitBackdropFilter: "blur(40px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.16)",
+            boxShadow:
+              "0 1px 0 rgba(255,255,255,0.18) inset, 0 30px 80px -20px rgba(0,0,0,0.7)",
+          }}
         >
           <DialogPrimitive.Title className="sr-only">
             {t("commandSearch.title")}
@@ -113,8 +116,11 @@ export default function CommandSearch({
             {t("commandSearch.description")}
           </DialogPrimitive.Description>
 
-          <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-border/40">
-            <Search size={14} className="shrink-0 text-muted-foreground/50" />
+          <div
+            className="flex items-center gap-2.5 px-3.5 py-3"
+            style={{ borderBottom: "1px solid rgba(255,255,255,0.10)" }}
+          >
+            <Search size={14} style={{ color: "var(--q-meta)" }} />
             <input
               ref={inputRef}
               value={query}
@@ -122,30 +128,25 @@ export default function CommandSearch({
               onKeyDown={handleKeyDown}
               placeholder={t("commandSearch.placeholder")}
               autoFocus
-              className="flex-1 text-sm text-foreground placeholder:text-muted-foreground/40"
+              className="flex-1 q-ui"
               style={{
                 background: "transparent",
                 border: "none",
                 outline: "none",
-                boxShadow: "none",
-                padding: 0,
+                color: "var(--q-fg)",
+                fontSize: 14,
               }}
             />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                className="text-[11px] text-muted-foreground/40 hover:text-muted-foreground transition-colors outline-none"
-              >
-                ✕
-              </button>
-            )}
+            <kbd className="q-kbd">esc</kbd>
           </div>
 
-          <div ref={listRef} className="overflow-y-auto max-h-[340px] p-1.5">
+          <div ref={listRef} className="overflow-y-auto max-h-[360px] p-1.5">
             {!hasResults ? (
               <div className="flex items-center justify-center py-10">
-                <p className="text-xs text-muted-foreground/50">
-                  {query.trim() ? t("commandSearch.noResults") : t("commandSearch.emptyState")}
+                <p className="q-meta">
+                  {query.trim()
+                    ? t("commandSearch.noResults")
+                    : t("commandSearch.emptyState")}
                 </p>
               </div>
             ) : (
@@ -156,54 +157,30 @@ export default function CommandSearch({
                   data-idx={idx}
                   onClick={() => selectItem(transcript)}
                   onMouseEnter={() => setSelectedIndex(idx)}
-                  className={cn(
-                    "group flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-left transition-colors duration-100 outline-none",
-                    selectedIndex === idx
-                      ? "bg-primary/8 dark:bg-primary/10"
-                      : "hover:bg-foreground/4 dark:hover:bg-white/4"
-                  )}
+                  className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-left outline-none"
+                  style={{
+                    background:
+                      selectedIndex === idx ? "rgba(255,255,255,0.08)" : "transparent",
+                  }}
                 >
-                  <Mic
-                    size={13}
-                    className={cn(
-                      "shrink-0 mt-px transition-colors",
-                      selectedIndex === idx ? "text-primary" : "text-muted-foreground/40"
-                    )}
-                  />
-                  <p className="flex-1 text-xs text-foreground/75 truncate min-w-0">
+                  <p
+                    className="flex-1 q-body truncate min-w-0"
+                    style={{
+                      color: selectedIndex === idx ? "var(--q-fg)" : "var(--q-fg-2)",
+                      fontSize: 13,
+                    }}
+                  >
                     {transcript.text}
                   </p>
-                  <span className="text-[10px] text-muted-foreground/35 tabular-nums shrink-0">
+                  <span className="q-mono-sm shrink-0" style={{ color: "var(--q-meta-faint)" }}>
                     {relativeTime(transcript.created_at, t)}
                   </span>
                 </button>
               ))
             )}
           </div>
-
-          <div className="flex items-center gap-4 px-3.5 py-2 border-t border-border/30 bg-muted/15">
-            <FooterHint keys={["↑", "↓"]} label={t("commandSearch.footer.navigate")} />
-            <FooterHint keys={["↵"]} label={t("commandSearch.footer.open")} />
-            <FooterHint keys={["Esc"]} label={t("commandSearch.footer.dismiss")} />
-          </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
-  );
-}
-
-function FooterHint({ keys, label }: { keys: string[]; label: string }) {
-  return (
-    <div className="flex items-center gap-1">
-      {keys.map((k) => (
-        <kbd
-          key={k}
-          className="text-[10px] px-1 py-px rounded border border-border/40 bg-muted/50 text-muted-foreground/55 font-mono leading-tight"
-        >
-          {k}
-        </kbd>
-      ))}
-      <span className="text-[10px] text-muted-foreground/40 ml-0.5">{label}</span>
-    </div>
   );
 }

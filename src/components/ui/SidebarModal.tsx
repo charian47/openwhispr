@@ -79,18 +79,34 @@ export default function SidebarModal<T extends string>({
     if (!item.badge && item.badgeVariant !== "dot") return null;
 
     if (item.badgeVariant === "dot") {
-      return <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shrink-0" />;
+      return (
+        <span
+          className="ml-auto h-1.5 w-1.5 rounded-full shrink-0"
+          style={{ background: "var(--q-accent)" }}
+        />
+      );
     }
 
     return (
       <span
-        className={`ml-auto text-xs font-semibold uppercase tracking-wider px-1.5 py-px rounded-sm shrink-0 ${
-          item.badgeVariant === "new"
-            ? "bg-primary/10 text-primary dark:bg-primary/15"
-            : item.badgeVariant === "update"
-              ? "bg-warning/10 text-warning dark:bg-warning/15"
-              : "bg-muted text-muted-foreground"
-        }`}
+        className="ml-auto q-mono-sm uppercase px-1.5 py-px rounded-sm shrink-0"
+        style={{
+          background:
+            item.badgeVariant === "new"
+              ? "color-mix(in oklch, var(--q-accent) 14%, transparent)"
+              : item.badgeVariant === "update"
+                ? "color-mix(in oklch, oklch(0.75 0.15 70) 14%, transparent)"
+                : "var(--q-chip)",
+          color:
+            item.badgeVariant === "new"
+              ? "var(--q-accent-fg)"
+              : item.badgeVariant === "update"
+                ? "oklch(0.85 0.1 70)"
+                : "var(--q-meta)",
+          fontSize: 10,
+          letterSpacing: "0.06em",
+          fontWeight: 600,
+        }}
       >
         {item.badge}
       </span>
@@ -102,16 +118,36 @@ export default function SidebarModal<T extends string>({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Overlay
+          className="fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}
+        />
         <DialogPrimitive.Content
           onEscapeKeyDown={(e) => {
             if (document.querySelector("[data-capturing]")) e.preventDefault();
           }}
-          className="fixed left-[50%] top-[50%] z-50 max-h-[85vh] w-[90vw] max-w-4xl translate-x-[-50%] translate-y-[-50%] rounded-xl p-0 overflow-hidden bg-background border border-border shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] dark:bg-surface-1 dark:border-border-subtle dark:shadow-[0_25px_60px_-12px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.05)] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-98 data-[state=open]:zoom-in-98"
+          className="fixed left-[50%] top-[50%] z-50 max-h-[85vh] w-[90vw] max-w-4xl translate-x-[-50%] translate-y-[-50%] p-0 overflow-hidden duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-98 data-[state=open]:zoom-in-98"
+          style={{
+            borderRadius: 12,
+            background: "var(--q-bg)",
+            border: "1px solid var(--q-rule)",
+            boxShadow: "0 30px 80px -20px rgba(0,0,0,0.6)",
+          }}
         >
           <div className="relative h-full max-h-[85vh] overflow-hidden">
-            <DialogPrimitive.Close className="absolute right-4 top-4 z-10 rounded-md p-1.5 opacity-40 ring-offset-background transition-[opacity,background-color] hover:opacity-100 bg-transparent hover:bg-muted dark:hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-ring/30 focus:ring-offset-1">
-              <X className="h-3.5 w-3.5 text-muted-foreground" />
+            <DialogPrimitive.Close
+              className="absolute right-3 top-3 z-10 rounded-md w-7 h-7 flex items-center justify-center outline-none focus-visible:ring-1 focus-visible:ring-[var(--q-accent)]/40"
+              style={{ color: "var(--q-meta)", background: "transparent" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--q-hover)";
+                e.currentTarget.style.color = "var(--q-fg)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "var(--q-meta)";
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
               <span className="sr-only">{t("common.close")}</span>
             </DialogPrimitive.Close>
 
@@ -120,7 +156,11 @@ export default function SidebarModal<T extends string>({
 
               {/* Sidebar */}
               <div
-                className={`${actualSidebarWidth} shrink-0 border-r border-border/40 dark:border-border-subtle flex flex-col bg-surface-1 dark:bg-surface-0 transition-[width] duration-200 ease-out`}
+                className={`${actualSidebarWidth} shrink-0 flex flex-col transition-[width] duration-200 ease-out`}
+                style={{
+                  background: "var(--q-bg)",
+                  borderRight: "1px solid var(--q-rule)",
+                }}
               >
                 {/* Navigation */}
                 <nav
@@ -129,15 +169,13 @@ export default function SidebarModal<T extends string>({
                   }`}
                 >
                   {groupedItems.map((group, groupIndex) => (
-                    <div key={groupIndex} className={groupIndex > 0 ? "mt-3" : ""}>
+                    <div key={groupIndex} className={groupIndex > 0 ? "mt-4" : ""}>
                       {!isCompact && group.label && (
-                        <div className="px-2 pb-0.5 pt-1.5">
-                          <span className="text-xs font-medium tracking-[0.08em] uppercase text-muted-foreground/60 dark:text-muted-foreground/65">
-                            {group.label}
-                          </span>
+                        <div className="px-2 pb-1 pt-1.5">
+                          <span className="q-section-label">{group.label}</span>
                         </div>
                       )}
-                      <div className="space-y-px">
+                      <div className="flex flex-col gap-px">
                         {group.items.map((item) => {
                           const Icon = item.icon;
                           const isActive = activeSection === item.id;
@@ -148,44 +186,55 @@ export default function SidebarModal<T extends string>({
                               data-section-id={item.id}
                               onClick={() => onSectionChange(item.id)}
                               title={isCompact ? item.label : undefined}
-                              className={`group relative w-full flex items-center text-left text-xs rounded-lg transition-colors duration-100 outline-none ${
-                                isCompact ? "justify-center px-0 py-2" : "gap-2.5 px-2.5 py-2"
-                              } ${
-                                isActive
-                                  ? "text-foreground bg-muted dark:bg-surface-raised"
-                                  : "text-muted-foreground dark:text-foreground/75 hover:text-foreground hover:bg-muted/50 dark:hover:bg-surface-2"
+                              className={`group relative w-full flex items-center text-left rounded-md outline-none focus-visible:ring-1 focus-visible:ring-[var(--q-accent)]/40 ${
+                                isCompact ? "justify-center px-0 h-9" : "gap-2.5 px-2.5 h-8"
                               }`}
+                              style={{
+                                background: isActive ? "var(--q-sel)" : "transparent",
+                                color: isActive ? "var(--q-fg)" : "var(--q-fg-2)",
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isActive) e.currentTarget.style.background = "var(--q-hover)";
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isActive) e.currentTarget.style.background = "transparent";
+                              }}
                             >
-                              <div
-                                className={`flex items-center justify-center h-6 w-6 rounded-md shrink-0 transition-colors duration-100 ${
-                                  isActive ? "bg-primary/10 dark:bg-primary/15" : "bg-transparent"
-                                }`}
-                              >
-                                <Icon
-                                  className={`h-4 w-4 shrink-0 transition-colors duration-100 ${
-                                    isActive
-                                      ? "text-primary"
-                                      : "text-muted-foreground/70 dark:text-foreground/55 group-hover:text-foreground/80"
-                                  }`}
+                              {isActive && !isCompact && (
+                                <span
+                                  aria-hidden
+                                  className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r-sm"
+                                  style={{ background: "var(--q-accent)" }}
                                 />
-                              </div>
+                              )}
+                              <Icon
+                                className="shrink-0"
+                                style={{
+                                  width: 14,
+                                  height: 14,
+                                  color: isActive ? "var(--q-fg)" : "var(--q-fg-3)",
+                                  strokeWidth: isActive ? 2 : 1.5,
+                                }}
+                              />
                               {!isCompact && (
                                 <>
                                   <span
-                                    className={`flex-1 truncate leading-tight ${isActive ? "font-medium" : "font-normal"}`}
+                                    className="flex-1 truncate q-ui"
+                                    style={{ fontWeight: isActive ? 600 : 450 }}
                                   >
                                     {item.label}
                                   </span>
                                   {renderBadge(item)}
                                   {item.shortcut && !item.badge && (
-                                    <kbd className="ml-auto text-xs text-muted-foreground/25 font-mono shrink-0">
-                                      {item.shortcut}
-                                    </kbd>
+                                    <kbd className="q-kbd ml-auto shrink-0">{item.shortcut}</kbd>
                                   )}
                                 </>
                               )}
                               {isCompact && item.badgeVariant === "dot" && (
-                                <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
+                                <span
+                                  className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full"
+                                  style={{ background: "var(--q-accent)" }}
+                                />
                               )}
                             </button>
                           );
@@ -198,24 +247,22 @@ export default function SidebarModal<T extends string>({
                 {/* Footer / version */}
                 {version && (
                   <div
-                    className={`border-t border-border/20 dark:border-border-subtle ${
-                      isCompact ? "flex justify-center py-2.5" : "px-3 py-2.5"
-                    }`}
+                    className={`${isCompact ? "flex justify-center py-2.5" : "px-3 py-2.5"}`}
+                    style={{ borderTop: "1px solid var(--q-rule-faint)" }}
                   >
                     <div className="flex items-center gap-1.5">
-                      <div className="h-1 w-1 rounded-full bg-success/60" />
-                      {!isCompact && (
-                        <span className="text-xs text-muted-foreground/40 tabular-nums tracking-wide">
-                          v{version}
-                        </span>
-                      )}
+                      <div
+                        className="h-1 w-1 rounded-full"
+                        style={{ background: "var(--q-accent)" }}
+                      />
+                      {!isCompact && <span className="q-mono-sm">v{version}</span>}
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Main Content */}
-              <div className="flex-1 overflow-y-auto bg-background dark:bg-surface-1">
+              <div className="flex-1 overflow-y-auto" style={{ background: "var(--q-bg)" }}>
                 <SettingsLayoutProvider value={{ isCompact }}>
                   <div className={isCompact ? "p-4" : "p-6"}>{children}</div>
                 </SettingsLayoutProvider>

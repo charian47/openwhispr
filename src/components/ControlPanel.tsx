@@ -448,7 +448,7 @@ export default function ControlPanel() {
   };
 
   return (
-    <div className="h-screen bg-background flex flex-col">
+    <div className="h-screen flex flex-col" style={{ background: "var(--q-bg)" }}>
       <ConfirmDialog
         open={confirmDialog.open}
         onOpenChange={hideConfirmDialog}

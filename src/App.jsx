@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import "./index.css";
 import { X } from "lucide-react";
 import { useToast } from "./components/ui/useToast";
-import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
 import { formatHotkeyLabel } from "./utils/hotkeys";
 import { useWindowDrag } from "./hooks/useWindowDrag";
@@ -11,40 +10,70 @@ import { useAudioRecording } from "./hooks/useAudioRecording";
 import { useSettingsStore } from "./stores/settingsStore";
 import { useStreamingDictation } from "./hooks/useStreamingDictation";
 
-// Sound Wave Icon Component (for idle/hover states)
-const SoundWaveIcon = ({ size = 16 }) => {
-  return (
-    <div className="flex items-center justify-center gap-1">
-      <div
-        className={`bg-white rounded-full`}
-        style={{ width: size * 0.25, height: size * 0.6 }}
-      ></div>
-      <div className={`bg-white rounded-full`} style={{ width: size * 0.25, height: size }}></div>
-      <div
-        className={`bg-white rounded-full`}
-        style={{ width: size * 0.25, height: size * 0.6 }}
-      ></div>
-    </div>
-  );
-};
+// Quill dictation pill — single dark capsule with status dot, sparkline waveform, and label.
+// State drives all three: idle | recording | processing.
+const QuillPill = ({ state, label }) => {
+  const isRec = state === "recording";
+  const isProc = state === "processing";
+  const dotCount = 12;
 
-// Voice Wave Animation Component (for processing state)
-const VoiceWaveIndicator = ({ isListening }) => {
   return (
-    <div className="flex items-center justify-center gap-0.5">
-      {[...Array(4)].map((_, i) => (
-        <div
-          key={i}
-          className={`w-0.5 bg-white rounded-full transition-[height] duration-150 ${
-            isListening ? "animate-pulse h-4" : "h-2"
-          }`}
-          style={{
-            animationDelay: isListening ? `${i * 0.1}s` : "0s",
-            animationDuration: isListening ? `${0.6 + i * 0.1}s` : "0s",
-          }}
-        />
-      ))}
-    </div>
+    <span
+      className="rounded-full px-3 h-9 inline-flex items-center gap-2.5 select-none"
+      style={{
+        background: "rgba(14, 14, 16, 0.92)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        boxShadow:
+          "0 8px 24px -8px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.04) inset",
+        color: "rgba(255,255,255,0.85)",
+      }}
+    >
+      <span
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: 999,
+          background: isRec
+            ? "oklch(0.7 0.18 25)"
+            : isProc
+              ? "oklch(0.75 0.15 70)"
+              : "rgba(255,255,255,0.35)",
+          boxShadow: isRec ? "0 0 8px oklch(0.7 0.18 25 / 0.7)" : "none",
+          animation: isRec ? "q-pulse 1.4s ease-in-out infinite" : "none",
+        }}
+      />
+      <span className="flex items-center gap-[2px]" style={{ height: 14 }}>
+        {Array.from({ length: dotCount }).map((_, i) => (
+          <span
+            key={i}
+            className="block"
+            style={{
+              width: 1.5,
+              borderRadius: 1,
+              background: "rgba(255,255,255,0.7)",
+              height: isRec ? `${20 + 60 * Math.abs(Math.sin((i + 1) * 0.7))}%` : "30%",
+              animation: isRec ? `q-bar 1.${(i % 6) + 2}s ease-in-out infinite` : "none",
+              animationDelay: `${i * 60}ms`,
+              opacity: isProc ? 0.4 : isRec ? 1 : 0.55,
+              transition: "height 200ms ease",
+            }}
+          />
+        ))}
+      </span>
+      <span
+        style={{
+          fontFamily: "var(--q-font-mono)",
+          fontSize: 11,
+          color: "rgba(255,255,255,0.55)",
+          letterSpacing: "0.02em",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {label}
+      </span>
+    </span>
   );
 };
 
@@ -291,31 +320,18 @@ export default function App() {
   const micState = getMicState();
 
   const getMicButtonProps = () => {
-    const baseClasses =
-      "rounded-full w-10 h-10 flex items-center justify-center relative overflow-hidden border-2 border-white/70 cursor-pointer";
-
     switch (micState) {
+      case "recording":
+        return { tooltip: t("app.mic.recording"), label: "REC", state: "recording" };
+      case "processing":
+        return { tooltip: t("app.mic.processing"), label: "···", state: "processing" };
       case "idle":
       case "hover":
-        return {
-          className: `${baseClasses} bg-black/50 cursor-pointer`,
-          tooltip: formatHotkeyLabel(hotkey),
-        };
-      case "recording":
-        return {
-          className: `${baseClasses} bg-primary cursor-pointer`,
-          tooltip: t("app.mic.recording"),
-        };
-      case "processing":
-        return {
-          className: `${baseClasses} bg-accent cursor-not-allowed`,
-          tooltip: t("app.mic.processing"),
-        };
       default:
         return {
-          className: `${baseClasses} bg-black/50 cursor-pointer`,
-          style: { transform: "scale(0.8)" },
-          tooltip: t("app.mic.clickToSpeak"),
+          tooltip: formatHotkeyLabel(hotkey),
+          label: formatHotkeyLabel(hotkey),
+          state: "idle",
         };
     }
   };
@@ -415,49 +431,22 @@ export default function App() {
               }}
               onFocus={() => setIsHovered(true)}
               onBlur={() => setIsHovered(false)}
-              className={micProps.className}
+              className="cursor-pointer outline-none"
               style={{
-                ...micProps.style,
+                background: "transparent",
+                border: "none",
+                padding: 0,
                 cursor:
                   micState === "processing"
-                    ? "not-allowed !important"
+                    ? "not-allowed"
                     : isDragging
-                      ? "grabbing !important"
-                      : "pointer !important",
-                transition:
-                  "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease-out",
+                      ? "grabbing"
+                      : "pointer",
+                transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                transform: micState === "hover" ? "scale(1.02)" : "scale(1)",
               }}
             >
-              {/* Background effects */}
-              <div
-                className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent transition-opacity duration-150"
-                style={{ opacity: micState === "hover" ? 0.8 : 0 }}
-              ></div>
-              <div
-                className="absolute inset-0 transition-colors duration-150"
-                style={{
-                  backgroundColor: micState === "hover" ? "rgba(0,0,0,0.1)" : "transparent",
-                }}
-              ></div>
-
-              {/* Dynamic content based on state */}
-              {micState === "idle" || micState === "hover" ? (
-                <SoundWaveIcon size={micState === "idle" ? 12 : 14} />
-              ) : micState === "recording" ? (
-                <LoadingDots />
-              ) : micState === "processing" ? (
-                <VoiceWaveIndicator isListening={true} />
-              ) : null}
-
-              {/* State indicator ring for recording */}
-              {micState === "recording" && (
-                <div className="absolute inset-0 rounded-full border-2 border-primary/50 animate-pulse"></div>
-              )}
-
-              {/* State indicator ring for processing */}
-              {micState === "processing" && (
-                <div className="absolute inset-0 rounded-full border-2 border-primary/30 opacity-50"></div>
-              )}
+              <QuillPill state={micProps.state} label={micProps.label} />
             </button>
           </Tooltip>
           {/* Dev-only streaming smoke-test button — hidden in production builds.

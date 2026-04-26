@@ -130,9 +130,19 @@ function SettingsPanel({
 }) {
   return (
     <div
-      className={`rounded-lg border border-border/50 dark:border-border-subtle/70 bg-card/50 dark:bg-surface-2/50 backdrop-blur-sm divide-y divide-border/30 dark:divide-border-subtle/50 ${className}`}
+      className={`rounded-md ${className}`}
+      style={{
+        background: "var(--q-input)",
+        border: "1px solid var(--q-rule)",
+      }}
     >
-      {children}
+      {React.Children.map(children, (child, idx) =>
+        idx === 0 ? (
+          child
+        ) : (
+          <div style={{ borderTop: "1px solid var(--q-rule-faint)" }}>{child}</div>
+        )
+      )}
     </div>
   );
 }
@@ -154,9 +164,13 @@ function SettingsPanelRow({
 function SectionHeader({ title, description }: { title: string; description?: string }) {
   return (
     <div className="mb-3">
-      <h3 className="text-xs font-semibold text-foreground tracking-tight">{title}</h3>
+      <h3 className="q-ui" style={{ fontWeight: 600, color: "var(--q-fg)" }}>
+        {title}
+      </h3>
       {description && (
-        <p className="text-xs text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
+        <p className="q-meta mt-1" style={{ color: "var(--q-fg-3)" }}>
+          {description}
+        </p>
       )}
     </div>
   );

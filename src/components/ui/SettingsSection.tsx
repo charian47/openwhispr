@@ -19,9 +19,13 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   return (
     <div className={`space-y-3 ${className}`}>
       <div>
-        <h3 className="text-xs font-semibold text-foreground tracking-tight">{title}</h3>
+        <h3 className="q-ui" style={{ fontWeight: 600, color: "var(--q-fg)" }}>
+          {title}
+        </h3>
         {description && (
-          <p className="text-xs text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
+          <p className="q-meta mt-1" style={{ color: "var(--q-fg-3)" }}>
+            {description}
+          </p>
         )}
       </div>
       {children}
@@ -42,15 +46,26 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
   variant = "default",
   className = "",
 }) => {
-  const baseClasses = "space-y-3 p-3 rounded-lg border";
-  const variantClasses = {
-    default: "bg-card/50 dark:bg-surface-2/50 border-border/50 dark:border-border-subtle",
-    highlighted: "bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30",
-  };
-
+  const isHighlighted = variant === "highlighted";
   return (
-    <div className={`${baseClasses} ${variantClasses[variant]} ${className}`}>
-      {title && <h4 className="text-xs font-medium text-foreground">{title}</h4>}
+    <div
+      className={`space-y-3 p-3 rounded-md ${className}`}
+      style={{
+        background: isHighlighted
+          ? "color-mix(in oklch, var(--q-accent) 6%, transparent)"
+          : "var(--q-input)",
+        border: `1px solid ${
+          isHighlighted
+            ? "color-mix(in oklch, var(--q-accent) 25%, transparent)"
+            : "var(--q-rule)"
+        }`,
+      }}
+    >
+      {title && (
+        <h4 className="q-ui" style={{ fontWeight: 500, color: "var(--q-fg)" }}>
+          {title}
+        </h4>
+      )}
       {children}
     </div>
   );
@@ -78,9 +93,13 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
       } ${className}`}
     >
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-foreground">{label}</p>
+        <p className="q-ui" style={{ fontWeight: 500, color: "var(--q-fg)" }}>
+          {label}
+        </p>
         {description && (
-          <p className="text-xs text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
+          <p className="q-meta mt-0.5" style={{ color: "var(--q-fg-3)" }}>
+            {description}
+          </p>
         )}
       </div>
       <div className={isCompact ? "" : "shrink-0"}>{children}</div>
@@ -97,9 +116,21 @@ export function SettingsPanel({
 }) {
   return (
     <div
-      className={`rounded-lg border border-border/50 dark:border-border-subtle/70 bg-card/50 dark:bg-surface-2/50 backdrop-blur-sm divide-y divide-border/30 dark:divide-border-subtle/50 ${className}`}
+      className={`rounded-md ${className}`}
+      style={{
+        background: "var(--q-input)",
+        border: "1px solid var(--q-rule)",
+      }}
     >
-      {children}
+      <div className="divide-y" style={{ ["--tw-divide-opacity" as string]: "1" }}>
+        {React.Children.map(children, (child, idx) =>
+          idx === 0 ? (
+            child
+          ) : (
+            <div style={{ borderTop: "1px solid var(--q-rule-faint)" }}>{child}</div>
+          )
+        )}
+      </div>
     </div>
   );
 }
@@ -118,12 +149,22 @@ export function SettingsPanelRow({
   );
 }
 
-export function SectionHeader({ title, description }: { title: string; description?: string }) {
+export function SectionHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
   return (
     <div className="mb-3">
-      <h3 className="text-xs font-semibold text-foreground tracking-tight">{title}</h3>
+      <h3 className="q-ui" style={{ fontWeight: 600, color: "var(--q-fg)" }}>
+        {title}
+      </h3>
       {description && (
-        <p className="text-xs text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
+        <p className="q-meta mt-1" style={{ color: "var(--q-fg-3)" }}>
+          {description}
+        </p>
       )}
     </div>
   );
@@ -155,58 +196,73 @@ export function InferenceModeSelector({
         const isActive = activeMode === mode.id;
         const isDisabled = !!mode.disabled;
         return (
-          <SettingsPanelRow
-            key={mode.id}
-            className={`transition-colors ${
-              isDisabled ? "" : "hover:bg-foreground/3 dark:hover:bg-white/3"
-            }`}
-          >
+          <SettingsPanelRow key={mode.id}>
             <button
               onClick={() => onSelect(mode.id)}
-              className={`w-full flex items-center gap-3 text-left cursor-pointer group ${
-                isDisabled ? "opacity-60" : ""
+              disabled={isDisabled}
+              className={`w-full flex items-center gap-3 text-left group ${
+                isDisabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
               }`}
             >
               <div
-                className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
-                  isActive
-                    ? "bg-primary/10 dark:bg-primary/15"
-                    : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
-                }`}
+                className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+                style={{
+                  background: isActive
+                    ? "color-mix(in oklch, var(--q-accent) 14%, transparent)"
+                    : "var(--q-chip)",
+                  color: isActive ? "var(--q-accent-fg)" : "var(--q-fg-3)",
+                }}
               >
-                <div
-                  className={`transition-colors ${isActive ? "text-primary" : "text-muted-foreground"}`}
-                >
-                  {mode.icon}
-                </div>
+                {mode.icon}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-foreground">{mode.label}</span>
+                  <span className="q-ui" style={{ fontWeight: 500, color: "var(--q-fg)" }}>
+                    {mode.label}
+                  </span>
                   {isActive && !isDisabled && (
-                    <span className="text-xs font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
+                    <span
+                      className="q-mono-sm px-1.5 py-px rounded-sm"
+                      style={{
+                        background: "color-mix(in oklch, var(--q-accent) 14%, transparent)",
+                        color: "var(--q-accent-fg)",
+                        fontSize: 10,
+                        fontWeight: 600,
+                      }}
+                    >
                       {t("common.active")}
                     </span>
                   )}
                   {isDisabled && mode.badge && (
-                    <span className="text-xs font-medium text-muted-foreground bg-muted/80 dark:bg-surface-3 px-1.5 py-px rounded-sm">
+                    <span
+                      className="q-mono-sm px-1.5 py-px rounded-sm"
+                      style={{
+                        background: "var(--q-chip)",
+                        color: "var(--q-meta)",
+                        fontSize: 10,
+                        fontWeight: 600,
+                      }}
+                    >
                       {mode.badge}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground/80 mt-0.5">{mode.description}</p>
+                <p className="q-meta mt-0.5" style={{ color: "var(--q-fg-3)" }}>
+                  {mode.description}
+                </p>
               </div>
               <div
-                className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
-                  isActive
-                    ? "border-primary bg-primary"
-                    : "border-border-hover dark:border-border-subtle"
-                }`}
+                className="w-4 h-4 rounded-full shrink-0 flex items-center justify-center"
+                style={{
+                  border: `2px solid ${isActive ? "var(--q-accent)" : "var(--q-rule)"}`,
+                  background: isActive ? "var(--q-accent)" : "transparent",
+                }}
               >
                 {isActive && (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
-                  </div>
+                  <div
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: "var(--q-bg)" }}
+                  />
                 )}
               </div>
             </button>
