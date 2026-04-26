@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { motion, AnimatePresence } from "motion/react";
 import "./index.css";
 import { X } from "lucide-react";
 import { useToast } from "./components/ui/useToast";
@@ -9,16 +10,133 @@ import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
 import { useSettingsStore } from "./stores/settingsStore";
 import { useStreamingDictation } from "./hooks/useStreamingDictation";
+import { useAudioLevel } from "./stores/audioLevelStore";
 
-// Quill dictation pill — single dark capsule with status dot, sparkline waveform, and label.
-// State drives all three: idle | recording | processing.
-const QuillPill = ({ state, label }) => {
-  const isRec = state === "recording";
-  const isProc = state === "processing";
-  const dotCount = 12;
+const PILL_BAR_COUNT = 14;
+
+// Color tokens for the pill — kept as constants so the dot, bars, and glow stay in sync.
+const PILL_RECORDING = "oklch(0.7 0.18 25)"; // red — actively listening
+const PILL_PROCESSING = "oklch(0.75 0.15 70)"; // amber — transcribing
+const PILL_DONE = "oklch(0.72 0.16 145)"; // green — completed
+const PILL_IDLE = "rgba(255,255,255,0.35)";
+
+// Audio-reactive bar. Three modes:
+//  - recording: height tracks live mic level; bars warm toward red as you speak loud
+//  - processing: scanner-wave sweep left→right (clearly different from recording)
+//  - idle:      gentle breathing baseline
+const PillBar = ({ index, level, mode }) => {
+  const isRec = mode === "recording";
+  const isProc = mode === "processing";
+  const isDone = mode === "done";
+
+  // Processing: drive height + tint from a delayed keyframe loop so we get a
+  // visible sweep across the row. No audio reactivity here.
+  if (isProc) {
+    return (
+      <motion.span
+        className="block"
+        style={{ width: 1.5, borderRadius: 1, originY: 0.5 }}
+        animate={{
+          height: ["18%", "78%", "18%"],
+          backgroundColor: [
+            "rgba(255,255,255,0.45)",
+            "rgba(255, 200, 130, 0.95)",
+            "rgba(255,255,255,0.45)",
+          ],
+        }}
+        transition={{
+          duration: 1.0,
+          repeat: Infinity,
+          delay: (index / PILL_BAR_COUNT) * 0.55,
+          ease: "easeInOut",
+        }}
+      />
+    );
+  }
+
+  const phase = (index / PILL_BAR_COUNT) * Math.PI * 2;
+  const t = (Date.now() % 1800) / 1800;
+  const baseline = 0.15 + 0.08 * Math.sin(t * Math.PI * 2 + phase);
+  const reactive = isRec ? Math.max(level * 2.0, 0) : 0;
+  // Center bars amplify more than edge bars (tapered envelope).
+  const taper = 1 - Math.abs(index - (PILL_BAR_COUNT - 1) / 2) / (PILL_BAR_COUNT / 1.4);
+  const target = isRec
+    ? Math.min(0.95, baseline + reactive * Math.max(0.4, taper))
+    : 0.28;
+
+  // Heat = how loud you are. Bars shift from white → warm peach as level rises.
+  const heat = isRec ? Math.min(1, level * 2.4) : 0;
+  const r = 255;
+  const g = Math.round(255 - heat * 70);
+  const b = Math.round(255 - heat * 140);
+  const recColor = `rgba(${r},${g},${b},0.92)`;
+  const color = isDone ? "oklch(0.78 0.14 145)" : isRec ? recColor : "rgba(255,255,255,0.78)";
 
   return (
-    <span
+    <motion.span
+      className="block"
+      style={{
+        width: 1.5,
+        borderRadius: 1,
+        opacity: isRec ? 1 : isDone ? 0.95 : 0.55,
+        originY: 0.5,
+      }}
+      animate={{
+        height: `${Math.max(8, target * 100)}%`,
+        backgroundColor: color,
+      }}
+      transition={{ type: "spring", stiffness: 280, damping: 24, mass: 0.4 }}
+    />
+  );
+};
+
+// Quill dictation pill — communicates state via dot color + bar amplitude/color.
+// State machine for visual feedback:
+//   idle → recording (red, audio-reactive)
+//   recording → processing (amber sweep) → done flash (green ~700ms) → idle
+const QuillPill = ({ state }) => {
+  const isRec = state === "recording";
+  const isProc = state === "processing";
+  const level = useAudioLevel();
+
+  // "done" is a transient mode triggered when state transitions from
+  // recording or processing back to idle. It overlays a green flash for 700ms
+  // so the user gets a clear "transcript landed" confirmation.
+  const prevStateRef = useRef(state);
+  const [isDone, setIsDone] = useState(false);
+
+  useEffect(() => {
+    const prev = prevStateRef.current;
+    const transitionedToIdle =
+      state === "idle" && (prev === "recording" || prev === "processing");
+    if (transitionedToIdle) {
+      setIsDone(true);
+      const timer = setTimeout(() => setIsDone(false), 700);
+      prevStateRef.current = state;
+      return () => clearTimeout(timer);
+    }
+    prevStateRef.current = state;
+  }, [state]);
+
+  const mode = isProc ? "processing" : isRec ? "recording" : isDone ? "done" : "idle";
+
+  const dotColor = isDone
+    ? PILL_DONE
+    : isRec
+      ? PILL_RECORDING
+      : isProc
+        ? PILL_PROCESSING
+        : PILL_IDLE;
+  const dotShadow = isDone
+    ? `0 0 10px ${PILL_DONE.replace(")", " / 0.7)")}`
+    : isRec
+      ? `0 0 8px ${PILL_RECORDING.replace(")", " / 0.7)")}`
+      : isProc
+        ? `0 0 6px ${PILL_PROCESSING.replace(")", " / 0.5)")}`
+        : "0 0 0 transparent";
+
+  return (
+    <motion.span
       className="rounded-full px-3 h-9 inline-flex items-center gap-2.5 select-none"
       style={{
         background: "rgba(14, 14, 16, 0.92)",
@@ -29,51 +147,34 @@ const QuillPill = ({ state, label }) => {
           "0 8px 24px -8px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.04) inset",
         color: "rgba(255,255,255,0.85)",
       }}
+      animate={{ scale: isRec ? 1.02 : isDone ? [1, 1.04, 1] : 1 }}
+      transition={
+        isDone
+          ? { scale: { duration: 0.7, ease: [0.32, 0.72, 0, 1] } }
+          : { type: "spring", stiffness: 320, damping: 26 }
+      }
     >
-      <span
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: 999,
-          background: isRec
-            ? "oklch(0.7 0.18 25)"
-            : isProc
-              ? "oklch(0.75 0.15 70)"
-              : "rgba(255,255,255,0.35)",
-          boxShadow: isRec ? "0 0 8px oklch(0.7 0.18 25 / 0.7)" : "none",
-          animation: isRec ? "q-pulse 1.4s ease-in-out infinite" : "none",
+      <motion.span
+        animate={{
+          background: dotColor,
+          boxShadow: dotShadow,
+          scale: isRec ? [1, 1.4, 1] : isDone ? [1, 1.6, 1] : 1,
         }}
+        transition={
+          isRec
+            ? { scale: { duration: 1.4, repeat: Infinity, ease: "easeInOut" } }
+            : isDone
+              ? { duration: 0.6, ease: [0.32, 0.72, 0, 1] }
+              : { duration: 0.18 }
+        }
+        style={{ width: 6, height: 6, borderRadius: 999 }}
       />
       <span className="flex items-center gap-[2px]" style={{ height: 14 }}>
-        {Array.from({ length: dotCount }).map((_, i) => (
-          <span
-            key={i}
-            className="block"
-            style={{
-              width: 1.5,
-              borderRadius: 1,
-              background: "rgba(255,255,255,0.7)",
-              height: isRec ? `${20 + 60 * Math.abs(Math.sin((i + 1) * 0.7))}%` : "30%",
-              animation: isRec ? `q-bar 1.${(i % 6) + 2}s ease-in-out infinite` : "none",
-              animationDelay: `${i * 60}ms`,
-              opacity: isProc ? 0.4 : isRec ? 1 : 0.55,
-              transition: "height 200ms ease",
-            }}
-          />
+        {Array.from({ length: PILL_BAR_COUNT }).map((_, i) => (
+          <PillBar key={i} index={i} level={level} mode={mode} />
         ))}
       </span>
-      <span
-        style={{
-          fontFamily: "var(--q-font-mono)",
-          fontSize: 11,
-          color: "rgba(255,255,255,0.55)",
-          letterSpacing: "0.02em",
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        {label}
-      </span>
-    </span>
+    </motion.span>
   );
 };
 
@@ -227,9 +328,8 @@ export default function App() {
       onToggle: handleDictationToggle,
     });
 
-  // Dev-only streaming dictation (Phase 5 smoke-test hook).
-  // Removed in production via process.env.NODE_ENV guard in JSX below.
-  const streaming = useStreamingDictation();
+  // Subscribes to the global hotkey IPC and runs the WhisperKit streaming pipeline.
+  const { isStreaming } = useStreamingDictation();
 
   // Sync auto-hide from main process — setState directly to avoid IPC echo
   useEffect(() => {
@@ -309,11 +409,25 @@ export default function App() {
     return () => document.removeEventListener("keydown", handleKeyPress);
   }, [isCommandMenuOpen]);
 
-  // Determine current mic state
+  // Determine current mic state. Streaming dictation (WhisperKit) is the live path
+  // so we treat isStreaming as recording. After streaming stops we briefly show
+  // "processing" before the pill's internal logic flashes the "done" green.
+  const [postStreamProcessing, setPostStreamProcessing] = useState(false);
+  const wasStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    if (wasStreamingRef.current && !isStreaming) {
+      setPostStreamProcessing(true);
+      const t = setTimeout(() => setPostStreamProcessing(false), 450);
+      wasStreamingRef.current = isStreaming;
+      return () => clearTimeout(t);
+    }
+    wasStreamingRef.current = isStreaming;
+  }, [isStreaming]);
+
   const getMicState = () => {
-    if (isRecording) return "recording";
-    if (isProcessing) return "processing";
-    if (isHovered && !isRecording && !isProcessing) return "hover";
+    if (isRecording || isStreaming) return "recording";
+    if (isProcessing || postStreamProcessing) return "processing";
+    if (isHovered && !isRecording && !isProcessing && !isStreaming) return "hover";
     return "idle";
   };
 
@@ -322,17 +436,13 @@ export default function App() {
   const getMicButtonProps = () => {
     switch (micState) {
       case "recording":
-        return { tooltip: t("app.mic.recording"), label: "REC", state: "recording" };
+        return { tooltip: t("app.mic.recording"), state: "recording" };
       case "processing":
-        return { tooltip: t("app.mic.processing"), label: "···", state: "processing" };
+        return { tooltip: t("app.mic.processing"), state: "processing" };
       case "idle":
       case "hover":
       default:
-        return {
-          tooltip: formatHotkeyLabel(hotkey),
-          label: formatHotkeyLabel(hotkey),
-          state: "idle",
-        };
+        return { tooltip: formatHotkeyLabel(hotkey), state: "idle" };
     }
   };
 
@@ -446,49 +556,9 @@ export default function App() {
                 transform: micState === "hover" ? "scale(1.02)" : "scale(1)",
               }}
             >
-              <QuillPill state={micProps.state} label={micProps.label} />
+              <QuillPill state={micProps.state} />
             </button>
           </Tooltip>
-          {/* Dev-only streaming smoke-test button — hidden in production builds.
-              The overlay window is click-through by default; capture mouse
-              events while the cursor is over this button so the click registers. */}
-          {process.env.NODE_ENV === "development" && (
-            <button
-              type="button"
-              onMouseEnter={() => setWindowInteractivity(true)}
-              onMouseLeave={() => {
-                if (!isHovered && !isCommandMenuOpen) setWindowInteractivity(false);
-              }}
-              style={{
-                position: "absolute",
-                top: 6,
-                right: 6,
-                fontSize: 10,
-                padding: "4px 8px",
-                zIndex: 9999,
-                background: streaming.isStreaming ? "#dc2626" : "#2563eb",
-                color: "white",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-                pointerEvents: "auto",
-              }}
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (streaming.isStreaming) {
-                  await streaming.stop();
-                } else {
-                  await streaming.start({
-                    modelPath:
-                      "/Users/excallibur/.cache/openwhispr/whisperkit-models/whisperkit-coreml/openai_whisper-tiny.en",
-                    language: "en",
-                  });
-                }
-              }}
-            >
-              {streaming.isStreaming ? "Stop" : "Start"}
-            </button>
-          )}
           {isCommandMenuOpen && (
             <div
               ref={commandMenuRef}

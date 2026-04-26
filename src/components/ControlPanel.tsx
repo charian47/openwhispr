@@ -1,7 +1,23 @@
-import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
+import React, { Suspense, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { motion, AnimatePresence } from "motion/react";
 import { Button } from "./ui/button";
-import { Download, RefreshCw, Loader2, Zap } from "lucide-react";
+import {
+  Download,
+  RefreshCw,
+  Loader2,
+  Zap,
+  Settings,
+  Sparkles,
+  Mic,
+  ShieldCheck,
+  Home,
+  BookOpen,
+  Upload as UploadIcon,
+  Copy as CopyIcon,
+  Trash2,
+  Bug,
+} from "lucide-react";
 import TccResetModal from "./TccResetModal";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
@@ -381,6 +397,92 @@ export default function ControlPanel() {
     [toast, t, useReasoningModel]
   );
 
+  const paletteCommands = useMemo(() => {
+    const openSettings = (section?: string) => {
+      setSettingsSection(section);
+      setShowSettings(true);
+    };
+    const openIssues = () => {
+      window.electronAPI?.openExternal?.("https://github.com/charian47/openwhispr/issues/new");
+    };
+    return [
+      {
+        id: "view-home",
+        label: t("commandSearch.commands.viewHome", { defaultValue: "Go to Home" }),
+        icon: Home,
+        run: () => setActiveView("home"),
+      },
+      {
+        id: "view-upload",
+        label: t("commandSearch.commands.viewUpload", { defaultValue: "Upload audio file" }),
+        icon: UploadIcon,
+        run: () => setActiveView("upload"),
+      },
+      {
+        id: "view-dictionary",
+        label: t("commandSearch.commands.viewDictionary", { defaultValue: "Open dictionary" }),
+        icon: BookOpen,
+        run: () => setActiveView("dictionary"),
+      },
+      {
+        id: "copy-last",
+        label: t("commandSearch.commands.copyLast", {
+          defaultValue: "Copy last transcription",
+        }),
+        description: history[0]?.text?.slice(0, 64),
+        icon: CopyIcon,
+        run: () => {
+          if (history[0]) copyToClipboard(history[0].text);
+        },
+      },
+      {
+        id: "clear-all",
+        label: t("commandSearch.commands.clearAll", {
+          defaultValue: "Clear all transcriptions",
+        }),
+        icon: Trash2,
+        run: () => clearAllTranscriptions(),
+      },
+      {
+        id: "open-settings",
+        label: t("commandSearch.commands.openSettings", { defaultValue: "Open Settings" }),
+        icon: Settings,
+        shortcut: platform === "darwin" ? "⌘," : "Ctrl,",
+        run: () => openSettings(),
+      },
+      {
+        id: "settings-intelligence",
+        label: t("commandSearch.commands.settingsIntelligence", {
+          defaultValue: "Settings → Intelligence",
+        }),
+        icon: Sparkles,
+        run: () => openSettings("intelligence"),
+      },
+      {
+        id: "settings-transcription",
+        label: t("commandSearch.commands.settingsTranscription", {
+          defaultValue: "Settings → Transcription",
+        }),
+        icon: Mic,
+        run: () => openSettings("transcription"),
+      },
+      {
+        id: "settings-privacy",
+        label: t("commandSearch.commands.settingsPrivacy", {
+          defaultValue: "Settings → Privacy & Data",
+        }),
+        icon: ShieldCheck,
+        run: () => openSettings("privacyData"),
+      },
+      {
+        id: "report-bug",
+        label: t("commandSearch.commands.reportBug", { defaultValue: "Report a bug" }),
+        icon: Bug,
+        run: openIssues,
+      },
+    ];
+  }, [t, history, copyToClipboard, clearAllTranscriptions]);
+
   const handleUpdateClick = async () => {
     if (updateStatus.updateDownloaded) {
       showConfirmDialog({
@@ -493,6 +595,7 @@ export default function ControlPanel() {
             open={showSearch}
             onOpenChange={setShowSearch}
             transcriptions={history}
+            commands={paletteCommands}
             onTranscriptSelect={() => {
               setActiveView("home");
             }}
@@ -545,11 +648,19 @@ export default function ControlPanel() {
             )}
           </div>
           <div className="flex-1 overflow-y-auto pt-1">
-            {(gpuAccelAvailable.cuda || gpuAccelAvailable.vulkan) &&
-              activeView === "home" &&
-              !gpuBannerDismissed && (
-                <div className="max-w-3xl mx-auto w-full mb-3">
-                  <div className="rounded-lg border border-primary/20 dark:border-primary/15 bg-primary/5 p-3">
+            <AnimatePresence>
+              {(gpuAccelAvailable.cuda || gpuAccelAvailable.vulkan) &&
+                activeView === "home" &&
+                !gpuBannerDismissed && (
+                  <motion.div
+                    key="gpu-banner"
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                    className="max-w-3xl mx-auto w-full mb-3"
+                  >
+                    <div className="rounded-lg border border-primary/20 dark:border-primary/15 bg-primary/5 p-3">
                     <div className="flex items-start gap-3">
                       <div className="shrink-0 w-8 h-8 rounded-md bg-primary/10 dark:bg-primary/15 flex items-center justify-center">
                         <Zap size={16} className="text-primary" />
@@ -588,8 +699,17 @@ export default function ControlPanel() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
+            </AnimatePresence>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeView}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
+              >
             {activeView === "home" && (
               <HistoryView
                 history={history}
@@ -627,6 +747,8 @@ export default function ControlPanel() {
                 />
               </Suspense>
             )}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>

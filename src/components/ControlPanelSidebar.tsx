@@ -67,10 +67,15 @@ export default function ControlPanelSidebar({
             onClick={onOpenSearch}
             className="group flex items-center w-full gap-2 px-2.5 h-8 rounded-md outline-none focus-visible:ring-1 focus-visible:ring-[var(--q-accent)]/40"
             style={{ background: "var(--q-input)", border: "1px solid var(--q-rule)" }}
+            title={t("commandSearch.triggerTitle", {
+              defaultValue: "Search transcripts and run actions",
+            })}
           >
             <Search size={13} style={{ color: "var(--q-meta)" }} />
             <span className="flex-1 text-left q-meta-sm">
-              {t("commandSearch.shortPlaceholder")}
+              {t("commandSearch.shortPlaceholder", {
+                defaultValue: "Search & commands",
+              })}
             </span>
             <span className="flex items-center gap-0.5">
               <kbd className="q-kbd">{platform === "darwin" ? "⌘" : "Ctrl"}</kbd>

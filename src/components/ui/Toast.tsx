@@ -1,11 +1,11 @@
 import * as React from "react";
 import { X, Copy, Check } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import { ToastContext, type ToastProps } from "./useToast";
 
 interface ToastState extends ToastProps {
   id: string;
-  isExiting?: boolean;
   createdAt: number;
 }
 
@@ -21,11 +21,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
-  const startExitAnimation = React.useCallback((id: string) => {
-    setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, isExiting: true } : t)));
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 200);
+  const remove = React.useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const toast = React.useCallback(
@@ -37,31 +34,28 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const duration = props.duration ?? (props.variant === "destructive" ? 6000 : 3500);
       if (duration > 0) {
-        const timer = setTimeout(() => {
-          startExitAnimation(id);
-        }, duration);
-        timersRef.current[id] = timer;
+        timersRef.current[id] = setTimeout(() => remove(id), duration);
       }
 
       return id;
     },
-    [startExitAnimation]
+    [remove]
   );
 
   const dismiss = React.useCallback(
     (id?: string) => {
       if (id) {
         clearTimer(id);
-        startExitAnimation(id);
+        remove(id);
       } else {
-        const lastToast = toasts[toasts.length - 1];
-        if (lastToast) {
-          clearTimer(lastToast.id);
-          startExitAnimation(lastToast.id);
+        const last = toasts[toasts.length - 1];
+        if (last) {
+          clearTimer(last.id);
+          remove(last.id);
         }
       }
     },
-    [toasts, clearTimer, startExitAnimation]
+    [toasts, clearTimer, remove]
   );
 
   const pauseTimer = React.useCallback(
@@ -72,23 +66,18 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const resumeTimer = React.useCallback(
-    (id: string, remainingTime: number) => {
-      if (remainingTime > 0) {
-        const timer = setTimeout(() => {
-          startExitAnimation(id);
-        }, remainingTime);
-        timersRef.current[id] = timer;
+    (id: string, remaining: number) => {
+      if (remaining > 0) {
+        timersRef.current[id] = setTimeout(() => remove(id), remaining);
       }
     },
-    [startExitAnimation]
+    [remove]
   );
 
   React.useEffect(() => {
     const timers = timersRef.current;
     return () => {
-      for (const id in timers) {
-        clearTimeout(timers[id]);
-      }
+      for (const id in timers) clearTimeout(timers[id]);
     };
   }, []);
 
@@ -109,7 +98,7 @@ const ToastViewport: React.FC<{
   toasts: ToastState[];
   onDismiss: (id: string) => void;
   onPauseTimer: (id: string) => void;
-  onResumeTimer: (id: string, remainingTime: number) => void;
+  onResumeTimer: (id: string, remaining: number) => void;
 }> = ({ toasts, onDismiss, onPauseTimer, onResumeTimer }) => {
   const isDictationPanel = React.useMemo(() => {
     return (
@@ -118,42 +107,33 @@ const ToastViewport: React.FC<{
     );
   }, []);
 
-  if (toasts.length === 0) return null;
-
   return (
     <div
       className={cn(
-        "fixed z-[100] flex flex-col gap-1.5 pointer-events-none",
+        "fixed z-[100] flex flex-col gap-2 pointer-events-none",
         isDictationPanel ? "bottom-20 right-6" : "bottom-5 right-5"
       )}
     >
-      {toasts.map((toast) => (
-        <Toast
-          key={toast.id}
-          {...toast}
-          onClose={() => onDismiss(toast.id)}
-          onPauseTimer={() => onPauseTimer(toast.id)}
-          onResumeTimer={(remaining) => onResumeTimer(toast.id, remaining)}
-        />
-      ))}
+      <AnimatePresence initial={false}>
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            {...toast}
+            onClose={() => onDismiss(toast.id)}
+            onPauseTimer={() => onPauseTimer(toast.id)}
+            onResumeTimer={(remaining) => onResumeTimer(toast.id, remaining)}
+          />
+        ))}
+      </AnimatePresence>
     </div>
   );
 };
 
-const variantConfig = {
-  default: {
-    accentClass: "bg-white/20",
-    progressClass: "bg-white/15",
-  },
-  destructive: {
-    accentClass: "bg-red-400",
-    progressClass: "bg-red-400/30",
-  },
-  success: {
-    accentClass: "bg-emerald-400",
-    progressClass: "bg-emerald-400/30",
-  },
-};
+const variantTone = {
+  default: { rail: "rgba(255,255,255,0.30)", title: "var(--q-fg)" },
+  destructive: { rail: "oklch(0.7 0.18 25)", title: "oklch(0.85 0.14 25)" },
+  success: { rail: "oklch(0.72 0.16 145)", title: "oklch(0.86 0.14 145)" },
+} as const;
 
 const Toast: React.FC<
   ToastState & {
@@ -167,13 +147,12 @@ const Toast: React.FC<
   action,
   variant = "default",
   duration = 3500,
-  isExiting,
   createdAt,
   onClose,
   onPauseTimer,
   onResumeTimer,
 }) => {
-  const config = variantConfig[variant];
+  const tone = variantTone[variant];
   const pausedAtRef = React.useRef<number | null>(null);
   const [copied, setCopied] = React.useState(false);
   const isDestructive = variant === "destructive";
@@ -205,44 +184,61 @@ const Toast: React.FC<
   const detail = title && description ? description : undefined;
 
   return (
-    <div
-      className={cn(
-        "group toast-surface pointer-events-auto relative flex w-75",
-        "rounded-[5px]",
-        "transition-[opacity,transform] duration-200 ease-out",
-        isExiting
-          ? "opacity-0 translate-x-2 scale-[0.98]"
-          : "opacity-100 translate-x-0 scale-100 animate-in slide-in-from-right-4 fade-in-0 duration-300"
-      )}
+    <motion.div
+      layout
+      initial={{ opacity: 0, x: 18, scale: 0.96 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 12, scale: 0.97, transition: { duration: 0.16 } }}
+      transition={{ type: "spring", stiffness: 320, damping: 28, mass: 0.6 }}
+      className="group pointer-events-auto relative flex w-[300px] overflow-hidden"
+      style={{
+        borderRadius: 8,
+        background: "rgba(14,14,16,0.92)",
+        backdropFilter: "blur(20px) saturate(160%)",
+        WebkitBackdropFilter: "blur(20px) saturate(160%)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        boxShadow:
+          "0 8px 24px -8px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset",
+      }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className={cn("w-0.5 shrink-0", config.accentClass)} />
+      <div className="w-[2px] shrink-0" style={{ background: tone.rail }} />
 
-      <div className="flex items-start gap-2 flex-1 min-w-0 px-2.5 py-2">
+      <div className="flex items-start gap-2 flex-1 min-w-0 px-3 py-2.5">
         <div className="flex-1 min-w-0">
           {message && (
-            <div className="text-xs font-medium leading-tight text-white/90">{message}</div>
+            <div
+              className="q-ui"
+              style={{ color: tone.title, fontWeight: 500, lineHeight: 1.25 }}
+            >
+              {message}
+            </div>
           )}
           {detail &&
             (isDestructive ? (
               <div
-                className={cn(
-                  "text-xs leading-snug mt-1 px-1.5 py-1 rounded-[3px] font-mono",
-                  "bg-white/4 border border-white/6",
-                  "text-red-300/80"
-                )}
+                className="q-mono-sm mt-1 px-2 py-1 rounded-[3px]"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  color: "oklch(0.78 0.12 25 / 0.85)",
+                }}
               >
                 <div className="flex items-start justify-between gap-1.5">
                   <span className="select-all wrap-break-word min-w-0">{detail}</span>
                   <button
                     onClick={handleCopyError}
-                    className={cn(
-                      "shrink-0 p-0.5 rounded-xs mt-px",
-                      "text-white/30 hover:text-white/70",
-                      "hover:bg-white/6",
-                      "transition-colors duration-150"
-                    )}
+                    className="shrink-0 p-0.5 rounded-xs mt-px transition-colors duration-150"
+                    style={{ color: "rgba(255,255,255,0.35)" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "rgba(255,255,255,0.8)";
+                      e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "rgba(255,255,255,0.35)";
+                      e.currentTarget.style.background = "transparent";
+                    }}
                     aria-label="Copy error"
                   >
                     {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
@@ -250,7 +246,12 @@ const Toast: React.FC<
                 </div>
               </div>
             ) : (
-              <div className="text-xs leading-snug mt-0.5 text-white/45">{detail}</div>
+              <div
+                className="q-meta-sm mt-0.5"
+                style={{ color: "rgba(255,255,255,0.55)", lineHeight: 1.35 }}
+              >
+                {detail}
+              </div>
             ))}
         </div>
 
@@ -260,31 +261,38 @@ const Toast: React.FC<
       {onClose && (
         <button
           onClick={onClose}
-          className={cn(
-            "absolute -left-2 -top-2 size-6 rounded-full",
-            "flex items-center justify-center",
-            "bg-white/10 backdrop-blur-sm border border-white/10",
-            "text-white/70 hover:text-white hover:bg-white/20",
-            "opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100",
-            "transition-all duration-150",
-            "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
-          )}
+          className="absolute -left-2 -top-2 size-6 rounded-full flex items-center justify-center transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100"
+          style={{
+            background: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.10)",
+            color: "rgba(255,255,255,0.7)",
+            backdropFilter: "blur(6px)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(255,255,255,0.18)";
+            e.currentTarget.style.color = "rgb(255,255,255)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+            e.currentTarget.style.color = "rgba(255,255,255,0.7)";
+          }}
         >
           <X className="size-3" />
           <span className="sr-only">Close</span>
         </button>
       )}
 
-      {duration > 0 && !isExiting && (
-        <div className="absolute bottom-0 left-0.5 right-0 h-px overflow-hidden">
-          <div
-            className={cn("h-full", config.progressClass)}
-            style={{
-              animation: `toast-progress ${duration}ms linear forwards`,
-            }}
+      {duration > 0 && (
+        <div className="absolute bottom-0 left-[2px] right-0 h-px overflow-hidden">
+          <motion.div
+            className="h-full"
+            style={{ background: tone.rail, opacity: 0.45 }}
+            initial={{ scaleX: 1, transformOrigin: "left center" }}
+            animate={{ scaleX: 0 }}
+            transition={{ duration: duration / 1000, ease: "linear" }}
           />
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };

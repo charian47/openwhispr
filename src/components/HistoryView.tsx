@@ -1,11 +1,26 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { motion, AnimatePresence } from "motion/react";
 import { Loader2, Sparkles, Trash2, X } from "lucide-react";
-import TranscriptionItem from "./ui/TranscriptionItem";
+import TranscriptionItem, { type HistoryDensity } from "./ui/TranscriptionItem";
 import type { TranscriptionItem as TranscriptionItemType } from "../types/electron";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import { formatDateGroup } from "../utils/dateFormatting";
 import { useSettingsStore } from "../stores/settingsStore";
+
+const DENSITY_KEY = "historyDensity";
+const DENSITY_OPTIONS: { id: HistoryDensity; letter: string; label: string }[] = [
+  { id: "compact", letter: "C", label: "Compact" },
+  { id: "comfortable", letter: "R", label: "Regular" },
+  { id: "cozy", letter: "Z", label: "Cozy" },
+];
+
+function readDensity(): HistoryDensity {
+  if (typeof window === "undefined") return "comfortable";
+  const stored = localStorage.getItem(DENSITY_KEY);
+  if (stored === "compact" || stored === "comfortable" || stored === "cozy") return stored;
+  return "comfortable";
+}
 
 interface HistoryViewProps {
   history: TranscriptionItemType[];
@@ -40,6 +55,12 @@ export default function HistoryView({
 }: HistoryViewProps) {
   const { t } = useTranslation();
   const dataRetentionEnabled = useSettingsStore((s) => s.dataRetentionEnabled);
+  const [density, setDensity] = useState<HistoryDensity>(readDensity);
+
+  const updateDensity = (next: HistoryDensity) => {
+    setDensity(next);
+    localStorage.setItem(DENSITY_KEY, next);
+  };
 
   const groupedHistory = useMemo(() => {
     if (history.length === 0) return [];
@@ -61,35 +82,43 @@ export default function HistoryView({
 
   return (
     <div className="px-8 pt-2 pb-8 max-w-[760px] mx-auto w-full">
-      {!useReasoningModel && !aiCTADismissed && (
-        <Banner
-          icon={<Sparkles size={14} />}
-          title={t("controlPanel.aiCta.title")}
-          description={t("controlPanel.aiCta.description")}
-          ctaLabel={t("controlPanel.aiCta.enable")}
-          onCta={() => onOpenSettings("intelligence")}
-          onDismiss={() => {
-            localStorage.setItem("aiCTADismissed", "true");
-            setAiCTADismissed(true);
-          }}
-          dismissLabel={t("common.close")}
-        />
-      )}
+      <AnimatePresence>
+        {!useReasoningModel && !aiCTADismissed && (
+          <Banner
+            key="ai-cta"
+            icon={<Sparkles size={14} />}
+            title={t("controlPanel.aiCta.title")}
+            description={t("controlPanel.aiCta.description")}
+            ctaLabel={t("controlPanel.aiCta.enable")}
+            onCta={() => onOpenSettings("intelligence")}
+            onDismiss={() => {
+              localStorage.setItem("aiCTADismissed", "true");
+              setAiCTADismissed(true);
+            }}
+            dismissLabel={t("common.close")}
+          />
+        )}
 
-      {!dataRetentionEnabled && (
-        <div
-          className="mb-4 px-3.5 py-2.5 rounded-md flex items-center gap-2.5"
-          style={{
-            border: "1px solid color-mix(in oklch, oklch(0.75 0.15 70) 30%, transparent)",
-            background: "color-mix(in oklch, oklch(0.75 0.15 70) 8%, transparent)",
-          }}
-        >
-          <span style={{ color: "oklch(0.78 0.14 70)" }}>⊘</span>
-          <p className="q-meta-sm" style={{ color: "oklch(0.85 0.1 70)" }}>
-            {t("controlPanel.history.dataRetentionDisabled")}
-          </p>
-        </div>
-      )}
+        {!dataRetentionEnabled && (
+          <motion.div
+            key="retention-warning"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.2 }}
+            className="mb-4 px-3.5 py-2.5 rounded-md flex items-center gap-2.5"
+            style={{
+              border: "1px solid color-mix(in oklch, oklch(0.75 0.15 70) 30%, transparent)",
+              background: "color-mix(in oklch, oklch(0.75 0.15 70) 8%, transparent)",
+            }}
+          >
+            <span style={{ color: "oklch(0.78 0.14 70)" }}>⊘</span>
+            <p className="q-meta-sm" style={{ color: "oklch(0.85 0.1 70)" }}>
+              {t("controlPanel.history.dataRetentionDisabled")}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 py-16">
@@ -101,7 +130,13 @@ export default function HistoryView({
       ) : (
         <div className="group">
           {groupedHistory.map((group, gi) => (
-            <section key={group.label} className={gi === 0 ? "" : "mt-7"}>
+            <motion.section
+              key={group.label}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, delay: gi * 0.03, ease: [0.32, 0.72, 0, 1] }}
+              className={gi === 0 ? "" : "mt-7"}
+            >
               <header className="flex items-baseline gap-3 mb-3">
                 <h2 className="q-section-label">{group.label}</h2>
                 <div
@@ -115,33 +150,44 @@ export default function HistoryView({
                     : t("controlPanel.history.entries", { defaultValue: "entries" })}
                 </span>
                 {gi === 0 && (
-                  <button
-                    onClick={clearAllTranscriptions}
-                    className="flex items-center gap-1 px-1.5 py-0.5 rounded q-meta-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                    style={{ color: "var(--q-meta)" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = "oklch(0.78 0.14 25)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = "var(--q-meta)")}
-                  >
-                    <Trash2 size={11} />
-                    <span>{t("controlPanel.history.clearAll")}</span>
-                  </button>
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DensityToggle value={density} onChange={updateDensity} />
+                    <button
+                      onClick={clearAllTranscriptions}
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded q-meta-sm"
+                      style={{ color: "var(--q-meta)" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = "oklch(0.78 0.14 25)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = "var(--q-meta)")}
+                    >
+                      <Trash2 size={11} />
+                      <span>{t("controlPanel.history.clearAll")}</span>
+                    </button>
+                  </div>
                 )}
               </header>
-              <ol className="flex flex-col">
-                {group.items.map((item, idx) => (
-                  <TranscriptionItem
-                    key={item.id}
-                    item={item}
-                    onCopy={copyToClipboard}
-                    onDelete={deleteTranscription}
-                    onShowAudioInFolder={onShowAudioInFolder}
-                    onRetryTranscription={onRetryTranscription}
-                    onOpenSettings={() => onOpenSettings("transcription")}
-                    showRule={idx > 0}
-                  />
-                ))}
-              </ol>
-            </section>
+              <motion.ol
+                className="flex flex-col"
+                initial="hidden"
+                animate="show"
+                variants={{ show: { transition: { staggerChildren: 0.025 } } }}
+              >
+                <AnimatePresence initial={false}>
+                  {group.items.map((item, idx) => (
+                    <TranscriptionItem
+                      key={item.id}
+                      item={item}
+                      onCopy={copyToClipboard}
+                      onDelete={deleteTranscription}
+                      onShowAudioInFolder={onShowAudioInFolder}
+                      onRetryTranscription={onRetryTranscription}
+                      onOpenSettings={() => onOpenSettings("transcription")}
+                      showRule={idx > 0}
+                      density={density}
+                    />
+                  ))}
+                </AnimatePresence>
+              </motion.ol>
+            </motion.section>
           ))}
         </div>
       )}
@@ -167,7 +213,12 @@ function Banner({
   dismissLabel: string;
 }) {
   return (
-    <div
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: -6, scale: 0.99 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -6, scale: 0.99 }}
+      transition={{ duration: 0.24, ease: [0.32, 0.72, 0, 1] }}
       className="mb-5 relative rounded-md p-3.5"
       style={{
         border: "1px solid color-mix(in oklch, var(--q-accent) 25%, transparent)",
@@ -219,6 +270,53 @@ function Banner({
           </button>
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+function DensityToggle({
+  value,
+  onChange,
+}: {
+  value: HistoryDensity;
+  onChange: (next: HistoryDensity) => void;
+}) {
+  return (
+    <div
+      className="inline-flex items-center rounded-md p-0.5 gap-px"
+      style={{
+        background: "var(--q-input)",
+        border: "1px solid var(--q-rule)",
+      }}
+    >
+      {DENSITY_OPTIONS.map((opt) => {
+        const active = opt.id === value;
+        return (
+          <button
+            key={opt.id}
+            onClick={() => onChange(opt.id)}
+            aria-label={opt.label}
+            title={opt.label}
+            className="relative px-1.5 h-5 rounded-sm flex items-center justify-center"
+            style={{
+              color: active ? "var(--q-fg)" : "var(--q-meta)",
+              fontFamily: "var(--q-font-mono)",
+              fontSize: 9.5,
+              letterSpacing: "0.05em",
+              background: active ? "var(--q-sel)" : "transparent",
+              textTransform: "uppercase",
+            }}
+            onMouseEnter={(e) => {
+              if (!active) e.currentTarget.style.color = "var(--q-fg-2)";
+            }}
+            onMouseLeave={(e) => {
+              if (!active) e.currentTarget.style.color = "var(--q-meta)";
+            }}
+          >
+            {opt.letter}
+          </button>
+        );
+      })}
     </div>
   );
 }

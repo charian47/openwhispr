@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { motion, AnimatePresence } from "motion/react";
 import { Tooltip } from "./tooltip";
 import { Copy, Trash2, FileText, FolderOpen, RotateCcw, Loader2, AlertCircle } from "lucide-react";
 import type {
@@ -16,6 +17,8 @@ function getShowInFolderKey(): string {
   return "controlPanel.history.showInFolder";
 }
 
+export type HistoryDensity = "compact" | "comfortable" | "cozy";
+
 interface TranscriptionItemProps {
   item: TranscriptionItemType;
   onCopy: (text: string) => void;
@@ -25,7 +28,20 @@ interface TranscriptionItemProps {
   onOpenSettings?: () => void;
   gutter?: number;
   showRule?: boolean;
+  density?: HistoryDensity;
 }
+
+const DENSITY_PADDING: Record<HistoryDensity, string> = {
+  compact: "7px 0",
+  comfortable: "12px 0",
+  cozy: "18px 0",
+};
+
+const DENSITY_GAP: Record<HistoryDensity, number> = {
+  compact: 16,
+  comfortable: 20,
+  cozy: 24,
+};
 
 export default function TranscriptionItem({
   item,
@@ -36,6 +52,7 @@ export default function TranscriptionItem({
   onOpenSettings,
   gutter = 64,
   showRule = true,
+  density = "comfortable",
 }: TranscriptionItemProps) {
   const { t, i18n } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
@@ -74,15 +91,23 @@ export default function TranscriptionItem({
   const isOfflineError = errorCode === "OFFLINE";
 
   return (
-    <li
+    <motion.li
+      layout
+      variants={{
+        hidden: { opacity: 0, y: 6 },
+        show: { opacity: 1, y: 0 },
+      }}
+      exit={{ opacity: 0, x: -12, height: 0, paddingTop: 0, paddingBottom: 0 }}
+      transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="group relative flex gap-5"
+      className="group flex flex-col overflow-hidden"
       style={{
-        padding: "12px 0",
+        padding: DENSITY_PADDING[density],
         borderTop: showRule ? "1px solid var(--q-rule-faint)" : "none",
       }}
     >
+      <div className="flex" style={{ gap: DENSITY_GAP[density] }}>
       <div className="shrink-0 pt-[3px]" style={{ width: gutter, textAlign: "right" }}>
         <span className="q-time">{formattedTime}</span>
       </div>
@@ -179,29 +204,40 @@ export default function TranscriptionItem({
           </ActionBtn>
         </Tooltip>
       </div>
+      </div>
 
-      {!isFailed && hasRawText && isExpanded && (
-        <div
-          className="absolute left-0 right-0 top-full pt-2"
-          style={{ paddingLeft: gutter + 20, paddingRight: 0 }}
-        >
-          <div
-            className="pl-3"
-            style={{ borderLeft: "1px solid var(--q-rule)" }}
+      <AnimatePresence initial={false}>
+        {!isFailed && hasRawText && isExpanded && (
+          <motion.div
+            key="raw"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+            className="overflow-hidden"
+            style={{ paddingLeft: gutter + DENSITY_GAP[density], paddingRight: 0 }}
           >
-            <span className="q-section-label">{t("controlPanel.history.rawTranscript")}</span>
-            <p className="q-body mt-1" style={{ color: "var(--q-fg-3)" }}>
-              {item.raw_text}
-            </p>
-            {item.raw_text === item.text && (
-              <p className="q-meta-sm mt-1" style={{ color: "var(--q-meta-faint)", fontStyle: "italic" }}>
-                {t("controlPanel.history.noAiProcessing")}
+            <div
+              className="pl-3 mt-2"
+              style={{ borderLeft: "1px solid var(--q-rule)" }}
+            >
+              <span className="q-section-label">{t("controlPanel.history.rawTranscript")}</span>
+              <p className="q-body mt-1" style={{ color: "var(--q-fg-3)" }}>
+                {item.raw_text}
               </p>
-            )}
-          </div>
-        </div>
-      )}
-    </li>
+              {item.raw_text === item.text && (
+                <p
+                  className="q-meta-sm mt-1"
+                  style={{ color: "var(--q-meta-faint)", fontStyle: "italic" }}
+                >
+                  {t("controlPanel.history.noAiProcessing")}
+                </p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.li>
   );
 }
 

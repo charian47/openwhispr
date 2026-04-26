@@ -55,6 +55,56 @@ export function formatHotkeyLabel(hotkey?: string | null): string {
   return formatHotkeyLabelForPlatform(resolvedHotkey, platform);
 }
 
+/**
+ * Compact symbol representation for macOS — uses ⌘⌥⇧⌃ glyphs concatenated
+ * with the base key (no separators). For other platforms, falls back to the
+ * verbose label. Used in tight UI like the dictation pill.
+ *
+ * @example
+ * formatHotkeyLabelCompact("CommandOrControl+Option+K") // "⌘⌥K" on macOS
+ * formatHotkeyLabelCompact("GLOBE") // "🌐"
+ */
+export function formatHotkeyLabelCompact(hotkey?: string | null): string {
+  const platform = getPlatform();
+  const resolved = hotkey && hotkey.trim() !== "" ? hotkey : getDefaultHotkey();
+
+  if (platform !== "darwin") {
+    return formatHotkeyLabelForPlatform(resolved, platform);
+  }
+
+  if (isGlobeLikeHotkey(resolved)) return "🌐";
+
+  const symbolMap: Record<string, string> = {
+    CommandOrControl: "⌘",
+    Command: "⌘",
+    Cmd: "⌘",
+    Control: "⌃",
+    Ctrl: "⌃",
+    Alt: "⌥",
+    Option: "⌥",
+    Shift: "⇧",
+    Super: "⌘",
+    Meta: "⌘",
+    Win: "⌘",
+    Fn: "fn",
+  };
+
+  if (!resolved.includes("+")) return resolved;
+
+  const parts = resolved.split("+");
+  // Order: ⌃⌥⇧⌘ then base key (Apple convention)
+  const order = ["⌃", "⌥", "⇧", "⌘"];
+  const symbols: string[] = [];
+  let baseKey = "";
+  for (const part of parts) {
+    const sym = symbolMap[part];
+    if (sym) symbols.push(sym);
+    else baseKey = part;
+  }
+  symbols.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  return symbols.join("") + baseKey;
+}
+
 export function formatHotkeyLabelForPlatform(hotkey: string, platform: Platform): string {
   if (!hotkey || hotkey.trim() === "") {
     return "";

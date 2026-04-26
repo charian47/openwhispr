@@ -14,6 +14,7 @@ import {
   getEffectiveReasoningModel,
   isCloudReasoningMode,
 } from "../stores/settingsStore";
+import { setAudioLevelAnalyser } from "../stores/audioLevelStore";
 
 const REASONING_CACHE_TTL = 30000; // 30 seconds
 
@@ -243,6 +244,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         this._silenceAnalyser.fftSize = 2048;
         const sourceNode = this._silenceCtx.createMediaStreamSource(micStream);
         sourceNode.connect(this._silenceAnalyser);
+        setAudioLevelAnalyser(this._silenceAnalyser);
         this._localSpeechGateState = createLocalSpeechGateState();
         const dataArray = new Uint8Array(this._silenceAnalyser.fftSize);
         this._silenceInterval = setInterval(() => {
@@ -277,6 +279,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           clearInterval(this._silenceInterval);
           this._silenceInterval = null;
         }
+        setAudioLevelAnalyser(null);
         this._silenceCtx?.close().catch(() => {});
         this._silenceCtx = null;
         this._silenceAnalyser = null;
@@ -380,6 +383,14 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
   cancelRecording() {
     if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
       this.mediaRecorder.onstop = () => {
+        if (this._silenceInterval) {
+          clearInterval(this._silenceInterval);
+          this._silenceInterval = null;
+        }
+        setAudioLevelAnalyser(null);
+        this._silenceCtx?.close().catch(() => {});
+        this._silenceCtx = null;
+        this._silenceAnalyser = null;
         this.cleanupPreview({ dismiss: true });
         this.isRecording = false;
         this.isProcessing = false;
@@ -1884,6 +1895,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
   cleanup() {
     this.lastAudioBlob = null;
     this.lastAudioMetadata = null;
+    setAudioLevelAnalyser(null);
     if (this.mediaRecorder?.state === "recording") {
       this.stopRecording();
     }
