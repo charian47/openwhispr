@@ -5937,21 +5937,11 @@ class IPCHandlers {
       const manager = this.getWhisperKitManager();
       const transcript = manager?.consumeSessionTranscript?.() || "";
       manager?.stop();
-      if (transcript) {
-        try {
-          const result = this.databaseManager.saveTranscription(transcript, transcript, {
-            status: "completed",
-          });
-          if (result?.success && result?.transcription) {
-            setImmediate(() => {
-              this.broadcastToWindows("transcription-added", result.transcription);
-            });
-          }
-        } catch (err) {
-          debugLogger.error(`[whisperkit-ipc] failed to persist session transcript: ${err.message}`);
-        }
-      }
-      return { success: true };
+      // Return the raw transcript to the renderer. The renderer is responsible
+      // for running the reasoning model (if enabled) and saving the final
+      // record via db-save-transcription. Saving here would bypass the
+      // user's "AI processing" toggle and the local LLM cleanup pipeline.
+      return { success: true, transcript };
     });
     ipcMain.handle("whisperkit-set-language", async (_event, language) => {
       this.getWhisperKitManager()?.setLanguage(language);

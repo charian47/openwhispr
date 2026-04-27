@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StreamingAudioCapture } from "../helpers/streamingAudioCapture";
+import {
+  getSettings,
+  getEffectiveReasoningModel,
+  isCloudReasoningMode,
+} from "../stores/settingsStore";
+import ReasoningService from "../services/ReasoningService";
 
 /**
  * useStreamingDictation
  *
  * Wires the renderer-side mic capture pipeline to the WhisperKit sidecar via IPC.
+ * Owns the full transcript lifecycle: streaming capture → main-process VAD/decode →
+ * raw transcript returned to renderer → optional reasoning cleanup → DB save.
  *
  * Returns:
  *   isStreaming {boolean}     - true while a streaming session is active
@@ -46,9 +54,69 @@ export function useStreamingDictation() {
       captureRef.current.stop();
       captureRef.current = null;
     }
-    await window.electronAPI?.whisperKitStop?.();
+    const stopResult = await window.electronAPI?.whisperKitStop?.();
     setIsStreaming(false);
     setVadState("silence");
+
+    const rawText = (stopResult?.transcript || "").trim();
+    if (!rawText) {
+      console.log("[useStreamingDictation] no transcript to save");
+      return;
+    }
+
+    let processedText = rawText;
+    const settings = getSettings();
+    const reasoningEnabled = settings.useReasoningModel;
+    const reasoningModel = getEffectiveReasoningModel();
+    const isCloud = isCloudReasoningMode();
+
+    console.log("[useStreamingDictation] reasoning check:", {
+      reasoningEnabled,
+      reasoningModel,
+      isCloud,
+      rawTextLength: rawText.length,
+    });
+
+    if (reasoningEnabled && (reasoningModel || isCloud)) {
+      const t0 = performance.now();
+      try {
+        const agentName =
+          typeof window !== "undefined" && window.localStorage
+            ? localStorage.getItem("agentName") || null
+            : null;
+        const cleaned = await ReasoningService.processText(rawText, reasoningModel, agentName);
+        const elapsedMs = Math.round(performance.now() - t0);
+        if (cleaned && cleaned.trim().length > 0) {
+          processedText = cleaned.trim();
+          console.log("[useStreamingDictation] reasoning succeeded", {
+            elapsedMs,
+            rawLen: rawText.length,
+            cleanedLen: processedText.length,
+            changed: processedText !== rawText,
+          });
+        } else {
+          console.warn("[useStreamingDictation] reasoning returned empty, saving raw", {
+            elapsedMs,
+          });
+        }
+      } catch (err) {
+        const elapsedMs = Math.round(performance.now() - t0);
+        console.error("[useStreamingDictation] reasoning failed, saving raw:", {
+          elapsedMs,
+          error: err?.message || String(err),
+        });
+      }
+    } else {
+      console.log("[useStreamingDictation] reasoning skipped — not enabled or no model selected");
+    }
+
+    try {
+      await window.electronAPI?.saveTranscription?.(processedText, rawText, {
+        status: "completed",
+      });
+    } catch (err) {
+      console.error("[useStreamingDictation] save failed:", err?.message || err);
+    }
   }, []);
 
   // Subscribe to VAD state transitions and hotkey toggle events.

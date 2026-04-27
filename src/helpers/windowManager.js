@@ -91,6 +91,12 @@ class WindowManager {
     this.mainWindow.webContents.on("did-finish-load", () => {
       this.mainWindow.setTitle(i18nMain.t("window.voiceRecorderTitle"));
       this.enforceMainWindowOnTop();
+      // Dev-mode only: auto-open DevTools in detached window. The dictation
+      // overlay is too small (180×64) to dock DevTools inside, so we always
+      // detach it.
+      if (process.env.NODE_ENV === "development") {
+        this.mainWindow.webContents.openDevTools({ mode: "detach" });
+      }
     });
 
     await this.loadMainWindow();
