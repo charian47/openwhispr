@@ -42,12 +42,28 @@ class LocalReasoningService {
         systemPrompt: config.systemPrompt || "",
       };
 
+      // Qwen3/3.5 are reasoning models that emit <think>...</think> before
+      // answering. For transcription cleanup the entire token budget can be
+      // burned inside <think>, leaving zero tokens for the actual answer.
+      // We disable thinking via two mechanisms passed to llama-server:
+      //   - chat_template_kwargs.enable_thinking=false → Qwen's official
+      //     jinja template emits <think></think> as a no-op, so the model
+      //     goes straight to the answer.
+      //   - reasoning_budget=0 → server-side cap on reasoning tokens.
+      // The `/no_think` text-injection trick does not work for these GGUFs.
+      const isQwenThinkingModel = /^qwen3(\.\d+)?[-_]/i.test(modelId);
+      if (isQwenThinkingModel) {
+        inferenceConfig.disableThinking = true;
+      }
+
       debugLogger.logReasoning("LOCAL_BRIDGE_INFERENCE", {
         modelId,
         config: inferenceConfig,
+        thinkingDisabled: isQwenThinkingModel,
       });
 
       const result = await modelManager.runInference(modelId, text, inferenceConfig);
+
       const cleanResult = result
         .replace(/<think>[\s\S]*?<\/think>/g, "")
         .replace(/<think>[\s\S]*$/, "")

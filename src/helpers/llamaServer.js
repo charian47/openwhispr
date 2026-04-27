@@ -416,12 +416,19 @@ class LlamaServerManager {
       throw new Error("llama-server is not running");
     }
 
-    const body = JSON.stringify({
+    const requestPayload = {
       messages,
       temperature: options.temperature ?? 0.7,
       max_tokens: options.max_tokens ?? 512,
       stream: false,
-    });
+    };
+    if (options.disableThinking) {
+      // Qwen3 official jinja template honors enable_thinking=false; recent
+      // llama-server also caps reasoning tokens at reasoning_budget=0.
+      requestPayload.chat_template_kwargs = { enable_thinking: false };
+      requestPayload.reasoning_budget = 0;
+    }
+    const body = JSON.stringify(requestPayload);
 
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
@@ -456,7 +463,20 @@ class LlamaServerManager {
 
             try {
               const response = JSON.parse(data);
-              const text = response.choices?.[0]?.message?.content || "";
+              const choice = response.choices?.[0];
+              const message = choice?.message || {};
+              // TEMP DIAG: dump raw shape from llama-server so we can see if
+              // reasoning content is being split into a separate field.
+              console.log("[llamaServer] RAW RESPONSE", {
+                finishReason: choice?.finish_reason,
+                contentLength: (message.content || "").length,
+                reasoningLength: (message.reasoning_content || "").length,
+                contentHead: (message.content || "").slice(0, 200),
+                reasoningHead: (message.reasoning_content || "").slice(0, 200),
+                usage: response.usage,
+                messageKeys: Object.keys(message),
+              });
+              const text = message.content || "";
               resolve(text.trim());
             } catch (e) {
               reject(new Error(`Failed to parse llama-server response: ${e.message}`));
