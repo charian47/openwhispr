@@ -587,6 +587,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   whisperKitStop: () => ipcRenderer.invoke("whisperkit-stop"),
   whisperKitSetLanguage: (lang) => ipcRenderer.invoke("whisperkit-set-language", lang),
   whisperKitSendAudio: (buffer) => ipcRenderer.send("whisperkit-audio", buffer),
+  streamingInjectFinal: (text) => ipcRenderer.invoke("streaming-inject-final", text),
   onStreamingCommit: (cb) => {
     const h = (_e, msg) => cb(msg);
     ipcRenderer.on("streaming-commit", h);

@@ -584,34 +584,16 @@ async function startApp() {
 
   // WhisperKit streaming sidecar manager (idle until renderer calls whisperkit-start).
   whisperKitManager = new WhisperKitSidecarManager();
-  whisperKitManager.on("commit", async (msg) => {
+  whisperKitManager.on("commit", (msg) => {
     if (debugLogger) debugLogger.log(`[whisperkit] commit segmentId=${msg.segmentId} text=${JSON.stringify(msg.text)}`);
 
+    // We intentionally do not inject per-segment. The renderer accumulates the
+    // full transcript, runs reasoning, and then triggers a single
+    // "streaming-inject-final" IPC with the polished text. Live injection
+    // would beat the polish to the target app and leave raw text behind.
     const text = (msg.text || "").trim();
     if (text) {
       whisperKitManager.sessionSegments.push(text);
-      if (await isSecureInputActive()) {
-        if (debugLogger) debugLogger.warn("[injector] secure input is active — skipping injection");
-        if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
-          windowManager.mainWindow.webContents.send("streaming-injection-error", {
-            code: "SECURE_INPUT",
-            message: "Secure input is active (probably a password field). Click outside it and try again.",
-          });
-        }
-      } else {
-        const toInject = text + " ";
-        const pasteApps = await getPasteModeApps();
-        const bundleId = await getFrontmostBundleId();
-        const route = routeInjection(bundleId, pasteApps);
-        if (debugLogger) debugLogger.log(`[injector] route=${route} bundleId=${bundleId || "?"}`);
-        let result;
-        try {
-          result = route === "paste" ? await pasteChunk(toInject) : await injectText(toInject);
-        } catch (err) {
-          result = { success: false, error: err.message };
-        }
-        if (!result.success && debugLogger) debugLogger.warn(`[injector] failed (route=${route}): ${result.error}`);
-      }
     }
 
     if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
@@ -637,6 +619,45 @@ async function startApp() {
   });
   whisperKitManager.on("modelLoaded", (msg) => {
     if (debugLogger) debugLogger.log(`[whisperkit] model loaded: ${msg.path}`);
+  });
+
+  // Final-text injection: called once by the renderer after streaming stops
+  // and reasoning has produced the polished transcript. Routes through the
+  // same paste/keystroke logic as the old per-segment path.
+  ipcMain.handle("streaming-inject-final", async (_event, text) => {
+    const toInject = (text || "").toString();
+    console.log(`[injector] streaming-inject-final invoked, len=${toInject.length}`);
+    if (!toInject) return { success: false, error: "empty text" };
+
+    if (await isSecureInputActive()) {
+      console.warn("[injector] secure input is active — skipping final injection");
+      if (debugLogger) debugLogger.warn("[injector] secure input is active — skipping final injection");
+      if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+        windowManager.mainWindow.webContents.send("streaming-injection-error", {
+          code: "SECURE_INPUT",
+          message:
+            "Secure input is active (probably a password field). Click outside it and try again.",
+        });
+      }
+      return { success: false, error: "SECURE_INPUT" };
+    }
+
+    const pasteApps = await getPasteModeApps();
+    const bundleId = await getFrontmostBundleId();
+    const route = routeInjection(bundleId, pasteApps);
+    console.log(`[injector] final route=${route} bundleId=${bundleId || "?"} pasteApps=${JSON.stringify(pasteApps)}`);
+    if (debugLogger) debugLogger.log(`[injector] final route=${route} bundleId=${bundleId || "?"}`);
+    try {
+      const result = route === "paste" ? await pasteChunk(toInject) : await injectText(toInject);
+      console.log(`[injector] final result success=${result.success} error=${result.error || "none"}`);
+      if (!result.success && debugLogger)
+        debugLogger.warn(`[injector] final failed (route=${route}): ${result.error}`);
+      return result;
+    } catch (err) {
+      console.warn(`[injector] final threw: ${err.message}`);
+      if (debugLogger) debugLogger.warn(`[injector] final threw: ${err.message}`);
+      return { success: false, error: err.message };
+    }
   });
 
   // Right-Option double-tap detector — toggles streaming start/stop.

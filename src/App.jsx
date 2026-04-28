@@ -94,9 +94,13 @@ const PillBar = ({ index, level, mode }) => {
 // State machine for visual feedback:
 //   idle → recording (red, audio-reactive)
 //   recording → processing (amber sweep) → done flash (green ~700ms) → idle
+// "polishing" reuses the processing color but swaps the bars for a "Polishing…"
+// label so the user sees an automatic indicator without hovering.
 const QuillPill = ({ state }) => {
+  const { t } = useTranslation();
   const isRec = state === "recording";
   const isProc = state === "processing";
+  const isPolishing = state === "polishing";
   const level = useAudioLevel();
 
   // "done" is a transient mode triggered when state transitions from
@@ -108,7 +112,8 @@ const QuillPill = ({ state }) => {
   useEffect(() => {
     const prev = prevStateRef.current;
     const transitionedToIdle =
-      state === "idle" && (prev === "recording" || prev === "processing");
+      state === "idle" &&
+      (prev === "recording" || prev === "processing" || prev === "polishing");
     if (transitionedToIdle) {
       setIsDone(true);
       const timer = setTimeout(() => setIsDone(false), 700);
@@ -120,18 +125,20 @@ const QuillPill = ({ state }) => {
 
   const mode = isProc ? "processing" : isRec ? "recording" : isDone ? "done" : "idle";
 
+  // Polishing shares the amber processing color; transition is handled below
+  // by swapping the bar strip for an inline label.
   const dotColor = isDone
     ? PILL_DONE
     : isRec
       ? PILL_RECORDING
-      : isProc
+      : isProc || isPolishing
         ? PILL_PROCESSING
         : PILL_IDLE;
   const dotShadow = isDone
     ? `0 0 10px ${PILL_DONE.replace(")", " / 0.7)")}`
     : isRec
       ? `0 0 8px ${PILL_RECORDING.replace(")", " / 0.7)")}`
-      : isProc
+      : isProc || isPolishing
         ? `0 0 6px ${PILL_PROCESSING.replace(")", " / 0.5)")}`
         : "0 0 0 transparent";
 
@@ -169,11 +176,23 @@ const QuillPill = ({ state }) => {
         }
         style={{ width: 6, height: 6, borderRadius: 999 }}
       />
-      <span className="flex items-center gap-[2px]" style={{ height: 14 }}>
-        {Array.from({ length: PILL_BAR_COUNT }).map((_, i) => (
-          <PillBar key={i} index={i} level={level} mode={mode} />
-        ))}
-      </span>
+      {isPolishing ? (
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0.55, 1, 0.55] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          className="text-[11px] font-medium tracking-wide whitespace-nowrap"
+          style={{ height: 14, lineHeight: "14px", color: PILL_PROCESSING }}
+        >
+          {t("app.mic.polishing")}
+        </motion.span>
+      ) : (
+        <span className="flex items-center gap-[2px]" style={{ height: 14 }}>
+          {Array.from({ length: PILL_BAR_COUNT }).map((_, i) => (
+            <PillBar key={i} index={i} level={level} mode={mode} />
+          ))}
+        </span>
+      )}
     </motion.span>
   );
 };
@@ -329,7 +348,7 @@ export default function App() {
     });
 
   // Subscribes to the global hotkey IPC and runs the WhisperKit streaming pipeline.
-  const { isStreaming } = useStreamingDictation();
+  const { isStreaming, isPolishing } = useStreamingDictation();
 
   // Sync auto-hide from main process — setState directly to avoid IPC echo
   useEffect(() => {
@@ -426,6 +445,7 @@ export default function App() {
 
   const getMicState = () => {
     if (isRecording || isStreaming) return "recording";
+    if (isPolishing) return "polishing";
     if (isProcessing || postStreamProcessing) return "processing";
     if (isHovered && !isRecording && !isProcessing && !isStreaming) return "hover";
     return "idle";
@@ -437,6 +457,8 @@ export default function App() {
     switch (micState) {
       case "recording":
         return { tooltip: t("app.mic.recording"), state: "recording" };
+      case "polishing":
+        return { tooltip: t("app.mic.polishing"), state: "polishing" };
       case "processing":
         return { tooltip: t("app.mic.processing"), state: "processing" };
       case "idle":

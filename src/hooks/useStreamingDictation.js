@@ -15,14 +15,18 @@ import ReasoningService from "../services/ReasoningService";
  * raw transcript returned to renderer → optional reasoning cleanup → DB save.
  *
  * Returns:
- *   isStreaming {boolean}     - true while a streaming session is active
- *   vadState   {string}      - "silence" | "speech" — from streaming-vad IPC events
- *   start      {function}    - async ({ modelPath, language }) → void
- *   stop       {function}    - async () → void
+ *   isStreaming  {boolean}    - true while a streaming session is active
+ *   vadState     {string}     - "silence" | "speech" — from streaming-vad IPC events
+ *   isPolishing  {boolean}    - true while local LLM is cleaning the raw transcript
+ *   start        {function}   - async ({ modelPath, language }) → void
+ *   stop         {function}   - async () → void
  */
 export function useStreamingDictation() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [vadState, setVadState] = useState("silence");
+  // True between toggle-off and DB save while the local LLM cleans the
+  // transcript. Drives the "Polishing…" indicator on the dictation overlay.
+  const [isPolishing, setIsPolishing] = useState(false);
   const captureRef = useRef(null);
 
   const start = useCallback(
@@ -78,6 +82,7 @@ export function useStreamingDictation() {
     });
 
     if (reasoningEnabled && (reasoningModel || isCloud)) {
+      setIsPolishing(true);
       const t0 = performance.now();
       try {
         const agentName =
@@ -105,9 +110,31 @@ export function useStreamingDictation() {
           elapsedMs,
           error: err?.message || String(err),
         });
+      } finally {
+        setIsPolishing(false);
       }
     } else {
       console.log("[useStreamingDictation] reasoning skipped — not enabled or no model selected");
+    }
+
+    // Inject the final text into the foreground app (the user's target text
+    // field). We do this AFTER reasoning so the polished version lands in the
+    // target — the per-segment live injection in main.js was removed because
+    // it raced the polish and left raw text behind.
+    const injectFn = window.electronAPI?.streamingInjectFinal;
+    console.log("[useStreamingDictation] inject step:", {
+      hasFn: typeof injectFn === "function",
+      textLength: processedText.length,
+    });
+    if (typeof injectFn === "function") {
+      try {
+        const injectResult = await injectFn(processedText);
+        console.log("[useStreamingDictation] inject result:", injectResult);
+      } catch (err) {
+        console.warn("[useStreamingDictation] inject threw:", err?.message || err);
+      }
+    } else {
+      console.error("[useStreamingDictation] electronAPI.streamingInjectFinal is missing — preload not loaded?");
     }
 
     try {
@@ -143,5 +170,5 @@ export function useStreamingDictation() {
     };
   }, [isStreaming, start, stop]);
 
-  return { isStreaming, vadState, start, stop };
+  return { isStreaming, vadState, isPolishing, start, stop };
 }
