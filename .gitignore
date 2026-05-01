@@ -318,3 +318,8 @@ src/assets/Assets.car
 
 # Local design
 docs/
+
+# Benchmark corpus + results (corpus contains private dictations,
+# results are machine-specific timings — keep both local)
+bench/corpus/
+bench/results/
