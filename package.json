@@ -19,6 +19,7 @@
     "bench:extract": "node bench/extract-corpus.js",
     "bench:polish": "node bench/run-polish.js",
     "bench:analyze": "node bench/analyze.js --latest",
+    "bench:bind": "node bench/bind-intents.js",
     "compile:native": "npm run compile:globe && npm run compile:fast-paste && npm run compile:text-monitor && npm run compile:media-remote && npm run compile:whisperkit && npm run compile:right-option && npm run compile:text-injector",
     "prestart": "npm run compile:native",
     "start": "electron .",

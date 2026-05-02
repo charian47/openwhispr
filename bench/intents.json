@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "notes": "Authored intent labels. Dictate each one in order through the OpenWhispr app; speak naturally — don't read word-for-word, hit the same meaning with whatever filler comes out. The 'intent' field is the target output (what we score polish against), not the script to read aloud. After dictating all 20, run `npm run bench:bind` to pair them with the resulting DB rows.",
+  "intents": [
+    {
+      "id": 1,
+      "bucket": "short",
+      "category": "messaging",
+      "addresses_agent": false,
+      "intent": "Send Sarah the meeting notes."
+    },
+    {
+      "id": 2,
+      "bucket": "short",
+      "category": "reminder",
+      "addresses_agent": false,
+      "has_dates": true,
+      "intent": "Remind me to call the dentist tomorrow."
+    },
+    {
+      "id": 3,
+      "bucket": "short",
+      "category": "calendar",
+      "addresses_agent": false,
+      "has_numbers": true,
+      "intent": "Cancel my 3pm with finance."
+    },
+    {
+      "id": 4,
+      "bucket": "short",
+      "category": "messaging",
+      "addresses_agent": false,
+      "intent": "Pick up groceries on the way home."
+    },
+    {
+      "id": 5,
+      "bucket": "short",
+      "category": "messaging",
+      "addresses_agent": false,
+      "has_proper_nouns": true,
+      "intent": "Tell Mom I'll be late tonight."
+    },
+    {
+      "id": 6,
+      "bucket": "medium",
+      "category": "email",
+      "addresses_agent": false,
+      "has_proper_nouns": false,
+      "has_dates": true,
+      "intent": "Draft a follow-up email to the engineering candidates from Tuesday's interviews — thank them and let them know we'll have feedback by Friday."
+    },
+    {
+      "id": 7,
+      "bucket": "medium",
+      "category": "technical",
+      "addresses_agent": false,
+      "has_technical_terms": true,
+      "intent": "I think the migration is mostly done, but we still need to backfill the user_metadata column and add an index on session_id."
+    },
+    {
+      "id": 8,
+      "bucket": "medium",
+      "category": "technical",
+      "addresses_agent": false,
+      "has_technical_terms": true,
+      "has_numbers": true,
+      "intent": "Note from standup: latency p95 dropped from 800 milliseconds to 280 after we switched to the bundler-mode resolver."
+    },
+    {
+      "id": 9,
+      "bucket": "medium",
+      "category": "calendar",
+      "addresses_agent": false,
+      "has_proper_nouns": true,
+      "has_dates": true,
+      "has_numbers": true,
+      "intent": "Schedule a 30-minute one-on-one with Marcus next week, ideally Tuesday or Wednesday morning before standup."
+    },
+    {
+      "id": 10,
+      "bucket": "medium",
+      "category": "technical",
+      "addresses_agent": false,
+      "has_numbers": true,
+      "intent": "The bug only reproduces when a user has an active subscription and tries to cancel within the first 24 hours after signup."
+    },
+    {
+      "id": 11,
+      "bucket": "medium",
+      "category": "email",
+      "addresses_agent": false,
+      "has_proper_nouns": true,
+      "has_numbers": true,
+      "intent": "Reply to Jordan that yes, we can do the demo Thursday, but it'll need to be after 4pm — I'm at the dentist before that."
+    },
+    {
+      "id": 12,
+      "bucket": "medium",
+      "category": "technical",
+      "addresses_agent": false,
+      "has_technical_terms": true,
+      "intent": "Add a TODO to refactor the streaming injector: the secure-input check should run before the route detection, not after."
+    },
+    {
+      "id": 13,
+      "bucket": "medium",
+      "category": "messaging",
+      "addresses_agent": false,
+      "has_dates": true,
+      "intent": "Tell the team we're pushing the launch from May 8th to May 15th to give QA more time on the auth changes."
+    },
+    {
+      "id": 14,
+      "bucket": "medium",
+      "category": "agent",
+      "addresses_agent": true,
+      "intent": "Translate this to Spanish: I'll pick up the kids from school today, see you tonight."
+    },
+    {
+      "id": 15,
+      "bucket": "medium",
+      "category": "list",
+      "addresses_agent": false,
+      "has_technical_terms": true,
+      "intent": "Three things from this sprint: finish the bench harness, ship the polish prompt fix, and write up the MLX migration spec."
+    },
+    {
+      "id": 16,
+      "bucket": "long",
+      "category": "notes",
+      "addresses_agent": false,
+      "has_proper_nouns": true,
+      "has_technical_terms": true,
+      "has_numbers": true,
+      "intent": "Design review notes from this morning. We aligned on the streaming-injection approach — buffer to sentence boundaries instead of word boundaries, which should eliminate the mid-sentence backtracking. The risk Tom raised was that long pauses could feel laggy, so we'll add a 200-millisecond max-buffer timeout. Action items: I write the spec by Friday, Tom prototypes the buffer logic, and Maya wires up the latency bench."
+    },
+    {
+      "id": 17,
+      "bucket": "long",
+      "category": "status_report",
+      "addresses_agent": false,
+      "has_technical_terms": true,
+      "has_numbers": true,
+      "intent": "Status update for the leadership sync. This week we shipped the cleanup of the cloud reasoning providers — removed about 8000 lines of dead code and three external dependencies. We also wrapped the local semantic search rollout: Qdrant is running as a sidecar on every install, with all-MiniLM-L6-v2 for embeddings. Next week we start the streaming dictation work; the goal is end-to-end latency under one second for short utterances by end of quarter."
+    },
+    {
+      "id": 18,
+      "bucket": "long",
+      "category": "agent",
+      "addresses_agent": true,
+      "has_proper_nouns": true,
+      "has_numbers": true,
+      "intent": "Take the following raw notes from my call with Alex and turn them into a one-paragraph customer story I can send to marketing. Alex runs a logistics startup with about 40 employees, switched from Otter to us six weeks ago, says his team's meeting follow-through went up by roughly 30 percent because they finally have searchable transcripts, and the killer feature for him is that everything stays local — no shipper data leaves the laptop."
+    },
+    {
+      "id": 19,
+      "bucket": "long",
+      "category": "journal",
+      "addresses_agent": false,
+      "has_technical_terms": true,
+      "has_numbers": true,
+      "intent": "Personal journal entry. The benchmark numbers came in worse than I expected today — polish latency on the 4B model is sitting around 3 seconds p95, which is too slow. I keep going back and forth between just shipping a smaller model and committing to the MLX rewrite. The smaller model wins on time-to-ship, but I'm worried about quality regressions on technical jargon. The MLX rewrite is a 3-week investment that positions us for speculative decoding later. I'll sleep on it and decide tomorrow."
+    },
+    {
+      "id": 20,
+      "bucket": "long",
+      "category": "bug_report",
+      "addresses_agent": false,
+      "has_technical_terms": true,
+      "has_numbers": true,
+      "intent": "Bug report. Title: polished text fails to inject when the frontmost app changes during polish. Reproduction: start dictation with app A focused, switch to app B during the polish step, observe text injecting into A's hidden window instead of B. Expected: inject should detect the current frontmost bundle ID at injection time, not at polish-start time. Affected versions: 2.4.1 and likely earlier. Severity: medium. Suggested fix: move the routeInjection call into the streaming-inject-final IPC handler."
+    }
+  ]
+}
